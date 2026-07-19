@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.15.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      # Runs both apps' coverage-enforcing test script (vitest --coverage /
+      # jest --coverage) — fails the job if either drops under the 80%
+      # threshold configured in apps/web/vitest.config.ts and
+      # apps/api/package.json's jest.coverageThreshold.
+      - name: Test (with coverage gate)
+        run: pnpm test:cov
