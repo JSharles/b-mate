@@ -54,7 +54,8 @@ The full vision includes an AI-assisted simplification layer. **It is not part o
 - **Frontend**: Next.js (`apps/web`)
 - **Backend**: NestJS, as a separate service (deliberate choice, even though Next.js allows fullstack) (`apps/api`)
 - **Repo**: pnpm + Turborepo monorepo — decided (this was originally in "Open decisions" below, now removed from that list)
-- **Database**: TBD — see "Open decisions"
+- **Database**: PostgreSQL, via Prisma — decided (this was originally in "Open decisions" below, now removed from that list)
+- **Hosting**: Railway, for both `apps/api` and the production Postgres instance — decided
 
 ---
 
@@ -187,7 +188,6 @@ Context is useful to avoid "fixing" the schema in the wrong direction.
 
 **Don't decide alone. Ask before implementing.**
 
-- [ ] **Database**: PostgreSQL? Something else? ORM (Prisma, TypeORM, other)?
 - [ ] **Authentication**: sessions, JWT, external provider? Do the client and developer go through the same flow?
 - [ ] **`Tasks.status` values**: TBD
 - [ ] **`Projects.status` values**: TBD
