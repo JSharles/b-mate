@@ -71,6 +71,7 @@ A single table for every person. A client and a developer are the same kind of t
 | first_name | string | |
 | last_name | string | |
 | email | string | unique — used as the invitation identifier |
+| password_hash | string | Argon2id hash. Both developer and client authenticate with email + password. |
 | company | string | |
 | address | string | |
 | phone | string | |
@@ -112,6 +113,7 @@ Separate table: what's invited is an **email**, which doesn't necessarily have a
 | project_id | uuid | FK → Projects |
 | email | string | no user_id |
 | role | enum | role to be granted on acceptance |
+| is_admin | boolean | whether the invitee becomes a project admin on acceptance — see "Ownership & handoff" below |
 | token | string | random string, unguessable |
 | status | string | invited / accepted / expired |
 | expires_at | datetime | |
@@ -128,10 +130,21 @@ Separate table: what's invited is an **email**, which doesn't necessarily have a
 | status | string | values TBD |
 | duration | int | estimated time |
 
+### Sessions
+
+Server-side sessions (decided over JWT — see "Authentication" below). The row's `id` is itself the bearer secret sent to the browser in an `httpOnly` cookie; deleting the row logs the session out instantly, everywhere.
+
+| Field | Type | Note |
+|---|---|---|
+| id | uuid | PK, cryptographically random — doubles as the session token |
+| user_id | uuid | FK → Users |
+| expires_at | datetime | fixed at creation (30 days), not sliding |
+
 ### Relations
 
 ```
 USERS  ||--o{  PROJECT_MEMBERS
+USERS  ||--o{  SESSIONS
 PROJECTS  ||--o{  PROJECT_MEMBERS
 PROJECTS  ||--o{  INVITATIONS
 PROJECTS  ||--o{  TASKS
@@ -166,6 +179,24 @@ These rules follow from structural decisions. Not all of them are expressible in
 - A `contributor` manages the project and its tasks.
 - `is_admin` is an **independent** dimension from role: it governs inviting and managing members.
 
+### Ownership & handoff
+
+**The client who commissions a project should be invited as admin (`is_admin = true`) by default**, on top of their `client` role. This does not grant them any content rights — `role` still governs tasks, so an admin client still can't create or edit tasks. It grants them member-management rights only.
+
+**Why:** without this, a project can only ever be managed by the developer who created it. If that developer becomes unresponsive, nobody can invite a replacement — the client is stuck depending on someone who has no obligation to act. Since it's the client's engagement (they're the one paying, and they can already work with several developers over time per the data model), they should be able to unilaterally invite a new developer and remove the old one, without needing the original developer's cooperation. This works purely through the existing `is_admin` flag — no new mechanism needed, it's the reason `is_admin` was made independent of `role` in the first place.
+
+This makes `is_admin` set at invitation time (see `Invitations.is_admin` above), decided by whoever sends the invite. A developer inviting the first client to a brand-new project should default to checking it; subsequent client invitations (e.g. a colleague added later) don't need to.
+
+### Authentication
+
+**Server-side sessions, not JWT.** Both developer and client sign up and log in with email + password (Argon2id hash, `Users.password_hash`). On login, the API creates a row in `Sessions` and sends its id to the browser as an `httpOnly` cookie (`SameSite=Lax`, 30-day fixed expiry, `Secure` in production). Every request looks the session up in Postgres; logout deletes the row.
+
+**Why not JWT:** a bare JWT (no refresh token, what was used on past projects) can't be revoked before it expires — if a client removes a developer's access (see "Ownership & handoff" above), that developer's token would stay valid regardless. A refresh-token setup fixes that but adds real complexity (rotation, replay detection) for a team still building auth fundamentals. Sessions give instant, unconditional revocation for free, at negligible DB cost at this scale.
+
+**Why not an auth library (Better Auth, etc.):** those are built to run inside a JS frontend framework (chiefly Next.js). This project deliberately keeps `apps/api` (NestJS) as the single source of truth for identity and authorization — introducing a frontend-side auth library would split that across two systems. Revisit if the architecture ever collapses into a single Next.js fullstack app.
+
+OAuth (Google/GitHub) as an additional sign-up method is a possible later addition, not MVP.
+
 ---
 
 ## Reasoning behind the model
@@ -188,12 +219,10 @@ Context is useful to avoid "fixing" the schema in the wrong direction.
 
 **Don't decide alone. Ask before implementing.**
 
-- [ ] **Authentication**: sessions, JWT, external provider? Do the client and developer go through the same flow?
 - [ ] **`Tasks.status` values**: TBD
 - [ ] **`Projects.status` values**: TBD
 - [ ] **`progress_percentage`**: entered manually, or computed from tasks?
 - [ ] **Can a project exist without a client attached** (preparation phase)?
-- [ ] **Can a client be admin**, or must the admin always be a contributor?
 - [ ] **Can a task have multiple assignees?** (a single `assignee_id` is enough for the MVP; otherwise a join table is needed)
 - [ ] **Email delivery**: which service for invitations?
 - [ ] **`Users.status`**: what does this field actually represent?

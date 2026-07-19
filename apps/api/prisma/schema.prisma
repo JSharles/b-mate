@@ -14,27 +14,44 @@ enum ProjectMemberRole {
 }
 
 model User {
-  id        String  @id @default(uuid()) @db.Uuid
-  firstName String  @map("first_name")
-  lastName  String  @map("last_name")
-  email     String  @unique
-  company   String?
-  address   String?
-  phone     String?
-  image     String?
-  bio       String?
-  github    String?
-  socials   String?
-  roleTitle String? @map("role_title")
-  status    String?
+  id           String  @id @default(uuid()) @db.Uuid
+  firstName    String  @map("first_name")
+  lastName     String  @map("last_name")
+  email        String  @unique
+  passwordHash String  @map("password_hash")
+  company      String?
+  address      String?
+  phone        String?
+  image        String?
+  bio          String?
+  github       String?
+  socials      String?
+  roleTitle    String? @map("role_title")
+  status       String?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   memberships   ProjectMember[]
   assignedTasks Task[]
+  sessions      Session[]
 
   @@map("users")
+}
+
+// The session id doubles as the bearer secret sent to the client in an
+// httpOnly cookie — it's a uuid (cryptographically random), no separate
+// token field needed. Deleting the row logs the session out immediately.
+model Session {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
 }
 
 model Project {
@@ -79,6 +96,7 @@ model Invitation {
   projectId String            @map("project_id") @db.Uuid
   email     String
   role      ProjectMemberRole
+  isAdmin   Boolean           @default(false) @map("is_admin")
   token     String            @unique
   status    String
   expiresAt DateTime          @map("expires_at")

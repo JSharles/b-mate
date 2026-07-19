@@ -49,6 +49,7 @@ To target a single app: `pnpm --filter web dev` or `pnpm --filter api dev` (or `
 - TypeScript strict mode on both apps — don't weaken `tsconfig.json` compiler options to silence an error; fix the type.
 - `apps/web`: App Router conventions, components colocated under `app/`. Path alias `@/*` maps to the app root.
 - `apps/api`: standard Nest module/controller/service structure. Keep one module per domain concern.
+- **Auth**: hand-rolled, not Passport — `apps/api/src/auth`. Server-side sessions (`Session` table), `httpOnly` cookie, no JWT. To protect a route: `@UseGuards(SessionGuard)` + `@CurrentUser() user: User`. See `docs/PRODUCT.md` § Authentication for why.
 - No shared packages exist yet. Before duplicating code (types, config, UI) between `apps/web` and `apps/api`, check whether it belongs in a new `packages/*` workspace instead.
 - Commit messages follow Conventional Commits (`feat:`, `fix:`, `chore:`, etc.).
 
