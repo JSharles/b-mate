@@ -16,6 +16,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "coverage/**",
     "next-env.d.ts",
     // shadcn-generated, not hand-authored — re-run `shadcn add --overwrite`
     // to update rather than hand-editing these.
