@@ -2,13 +2,17 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
+  '@parcel/watcher': true
   '@prisma/engines': true
+  '@swc/core': true
   argon2: true
   prisma: true
   sharp: true
   unrs-resolver: true
 onlyBuiltDependencies:
+  - '@parcel/watcher'
   - '@prisma/engines'
+  - '@swc/core'
   - argon2
   - prisma
   - sharp
