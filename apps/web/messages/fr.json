@@ -1,0 +1,48 @@
+{
+  "Metadata": {
+    "title": "b-mate",
+    "description": "Suivez l'avancement de vos projets en toute transparence."
+  },
+  "Landing": {
+    "title": "b-mate",
+    "description": "Suivez l'avancement de vos projets en toute transparence.",
+    "signUp": "S'inscrire",
+    "logIn": "Se connecter"
+  },
+  "Auth": {
+    "LoginPage": {
+      "title": "Se connecter"
+    },
+    "LoginForm": {
+      "email": "Email",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "submitPending": "Connexion…",
+      "noAccount": "Pas encore de compte ?",
+      "signUp": "S'inscrire"
+    },
+    "SignupPage": {
+      "title": "S'inscrire"
+    },
+    "SignupForm": {
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "email": "Email",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "submit": "S'inscrire",
+      "submitPending": "Création du compte…",
+      "alreadyHaveAccount": "Déjà un compte ?",
+      "logIn": "Se connecter",
+      "passwordsDontMatch": "Les mots de passe ne correspondent pas"
+    }
+  },
+  "Sidebar": {
+    "profile": "Profil",
+    "logout": "Se déconnecter"
+  },
+  "Toasts": {
+    "loggedOut": "Déconnecté",
+    "genericError": "Une erreur est survenue"
+  }
+}

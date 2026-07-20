@@ -1,8 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
 import {
   Form,
@@ -15,12 +17,18 @@ import {
 import { Input } from "@/shared/components/ui/input";
 import { ApiError } from "@/shared/lib/api-client";
 import { useSignup } from "../hooks";
-import { SignupFormSchema, type SignupFormValues } from "../schemas";
+import { createSignupFormSchema, type SignupFormValues } from "../schemas";
 
 export function SignupForm() {
   const signup = useSignup();
+  const t = useTranslations("Auth.SignupForm");
+  const tToasts = useTranslations("Toasts");
+  const signupFormSchema = useMemo(
+    () => createSignupFormSchema(t("passwordsDontMatch")),
+    [t],
+  );
   const form = useForm<SignupFormValues>({
-    resolver: zodResolver(SignupFormSchema),
+    resolver: zodResolver(signupFormSchema),
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -37,14 +45,22 @@ export function SignupForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      {/* noValidate: without it, the browser's native email-format check
+          fires first and blocks the submit event before react-hook-form/Zod
+          ever runs — showing the browser's own (unlocalized) message
+          instead of ours. */}
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        noValidate
+        className="flex flex-col gap-4"
+      >
         <div className="flex gap-4">
           <FormField
             control={form.control}
             name="firstName"
             render={({ field }) => (
               <FormItem className="flex-1">
-                <FormLabel>First name</FormLabel>
+                <FormLabel>{t("firstName")}</FormLabel>
                 <FormControl>
                   <Input autoComplete="given-name" {...field} />
                 </FormControl>
@@ -57,7 +73,7 @@ export function SignupForm() {
             name="lastName"
             render={({ field }) => (
               <FormItem className="flex-1">
-                <FormLabel>Last name</FormLabel>
+                <FormLabel>{t("lastName")}</FormLabel>
                 <FormControl>
                   <Input autoComplete="family-name" {...field} />
                 </FormControl>
@@ -71,7 +87,7 @@ export function SignupForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t("email")}</FormLabel>
               <FormControl>
                 <Input type="email" autoComplete="email" {...field} />
               </FormControl>
@@ -84,7 +100,7 @@ export function SignupForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>{t("password")}</FormLabel>
               <FormControl>
                 <Input type="password" autoComplete="new-password" {...field} />
               </FormControl>
@@ -97,7 +113,7 @@ export function SignupForm() {
           name="confirmPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm password</FormLabel>
+              <FormLabel>{t("confirmPassword")}</FormLabel>
               <FormControl>
                 <Input type="password" autoComplete="new-password" {...field} />
               </FormControl>
@@ -107,16 +123,16 @@ export function SignupForm() {
         />
         {signup.isError && (
           <p className="text-sm text-destructive">
-            {signup.error instanceof ApiError ? signup.error.message : "Something went wrong"}
+            {signup.error instanceof ApiError ? signup.error.message : tToasts("genericError")}
           </p>
         )}
         <Button type="submit" disabled={signup.isPending}>
-          {signup.isPending ? "Creating account…" : "Sign up"}
+          {signup.isPending ? t("submitPending") : t("submit")}
         </Button>
         <p className="text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t("alreadyHaveAccount")}{" "}
           <Link href="/login" className="underline">
-            Log in
+            {t("logIn")}
           </Link>
         </p>
       </form>

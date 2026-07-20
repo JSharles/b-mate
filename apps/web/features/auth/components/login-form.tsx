@@ -1,8 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
 import {
   Form,
@@ -19,6 +20,8 @@ import { LoginFormSchema, type LoginFormValues } from "../schemas";
 
 export function LoginForm() {
   const login = useLogin();
+  const t = useTranslations("Auth.LoginForm");
+  const tToasts = useTranslations("Toasts");
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(LoginFormSchema),
     defaultValues: { email: "", password: "" },
@@ -30,13 +33,21 @@ export function LoginForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      {/* noValidate: without it, the browser's native email-format check
+          fires first and blocks the submit event before react-hook-form/Zod
+          ever runs — showing the browser's own (unlocalized) message
+          instead of ours. */}
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        noValidate
+        className="flex flex-col gap-4"
+      >
         <FormField
           control={form.control}
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t("email")}</FormLabel>
               <FormControl>
                 <Input type="email" autoComplete="email" {...field} />
               </FormControl>
@@ -49,7 +60,7 @@ export function LoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>{t("password")}</FormLabel>
               <FormControl>
                 <Input type="password" autoComplete="current-password" {...field} />
               </FormControl>
@@ -59,16 +70,16 @@ export function LoginForm() {
         />
         {login.isError && (
           <p className="text-sm text-destructive">
-            {login.error instanceof ApiError ? login.error.message : "Something went wrong"}
+            {login.error instanceof ApiError ? login.error.message : tToasts("genericError")}
           </p>
         )}
         <Button type="submit" disabled={login.isPending}>
-          {login.isPending ? "Logging in…" : "Log in"}
+          {login.isPending ? t("submitPending") : t("submit")}
         </Button>
         <p className="text-sm text-muted-foreground">
-          No account yet?{" "}
+          {t("noAccount")}{" "}
           <Link href="/signup" className="underline">
-            Sign up
+            {t("signUp")}
           </Link>
         </p>
       </form>
