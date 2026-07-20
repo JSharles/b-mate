@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { ApiError } from "./api-client";
+import { setCurrentLocale } from "./current-locale";
 import { getQueryClient } from "./query-client";
 
 vi.mock("sonner", () => ({
@@ -12,6 +13,7 @@ const mockedToast = vi.mocked(toast);
 describe("getQueryClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setCurrentLocale("fr");
   });
 
   it("returns the same instance on repeated calls in the browser", () => {
@@ -34,7 +36,8 @@ describe("getQueryClient", () => {
     expect(mockedToast.error).toHaveBeenCalledWith("Nope");
   });
 
-  it("falls back to a generic message for non-ApiError failures", async () => {
+  it("falls back to the current locale's generic message for non-ApiError failures", async () => {
+    setCurrentLocale("en");
     const queryClient = getQueryClient();
 
     await queryClient
@@ -50,6 +53,23 @@ describe("getQueryClient", () => {
     expect(mockedToast.error).toHaveBeenCalledWith("Something went wrong");
   });
 
+  it("uses the French generic message when that's the current locale", async () => {
+    setCurrentLocale("fr");
+    const queryClient = getQueryClient();
+
+    await queryClient
+      .fetchQuery({
+        queryKey: ["boom-generic-fr"],
+        queryFn: () => {
+          throw new Error("raw failure");
+        },
+        retry: false,
+      })
+      .catch(() => undefined);
+
+    expect(mockedToast.error).toHaveBeenCalledWith("Une erreur est survenue");
+  });
+
   it("shows a success toast when a mutation sets meta.successMessage", async () => {
     const queryClient = getQueryClient();
 
@@ -59,7 +79,7 @@ describe("getQueryClient", () => {
         mutationFn: () => Promise.resolve("ok"),
         meta: { successMessage: "Saved" },
       })
-      .execute();
+      .execute(undefined);
 
     expect(mockedToast.success).toHaveBeenCalledWith("Saved");
   });
@@ -73,7 +93,7 @@ describe("getQueryClient", () => {
         mutationFn: () => Promise.reject(new ApiError("Invalid credentials", 401)),
         meta: { skipGlobalErrorToast: true },
       })
-      .execute()
+      .execute(undefined)
       .catch(() => undefined);
 
     expect(mockedToast.error).not.toHaveBeenCalled();
