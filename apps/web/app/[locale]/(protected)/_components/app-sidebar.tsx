@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { User } from "schemas";
 import { useLogout } from "@/features/auth/hooks";
+import { Link } from "@/i18n/navigation";
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import {
   DropdownMenu,
@@ -23,6 +24,7 @@ function initials(user: User) {
 
 export function AppSidebar({ user }: { user: User }) {
   const logout = useLogout();
+  const t = useTranslations("Sidebar");
 
   return (
     <Sidebar>
@@ -42,9 +44,9 @@ export function AppSidebar({ user }: { user: User }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-56">
             <DropdownMenuItem asChild>
-              <Link href="/profile">Profile</Link>
+              <Link href="/profile">{t("profile")}</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => logout.mutate()}>Log out</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => logout.mutate()}>{t("logout")}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarFooter>

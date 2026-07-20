@@ -1,0 +1,48 @@
+{
+  "Metadata": {
+    "title": "b-mate",
+    "description": "Track your project's progress with total transparency."
+  },
+  "Landing": {
+    "title": "b-mate",
+    "description": "Track your project's progress with total transparency.",
+    "signUp": "Sign up",
+    "logIn": "Log in"
+  },
+  "Auth": {
+    "LoginPage": {
+      "title": "Log in"
+    },
+    "LoginForm": {
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "submitPending": "Logging in…",
+      "noAccount": "No account yet?",
+      "signUp": "Sign up"
+    },
+    "SignupPage": {
+      "title": "Sign up"
+    },
+    "SignupForm": {
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "submit": "Sign up",
+      "submitPending": "Creating account…",
+      "alreadyHaveAccount": "Already have an account?",
+      "logIn": "Log in",
+      "passwordsDontMatch": "Passwords don't match"
+    }
+  },
+  "Sidebar": {
+    "profile": "Profile",
+    "logout": "Log out"
+  },
+  "Toasts": {
+    "loggedOut": "Logged out",
+    "genericError": "Something went wrong"
+  }
+}

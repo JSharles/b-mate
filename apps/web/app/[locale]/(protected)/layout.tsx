@@ -1,12 +1,25 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { redirect } from "@/i18n/navigation";
 import { getMe } from "@/shared/api/auth";
 import { ApiError } from "@/shared/lib/api-client";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/shared/components/ui/sidebar";
 import { AppSidebar } from "./_components/app-sidebar";
 
-export default async function ProtectedLayout({ children }: { children: ReactNode }) {
+// Private, per-user pages — never indexed. See also app/robots.ts.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
+
+export default async function ProtectedLayout({
+  children,
+  params,
+}: {
+  children: ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
   const cookieStore = await cookies();
 
   let user;
@@ -14,7 +27,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
     user = await getMe({ cookie: cookieStore.toString() });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
-      redirect("/login");
+      redirect({ href: "/login", locale });
     }
     throw error;
   }

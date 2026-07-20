@@ -1,7 +1,8 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { currentUserKey } from "@/shared/hooks/use-current-user";
 import { login, logout, signup } from "./api";
 
@@ -38,10 +39,11 @@ export function useLogin() {
 export function useLogout() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const t = useTranslations("Toasts");
 
   return useMutation({
     mutationFn: logout,
-    meta: { successMessage: "Logged out" },
+    meta: { successMessage: t("loggedOut") },
     onSuccess: () => {
       queryClient.setQueryData(currentUserKey, null);
       router.push("/");
