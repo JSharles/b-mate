@@ -1,6 +1,11 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import en from "../../messages/en.json";
+import fr from "../../messages/fr.json";
 import { ApiError } from "./api-client";
+import { getCurrentLocale } from "./current-locale";
+
+const messages = { fr, en };
 
 // Lets individual mutations attach a success toast message, or opt out of
 // the generic error toast when they handle the error themselves (e.g. an
@@ -15,7 +20,8 @@ declare module "@tanstack/react-query" {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Something went wrong";
+  if (error instanceof ApiError) return error.message;
+  return messages[getCurrentLocale()].Toasts.genericError;
 }
 
 function makeQueryClient() {
