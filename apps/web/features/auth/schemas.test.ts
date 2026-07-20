@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LoginFormSchema, SignupFormSchema } from "./schemas";
+import { createSignupFormSchema, LoginFormSchema } from "./schemas";
 
 describe("LoginFormSchema", () => {
   it("accepts a valid email and password", () => {
@@ -13,29 +13,31 @@ describe("LoginFormSchema", () => {
   });
 });
 
-describe("SignupFormSchema", () => {
+describe("createSignupFormSchema", () => {
   const base = {
     firstName: "Jean",
     lastName: "Charles",
     email: "jc@example.com",
     password: "supersecret123",
   };
+  const schema = createSignupFormSchema("Passwords don't match");
 
   it("accepts matching passwords", () => {
-    const result = SignupFormSchema.safeParse({ ...base, confirmPassword: "supersecret123" });
+    const result = schema.safeParse({ ...base, confirmPassword: "supersecret123" });
     expect(result.success).toBe(true);
   });
 
   it("rejects when confirmPassword doesn't match password", () => {
-    const result = SignupFormSchema.safeParse({ ...base, confirmPassword: "different123" });
+    const result = schema.safeParse({ ...base, confirmPassword: "different123" });
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].path).toEqual(["confirmPassword"]);
+      expect(result.error.issues[0].message).toBe("Passwords don't match");
     }
   });
 
   it("rejects a password shorter than 8 characters", () => {
-    const result = SignupFormSchema.safeParse({
+    const result = schema.safeParse({
       ...base,
       password: "short",
       confirmPassword: "short",

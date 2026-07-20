@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/shared/lib/api-client";
 import { useLogin } from "../hooks";
@@ -7,6 +8,18 @@ import { LoginForm } from "./login-form";
 
 vi.mock("../hooks", () => ({
   useLogin: vi.fn(),
+}));
+
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({
+    href,
+    children,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 const mockedUseLogin = vi.mocked(useLogin);
@@ -31,9 +44,9 @@ describe("LoginForm", () => {
     const user = userEvent.setup();
 
     render(<LoginForm />);
-    await user.type(screen.getByLabelText("Email"), "jc@example.com");
-    await user.type(screen.getByLabelText("Password"), "supersecret123");
-    await user.click(screen.getByRole("button", { name: "Log in" }));
+    await user.type(screen.getByLabelText("email"), "jc@example.com");
+    await user.type(screen.getByLabelText("password"), "supersecret123");
+    await user.click(screen.getByRole("button", { name: "submit" }));
 
     expect(mutation.mutate).toHaveBeenCalledWith({
       email: "jc@example.com",
@@ -47,9 +60,9 @@ describe("LoginForm", () => {
     const user = userEvent.setup();
 
     render(<LoginForm />);
-    await user.type(screen.getByLabelText("Email"), "not-an-email");
-    await user.type(screen.getByLabelText("Password"), "supersecret123");
-    await user.click(screen.getByRole("button", { name: "Log in" }));
+    await user.type(screen.getByLabelText("email"), "not-an-email");
+    await user.type(screen.getByLabelText("password"), "supersecret123");
+    await user.click(screen.getByRole("button", { name: "submit" }));
 
     expect(mutation.mutate).not.toHaveBeenCalled();
   });
@@ -74,6 +87,6 @@ describe("LoginForm", () => {
 
     render(<LoginForm />);
 
-    expect(screen.getByRole("button", { name: "Logging in…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "submitPending" })).toBeDisabled();
   });
 });

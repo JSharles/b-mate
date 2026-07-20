@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 import type { User } from "schemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useLogout } from "@/features/auth/hooks";
@@ -8,6 +9,18 @@ import { AppSidebar } from "./app-sidebar";
 
 vi.mock("@/features/auth/hooks", () => ({
   useLogout: vi.fn(),
+}));
+
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({
+    href,
+    children,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 const mockedUseLogout = vi.mocked(useLogout);
@@ -37,7 +50,7 @@ describe("AppSidebar", () => {
     expect(screen.getByText("Jean Charles")).toBeInTheDocument();
   });
 
-  it("calls logout.mutate when Log out is selected", async () => {
+  it("calls logout.mutate when logout is selected", async () => {
     const mutate = vi.fn();
     mockedUseLogout.mockReturnValue({ mutate } as unknown as ReturnType<typeof useLogout>);
     const user = userEvent.setup();
@@ -49,7 +62,7 @@ describe("AppSidebar", () => {
     );
 
     await user.click(screen.getByText("Jean Charles"));
-    await user.click(await screen.findByText("Log out"));
+    await user.click(await screen.findByText("logout"));
 
     expect(mutate).toHaveBeenCalled();
   });

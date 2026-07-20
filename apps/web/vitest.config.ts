@@ -14,6 +14,13 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     exclude: ["**/node_modules/**", "**/.next/**", "e2e/**"],
+    server: {
+      deps: {
+        // pnpm's nested node_modules layout otherwise breaks next-intl's
+        // internal `next/server` import when Vite tries to externalize it.
+        inline: [/next-intl/],
+      },
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
@@ -22,7 +29,7 @@ export default defineConfig({
         "shared/components/ui/**",
         "**/*.d.ts",
         // Pure Next.js wiring (fonts, metadata) — no branching logic to test.
-        "app/layout.tsx",
+        "app/[locale]/layout.tsx",
       ],
       thresholds: {
         statements: 80,

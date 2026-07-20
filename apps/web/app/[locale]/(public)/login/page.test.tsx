@@ -7,10 +7,11 @@ vi.mock("@/features/auth/components/login-form", () => ({
 }));
 
 describe("LoginPage", () => {
-  it("renders the heading and the login form", () => {
-    render(<LoginPage />);
+  it("renders the heading and the login form", async () => {
+    const ui = await LoginPage({ params: Promise.resolve({ locale: "fr" }) });
+    render(ui);
 
-    expect(screen.getByRole("heading", { name: "Log in" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "title" })).toBeInTheDocument();
     expect(screen.getByTestId("login-form")).toBeInTheDocument();
   });
 });

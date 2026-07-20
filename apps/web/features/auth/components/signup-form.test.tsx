@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/shared/lib/api-client";
 import { useSignup } from "../hooks";
@@ -7,6 +8,18 @@ import { SignupForm } from "./signup-form";
 
 vi.mock("../hooks", () => ({
   useSignup: vi.fn(),
+}));
+
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({
+    href,
+    children,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 const mockedUseSignup = vi.mocked(useSignup);
@@ -21,11 +34,11 @@ function baseMutation() {
 }
 
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText("First name"), "Jean");
-  await user.type(screen.getByLabelText("Last name"), "Charles");
-  await user.type(screen.getByLabelText("Email"), "jc@example.com");
-  await user.type(screen.getByLabelText("Password"), "supersecret123");
-  await user.type(screen.getByLabelText("Confirm password"), "supersecret123");
+  await user.type(screen.getByLabelText("firstName"), "Jean");
+  await user.type(screen.getByLabelText("lastName"), "Charles");
+  await user.type(screen.getByLabelText("email"), "jc@example.com");
+  await user.type(screen.getByLabelText("password"), "supersecret123");
+  await user.type(screen.getByLabelText("confirmPassword"), "supersecret123");
 }
 
 describe("SignupForm", () => {
@@ -40,7 +53,7 @@ describe("SignupForm", () => {
 
     render(<SignupForm />);
     await fillValidForm(user);
-    await user.click(screen.getByRole("button", { name: "Sign up" }));
+    await user.click(screen.getByRole("button", { name: "submit" }));
 
     expect(mutation.mutate).toHaveBeenCalledWith({
       firstName: "Jean",
@@ -56,15 +69,15 @@ describe("SignupForm", () => {
     const user = userEvent.setup();
 
     render(<SignupForm />);
-    await user.type(screen.getByLabelText("First name"), "Jean");
-    await user.type(screen.getByLabelText("Last name"), "Charles");
-    await user.type(screen.getByLabelText("Email"), "jc@example.com");
-    await user.type(screen.getByLabelText("Password"), "supersecret123");
-    await user.type(screen.getByLabelText("Confirm password"), "different123");
-    await user.click(screen.getByRole("button", { name: "Sign up" }));
+    await user.type(screen.getByLabelText("firstName"), "Jean");
+    await user.type(screen.getByLabelText("lastName"), "Charles");
+    await user.type(screen.getByLabelText("email"), "jc@example.com");
+    await user.type(screen.getByLabelText("password"), "supersecret123");
+    await user.type(screen.getByLabelText("confirmPassword"), "different123");
+    await user.click(screen.getByRole("button", { name: "submit" }));
 
     expect(mutation.mutate).not.toHaveBeenCalled();
-    expect(screen.getByText("Passwords don't match")).toBeInTheDocument();
+    expect(screen.getByText("passwordsDontMatch")).toBeInTheDocument();
   });
 
   it("shows the API error message inline when the mutation fails", () => {
