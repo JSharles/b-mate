@@ -20,6 +20,12 @@ export type PrismaMock = {
     create: jest.Mock;
     findUnique: jest.Mock;
   };
+  invitation: {
+    create: jest.Mock;
+    findMany: jest.Mock;
+    findUnique: jest.Mock;
+    update: jest.Mock;
+  };
   $queryRaw: jest.Mock;
   $transaction: jest.Mock;
 };
@@ -44,6 +50,12 @@ export function createPrismaMock(): PrismaMock {
     projectMember: {
       create: jest.fn(),
       findUnique: jest.fn(),
+    },
+    invitation: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
     },
     $queryRaw: jest.fn(),
     // Runs the callback with this same mock standing in for the transaction
