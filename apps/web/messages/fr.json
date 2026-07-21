@@ -122,6 +122,34 @@
       "title": "Titre",
       "submit": "Créer le projet",
       "submitPending": "Création…"
+    },
+    "ProjectPage": {
+      "inviteClient": "Inviter un client"
+    },
+    "InviteClientForm": {
+      "email": "Email",
+      "submit": "Inviter",
+      "submitPending": "Envoi…"
+    },
+    "InvitationsList": {
+      "empty": "Aucune invitation pour le moment",
+      "copyLink": "Copier le lien",
+      "copied": "Copié !"
+    }
+  },
+  "Invite": {
+    "title": "Rejoindre le projet",
+    "invalidLink": "Ce lien d'invitation n'est pas valide.",
+    "expired": "Ce lien d'invitation a expiré.",
+    "alreadyAccepted": "Cette invitation a déjà été acceptée.",
+    "AcceptInvitationForm": {
+      "email": "Email",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "password": "Mot de passe",
+      "createAccount": "Créer mon compte",
+      "logIn": "Se connecter",
+      "submitPending": "Un instant…"
     }
   },
   "Sidebar": {

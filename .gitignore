@@ -9,3 +9,8 @@ out/
 .env.*
 !.env.example
 .DS_Store
+
+# Claude Code local settings — contains this machine's approved permissions,
+# which can include secrets typed into allowed command patterns (e.g. an API
+# key passed inline to a CLI). Never commit.
+.claude/settings.local.json

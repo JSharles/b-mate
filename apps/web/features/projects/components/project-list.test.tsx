@@ -52,6 +52,10 @@ describe("ProjectList", () => {
     expect(screen.getByText("Site vitrine client X")).toBeInTheDocument();
     expect(screen.getByText("App mobile client Y")).toBeInTheDocument();
     expect(screen.queryByText("emptyTitle")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Site vitrine client X" })).toHaveAttribute(
+      "href",
+      "/projects/1",
+    );
   });
 
   it("shows loading skeletons while pending", () => {

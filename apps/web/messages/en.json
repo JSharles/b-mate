@@ -122,6 +122,34 @@
       "title": "Title",
       "submit": "Create project",
       "submitPending": "Creating…"
+    },
+    "ProjectPage": {
+      "inviteClient": "Invite a client"
+    },
+    "InviteClientForm": {
+      "email": "Email",
+      "submit": "Invite",
+      "submitPending": "Sending…"
+    },
+    "InvitationsList": {
+      "empty": "No invitations yet",
+      "copyLink": "Copy link",
+      "copied": "Copied!"
+    }
+  },
+  "Invite": {
+    "title": "Join the project",
+    "invalidLink": "This invitation link isn't valid.",
+    "expired": "This invitation link has expired.",
+    "alreadyAccepted": "This invitation has already been accepted.",
+    "AcceptInvitationForm": {
+      "email": "Email",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "password": "Password",
+      "createAccount": "Create my account",
+      "logIn": "Log in",
+      "submitPending": "One moment…"
     }
   },
   "Sidebar": {

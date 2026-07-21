@@ -7,7 +7,9 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/*/home", "/*/profile", "/*/projects"],
+        // /invite/* carries a bearer token in the URL — must never be
+        // crawled or cached by a search engine.
+        disallow: ["/*/home", "/*/profile", "/*/projects", "/*/invite"],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

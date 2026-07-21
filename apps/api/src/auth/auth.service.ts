@@ -70,7 +70,9 @@ export class AuthService {
     return session.user;
   }
 
-  private createSession(userId: string) {
+  // Public: reused by InvitationsService when an invitation is accepted,
+  // which also needs to sign the user in.
+  createSession(userId: string) {
     return this.prisma.session.create({
       data: {
         userId,
