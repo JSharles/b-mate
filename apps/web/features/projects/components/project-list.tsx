@@ -39,11 +39,13 @@ export function ProjectList() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
-            <Card key={project.id}>
-              <CardHeader>
-                <CardTitle>{project.title}</CardTitle>
-              </CardHeader>
-            </Card>
+            <Link key={project.id} href={`/projects/${project.id}`}>
+              <Card className="transition-colors hover:bg-accent">
+                <CardHeader>
+                  <CardTitle>{project.title}</CardTitle>
+                </CardHeader>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

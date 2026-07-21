@@ -8,3 +8,7 @@ export function listProjects() {
 export function createProject(data: CreateProjectRequest) {
   return apiFetch<Project>("/projects", { method: "POST", body: data });
 }
+
+export function getProject(id: string) {
+  return apiFetch<Project>(`/projects/${id}`);
+}

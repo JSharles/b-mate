@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/shared/lib/api-client";
-import { createProject, listProjects } from "./api";
+import { createProject, getProject, listProjects } from "./api";
 
 vi.mock("@/shared/lib/api-client", () => ({
   apiFetch: vi.fn(),
@@ -28,5 +28,13 @@ describe("features/projects/api", () => {
     await createProject(data);
 
     expect(mockedApiFetch).toHaveBeenCalledWith("/projects", { method: "POST", body: data });
+  });
+
+  it("getProject gets /projects/:id", async () => {
+    mockedApiFetch.mockResolvedValue({ id: "1" });
+
+    await getProject("1");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith("/projects/1");
   });
 });

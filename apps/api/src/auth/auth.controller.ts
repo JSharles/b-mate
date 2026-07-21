@@ -16,11 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { SESSION_COOKIE_NAME, sessionCookieOptions } from './session-cookie';
 import { SessionGuard } from './session.guard';
-
-function toPublicUser(user: User) {
-  const { passwordHash, ...publicUser } = user;
-  return publicUser;
-}
+import { toPublicUser } from './to-public-user';
 
 @Controller('auth')
 export class AuthController {
