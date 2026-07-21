@@ -4,10 +4,62 @@
     "description": "Suivez l'avancement de vos projets en toute transparence."
   },
   "Landing": {
-    "title": "b-mate",
-    "description": "Suivez l'avancement de vos projets en toute transparence.",
     "signUp": "S'inscrire",
-    "logIn": "Se connecter"
+    "logIn": "Se connecter",
+    "hero": {
+      "eyebrow": "Ce qu'on ne voit pas, on l'imagine toujours pire.",
+      "titleBefore": "Votre projet n'est plus ",
+      "titleHighlight": "une boîte noire",
+      "titleAfter": ".",
+      "subhead": "b-mate montre à vos clients ce qui se passe réellement dans leur projet — sans jargon, sans réunion de statut, sans que vous ayez à tout réexpliquer."
+    },
+    "clients": {
+      "eyebrow": "Pour vos clients",
+      "card1Title": "L'avancement réel",
+      "card1Description": "Tâches, roadmap, ce qui reste à faire : la vraie version, pas un résumé arrangé.",
+      "card2Title": "Les choix expliqués simplement",
+      "card2Description": "Pourquoi telle décision, telle techno — traduit en clair, jamais en jargon.",
+      "card3Title": "Tout au même endroit",
+      "card3Description": "Plus besoin de recouper un fichier, un message ou un ticket égaré pour comprendre où en est le projet — et ce que vous lisez est toujours réel, jamais généré."
+    },
+    "developers": {
+      "eyebrow": "Pour vous, développeur",
+      "card1Title": "Vous arrêtez de réexpliquer",
+      "card1Description": "Le client consulte lui-même ce qui se passe. Vous récupérez le temps que vous perdiez à le lui raconter.",
+      "card2Title": "Vos outils, votre rythme",
+      "card2Description": "b-mate n'ajoute aucun process, aucune méthode imposée.",
+      "card3Title": "Un client qui voit, un client qui reste",
+      "card3Description": "Moins de doutes, moins de questions sur le prix, plus de projets qui suivent."
+    },
+    "features": {
+      "eyebrow": "Fonctionnalités",
+      "card1Title": "Tâches & avancement",
+      "card1Description": "Créez vos tâches, suivez leur statut : votre client voit l'avancement évoluer en direct.",
+      "card2Title": "Invitation par email",
+      "card2Description": "Ajoutez un client par email : il rejoint son espace projet en quelques secondes.",
+      "card3Title": "Accès en lecture seule",
+      "card3Description": "Le client consulte, il ne modifie rien — zéro risque sur votre organisation de travail.",
+      "card4Title": "Multi-projets",
+      "card4Description": "Gérez plusieurs projets, chacun avec ses propres membres et son propre accès."
+    },
+    "faq": {
+      "eyebrow": "Questions fréquentes",
+      "navLabel": "FAQ",
+      "q1": "b-mate remplace-t-il mes outils actuels ?",
+      "a1": "Non. b-mate ne remplace ni votre gestionnaire de tâches ni votre stack technique — il vient simplement rendre visible, pour votre client, ce qui s'y passe.",
+      "q2": "Mon client doit-il créer un compte ?",
+      "a2": "Oui, via un lien d'invitation envoyé par email. L'inscription prend moins d'une minute, aucune compétence technique n'est requise.",
+      "q3": "Est-ce sécurisé ?",
+      "a3": "Chaque session est authentifiée et propre à un utilisateur : votre client ne voit que les projets auxquels il a été invité.",
+      "q4": "Combien ça coûte ?",
+      "a4": "b-mate est en phase de lancement — la tarification sera communiquée prochainement.",
+      "q5": "Puis-je essayer avant de m'engager ?",
+      "a5": "Oui : vous pouvez créer un compte et un premier projet dès maintenant pour voir comment b-mate s'intègre à votre façon de travailler."
+    },
+    "closing": {
+      "title": "Montrez ce qui se passe vraiment. Gagnez leur confiance.",
+      "cta": "Créer un projet"
+    }
   },
   "Auth": {
     "LoginPage": {

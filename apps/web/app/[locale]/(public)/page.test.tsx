@@ -16,12 +16,25 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 
 describe("LandingPage", () => {
-  it("renders sign up and log in links", async () => {
+  it("renders the hero, benefits and closing sections", async () => {
     const ui = await LandingPage({ params: Promise.resolve({ locale: "fr" }) });
     render(ui);
 
-    expect(screen.getByRole("link", { name: "signUp" })).toHaveAttribute("href", "/signup");
+    expect(screen.getAllByRole("link", { name: "signUp" })).toHaveLength(2);
     expect(screen.getByRole("link", { name: "logIn" })).toHaveAttribute("href", "/login");
+    expect(screen.getAllByText("eyebrow")).toHaveLength(5);
+    expect(screen.getByRole("link", { name: "clients.eyebrow" })).toHaveAttribute("href", "#clients");
+    expect(screen.getByRole("link", { name: "developers.eyebrow" })).toHaveAttribute(
+      "href",
+      "#developers",
+    );
+    expect(screen.getByRole("link", { name: "features.eyebrow" })).toHaveAttribute(
+      "href",
+      "#features",
+    );
+    expect(screen.getByRole("link", { name: "faq.navLabel" })).toHaveAttribute("href", "#faq");
+    expect(screen.getByText("q1")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "cta" })).toHaveAttribute("href", "/signup");
   });
 
   it("sets hreflang alternates and a canonical URL for the current locale", async () => {

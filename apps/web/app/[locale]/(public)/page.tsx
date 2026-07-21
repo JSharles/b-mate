@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
-import { Link } from "@/i18n/navigation";
-import { Button } from "@/shared/components/ui/button";
+import { NavBar } from "@/features/landing/components/nav-bar";
+import { Hero } from "@/features/landing/components/hero";
+import { BenefitsSection } from "@/features/landing/components/benefits-section";
+import { FeaturesSection } from "@/features/landing/components/features-section";
+import { FaqSection } from "@/features/landing/components/faq-section";
+import { ClosingBand } from "@/features/landing/components/closing-band";
 
 export async function generateMetadata({
   params,
@@ -32,20 +36,15 @@ export default async function LandingPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("Landing");
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-6 px-6 text-center">
-      <h1 className="text-4xl font-semibold">{t("title")}</h1>
-      <p className="max-w-md text-muted-foreground">{t("description")}</p>
-      <div className="flex gap-4">
-        <Button asChild>
-          <Link href="/signup">{t("signUp")}</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/login">{t("logIn")}</Link>
-        </Button>
-      </div>
+    <main className="landing bg-landing-ink text-landing-paper">
+      <NavBar />
+      <Hero />
+      <BenefitsSection />
+      <FeaturesSection />
+      <FaqSection />
+      <ClosingBand />
     </main>
   );
 }

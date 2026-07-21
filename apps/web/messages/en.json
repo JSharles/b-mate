@@ -4,10 +4,62 @@
     "description": "Track your project's progress with total transparency."
   },
   "Landing": {
-    "title": "b-mate",
-    "description": "Track your project's progress with total transparency.",
     "signUp": "Sign up",
-    "logIn": "Log in"
+    "logIn": "Log in",
+    "hero": {
+      "eyebrow": "What clients can't see, they always imagine worse.",
+      "titleBefore": "Your project is no longer ",
+      "titleHighlight": "a black box",
+      "titleAfter": ".",
+      "subhead": "b-mate shows your clients what's actually happening on their project — no jargon, no status meetings, no re-explaining it all yourself."
+    },
+    "clients": {
+      "eyebrow": "For your clients",
+      "card1Title": "Real progress",
+      "card1Description": "Tasks, roadmap, what's left to do: the real version, not a tidied-up summary.",
+      "card2Title": "Decisions explained simply",
+      "card2Description": "Why this choice, why that tech — translated into plain language, never jargon.",
+      "card3Title": "Everything in one place",
+      "card3Description": "No more digging through a file, a message, or a stray ticket to understand where the project stands — and what you're reading is always real, never generated."
+    },
+    "developers": {
+      "eyebrow": "For you, the developer",
+      "card1Title": "Stop re-explaining",
+      "card1Description": "Clients check progress themselves. You get back the time you used to spend telling them.",
+      "card2Title": "Your tools, your pace",
+      "card2Description": "b-mate doesn't add any process, doesn't impose any method.",
+      "card3Title": "A client who sees, a client who stays",
+      "card3Description": "Fewer doubts, fewer questions about price, more projects that stick around."
+    },
+    "features": {
+      "eyebrow": "Features",
+      "card1Title": "Tasks & progress",
+      "card1Description": "Create your tasks, track their status — your client watches progress update live.",
+      "card2Title": "Invite by email",
+      "card2Description": "Add a client by email — they join their project space in seconds.",
+      "card3Title": "Read-only access",
+      "card3Description": "Clients look, they don't touch — zero risk to how your team actually works.",
+      "card4Title": "Multiple projects",
+      "card4Description": "Run several projects at once, each with its own members and its own access."
+    },
+    "faq": {
+      "eyebrow": "Frequently asked questions",
+      "navLabel": "FAQ",
+      "q1": "Does b-mate replace my current tools?",
+      "a1": "No. b-mate doesn't replace your task tracker or your tech stack — it simply makes what's happening in them visible to your client.",
+      "q2": "Does my client need to create an account?",
+      "a2": "Yes, via an email invitation link. Signing up takes under a minute, no technical skill required.",
+      "q3": "Is it secure?",
+      "a3": "Every session is authenticated and tied to one user — your client only ever sees the projects they've been invited to.",
+      "q4": "How much does it cost?",
+      "a4": "b-mate is in launch phase — pricing will be announced soon.",
+      "q5": "Can I try it before committing?",
+      "a5": "Yes — you can create an account and a first project right now to see how b-mate fits into the way you work."
+    },
+    "closing": {
+      "title": "Show what's really happening. Earn their trust.",
+      "cta": "Create a project"
+    }
   },
   "Auth": {
     "LoginPage": {
