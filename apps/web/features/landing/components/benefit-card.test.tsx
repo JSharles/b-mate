@@ -34,4 +34,33 @@ describe("BenefitCard", () => {
       "sm:col-span-6",
     );
   });
+
+  it("renders a badge when provided", () => {
+    render(
+      <BenefitCard
+        icon={ListChecks}
+        title="All the technical docs, translated"
+        description="Audit reports, quotes, architecture, tech stack."
+        span={3}
+        tone="ink"
+        badge="Coming soon"
+      />,
+    );
+
+    expect(screen.getByText("Coming soon")).toBeInTheDocument();
+  });
+
+  it("renders no badge when none is provided", () => {
+    render(
+      <BenefitCard
+        icon={ListChecks}
+        title="Multiple projects"
+        description="Run several projects at once."
+        span={3}
+        tone="paper"
+      />,
+    );
+
+    expect(screen.queryByText("Coming soon")).not.toBeInTheDocument();
+  });
 });
