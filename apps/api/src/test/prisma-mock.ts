@@ -10,11 +10,22 @@ export type PrismaMock = {
     deleteMany: jest.Mock;
     findUnique: jest.Mock;
   };
+  project: {
+    create: jest.Mock;
+    findMany: jest.Mock;
+    findFirst: jest.Mock;
+    update: jest.Mock;
+  };
+  projectMember: {
+    create: jest.Mock;
+    findUnique: jest.Mock;
+  };
   $queryRaw: jest.Mock;
+  $transaction: jest.Mock;
 };
 
 export function createPrismaMock(): PrismaMock {
-  return {
+  const mock: PrismaMock = {
     user: {
       findUnique: jest.fn(),
       create: jest.fn(),
@@ -24,8 +35,25 @@ export function createPrismaMock(): PrismaMock {
       deleteMany: jest.fn(),
       findUnique: jest.fn(),
     },
+    project: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+    },
+    projectMember: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+    },
     $queryRaw: jest.fn(),
+    // Runs the callback with this same mock standing in for the transaction
+    // client, so tests can assert on `prisma.project.create` etc. directly.
+    $transaction: jest.fn((callback: (tx: PrismaMock) => unknown) =>
+      callback(mock),
+    ),
   };
+
+  return mock;
 }
 
 export function asPrismaService(mock: PrismaMock): PrismaService {
