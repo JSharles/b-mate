@@ -24,6 +24,12 @@ vi.mock("@/features/invitations/components/invitations-list", () => ({
   ),
 }));
 
+vi.mock("@/features/projects/components/project-members-list", () => ({
+  ProjectMembersList: ({ projectId }: { projectId: string }) => (
+    <div>project-members-list:{projectId}</div>
+  ),
+}));
+
 const mockedUseProject = vi.mocked(useProject);
 
 function renderPage() {
@@ -45,6 +51,8 @@ describe("ProjectPage", () => {
     expect(screen.getByText("inviteClient")).toBeInTheDocument();
     expect(screen.getByText("invite-client-form:project-1")).toBeInTheDocument();
     expect(screen.getByText("invitations-list:project-1")).toBeInTheDocument();
+    expect(screen.getByText("members")).toBeInTheDocument();
+    expect(screen.getByText("project-members-list:project-1")).toBeInTheDocument();
   });
 
   it("shows nothing when the project is missing", () => {

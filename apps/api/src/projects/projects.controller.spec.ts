@@ -34,7 +34,12 @@ describe('ProjectsController', () => {
   let projectsService: jest.Mocked<
     Pick<
       ProjectsService,
-      'create' | 'findAllForUser' | 'findOneForUser' | 'update'
+      | 'create'
+      | 'findAllForUser'
+      | 'findOneForUser'
+      | 'update'
+      | 'findMembersForProject'
+      | 'removeMember'
     >
   >;
   let controller: ProjectsController;
@@ -45,6 +50,8 @@ describe('ProjectsController', () => {
       findAllForUser: jest.fn(),
       findOneForUser: jest.fn(),
       update: jest.fn(),
+      findMembersForProject: jest.fn(),
+      removeMember: jest.fn(),
     };
     controller = new ProjectsController(
       projectsService as unknown as ProjectsService,
@@ -97,5 +104,38 @@ describe('ProjectsController', () => {
       title: 'New title',
     });
     expect(result.title).toBe('New title');
+  });
+
+  it('findMembers delegates to the service with the current user and project id', async () => {
+    const members = [
+      {
+        userId: 'user-2',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        email: 'ada@example.com',
+        isAdmin: false,
+      },
+    ];
+    projectsService.findMembersForProject.mockResolvedValue(members);
+
+    const result = await controller.findMembers(fakeUser, 'project-1');
+
+    expect(projectsService.findMembersForProject).toHaveBeenCalledWith(
+      'user-1',
+      'project-1',
+    );
+    expect(result).toEqual(members);
+  });
+
+  it('removeMember delegates to the service with the current user, project id and target user id', async () => {
+    projectsService.removeMember.mockResolvedValue(undefined);
+
+    await controller.removeMember(fakeUser, 'project-1', 'user-2');
+
+    expect(projectsService.removeMember).toHaveBeenCalledWith(
+      'user-1',
+      'project-1',
+      'user-2',
+    );
   });
 });

@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   asPrismaService,
   createPrismaMock,
@@ -13,6 +17,15 @@ const fakeProject = {
   progressPercentage: null,
   createdAt: new Date(),
   updatedAt: new Date(),
+};
+
+const adminMembership = {
+  id: 'member-1',
+  projectId: 'project-1',
+  userId: 'user-1',
+  role: 'contributor',
+  isAdmin: true,
+  createdAt: new Date(),
 };
 
 describe('ProjectsService', () => {
@@ -140,6 +153,138 @@ describe('ProjectsService', () => {
         data: { title: 'New title' },
       });
       expect(result.title).toBe('New title');
+    });
+  });
+
+  describe('findMembersForProject', () => {
+    it('lists members with their user details when the requester is an admin', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(adminMembership);
+      prisma.projectMember.findMany.mockResolvedValue([
+        {
+          ...adminMembership,
+          user: {
+            id: 'user-1',
+            firstName: 'Jean',
+            lastName: 'Charles',
+            email: 'jc@example.com',
+          },
+        },
+      ]);
+
+      const result = await service.findMembersForProject('user-1', 'project-1');
+
+      expect(prisma.projectMember.findMany).toHaveBeenCalledWith({
+        where: { projectId: 'project-1' },
+        include: { user: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(result).toEqual([
+        {
+          userId: 'user-1',
+          firstName: 'Jean',
+          lastName: 'Charles',
+          email: 'jc@example.com',
+          isAdmin: true,
+        },
+      ]);
+    });
+
+    it('throws forbidden when the requester is not an admin', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        ...adminMembership,
+        isAdmin: false,
+      });
+
+      await expect(
+        service.findMembersForProject('user-1', 'project-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('removeMember', () => {
+    it('removes a client member', async () => {
+      prisma.projectMember.findUnique
+        .mockResolvedValueOnce(adminMembership) // assertIsAdmin(requester)
+        .mockResolvedValueOnce({
+          id: 'member-2',
+          projectId: 'project-1',
+          userId: 'user-2',
+          role: 'client',
+          isAdmin: false,
+          createdAt: new Date(),
+        }); // target
+
+      await service.removeMember('user-1', 'project-1', 'user-2');
+
+      expect(prisma.projectMember.delete).toHaveBeenCalledWith({
+        where: {
+          projectId_userId: { projectId: 'project-1', userId: 'user-2' },
+        },
+      });
+    });
+
+    it('removes an admin member when another admin remains', async () => {
+      prisma.projectMember.findUnique
+        .mockResolvedValueOnce(adminMembership) // assertIsAdmin(requester)
+        .mockResolvedValueOnce({
+          id: 'member-2',
+          projectId: 'project-1',
+          userId: 'user-2',
+          role: 'contributor',
+          isAdmin: true,
+          createdAt: new Date(),
+        }); // target, also an admin
+      prisma.projectMember.findMany.mockResolvedValue([
+        { ...adminMembership, userId: 'user-1' },
+        {
+          id: 'member-2',
+          projectId: 'project-1',
+          userId: 'user-2',
+          isAdmin: true,
+        },
+      ]);
+
+      await service.removeMember('user-1', 'project-1', 'user-2');
+
+      expect(prisma.projectMember.delete).toHaveBeenCalledWith({
+        where: {
+          projectId_userId: { projectId: 'project-1', userId: 'user-2' },
+        },
+      });
+    });
+
+    it('throws forbidden when the requester is not an admin', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        ...adminMembership,
+        isAdmin: false,
+      });
+
+      await expect(
+        service.removeMember('user-1', 'project-1', 'user-2'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.projectMember.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws not found when the target is not a member', async () => {
+      prisma.projectMember.findUnique
+        .mockResolvedValueOnce(adminMembership)
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        service.removeMember('user-1', 'project-1', 'user-2'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws conflict when removing the project’s only admin (FR-020)', async () => {
+      prisma.projectMember.findUnique
+        .mockResolvedValueOnce(adminMembership) // assertIsAdmin(requester === target)
+        .mockResolvedValueOnce(adminMembership); // target is the requester, sole admin
+      prisma.projectMember.findMany.mockResolvedValue([adminMembership]);
+
+      await expect(
+        service.removeMember('user-1', 'project-1', 'user-1'),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.projectMember.delete).not.toHaveBeenCalled();
     });
   });
 });

@@ -35,12 +35,20 @@ const fakeInvitation = {
 
 describe('InvitationsController', () => {
   let invitationsService: jest.Mocked<
-    Pick<InvitationsService, 'create' | 'findAllForProject'>
+    Pick<
+      InvitationsService,
+      'create' | 'findAllForProject' | 'cancel' | 'resend'
+    >
   >;
   let controller: InvitationsController;
 
   beforeEach(() => {
-    invitationsService = { create: jest.fn(), findAllForProject: jest.fn() };
+    invitationsService = {
+      create: jest.fn(),
+      findAllForProject: jest.fn(),
+      cancel: jest.fn(),
+      resend: jest.fn(),
+    };
     controller = new InvitationsController(
       invitationsService as unknown as InvitationsService,
     );
@@ -73,5 +81,42 @@ describe('InvitationsController', () => {
       'project-1',
     );
     expect(result).toEqual([fakeInvitation]);
+  });
+
+  it('cancel delegates to the service with the current user, project id and invitation id', async () => {
+    invitationsService.cancel.mockResolvedValue({
+      ...fakeInvitation,
+      status: 'cancelled',
+    });
+
+    const result = await controller.cancel(
+      fakeUser,
+      'project-1',
+      'invitation-1',
+    );
+
+    expect(invitationsService.cancel).toHaveBeenCalledWith(
+      'user-1',
+      'project-1',
+      'invitation-1',
+    );
+    expect(result.status).toBe('cancelled');
+  });
+
+  it('resend delegates to the service with the current user, project id and invitation id', async () => {
+    invitationsService.resend.mockResolvedValue(fakeInvitation);
+
+    const result = await controller.resend(
+      fakeUser,
+      'project-1',
+      'invitation-1',
+    );
+
+    expect(invitationsService.resend).toHaveBeenCalledWith(
+      'user-1',
+      'project-1',
+      'invitation-1',
+    );
+    expect(result).toEqual(fakeInvitation);
   });
 });

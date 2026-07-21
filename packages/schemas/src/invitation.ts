@@ -24,7 +24,7 @@ export const InvitationDetailsSchema = z.object({
   email: z.email(),
   projectTitle: z.string(),
   accountExists: z.boolean(),
-  status: z.enum(['invited', 'expired', 'accepted']),
+  status: z.enum(['invited', 'expired', 'accepted', 'cancelled']),
 });
 export type InvitationDetails = z.infer<typeof InvitationDetailsSchema>;
 

@@ -25,3 +25,15 @@ export function getInvitationByToken(token: string) {
 export function acceptInvitation(token: string, data: AcceptInvitationRequest) {
   return apiFetch<User>(`/invitations/${token}/accept`, { method: "POST", body: data });
 }
+
+export function cancelInvitation(projectId: string, invitationId: string) {
+  return apiFetch<Invitation>(`/projects/${projectId}/invitations/${invitationId}/cancel`, {
+    method: "PATCH",
+  });
+}
+
+export function resendInvitation(projectId: string, invitationId: string) {
+  return apiFetch<Invitation>(`/projects/${projectId}/invitations/${invitationId}/resend`, {
+    method: "POST",
+  });
+}

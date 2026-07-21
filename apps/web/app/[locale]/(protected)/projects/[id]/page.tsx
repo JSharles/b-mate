@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { use } from "react";
 import { InviteClientForm } from "@/features/invitations/components/invite-client-form";
 import { InvitationsList } from "@/features/invitations/components/invitations-list";
+import { ProjectMembersList } from "@/features/projects/components/project-members-list";
 import { useProject } from "@/features/projects/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -34,6 +35,17 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         <CardContent className="flex flex-col gap-4">
           <InviteClientForm projectId={id} />
           <InvitationsList projectId={id} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("members")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProjectMembersList projectId={id} />
         </CardContent>
       </Card>
     </div>

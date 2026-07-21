@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/shared/lib/api-client";
-import { createProject, getProject, listProjects } from "./api";
+import {
+  createProject,
+  getProject,
+  listProjectMembers,
+  listProjects,
+  removeProjectMember,
+} from "./api";
 
 vi.mock("@/shared/lib/api-client", () => ({
   apiFetch: vi.fn(),
@@ -36,5 +42,23 @@ describe("features/projects/api", () => {
     await getProject("1");
 
     expect(mockedApiFetch).toHaveBeenCalledWith("/projects/1");
+  });
+
+  it("listProjectMembers gets /projects/:id/members", async () => {
+    mockedApiFetch.mockResolvedValue([]);
+
+    await listProjectMembers("project-1");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith("/projects/project-1/members");
+  });
+
+  it("removeProjectMember deletes /projects/:id/members/:userId", async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+
+    await removeProjectMember("project-1", "user-2");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith("/projects/project-1/members/user-2", {
+      method: "DELETE",
+    });
   });
 });

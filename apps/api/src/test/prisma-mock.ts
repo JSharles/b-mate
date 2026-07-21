@@ -19,9 +19,12 @@ export type PrismaMock = {
   projectMember: {
     create: jest.Mock;
     findUnique: jest.Mock;
+    findMany: jest.Mock;
+    delete: jest.Mock;
   };
   invitation: {
     create: jest.Mock;
+    findFirst: jest.Mock;
     findMany: jest.Mock;
     findUnique: jest.Mock;
     update: jest.Mock;
@@ -50,9 +53,12 @@ export function createPrismaMock(): PrismaMock {
     projectMember: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      findMany: jest.fn(),
+      delete: jest.fn(),
     },
     invitation: {
       create: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),

@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/shared/lib/api-client";
-import { acceptInvitation, createInvitation, getInvitationByToken, listInvitations } from "./api";
+import {
+  acceptInvitation,
+  cancelInvitation,
+  createInvitation,
+  getInvitationByToken,
+  listInvitations,
+  resendInvitation,
+} from "./api";
 
 vi.mock("@/shared/lib/api-client", () => ({
   apiFetch: vi.fn(),
@@ -51,5 +58,27 @@ describe("features/invitations/api", () => {
       method: "POST",
       body: data,
     });
+  });
+
+  it("cancelInvitation patches /projects/:id/invitations/:invitationId/cancel", async () => {
+    mockedApiFetch.mockResolvedValue({ id: "1", status: "cancelled" });
+
+    await cancelInvitation("project-1", "invitation-1");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/invitations/invitation-1/cancel",
+      { method: "PATCH" },
+    );
+  });
+
+  it("resendInvitation posts to /projects/:id/invitations/:invitationId/resend", async () => {
+    mockedApiFetch.mockResolvedValue({ id: "1" });
+
+    await resendInvitation("project-1", "invitation-1");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/invitations/invitation-1/resend",
+      { method: "POST" },
+    );
   });
 });
