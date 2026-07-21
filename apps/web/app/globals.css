@@ -5,37 +5,40 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Brand palette (ink/paper/rust) — same tokens as the landing page's
+     `.landing` scope below, now applied app-wide per an explicit decision to
+     unify the marketing site and the product under one visual identity. */
+  --background: #16241f;
+  --foreground: #f4eee1;
+  --card: #1f332d;
+  --card-foreground: #f4eee1;
+  --popover: #1f332d;
+  --popover-foreground: #f4eee1;
+  --primary: #d97748;
+  --primary-foreground: #16241f;
+  --secondary: #33473f;
+  --secondary-foreground: #f4eee1;
+  --muted: #1f332d;
+  --muted-foreground: color-mix(in oklab, #f4eee1 65%, transparent);
+  --accent: #33473f;
+  --accent-foreground: #f4eee1;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: #33473f;
+  --input: #33473f;
+  --ring: #d97748;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #1f332d;
+  --sidebar-foreground: #f4eee1;
+  --sidebar-primary: #d97748;
+  --sidebar-primary-foreground: #16241f;
+  --sidebar-accent: #33473f;
+  --sidebar-accent-foreground: #f4eee1;
+  --sidebar-border: #33473f;
+  --sidebar-ring: #d97748;
 }
 
 .dark {
@@ -130,11 +133,10 @@
   }
 }
 
-/* Marketing landing page brand — deliberately scoped to `.landing` and not
-   merged into the app-wide shadcn theme above: the landing page commits to
-   one fixed visual identity (dark ground, warm paper, rust accent),
-   independent of the neutral light/dark theme the rest of the app (auth
-   pages, dashboard) uses. */
+/* Same ink/paper/rust palette as the :root theme above, kept as its own
+   scoped tokens so the landing page's components (which reference
+   `bg-landing-ink` etc. directly) don't need to change now that the app
+   theme has converged on the same identity. */
 .landing {
   --landing-ink: #16241f;
   --landing-ink-soft: #1f332d;

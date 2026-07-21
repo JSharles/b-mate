@@ -7,7 +7,7 @@ const SESSION_COOKIE_NAME = "session_token";
 // Path segments (right after the locale prefix) that require a session.
 // The authoritative check happens server-side in the (protected) layout via
 // GET /auth/me — this is just a cheap, network-free first line of defense.
-const PROTECTED_SEGMENTS = ["home", "profile"];
+const PROTECTED_SEGMENTS = ["home", "profile", "projects"];
 
 const handleI18nRouting = createMiddleware(routing);
 

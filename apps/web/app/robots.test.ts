@@ -6,7 +6,7 @@ describe("robots", () => {
     const result = robots();
 
     expect(result.rules).toEqual([
-      { userAgent: "*", allow: "/", disallow: ["/*/home", "/*/profile"] },
+      { userAgent: "*", allow: "/", disallow: ["/*/home", "/*/profile", "/*/projects"] },
     ]);
     expect(result.sitemap).toBe("http://localhost:3000/sitemap.xml");
   });
