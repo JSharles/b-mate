@@ -6,16 +6,20 @@ import { currentUserKey } from "@/shared/hooks/use-current-user";
 import { ApiError } from "@/shared/lib/api-client";
 import {
   acceptInvitation,
+  cancelInvitation,
   createInvitation,
   getInvitationByToken,
   listInvitations,
+  resendInvitation,
 } from "./api";
 import {
   invitationsKey,
   useAcceptInvitation,
+  useCancelInvitation,
   useCreateInvitation,
   useInvitationDetails,
   useInvitations,
+  useResendInvitation,
 } from "./hooks";
 
 vi.mock("./api", () => ({
@@ -23,6 +27,8 @@ vi.mock("./api", () => ({
   createInvitation: vi.fn(),
   getInvitationByToken: vi.fn(),
   acceptInvitation: vi.fn(),
+  cancelInvitation: vi.fn(),
+  resendInvitation: vi.fn(),
 }));
 
 const push = vi.fn();
@@ -34,6 +40,8 @@ const mockedListInvitations = vi.mocked(listInvitations);
 const mockedCreateInvitation = vi.mocked(createInvitation);
 const mockedGetInvitationByToken = vi.mocked(getInvitationByToken);
 const mockedAcceptInvitation = vi.mocked(acceptInvitation);
+const mockedCancelInvitation = vi.mocked(cancelInvitation);
+const mockedResendInvitation = vi.mocked(resendInvitation);
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -81,6 +89,44 @@ describe("invitations hooks", () => {
       email: "client@example.com",
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: invitationsKey("project-1") });
+  });
+
+  describe("useCancelInvitation", () => {
+    it("invalidates the invitations query for the project", async () => {
+      mockedCancelInvitation.mockResolvedValue(fakeInvitation);
+      const { Wrapper, queryClient } = createWrapper();
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+      const { result } = renderHook(() => useCancelInvitation("project-1"), {
+        wrapper: Wrapper,
+      });
+      act(() => {
+        result.current.mutate("invitation-1");
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(mockedCancelInvitation).toHaveBeenCalledWith("project-1", "invitation-1");
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: invitationsKey("project-1") });
+    });
+  });
+
+  describe("useResendInvitation", () => {
+    it("invalidates the invitations query for the project", async () => {
+      mockedResendInvitation.mockResolvedValue(fakeInvitation);
+      const { Wrapper, queryClient } = createWrapper();
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+      const { result } = renderHook(() => useResendInvitation("project-1"), {
+        wrapper: Wrapper,
+      });
+      act(() => {
+        result.current.mutate("invitation-1");
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(mockedResendInvitation).toHaveBeenCalledWith("project-1", "invitation-1");
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: invitationsKey("project-1") });
+    });
   });
 
   describe("useInvitationDetails", () => {

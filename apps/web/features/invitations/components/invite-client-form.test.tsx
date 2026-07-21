@@ -64,6 +64,20 @@ describe("InviteClientForm", () => {
     expect(screen.getByText("Only a project admin can manage invitations")).toBeInTheDocument();
   });
 
+  it("shows the already-a-member error distinctly (FR-022)", () => {
+    mockedUseCreateInvitation.mockReturnValue({
+      ...baseMutation(),
+      isError: true,
+      error: new ApiError("This person is already a member of the project", 409),
+    } as unknown as ReturnType<typeof useCreateInvitation>);
+
+    render(<InviteClientForm projectId="project-1" />);
+
+    expect(
+      screen.getByText("This person is already a member of the project"),
+    ).toBeInTheDocument();
+  });
+
   it("disables the submit button while pending", () => {
     mockedUseCreateInvitation.mockReturnValue({
       ...baseMutation(),

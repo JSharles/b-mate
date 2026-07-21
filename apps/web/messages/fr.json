@@ -124,7 +124,8 @@
       "submitPending": "Création…"
     },
     "ProjectPage": {
-      "inviteClient": "Inviter un client"
+      "inviteClient": "Inviter un client",
+      "members": "Membres"
     },
     "InviteClientForm": {
       "email": "Email",
@@ -134,13 +135,24 @@
     "InvitationsList": {
       "empty": "Aucune invitation pour le moment",
       "copyLink": "Copier le lien",
-      "copied": "Copié !"
+      "copied": "Copié !",
+      "cancel": "Annuler",
+      "cancelling": "Annulation…",
+      "resend": "Renvoyer",
+      "resending": "Envoi…"
+    },
+    "ProjectMembersList": {
+      "empty": "Aucun membre pour le moment",
+      "admin": "Admin",
+      "remove": "Retirer",
+      "removing": "Retrait…",
+      "lastAdminHint": "Un projet doit toujours garder au moins un admin"
     }
   },
   "Invite": {
     "title": "Rejoindre le projet",
     "invalidLink": "Ce lien d'invitation n'est pas valide.",
-    "expired": "Ce lien d'invitation a expiré.",
+    "noLongerAvailable": "Cette invitation n'est plus disponible.",
     "alreadyAccepted": "Cette invitation a déjà été acceptée.",
     "AcceptInvitationForm": {
       "email": "Email",

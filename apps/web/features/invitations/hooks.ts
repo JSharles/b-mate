@@ -7,9 +7,11 @@ import { currentUserKey } from "@/shared/hooks/use-current-user";
 import { ApiError } from "@/shared/lib/api-client";
 import {
   acceptInvitation,
+  cancelInvitation,
   createInvitation,
   getInvitationByToken,
   listInvitations,
+  resendInvitation,
 } from "./api";
 
 export const invitationsKey = (projectId: string) =>
@@ -30,6 +32,28 @@ export function useCreateInvitation(projectId: string) {
   return useMutation({
     mutationFn: (data: CreateInvitationRequest) => createInvitation(projectId, data),
     meta: { skipGlobalErrorToast: true },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: invitationsKey(projectId) });
+    },
+  });
+}
+
+export function useCancelInvitation(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (invitationId: string) => cancelInvitation(projectId, invitationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: invitationsKey(projectId) });
+    },
+  });
+}
+
+export function useResendInvitation(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (invitationId: string) => resendInvitation(projectId, invitationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: invitationsKey(projectId) });
     },

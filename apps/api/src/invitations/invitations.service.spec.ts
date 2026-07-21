@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   GoneException,
   NotFoundException,
@@ -23,7 +24,7 @@ const fakeInvitation = {
   projectId: 'project-1',
   email: 'client@example.com',
   role: 'client',
-  isAdmin: true,
+  isAdmin: false,
   token: 'a-random-token',
   status: 'invited',
   expiresAt: new Date(Date.now() + 60_000),
@@ -74,8 +75,10 @@ describe('InvitationsService', () => {
   });
 
   describe('create', () => {
-    it('creates a client + admin invitation with a lowercased email when the requester is an admin', async () => {
+    it('creates a client, non-admin invitation with a lowercased email when the requester is an admin', async () => {
       prisma.projectMember.findUnique.mockResolvedValue(adminMembership);
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.invitation.findFirst.mockResolvedValue(null);
       prisma.invitation.create.mockResolvedValue(fakeInvitation);
 
       const result = await service.create('user-1', 'project-1', {
@@ -87,7 +90,7 @@ describe('InvitationsService', () => {
           projectId: 'project-1',
           email: 'client@example.com',
           role: 'client',
-          isAdmin: true,
+          isAdmin: false,
           status: 'invited',
           token: expect.stringMatching(/^[0-9a-f]{64}$/) as string,
           expiresAt: expect.any(Date) as Date,
@@ -118,17 +121,61 @@ describe('InvitationsService', () => {
 
       expect(prisma.invitation.create).not.toHaveBeenCalled();
     });
+
+    it('throws conflict when the invited email already belongs to the project (FR-022)', async () => {
+      prisma.projectMember.findUnique
+        .mockResolvedValueOnce(adminMembership) // assertIsAdmin(requester)
+        .mockResolvedValueOnce({
+          id: 'member-2',
+          projectId: 'project-1',
+          userId: 'user-2',
+          role: 'client',
+          isAdmin: false,
+          createdAt: new Date(),
+        }); // existing membership for the invited email
+      prisma.user.findUnique.mockResolvedValue({ ...fakeUser, id: 'user-2' });
+
+      await expect(
+        service.create('user-1', 'project-1', { email: 'client@example.com' }),
+      ).rejects.toThrow(ConflictException);
+
+      expect(prisma.invitation.create).not.toHaveBeenCalled();
+    });
+
+    it('delegates to resend (extends expiresAt, same token) when a pending invitation already exists for that email (FR-008)', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(adminMembership);
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.invitation.findFirst.mockResolvedValue(fakeInvitation);
+      prisma.invitation.update.mockResolvedValue({
+        ...fakeInvitation,
+        expiresAt: new Date(Date.now() + 999_999),
+      });
+
+      await service.create('user-1', 'project-1', {
+        email: 'client@example.com',
+      });
+
+      expect(prisma.invitation.create).not.toHaveBeenCalled();
+      expect(prisma.invitation.update).toHaveBeenCalledWith({
+        where: { id: 'invitation-1' },
+        data: { expiresAt: expect.any(Date) as Date },
+      });
+    });
   });
 
   describe('findAllForProject', () => {
-    it('lists invitations when the requester is an admin', async () => {
+    it('lists only pending invitations when the requester is an admin (FR-018)', async () => {
       prisma.projectMember.findUnique.mockResolvedValue(adminMembership);
       prisma.invitation.findMany.mockResolvedValue([fakeInvitation]);
 
       const result = await service.findAllForProject('user-1', 'project-1');
 
       expect(prisma.invitation.findMany).toHaveBeenCalledWith({
-        where: { projectId: 'project-1' },
+        where: {
+          projectId: 'project-1',
+          status: 'invited',
+          expiresAt: { gt: expect.any(Date) as Date },
+        },
         orderBy: { createdAt: 'desc' },
       });
       expect(result).toEqual([fakeInvitation]);
@@ -143,6 +190,115 @@ describe('InvitationsService', () => {
       await expect(
         service.findAllForProject('user-1', 'project-1'),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('cancel', () => {
+    it('cancels a pending invitation when the requester is an admin', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(adminMembership);
+      prisma.invitation.findUnique.mockResolvedValue(fakeInvitation);
+      prisma.invitation.update.mockResolvedValue({
+        ...fakeInvitation,
+        status: 'cancelled',
+      });
+
+      const result = await service.cancel(
+        'user-1',
+        'project-1',
+        'invitation-1',
+      );
+
+      expect(prisma.invitation.update).toHaveBeenCalledWith({
+        where: { id: 'invitation-1' },
+        data: { status: 'cancelled' },
+      });
+      expect(result.status).toBe('cancelled');
+    });
+
+    it('throws forbidden when the requester is not an admin', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        ...adminMembership,
+        isAdmin: false,
+      });
+
+      await expect(
+        service.cancel('user-1', 'project-1', 'invitation-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.invitation.update).not.toHaveBeenCalled();
+    });
+
+    it('throws conflict when the invitation is not pending', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(adminMembership);
+      prisma.invitation.findUnique.mockResolvedValue({
+        ...fakeInvitation,
+        status: 'accepted',
+      });
+
+      await expect(
+        service.cancel('user-1', 'project-1', 'invitation-1'),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.invitation.update).not.toHaveBeenCalled();
+    });
+
+    it('throws not found when the invitation does not belong to the project', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(adminMembership);
+      prisma.invitation.findUnique.mockResolvedValue({
+        ...fakeInvitation,
+        projectId: 'another-project',
+      });
+
+      await expect(
+        service.cancel('user-1', 'project-1', 'invitation-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('resend', () => {
+    it('extends expiresAt and keeps the same token when the requester is an admin', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(adminMembership);
+      prisma.invitation.findUnique.mockResolvedValue(fakeInvitation);
+      const extended = {
+        ...fakeInvitation,
+        expiresAt: new Date(Date.now() + 999_999),
+      };
+      prisma.invitation.update.mockResolvedValue(extended);
+
+      const result = await service.resend(
+        'user-1',
+        'project-1',
+        'invitation-1',
+      );
+
+      expect(prisma.invitation.update).toHaveBeenCalledWith({
+        where: { id: 'invitation-1' },
+        data: { expiresAt: expect.any(Date) as Date },
+      });
+      expect(result.token).toBe(fakeInvitation.token);
+    });
+
+    it('throws forbidden when the requester is not an admin', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        ...adminMembership,
+        isAdmin: false,
+      });
+
+      await expect(
+        service.resend('user-1', 'project-1', 'invitation-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.invitation.update).not.toHaveBeenCalled();
+    });
+
+    it('throws conflict when the invitation is not pending', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(adminMembership);
+      prisma.invitation.findUnique.mockResolvedValue({
+        ...fakeInvitation,
+        status: 'cancelled',
+      });
+
+      await expect(
+        service.resend('user-1', 'project-1', 'invitation-1'),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.invitation.update).not.toHaveBeenCalled();
     });
   });
 
@@ -202,6 +358,19 @@ describe('InvitationsService', () => {
       expect(result.status).toBe('accepted');
     });
 
+    it('reports status cancelled when cancelled', async () => {
+      prisma.invitation.findUnique.mockResolvedValue({
+        ...fakeInvitation,
+        status: 'cancelled',
+        project: { title: 'Site vitrine client X' },
+      });
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      const result = await service.getByToken('a-random-token');
+
+      expect(result.status).toBe('cancelled');
+    });
+
     it('throws not found for an unknown token', async () => {
       prisma.invitation.findUnique.mockResolvedValue(null);
 
@@ -242,6 +411,20 @@ describe('InvitationsService', () => {
       ).rejects.toThrow(GoneException);
     });
 
+    it('throws gone when the invitation was cancelled, and creates no session (FR-012/FR-013/FR-014, SC-004)', async () => {
+      prisma.invitation.findUnique.mockResolvedValue({
+        ...fakeInvitation,
+        status: 'cancelled',
+      });
+
+      await expect(
+        service.accept('a-random-token', { password: 'supersecret123' }),
+      ).rejects.toThrow(GoneException);
+
+      expect(authService.createSession).not.toHaveBeenCalled();
+      expect(prisma.projectMember.create).not.toHaveBeenCalled();
+    });
+
     describe('when the invitee already has an account', () => {
       it('logs them in, grants membership and marks the invitation accepted', async () => {
         prisma.invitation.findUnique.mockResolvedValue(fakeInvitation);
@@ -269,7 +452,7 @@ describe('InvitationsService', () => {
             projectId: 'project-1',
             userId: 'user-1',
             role: 'client',
-            isAdmin: true,
+            isAdmin: false,
           },
         });
         expect(prisma.invitation.update).toHaveBeenCalledWith({
@@ -350,7 +533,7 @@ describe('InvitationsService', () => {
             projectId: 'project-1',
             userId: 'user-1',
             role: 'client',
-            isAdmin: true,
+            isAdmin: false,
           },
         });
         expect(result).toEqual({ user: fakeUser, sessionId: 'session-1' });

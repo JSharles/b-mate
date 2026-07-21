@@ -67,7 +67,7 @@ describe("InvitePage", () => {
     expect(screen.getByText("invalidLink")).toBeInTheDocument();
   });
 
-  it("shows an expired message", () => {
+  it("shows a no-longer-available message for an expired invitation", () => {
     mockedUseInvitationDetails.mockReturnValue({
       data: {
         email: "client@example.com",
@@ -80,7 +80,23 @@ describe("InvitePage", () => {
 
     renderPage();
 
-    expect(screen.getByText("expired")).toBeInTheDocument();
+    expect(screen.getByText("noLongerAvailable")).toBeInTheDocument();
+  });
+
+  it("shows the same no-longer-available message for a cancelled invitation (FR-013)", () => {
+    mockedUseInvitationDetails.mockReturnValue({
+      data: {
+        email: "client@example.com",
+        projectTitle: "Site vitrine client X",
+        accountExists: false,
+        status: "cancelled",
+      },
+      isPending: false,
+    } as unknown as ReturnType<typeof useInvitationDetails>);
+
+    renderPage();
+
+    expect(screen.getByText("noLongerAvailable")).toBeInTheDocument();
   });
 
   it("shows an already-accepted message", () => {

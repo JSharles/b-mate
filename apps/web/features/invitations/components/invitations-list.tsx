@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { SITE_URL } from "@/shared/lib/site-url";
-import { useInvitations } from "../hooks";
+import { useCancelInvitation, useInvitations, useResendInvitation } from "../hooks";
 
 function invitationLink(token: string) {
   return `${SITE_URL}/invite/${token}`;
@@ -32,6 +32,8 @@ function CopyLinkButton({ token }: { token: string }) {
 
 export function InvitationsList({ projectId }: { projectId: string }) {
   const { data: invitations, isPending } = useInvitations(projectId);
+  const cancelInvitation = useCancelInvitation(projectId);
+  const resendInvitation = useResendInvitation(projectId);
   const t = useTranslations("Projects.InvitationsList");
 
   if (isPending) {
@@ -47,7 +49,31 @@ export function InvitationsList({ projectId }: { projectId: string }) {
       {invitations.map((invitation) => (
         <li key={invitation.id} className="flex items-center justify-between gap-3 py-3 text-sm">
           <span>{invitation.email}</span>
-          <CopyLinkButton token={invitation.token} />
+          <div className="flex items-center gap-2">
+            <CopyLinkButton token={invitation.token} />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={resendInvitation.isPending}
+              onClick={() => resendInvitation.mutate(invitation.id)}
+            >
+              {resendInvitation.isPending && resendInvitation.variables === invitation.id
+                ? t("resending")
+                : t("resend")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={cancelInvitation.isPending}
+              onClick={() => cancelInvitation.mutate(invitation.id)}
+            >
+              {cancelInvitation.isPending && cancelInvitation.variables === invitation.id
+                ? t("cancelling")
+                : t("cancel")}
+            </Button>
+          </div>
         </li>
       ))}
     </ul>

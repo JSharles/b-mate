@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -41,5 +43,20 @@ export class ProjectsController {
     @Body() dto: UpdateProjectDto,
   ) {
     return this.projectsService.update(user.id, id, dto);
+  }
+
+  @Get(':id/members')
+  findMembers(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.projectsService.findMembersForProject(user.id, id);
+  }
+
+  @Delete(':id/members/:userId')
+  @HttpCode(204)
+  removeMember(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Param('userId') targetUserId: string,
+  ) {
+    return this.projectsService.removeMember(user.id, id, targetUserId);
   }
 }

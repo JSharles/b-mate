@@ -24,8 +24,8 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
       <div className="w-full max-w-sm">
         {!invitation ? (
           <p className="text-sm text-destructive">{t("invalidLink")}</p>
-        ) : invitation.status === "expired" ? (
-          <p className="text-sm text-destructive">{t("expired")}</p>
+        ) : invitation.status === "expired" || invitation.status === "cancelled" ? (
+          <p className="text-sm text-destructive">{t("noLongerAvailable")}</p>
         ) : invitation.status === "accepted" ? (
           <p className="text-sm text-destructive">{t("alreadyAccepted")}</p>
         ) : (

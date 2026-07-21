@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   GoneException,
   Injectable,
@@ -20,7 +21,7 @@ export interface InvitationDetails {
   email: string;
   projectTitle: string;
   accountExists: boolean;
-  status: 'invited' | 'expired' | 'accepted';
+  status: 'invited' | 'expired' | 'accepted' | 'cancelled';
 }
 
 @Injectable()
@@ -32,21 +33,51 @@ export class InvitationsService {
 
   // Only a project admin can invite — is_admin is what governs member
   // management (see docs/PRODUCT.md "Business rules" § Access). The invitee
-  // is always granted client + admin by default, matching the "Ownership &
-  // handoff" rule for a project's first client.
+  // is always granted client, non-admin membership (FR-011) — a client is
+  // never an admin by default in this feature.
   async create(
     userId: string,
     projectId: string,
     dto: CreateInvitationDto,
   ): Promise<Invitation> {
     await this.assertIsAdmin(userId, projectId);
+    const email = dto.email.toLowerCase();
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      const membership = await this.prisma.projectMember.findUnique({
+        where: {
+          projectId_userId: { projectId, userId: existingUser.id },
+        },
+      });
+
+      if (membership) {
+        throw new ConflictException(
+          'This person is already a member of the project',
+        );
+      }
+    }
+
+    // Re-inviting an email that already has a pending invitation on this
+    // project is the same transition as resend (FR-008) — same link, reset
+    // expiry, never a second row.
+    const existingInvitation = await this.prisma.invitation.findFirst({
+      where: { projectId, email, status: 'invited' },
+    });
+
+    if (existingInvitation) {
+      return this.extendInvitation(existingInvitation);
+    }
 
     return this.prisma.invitation.create({
       data: {
         projectId,
-        email: dto.email.toLowerCase(),
+        email,
         role: ProjectMemberRole.client,
-        isAdmin: true,
+        isAdmin: false,
         token: randomBytes(32).toString('hex'),
         status: 'invited',
         expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
@@ -54,6 +85,9 @@ export class InvitationsService {
     });
   }
 
+  // Pending-only (FR-018) — an invitation drops out once it's accepted,
+  // cancelled, or time-expired, even though "expired" is never written to
+  // `status` (see data-model.md — it's computed from `expiresAt`).
   async findAllForProject(
     userId: string,
     projectId: string,
@@ -61,8 +95,72 @@ export class InvitationsService {
     await this.assertIsAdmin(userId, projectId);
 
     return this.prisma.invitation.findMany({
-      where: { projectId },
+      where: { projectId, status: 'invited', expiresAt: { gt: new Date() } },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // An admin can cancel a pending invitation regardless of whether it has
+  // also time-expired in the meantime — cancel just guarantees the link can
+  // never be used again.
+  async cancel(
+    userId: string,
+    projectId: string,
+    invitationId: string,
+  ): Promise<Invitation> {
+    await this.assertIsAdmin(userId, projectId);
+    const invitation = await this.findPendingInvitationOrThrow(
+      projectId,
+      invitationId,
+    );
+
+    return this.prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { status: 'cancelled' },
+    });
+  }
+
+  // Resend (and the create()-delegates-to-resend path above) reset the
+  // expiry on the same row — the token is never rotated (research.md §2).
+  // This also revives an invitation that has time-expired but wasn't
+  // cancelled, which is the intended recovery path for a stale link.
+  async resend(
+    userId: string,
+    projectId: string,
+    invitationId: string,
+  ): Promise<Invitation> {
+    await this.assertIsAdmin(userId, projectId);
+    const invitation = await this.findPendingInvitationOrThrow(
+      projectId,
+      invitationId,
+    );
+
+    return this.extendInvitation(invitation);
+  }
+
+  private async findPendingInvitationOrThrow(
+    projectId: string,
+    invitationId: string,
+  ): Promise<Invitation> {
+    const invitation = await this.prisma.invitation.findUnique({
+      where: { id: invitationId },
+    });
+
+    if (!invitation || invitation.projectId !== projectId) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    if (invitation.status !== 'invited') {
+      throw new ConflictException('Invitation is not pending');
+    }
+
+    return invitation;
+  }
+
+  private extendInvitation(invitation: Invitation): Promise<Invitation> {
+    return this.prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { expiresAt: new Date(Date.now() + INVITATION_TTL_MS) },
     });
   }
 
@@ -91,9 +189,11 @@ export class InvitationsService {
       status:
         invitation.status === 'accepted'
           ? 'accepted'
-          : invitation.expiresAt < new Date()
-            ? 'expired'
-            : 'invited',
+          : invitation.status === 'cancelled'
+            ? 'cancelled'
+            : invitation.expiresAt < new Date()
+              ? 'expired'
+              : 'invited',
     };
   }
 
@@ -114,6 +214,9 @@ export class InvitationsService {
     }
     if (invitation.status === 'accepted') {
       throw new GoneException('Invitation already accepted');
+    }
+    if (invitation.status === 'cancelled') {
+      throw new GoneException('Invitation is no longer available');
     }
     if (invitation.expiresAt < new Date()) {
       throw new GoneException('Invitation has expired');
