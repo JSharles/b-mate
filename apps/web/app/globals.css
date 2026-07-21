@@ -119,4 +119,38 @@
   body {
     @apply bg-background text-foreground;
   }
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Marketing landing page brand — deliberately scoped to `.landing` and not
+   merged into the app-wide shadcn theme above: the landing page commits to
+   one fixed visual identity (dark ground, warm paper, rust accent),
+   independent of the neutral light/dark theme the rest of the app (auth
+   pages, dashboard) uses. */
+.landing {
+  --landing-ink: #16241f;
+  --landing-ink-soft: #1f332d;
+  --landing-ink-line: #33473f;
+  --landing-paper: #f4eee1;
+  --landing-paper-dim: #e8decb;
+  --landing-rust: #d97748;
+  --landing-rust-hover: #e0855c;
+}
+
+@theme inline {
+  --color-landing-ink: var(--landing-ink);
+  --color-landing-ink-soft: var(--landing-ink-soft);
+  --color-landing-ink-line: var(--landing-ink-line);
+  --color-landing-paper: var(--landing-paper);
+  --color-landing-paper-dim: var(--landing-paper-dim);
+  --color-landing-rust: var(--landing-rust);
+  --color-landing-rust-hover: var(--landing-rust-hover);
 }
