@@ -107,6 +107,23 @@
       "passwordsDontMatch": "Les mots de passe ne correspondent pas"
     }
   },
+  "Home": {
+    "title": "Vos projets",
+    "newProject": "Nouveau projet",
+    "emptyTitle": "Aucun projet pour le moment",
+    "emptyDescription": "Créez votre premier projet pour commencer à suivre son avancement.",
+    "emptyCta": "Créer un projet"
+  },
+  "Projects": {
+    "NewProjectPage": {
+      "title": "Nouveau projet"
+    },
+    "CreateProjectForm": {
+      "title": "Titre",
+      "submit": "Créer le projet",
+      "submitPending": "Création…"
+    }
+  },
   "Sidebar": {
     "profile": "Profil",
     "logout": "Se déconnecter"

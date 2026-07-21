@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import type { User } from "schemas";
 import { useLogout } from "@/features/auth/hooks";
 import { Link } from "@/i18n/navigation";
@@ -29,7 +30,16 @@ export function AppSidebar({ user }: { user: User }) {
   return (
     <Sidebar>
       <SidebarHeader>
-        <span className="px-2 text-sm font-semibold">b-mate</span>
+        <div className="flex items-center gap-2 px-2">
+          <Image
+            src="/images/brand-logo.png"
+            alt=""
+            width={20}
+            height={20}
+            className="size-5 invert"
+          />
+          <span className="text-sm font-semibold">b-mate</span>
+        </div>
       </SidebarHeader>
       <SidebarContent />
       <SidebarFooter>

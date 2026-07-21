@@ -1,10 +1,15 @@
-import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import HomePage from "./page";
 
+vi.mock("@/features/projects/components/project-list", () => ({
+  ProjectList: () => <div>project-list</div>,
+}));
+
 describe("HomePage", () => {
-  it("renders without crashing", () => {
-    const { container } = render(<HomePage />);
-    expect(container.firstChild).toBeInstanceOf(HTMLDivElement);
+  it("renders the project list", () => {
+    render(<HomePage />);
+
+    expect(screen.getByText("project-list")).toBeInTheDocument();
   });
 });
