@@ -21,11 +21,6 @@ vi.mock("./api", () => ({
   removeProjectMember: vi.fn(),
 }));
 
-const push = vi.fn();
-vi.mock("@/i18n/navigation", () => ({
-  useRouter: () => ({ push }),
-}));
-
 const mockedListProjects = vi.mocked(listProjects);
 const mockedCreateProject = vi.mocked(createProject);
 const mockedGetProject = vi.mocked(getProject);
@@ -72,7 +67,7 @@ describe("projects hooks", () => {
     expect(result.current.data).toEqual(fakeProject);
   });
 
-  it("useCreateProject invalidates the projects query and redirects to /home", async () => {
+  it("useCreateProject invalidates the projects query", async () => {
     mockedCreateProject.mockResolvedValue(fakeProject);
     const { Wrapper, queryClient } = createWrapper();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
@@ -84,7 +79,6 @@ describe("projects hooks", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: projectsKey });
-    expect(push).toHaveBeenCalledWith("/home");
   });
 
   it("useProjectMembers returns the project's members", async () => {

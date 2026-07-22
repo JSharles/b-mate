@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "@/i18n/navigation";
 import {
   createProject,
   getProject,
@@ -48,17 +47,17 @@ export function useRemoveMember(projectId: string) {
 }
 
 // Error is surfaced inline in the form (see CreateProjectForm), not as a
-// generic toast — skipGlobalErrorToast opts this out of that default.
+// generic toast — skipGlobalErrorToast opts this out of that default. No
+// navigation here: creation happens inline (see CreateProjectDialog), the
+// caller decides what "done" means (closing the dialog).
 export function useCreateProject() {
   const queryClient = useQueryClient();
-  const router = useRouter();
 
   return useMutation({
     mutationFn: createProject,
     meta: { skipGlobalErrorToast: true },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectsKey });
-      router.push("/home");
     },
   });
 }
