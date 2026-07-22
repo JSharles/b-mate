@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-22T00:00:00.000Z",
+  "title": "Design System: b-mate",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "oklch(0.18 0 0)",
+        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.25 0 0)", "oklch(0.35 0 0)", "oklch(0.48 0 0)", "oklch(0.62 0 0)", "oklch(0.75 0 0)", "oklch(0.87 0 0)", "oklch(0.95 0 0)"]
+      },
+      "soft-lavender": {
+        "role": "secondary",
+        "displayName": "Soft Lavender",
+        "canonical": "oklch(0.85 0.06 290)",
+        "tonalRamp": ["oklch(0.25 0.04 290)", "oklch(0.38 0.06 290)", "oklch(0.52 0.08 290)", "oklch(0.65 0.08 290)", "oklch(0.78 0.07 290)", "oklch(0.85 0.06 290)", "oklch(0.91 0.04 290)", "oklch(0.96 0.02 290)"]
+      },
+      "lavender-accent": {
+        "role": "secondary",
+        "displayName": "Lavender Accent",
+        "canonical": "oklch(0.93 0.03 290)",
+        "tonalRamp": ["oklch(0.28 0.03 290)", "oklch(0.4 0.04 290)", "oklch(0.55 0.05 290)", "oklch(0.68 0.05 290)", "oklch(0.8 0.04 290)", "oklch(0.88 0.035 290)", "oklch(0.93 0.03 290)", "oklch(0.97 0.015 290)"]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(0.96 0.01 300)",
+        "tonalRamp": ["oklch(0.2 0.005 300)", "oklch(0.32 0.008 300)", "oklch(0.46 0.008 300)", "oklch(0.6 0.008 300)", "oklch(0.74 0.008 300)", "oklch(0.85 0.008 300)", "oklch(0.92 0.008 300)", "oklch(0.96 0.01 300)"]
+      },
+      "violet-glow": {
+        "role": "tertiary",
+        "displayName": "Violet Glow",
+        "canonical": "oklch(0.55 0.2 285)",
+        "tonalRamp": ["oklch(0.2 0.12 285)", "oklch(0.3 0.16 285)", "oklch(0.4 0.19 285)", "oklch(0.48 0.2 285)", "oklch(0.55 0.2 285)", "oklch(0.66 0.17 285)", "oklch(0.78 0.12 285)", "oklch(0.9 0.06 285)"]
+      },
+      "muted-surface": {
+        "role": "neutral",
+        "displayName": "Muted Surface",
+        "canonical": "oklch(0.95 0.01 295)",
+        "tonalRamp": ["oklch(0.22 0.006 295)", "oklch(0.34 0.008 295)", "oklch(0.48 0.008 295)", "oklch(0.62 0.008 295)", "oklch(0.76 0.008 295)", "oklch(0.86 0.008 295)", "oklch(0.92 0.008 295)", "oklch(0.95 0.01 295)"]
+      },
+      "muted-ink": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "oklch(0.5 0.015 300)",
+        "tonalRamp": ["oklch(0.18 0.01 300)", "oklch(0.28 0.012 300)", "oklch(0.38 0.014 300)", "oklch(0.5 0.015 300)", "oklch(0.62 0.014 300)", "oklch(0.74 0.012 300)", "oklch(0.85 0.01 300)", "oklch(0.93 0.008 300)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Landing hero headline only — the single loud typographic moment in the system." },
+      "headline": { "displayName": "Headline", "purpose": "Page-level titles, e.g. \"Your projects\"." },
+      "title": { "displayName": "Title", "purpose": "Card and section titles." },
+      "body": { "displayName": "Body", "purpose": "Forms, descriptions, and list content — the default text." },
+      "label": { "displayName": "Label", "purpose": "Uppercase eyebrow text introducing a section." },
+      "caption": { "displayName": "Caption", "purpose": "Small pill badges and tags — status chips, \"coming soon\" markers." }
+    },
+    "shadows": [
+      { "name": "resting", "value": "none", "purpose": "Default state for every surface — flat by default." },
+      { "name": "card-input", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "The one ambient shadow the system uses, at rest on cards and inputs (Tailwind shadow-sm)." },
+      { "name": "card-hover", "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)", "purpose": "Interactive project cards only, paired with a -2px translateY lift on hover (Tailwind shadow-md)." }
+    ],
+    "motion": [
+      { "name": "transition-standard", "value": "all 150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default hover/focus transition (Tailwind transition-all / transition-colors)." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main call-to-action button used across the app.",
+      "html": "<button class=\"ds-btn-primary\">Create project</button>",
+      "css": ".ds-btn-primary { background: #242424; color: #ffffff; height: 2.25rem; padding: 0 1rem; border-radius: 0.5rem; border: none; font-size: 0.875rem; font-weight: 500; font-family: Urbanist, system-ui, sans-serif; transition: background 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { background: rgba(36,36,36,0.9); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(36,36,36,0.5); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A supporting action placed next to a primary button.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { background: #d0ccff; color: #242424; height: 2.25rem; padding: 0 1rem; border-radius: 0.5rem; border: none; font-size: 0.875rem; font-weight: 500; font-family: Urbanist, system-ui, sans-serif; transition: background 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-secondary:hover { background: rgba(208,204,255,0.8); } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(36,36,36,0.5); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The default content container — the brighter surface against the page background.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Website redesign</div><div class=\"ds-card-body\">Created Jan 12, 2026</div></div>",
+      "css": ".ds-card { background: #ffffff; color: #242424; border: 1px solid #e7e5f2; border-radius: 0.875rem; padding: 1.5rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); font-family: Urbanist, system-ui, sans-serif; transition: box-shadow 150ms, transform 150ms; } .ds-card:hover { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); transform: translateY(-2px); } .ds-card-title { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; } .ds-card-body { font-size: 0.875rem; color: #6b6874; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Standard form field — given a visible white fill and border after early feedback that a transparent input wasn't legible enough.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Email\" />",
+      "css": ".ds-input { background: #ffffff; color: #242424; border: 1px solid #d6d1ec; border-radius: 0.5rem; height: 2.25rem; padding: 0.25rem 0.75rem; font-size: 0.875rem; font-family: Urbanist, system-ui, sans-serif; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); transition: border-color 150ms, box-shadow 150ms; } .ds-input::placeholder { color: #6b6874; } .ds-input:focus-visible { outline: none; border-color: #242424; box-shadow: 0 0 0 3px rgba(36,36,36,0.5); }"
+    },
+    {
+      "name": "Top Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Transparent header that lets the fixed background gradient show through — deliberately not given a background fill or border.",
+      "html": "<header class=\"ds-topnav\"><div class=\"ds-topnav-brand\">b-mate</div><div class=\"ds-topnav-avatar\">JC</div></header>",
+      "css": ".ds-topnav { display: flex; align-items: center; justify-content: space-between; height: 3.5rem; padding: 0 1.5rem; background: transparent; font-family: Urbanist, system-ui, sans-serif; } .ds-topnav-brand { font-size: 0.875rem; font-weight: 600; color: #242424; } .ds-topnav-avatar { width: 2rem; height: 2rem; border-radius: 9999px; background: #ece9ff; color: #242424; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Glass Report",
+    "overview": "b-mate exists to make a client's project legible without dressing it up — the product principle is that nothing shown is ever generated or invented, only real, existing content, reworded plainly. The visual system follows the same discipline: quiet, high-contrast, and unornamented. Ink-dark text and interface elements sit on a pale, barely-there lavender field; nothing fights for attention, because the point is that the client can see through to what's actually happening, not be impressed by the interface doing it.\n\nThere is exactly one interactive color (near-black ink) and one atmospheric color (soft lavender). This was arrived at after explicitly rejecting louder alternatives: a dark ink/rust theme, a warm honey/ochre accent, and a raspberry accent were all tried and discarded as either \"terne\" (dull) or too loud for the tone the product needs. The system commits to restraint instead.",
+    "keyCharacteristics": [
+      "Single light theme, no dark mode — the calm, legible surface is the whole point, not a preference to toggle.",
+      "One interactive color (ink), one atmospheric color (lavender) — never both fighting for emphasis.",
+      "Flat surfaces with a fixed, non-scrolling gradient mesh behind everything, instead of box-shadow-driven depth.",
+      "Urbanist throughout, leaning on weight contrast (400 body vs. 900 display) rather than multiple families."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Ink is the only color allowed to mean \"act on this\" or \"this is emphasized.\" Lavender is atmosphere and secondary surfaces only.", "section": "colors" },
+      { "name": "The No Second Accent Rule", "body": "Honey/ochre and raspberry were both explicitly tried as a second accent color and rejected. Don't reintroduce a warm or saturated accent color.", "section": "colors" },
+      { "name": "The Eyebrow Rule", "body": "Any uppercase, letter-spaced label is a label, never a heading — it introduces the headline that follows, it doesn't replace one.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. A shadow only ever appears as a fixed, low-intensity marker (cards, inputs) or as a direct response to hover — never as a multi-level elevation system.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep Ink (#242424) as the only color for anything actionable — buttons, links, focus rings, active states.",
+      "Do let the fixed background gradient mesh show through wherever a surface isn't explicitly a card.",
+      "Do use shadow-sm + hover lift as the only elevation vocabulary.",
+      "Do give form inputs a visible white fill and border."
+    ],
+    "donts": [
+      "Don't reintroduce the dark ink/rust theme.",
+      "Don't add a second accent color (honey/ochre and raspberry were both tried and rejected).",
+      "Don't give the top nav a background fill or border.",
+      "Don't carry the landing hero's rounded-full pill button into product UI."
+    ]
+  }
+}
