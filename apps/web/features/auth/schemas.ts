@@ -1,18 +1,41 @@
 import { LoginRequestSchema, SignupRequestSchema } from "schemas";
 import { z } from "zod";
 
-export const LoginFormSchema = LoginRequestSchema;
-export type LoginFormValues = z.infer<typeof LoginFormSchema>;
+// Factories rather than static schemas: Zod's own built-in messages (via
+// zod/locales, see shared/components/locale-sync.tsx) are technical internals
+// ("Too small: expected string to have >=8 characters"), not copy a
+// non-technical client should ever see — every field here gets its own
+// translated message instead, passed in from the component at render time.
+export interface LoginFormMessages {
+  emailInvalid: string;
+  passwordRequired: string;
+}
 
-// A factory rather than a static schema: the "passwords don't match" message
-// is our own copy (not one of Zod's built-in messages, which are localized
-// globally via zod/locales — see shared/components/locale-sync.tsx), so it
-// needs a translation passed in from the component at render time.
-export function createSignupFormSchema(passwordsDontMatchMessage: string) {
+export function createLoginFormSchema(messages: LoginFormMessages) {
+  return LoginRequestSchema.extend({
+    email: z.email({ message: messages.emailInvalid }),
+    password: z.string().min(1, messages.passwordRequired),
+  });
+}
+export type LoginFormValues = z.infer<ReturnType<typeof createLoginFormSchema>>;
+
+export interface SignupFormMessages {
+  firstNameRequired: string;
+  lastNameRequired: string;
+  emailInvalid: string;
+  passwordTooShort: string;
+  passwordsDontMatch: string;
+}
+
+export function createSignupFormSchema(messages: SignupFormMessages) {
   return SignupRequestSchema.extend({
-    confirmPassword: z.string().min(8),
+    firstName: z.string().min(1, messages.firstNameRequired),
+    lastName: z.string().min(1, messages.lastNameRequired),
+    email: z.email({ message: messages.emailInvalid }),
+    password: z.string().min(8, messages.passwordTooShort),
+    confirmPassword: z.string().min(8, messages.passwordTooShort),
   }).refine((data) => data.password === data.confirmPassword, {
-    message: passwordsDontMatchMessage,
+    message: messages.passwordsDontMatch,
     path: ["confirmPassword"],
   });
 }

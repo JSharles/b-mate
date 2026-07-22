@@ -6,6 +6,7 @@
   "Landing": {
     "signUp": "S'inscrire",
     "logIn": "Se connecter",
+    "openMenu": "Ouvrir le menu",
     "hero": {
       "eyebrow": "Ce qu'on ne voit pas, on l'imagine toujours pire.",
       "titleBefore": "Votre projet n'est plus ",
@@ -63,6 +64,8 @@
     "faq": {
       "eyebrow": "Questions fréquentes",
       "navLabel": "FAQ",
+      "groupHowItWorks": "Fonctionnement",
+      "groupTrustPricing": "Confiance & tarifs",
       "q1": "b-mate remplace-t-il mes outils actuels ?",
       "a1": "Non. b-mate ne remplace ni votre gestionnaire de tâches ni votre stack technique — il vient simplement rendre visible, pour votre client, ce qui s'y passe.",
       "q2": "Mon client doit-il créer un compte ?",
@@ -89,7 +92,9 @@
       "submit": "Se connecter",
       "submitPending": "Connexion…",
       "noAccount": "Pas encore de compte ?",
-      "signUp": "S'inscrire"
+      "signUp": "S'inscrire",
+      "emailInvalid": "Saisissez une adresse email valide",
+      "passwordRequired": "Le mot de passe est requis"
     },
     "SignupPage": {
       "title": "S'inscrire"
@@ -104,11 +109,15 @@
       "submitPending": "Création du compte…",
       "alreadyHaveAccount": "Déjà un compte ?",
       "logIn": "Se connecter",
-      "passwordsDontMatch": "Les mots de passe ne correspondent pas"
+      "passwordsDontMatch": "Les mots de passe ne correspondent pas",
+      "firstNameRequired": "Le prénom est requis",
+      "lastNameRequired": "Le nom est requis",
+      "emailInvalid": "Saisissez une adresse email valide",
+      "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères"
     }
   },
   "Home": {
-    "welcome": "Content de te revoir, {firstName}",
+    "welcome": "Bienvenue, {firstName}",
     "title": "Vos projets",
     "newProject": "Nouveau projet",
     "createdAt": "Créé le {date}",

@@ -7,9 +7,7 @@ export function Hero() {
 
   return (
     <section className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-6 pt-16 pb-24 text-center sm:pt-24">
-      <p className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">
-        {tHero("eyebrow")}
-      </p>
+      <p className="text-sm font-medium text-muted-foreground">{tHero("eyebrow")}</p>
       <h1 className="text-balance text-4xl leading-[1.05] font-black sm:text-6xl">
         {tHero("titleBefore")}
         <span className="text-primary">{tHero("titleHighlight")}</span>

@@ -12,7 +12,7 @@ export function ClosingBand() {
         </h2>
         <Link
           href="/signup"
-          className="rounded-full bg-foreground px-8 py-3 text-sm font-semibold text-background transition-colors hover:bg-foreground/90"
+          className="rounded-full bg-background px-8 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-background/90"
         >
           {t("cta")}
         </Link>
