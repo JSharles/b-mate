@@ -4,8 +4,7 @@ import type { AnchorHTMLAttributes, ReactNode } from "react";
 import type { User } from "schemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useLogout } from "@/features/auth/hooks";
-import { SidebarProvider } from "@/shared/components/ui/sidebar";
-import { AppSidebar } from "./app-sidebar";
+import { TopNav } from "./top-nav";
 
 vi.mock("@/features/auth/hooks", () => ({
   useLogout: vi.fn(),
@@ -32,22 +31,28 @@ const fakeUser = {
   email: "jc@example.com",
 } as User;
 
-describe("AppSidebar", () => {
+describe("TopNav", () => {
   beforeEach(() => {
     mockedUseLogout.mockReturnValue({ mutate: vi.fn() } as unknown as ReturnType<
       typeof useLogout
     >);
   });
 
-  it("shows the user's initials and full name", () => {
-    render(
-      <SidebarProvider>
-        <AppSidebar user={fakeUser} />
-      </SidebarProvider>,
-    );
+  it("shows the brand mark, the user's initials and full name", () => {
+    render(<TopNav user={fakeUser} />);
 
+    expect(screen.getByText("b-mate")).toBeInTheDocument();
     expect(screen.getByText("JC")).toBeInTheDocument();
     expect(screen.getByText("Jean Charles")).toBeInTheDocument();
+  });
+
+  it("links to the profile page from the user menu", async () => {
+    const user = userEvent.setup();
+    render(<TopNav user={fakeUser} />);
+
+    await user.click(screen.getByText("Jean Charles"));
+
+    expect(await screen.findByText("profile")).toHaveAttribute("href", "/profile");
   });
 
   it("calls logout.mutate when logout is selected", async () => {
@@ -55,11 +60,7 @@ describe("AppSidebar", () => {
     mockedUseLogout.mockReturnValue({ mutate } as unknown as ReturnType<typeof useLogout>);
     const user = userEvent.setup();
 
-    render(
-      <SidebarProvider>
-        <AppSidebar user={fakeUser} />
-      </SidebarProvider>,
-    );
+    render(<TopNav user={fakeUser} />);
 
     await user.click(screen.getByText("Jean Charles"));
     await user.click(await screen.findByText("logout"));

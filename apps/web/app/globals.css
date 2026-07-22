@@ -1,78 +1,49 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
 :root {
   --radius: 0.625rem;
-  /* Brand palette (ink/paper/rust) — same tokens as the landing page's
-     `.landing` scope below, now applied app-wide per an explicit decision to
-     unify the marketing site and the product under one visual identity. */
-  --background: #16241f;
-  --foreground: #f4eee1;
-  --card: #1f332d;
-  --card-foreground: #f4eee1;
-  --popover: #1f332d;
-  --popover-foreground: #f4eee1;
-  --primary: #d97748;
-  --primary-foreground: #16241f;
-  --secondary: #33473f;
-  --secondary-foreground: #f4eee1;
-  --muted: #1f332d;
-  --muted-foreground: color-mix(in oklab, #f4eee1 65%, transparent);
-  --accent: #33473f;
-  --accent-foreground: #f4eee1;
+  /* Brand palette: near-black + white/gray for everything interactive
+     (emphasis, primary actions, focus rings), lavender reserved for the
+     page-background gradient and soft/secondary touches only — no
+     accent color as such. One theme only, applied app-wide including the
+     marketing landing page. No dark theme exists; see docs/PRODUCT.md and
+     specs/002-design-system-rebrand for why. */
+  --gradient-from: #d9d0fb;
+  --gradient-via: #eee9fa;
+  --gradient-to: #f0eff2;
+  --gradient-glow: #6c5ce7;
+  --background: #f1eff7;
+  --foreground: #242424;
+  --card: #ffffff;
+  --card-foreground: #242424;
+  --popover: #ffffff;
+  --popover-foreground: #242424;
+  --primary: #242424;
+  --primary-foreground: #ffffff;
+  --secondary: #d0ccff;
+  --secondary-foreground: #242424;
+  --muted: #efeef6;
+  --muted-foreground: #6b6874;
+  --accent: #ece9ff;
+  --accent-foreground: #242424;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: #33473f;
-  --input: #33473f;
-  --ring: #d97748;
+  --border: #e7e5f2;
+  --input: #d6d1ec;
+  --ring: #242424;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: #1f332d;
-  --sidebar-foreground: #f4eee1;
-  --sidebar-primary: #d97748;
-  --sidebar-primary-foreground: #16241f;
-  --sidebar-accent: #33473f;
-  --sidebar-accent-foreground: #f4eee1;
-  --sidebar-border: #33473f;
-  --sidebar-ring: #d97748;
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #242424;
+  --sidebar-primary: #242424;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ece9ff;
+  --sidebar-accent-foreground: #242424;
+  --sidebar-border: #e7e5f2;
+  --sidebar-ring: #242424;
 }
 
 @theme inline {
@@ -111,7 +82,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-urbanist);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -120,7 +91,25 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    position: relative;
+  }
+  /* Fixed to the viewport (not the document) so it never scrolls, tiles, or
+     stretches oddly on tall pages — a plain background-image on body sizes
+     itself against body's own box, which can repeat visibly once content
+     grows taller than one viewport. A dedicated fixed layer behind
+     everything sidesteps that entirely. Layered radial "glow" pools plus the
+     diagonal wash read closer to a designed gradient-mesh image than a flat
+     two-stop linear-gradient, without needing an actual image asset. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(at 8% 8%, color-mix(in oklab, var(--gradient-glow) 35%, transparent) 0%, transparent 42%),
+      radial-gradient(at 100% 100%, color-mix(in oklab, var(--gradient-to) 80%, white) 0%, transparent 55%),
+      linear-gradient(135deg, var(--gradient-from) 0%, var(--gradient-via) 45%, var(--gradient-to) 100%);
   }
   html {
     scroll-behavior: smooth;
@@ -131,28 +120,4 @@
   html {
     scroll-behavior: auto;
   }
-}
-
-/* Same ink/paper/rust palette as the :root theme above, kept as its own
-   scoped tokens so the landing page's components (which reference
-   `bg-landing-ink` etc. directly) don't need to change now that the app
-   theme has converged on the same identity. */
-.landing {
-  --landing-ink: #16241f;
-  --landing-ink-soft: #1f332d;
-  --landing-ink-line: #33473f;
-  --landing-paper: #f4eee1;
-  --landing-paper-dim: #e8decb;
-  --landing-rust: #d97748;
-  --landing-rust-hover: #e0855c;
-}
-
-@theme inline {
-  --color-landing-ink: var(--landing-ink);
-  --color-landing-ink-soft: var(--landing-ink-soft);
-  --color-landing-ink-line: var(--landing-ink-line);
-  --color-landing-paper: var(--landing-paper);
-  --color-landing-paper-dim: var(--landing-paper-dim);
-  --color-landing-rust: var(--landing-rust);
-  --color-landing-rust-hover: var(--landing-rust-hover);
 }

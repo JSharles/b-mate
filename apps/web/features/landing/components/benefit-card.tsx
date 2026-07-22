@@ -17,17 +17,17 @@ export function BenefitCard({ icon: Icon, title, description, span, tone, badge 
         "flex flex-col gap-4 rounded-2xl p-6 sm:p-8",
         span === 6 ? "sm:col-span-6" : "sm:col-span-3",
         tone === "paper"
-          ? "bg-landing-paper text-landing-ink"
-          : "border border-landing-ink-line bg-landing-ink-soft text-landing-paper"
+          ? "bg-card text-foreground"
+          : "border border-border bg-foreground text-background"
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <Icon className="size-6 text-landing-rust" strokeWidth={1.75} />
+        <Icon className="size-6 text-primary" strokeWidth={1.75} />
         {badge ? (
           <span
             className={cn(
               "rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
-              tone === "paper" ? "bg-landing-ink/10 text-landing-ink/70" : "bg-landing-paper/15 text-landing-paper/70",
+              tone === "paper" ? "bg-foreground/10 text-foreground/70" : "bg-background/15 text-background/70",
             )}
           >
             {badge}
@@ -38,7 +38,7 @@ export function BenefitCard({ icon: Icon, title, description, span, tone, badge 
       <p
         className={cn(
           "text-sm leading-relaxed",
-          tone === "paper" ? "text-landing-ink/70" : "text-landing-paper/70",
+          tone === "paper" ? "text-muted-foreground" : "text-background/70",
         )}
       >
         {description}

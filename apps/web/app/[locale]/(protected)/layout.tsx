@@ -4,8 +4,7 @@ import type { ReactNode } from "react";
 import { redirect } from "@/i18n/navigation";
 import { getMe } from "@/shared/api/auth";
 import { ApiError } from "@/shared/lib/api-client";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/shared/components/ui/sidebar";
-import { AppSidebar } from "./_components/app-sidebar";
+import { TopNav } from "@/shared/components/top-nav";
 
 // Private, per-user pages — never indexed. See also app/robots.ts.
 export const metadata: Metadata = {
@@ -33,14 +32,9 @@ export default async function ProtectedLayout({
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar user={user} />
-      <SidebarInset>
-        <header className="flex h-14 items-center border-b px-4">
-          <SidebarTrigger />
-        </header>
-        <div className="flex flex-1 flex-col p-6">{children}</div>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="flex min-h-full flex-col">
+      <TopNav user={user} />
+      <div className="flex flex-1 flex-col p-6">{children}</div>
+    </div>
   );
 }

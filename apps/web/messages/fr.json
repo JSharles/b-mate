@@ -108,8 +108,10 @@
     }
   },
   "Home": {
+    "welcome": "Content de te revoir, {firstName}",
     "title": "Vos projets",
     "newProject": "Nouveau projet",
+    "createdAt": "Créé le {date}",
     "emptyTitle": "Aucun projet pour le moment",
     "emptyDescription": "Créez votre premier projet pour commencer à suivre son avancement.",
     "emptyCta": "Créer un projet"
@@ -164,7 +166,7 @@
       "submitPending": "Un instant…"
     }
   },
-  "Sidebar": {
+  "TopNav": {
     "profile": "Profil",
     "logout": "Se déconnecter"
   },

@@ -41,8 +41,20 @@ describe("ProjectList", () => {
   it("renders a card per project when the list is populated", () => {
     mockedUseProjects.mockReturnValue({
       data: [
-        { id: "1", title: "Site vitrine client X" },
-        { id: "2", title: "App mobile client Y" },
+        {
+          id: "1",
+          title: "Site vitrine client X",
+          status: null,
+          progressPercentage: null,
+          createdAt: "2026-01-15T00:00:00.000Z",
+        },
+        {
+          id: "2",
+          title: "App mobile client Y",
+          status: null,
+          progressPercentage: null,
+          createdAt: "2026-02-01T00:00:00.000Z",
+        },
       ],
       isPending: false,
     } as unknown as ReturnType<typeof useProjects>);
@@ -52,10 +64,38 @@ describe("ProjectList", () => {
     expect(screen.getByText("Site vitrine client X")).toBeInTheDocument();
     expect(screen.getByText("App mobile client Y")).toBeInTheDocument();
     expect(screen.queryByText("emptyTitle")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Site vitrine client X" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Site vitrine client X/ })).toHaveAttribute(
       "href",
       "/projects/1",
     );
+  });
+
+  it("shows the creation date, and the status/progress only when present", () => {
+    mockedUseProjects.mockReturnValue({
+      data: [
+        {
+          id: "1",
+          title: "Site vitrine client X",
+          status: null,
+          progressPercentage: null,
+          createdAt: "2026-01-15T00:00:00.000Z",
+        },
+        {
+          id: "2",
+          title: "App mobile client Y",
+          status: "En cours",
+          progressPercentage: 42,
+          createdAt: "2026-02-01T00:00:00.000Z",
+        },
+      ],
+      isPending: false,
+    } as unknown as ReturnType<typeof useProjects>);
+
+    render(<ProjectList />);
+
+    expect(screen.getAllByText("createdAt")).toHaveLength(2);
+    expect(screen.queryByText("En cours")).toBeInTheDocument();
+    expect(screen.getByText("42%")).toBeInTheDocument();
   });
 
   it("shows loading skeletons while pending", () => {

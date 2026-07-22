@@ -14,7 +14,7 @@ export function FeaturesSection() {
 
   return (
     <section id="features" className="mx-auto flex max-w-5xl scroll-mt-24 flex-col gap-10 px-6 py-20">
-      <h2 className="text-sm font-semibold tracking-[0.2em] text-landing-rust uppercase">
+      <h2 className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">
         {t("eyebrow")}
       </h2>
       <AiPreview />
