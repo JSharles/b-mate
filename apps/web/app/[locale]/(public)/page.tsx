@@ -38,7 +38,7 @@ export default async function LandingPage({
   setRequestLocale(locale);
 
   return (
-    <main className="landing bg-landing-ink text-landing-paper">
+    <main className="text-foreground">
       <NavBar />
       <Hero />
       <BenefitsSection />

@@ -30,7 +30,7 @@ function BenefitTrack({ namespace, icons, spans, tones }: Track) {
 
   return (
     <div id={namespace} className="flex flex-col gap-6 scroll-mt-24">
-      <h2 className="text-sm font-semibold tracking-[0.2em] text-landing-rust uppercase">
+      <h2 className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">
         {t("eyebrow")}
       </h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">

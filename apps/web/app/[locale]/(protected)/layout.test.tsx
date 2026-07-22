@@ -17,9 +17,9 @@ vi.mock("@/i18n/navigation", () => ({
 vi.mock("@/shared/api/auth", () => ({
   getMe: vi.fn(),
 }));
-vi.mock("./_components/app-sidebar", () => ({
-  AppSidebar: ({ user }: { user: { firstName: string } }) => (
-    <div data-testid="app-sidebar">{user.firstName}</div>
+vi.mock("@/shared/components/top-nav", () => ({
+  TopNav: ({ user }: { user: { firstName: string } }) => (
+    <div data-testid="top-nav">{user.firstName}</div>
   ),
 }));
 
@@ -35,14 +35,14 @@ describe("ProtectedLayout", () => {
     mockedCookies.mockResolvedValue({ toString: () => "session_token=abc" } as never);
   });
 
-  it("renders the sidebar and children when authenticated", async () => {
+  it("renders the top nav and children when authenticated", async () => {
     mockedGetMe.mockResolvedValue({ id: "1", firstName: "Jean" } as never);
 
     const ui = await ProtectedLayout({ children: <div>page content</div>, params });
     render(ui);
 
     expect(screen.getByText("page content")).toBeInTheDocument();
-    expect(screen.getByTestId("app-sidebar")).toHaveTextContent("Jean");
+    expect(screen.getByTestId("top-nav")).toHaveTextContent("Jean");
   });
 
   it("redirects to /login on a 401, preserving the current locale", async () => {

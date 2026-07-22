@@ -108,8 +108,10 @@
     }
   },
   "Home": {
+    "welcome": "Welcome back, {firstName}",
     "title": "Your projects",
     "newProject": "New project",
+    "createdAt": "Created {date}",
     "emptyTitle": "No projects yet",
     "emptyDescription": "Create your first project to start tracking its progress.",
     "emptyCta": "Create a project"
@@ -164,7 +166,7 @@
       "submitPending": "One moment…"
     }
   },
-  "Sidebar": {
+  "TopNav": {
     "profile": "Profile",
     "logout": "Log out"
   },
