@@ -23,7 +23,7 @@ const TRANSLATED_ITEMS = [
 // marketing copy, not the app's own theme (see FR-002 — no dark app theme).
 const TAG_STYLES: Record<(typeof TICKETS)[number]["tag"], string> = {
   chore: "bg-neutral-100/10 text-neutral-100/60",
-  bug: "bg-primary/20 text-primary",
+  bug: "bg-primary/40 text-background",
   feature: "bg-neutral-100/15 text-neutral-100/80",
 };
 
@@ -31,7 +31,7 @@ export function AiPreview() {
   const t = useTranslations("Landing.features.preview");
 
   return (
-    <div className="flex flex-col gap-8 rounded-3xl border border-border bg-card p-6 sm:p-10">
+    <div className="flex flex-col gap-8 rounded-3xl border border-dashed border-border bg-card p-6 sm:p-10">
       <div className="flex flex-col items-start gap-3">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold tracking-wide text-primary uppercase">
           <Sparkles className="size-3.5" />
@@ -60,7 +60,7 @@ export function AiPreview() {
                 <span className="font-mono text-neutral-100/80">{t(key)}</span>
                 <span
                   className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                    "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold uppercase",
                     TAG_STYLES[tag],
                   )}
                 >

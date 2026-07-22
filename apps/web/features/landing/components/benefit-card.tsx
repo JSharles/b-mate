@@ -18,15 +18,16 @@ export function BenefitCard({ icon: Icon, title, description, span, tone, badge 
         span === 6 ? "sm:col-span-6" : "sm:col-span-3",
         tone === "paper"
           ? "bg-card text-foreground"
-          : "border border-border bg-foreground text-background"
+          : "border border-border bg-foreground text-background",
+        badge ? "opacity-75" : undefined
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <Icon className="size-6 text-primary" strokeWidth={1.75} />
+        <Icon className={cn("size-6", tone === "ink" ? "text-background" : "text-primary")} strokeWidth={1.75} />
         {badge ? (
           <span
             className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
+              "rounded-full px-2 py-0.5 text-xs font-semibold tracking-wide uppercase",
               tone === "paper" ? "bg-foreground/10 text-foreground/70" : "bg-background/15 text-background/70",
             )}
           >

@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
+import { PasswordInput } from "@/shared/components/ui/password-input";
 import { ApiError } from "@/shared/lib/api-client";
 import { useSignup } from "../hooks";
 import { createSignupFormSchema, type SignupFormValues } from "../schemas";
@@ -24,7 +25,14 @@ export function SignupForm() {
   const t = useTranslations("Auth.SignupForm");
   const tToasts = useTranslations("Toasts");
   const signupFormSchema = useMemo(
-    () => createSignupFormSchema(t("passwordsDontMatch")),
+    () =>
+      createSignupFormSchema({
+        firstNameRequired: t("firstNameRequired"),
+        lastNameRequired: t("lastNameRequired"),
+        emailInvalid: t("emailInvalid"),
+        passwordTooShort: t("passwordTooShort"),
+        passwordsDontMatch: t("passwordsDontMatch"),
+      }),
     [t],
   );
   const form = useForm<SignupFormValues>({
@@ -102,7 +110,7 @@ export function SignupForm() {
             <FormItem>
               <FormLabel>{t("password")}</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="new-password" {...field} />
+                <PasswordInput autoComplete="new-password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -115,7 +123,7 @@ export function SignupForm() {
             <FormItem>
               <FormLabel>{t("confirmPassword")}</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="new-password" {...field} />
+                <PasswordInput autoComplete="new-password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

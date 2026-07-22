@@ -1,5 +1,11 @@
 # Client Portal — Project Tracking & Simplification
 
+<!-- impeccable:product-schema 1 -->
+
+## Platform
+
+web
+
 > Status: output of a first ideation pass. Nothing is locked in — see "Open decisions". Full project context, decisions made with the alternatives that were ruled out, and the data model diagrams are documented in Notion; this file is the working version used by AI agents on this repo.
 
 ## What the product does
@@ -13,6 +19,28 @@ The full vision includes an AI-assisted simplification layer. **It is not part o
 - The content shown is **real**, displayed as-is, under the developer's responsibility. Never generated content.
 - The AI's role (post-MVP) is **bounded**: it defines generic technical terms and answers based on content that actually exists. It never makes things up.
 - If the information doesn't exist, the AI doesn't improvise: it **escalates the question to the developer**. An answer to the client is always either reliable or routed, never wrong.
+
+---
+
+## Positioning
+
+**Full vision, not yet implemented — see "Out of scope" in MVP scope below for what exists today.** The mechanism that a neighboring "client portal" or generic status-report tool could not truthfully copy: b-mate connects to the developer's **existing** task board (whatever tool they already use day to day — Jira, Linear, GitHub Issues, Trello, etc.) and automatically translates its real content into plain language for the client, across two views: the task currently in progress, and the roadmap. The client is never asked to learn the developer's tool, and never reads a summary the developer had to write by hand — they read the real board, worded for them.
+
+This is the product's ultimate differentiator; it is deliberately **not** part of the MVP (see "Out of scope" — no external integrations, no AI layer yet), but architecture should not accidentally rule it out.
+
+## Operating Context
+
+The developer's real workflow already lives inside whatever task tracker they use for their own work — b-mate is not meant to replace that tool. The full vision has b-mate fetch from that existing board rather than require re-entry, then vulgarize the fetched content for the client across two client-facing surfaces: current task status and roadmap.
+
+Today (MVP), this fetch/translate layer does not exist: tasks are entered directly in b-mate (see "Out of scope" — no Jira/Linear/GitHub/Notion integration, no AI layer), and this gap is deliberate rather than an oversight — see Positioning above.
+
+## Evidence on Hand
+
+**Pre-launch. No paying customers, no case studies, no testimonials on hand.** The landing page FAQ says as much directly: "b-mate est en phase de lancement — la tarification sera communiquée prochainement." Future work (landing copy, onboarding, marketing surfaces) must not fabricate customer quotes, usage numbers, logos, or case studies until real ones exist.
+
+## Brand Commitments
+
+Product name: **b-mate**. Tagline (from app metadata): "Track your project's progress with total transparency." No other voice or visual-identity commitment has been confirmed as binding at the product-truth level — the current visual system lives in code, not in a confirmed brand brief.
 
 ---
 
@@ -226,6 +254,17 @@ Context is useful to avoid "fixing" the schema in the wrong direction.
 - [ ] **Can a task have multiple assignees?** (a single `assignee_id` is enough for the MVP; otherwise a join table is needed)
 - [ ] **Email delivery**: which service for invitations?
 - [ ] **`Users.status`**: what does this field actually represent?
+- [ ] **Which board/tracker(s) to support first for the fetch layer** (Jira, Linear, GitHub Issues, Trello...), and how auth/sync would work — full-vision item, not MVP.
+
+---
+
+## Product Principles
+
+- **Never fabricate.** Everything the client sees traces back to real, existing content — the foundational constraint the product is named for (see "Product principles (locked)" above).
+- **Zero added process.** b-mate must not force the developer to adopt a new methodology, board, or tool just to use it — today that means manual entry; the full vision fetches from their existing tool instead of replacing it (see Positioning, Operating Context).
+- **Translation, not replacement.** The client-facing view reworks real technical content into plain language; it never invents or tidies up beyond what's true.
+- **Escalate rather than guess.** Missing or ambiguous information routes to the developer instead of being improvised.
+- **MVP scope guides what's built; full vision guides how it's architected.** Don't build the fetch/AI layer ahead of schedule, but don't foreclose it either.
 
 ---
 

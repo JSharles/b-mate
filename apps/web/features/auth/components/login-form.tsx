@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
@@ -13,17 +14,26 @@ import {
   FormLabel,
   FormMessage,
 } from "@/shared/components/ui/form";
+import { PasswordInput } from "@/shared/components/ui/password-input";
 import { Input } from "@/shared/components/ui/input";
 import { ApiError } from "@/shared/lib/api-client";
 import { useLogin } from "../hooks";
-import { LoginFormSchema, type LoginFormValues } from "../schemas";
+import { createLoginFormSchema, type LoginFormValues } from "../schemas";
 
 export function LoginForm() {
   const login = useLogin();
   const t = useTranslations("Auth.LoginForm");
   const tToasts = useTranslations("Toasts");
+  const loginFormSchema = useMemo(
+    () =>
+      createLoginFormSchema({
+        emailInvalid: t("emailInvalid"),
+        passwordRequired: t("passwordRequired"),
+      }),
+    [t],
+  );
   const form = useForm<LoginFormValues>({
-    resolver: zodResolver(LoginFormSchema),
+    resolver: zodResolver(loginFormSchema),
     defaultValues: { email: "", password: "" },
   });
 
@@ -62,7 +72,7 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>{t("password")}</FormLabel>
               <FormControl>
-                <Input type="password" autoComplete="current-password" {...field} />
+                <PasswordInput autoComplete="current-password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

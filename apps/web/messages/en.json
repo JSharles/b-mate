@@ -6,6 +6,7 @@
   "Landing": {
     "signUp": "Sign up",
     "logIn": "Log in",
+    "openMenu": "Open menu",
     "hero": {
       "eyebrow": "What clients can't see, they always imagine worse.",
       "titleBefore": "Your project is no longer ",
@@ -63,6 +64,8 @@
     "faq": {
       "eyebrow": "Frequently asked questions",
       "navLabel": "FAQ",
+      "groupHowItWorks": "How it works",
+      "groupTrustPricing": "Trust & pricing",
       "q1": "Does b-mate replace my current tools?",
       "a1": "No. b-mate doesn't replace your task tracker or your tech stack — it simply makes what's happening in them visible to your client.",
       "q2": "Does my client need to create an account?",
@@ -89,7 +92,9 @@
       "submit": "Log in",
       "submitPending": "Logging in…",
       "noAccount": "No account yet?",
-      "signUp": "Sign up"
+      "signUp": "Sign up",
+      "emailInvalid": "Enter a valid email address",
+      "passwordRequired": "Password is required"
     },
     "SignupPage": {
       "title": "Sign up"
@@ -104,11 +109,15 @@
       "submitPending": "Creating account…",
       "alreadyHaveAccount": "Already have an account?",
       "logIn": "Log in",
-      "passwordsDontMatch": "Passwords don't match"
+      "passwordsDontMatch": "Passwords don't match",
+      "firstNameRequired": "First name is required",
+      "lastNameRequired": "Last name is required",
+      "emailInvalid": "Enter a valid email address",
+      "passwordTooShort": "Password must be at least 8 characters"
     }
   },
   "Home": {
-    "welcome": "Welcome back, {firstName}",
+    "welcome": "Welcome, {firstName}",
     "title": "Your projects",
     "newProject": "New project",
     "createdAt": "Created {date}",

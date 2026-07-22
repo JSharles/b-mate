@@ -1,9 +1,22 @@
 import { render, screen } from "@testing-library/react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import SignupPage from "./page";
 
 vi.mock("@/features/auth/components/signup-form", () => ({
   SignupForm: () => <div data-testid="signup-form" />,
+}));
+
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({
+    href,
+    children,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 describe("SignupPage", () => {

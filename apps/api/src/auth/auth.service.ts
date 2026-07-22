@@ -19,7 +19,14 @@ export class AuthService {
 
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
-      throw new ConflictException('An account with this email already exists');
+      // Deliberately generic: doesn't confirm-by-name that this email is
+      // already registered, to reduce (not eliminate — the 409 status/timing
+      // still differs from a successful signup) account enumeration via this
+      // form. Full request-shape neutrality would need an email-verification
+      // step, which doesn't exist yet — see docs/PRODUCT.md open decisions.
+      throw new ConflictException(
+        "We couldn't create your account with these details. If you already have one, try logging in instead.",
+      );
     }
 
     const passwordHash = await argon2.hash(dto.password);
