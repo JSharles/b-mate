@@ -117,7 +117,7 @@
     "emptyCta": "Create a project"
   },
   "Projects": {
-    "NewProjectPage": {
+    "CreateProjectDialog": {
       "title": "New project"
     },
     "CreateProjectForm": {

@@ -34,7 +34,26 @@ describe("CreateProjectForm", () => {
     await user.type(screen.getByLabelText("title"), "My project");
     await user.click(screen.getByRole("button", { name: "submit" }));
 
-    expect(mutation.mutate).toHaveBeenCalledWith({ title: "My project" });
+    expect(mutation.mutate).toHaveBeenCalledWith(
+      { title: "My project" },
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    );
+  });
+
+  it("calls onCreated once the mutation succeeds", async () => {
+    const mutation = baseMutation();
+    mockedUseCreateProject.mockReturnValue(mutation);
+    const onCreated = vi.fn();
+    const user = userEvent.setup();
+
+    render(<CreateProjectForm onCreated={onCreated} />);
+    await user.type(screen.getByLabelText("title"), "My project");
+    await user.click(screen.getByRole("button", { name: "submit" }));
+
+    const [, options] = mutation.mutate.mock.calls[0] as [unknown, { onSuccess: () => void }];
+    options.onSuccess();
+
+    expect(onCreated).toHaveBeenCalled();
   });
 
   it("does not submit when the title is empty", async () => {

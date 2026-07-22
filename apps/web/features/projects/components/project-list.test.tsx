@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { useProjects } from "../hooks";
@@ -20,22 +21,30 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
+vi.mock("./create-project-dialog", () => ({
+  CreateProjectDialog: vi.fn(({ open }: { open: boolean }) => (
+    <div data-testid="create-project-dialog">{open ? "open" : "closed"}</div>
+  )),
+}));
+
 const mockedUseProjects = vi.mocked(useProjects);
 
 describe("ProjectList", () => {
-  it("shows an empty state with a create link when there are no projects", () => {
+  it("shows an empty state whose create button opens the create-project dialog", async () => {
     mockedUseProjects.mockReturnValue({
       data: [],
       isPending: false,
     } as unknown as ReturnType<typeof useProjects>);
+    const user = userEvent.setup();
 
     render(<ProjectList />);
 
     expect(screen.getByText("emptyTitle")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "emptyCta" })).toHaveAttribute(
-      "href",
-      "/projects/new",
-    );
+    expect(screen.getByTestId("create-project-dialog")).toHaveTextContent("closed");
+
+    await user.click(screen.getByRole("button", { name: "emptyCta" }));
+
+    expect(screen.getByTestId("create-project-dialog")).toHaveTextContent("open");
   });
 
   it("renders a card per project when the list is populated", () => {
@@ -109,18 +118,20 @@ describe("ProjectList", () => {
     expect(screen.queryByText("emptyTitle")).not.toBeInTheDocument();
   });
 
-  it("always renders the header with a new project link", () => {
+  it("opens the create-project dialog from the header button", async () => {
     mockedUseProjects.mockReturnValue({
       data: [],
       isPending: false,
     } as unknown as ReturnType<typeof useProjects>);
+    const user = userEvent.setup();
 
     render(<ProjectList />);
 
     expect(screen.getByText("title")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "newProject" })).toHaveAttribute(
-      "href",
-      "/projects/new",
-    );
+    expect(screen.getByTestId("create-project-dialog")).toHaveTextContent("closed");
+
+    await user.click(screen.getByRole("button", { name: "newProject" }));
+
+    expect(screen.getByTestId("create-project-dialog")).toHaveTextContent("open");
   });
 });

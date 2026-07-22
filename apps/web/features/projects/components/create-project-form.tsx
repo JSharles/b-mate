@@ -17,7 +17,7 @@ import { ApiError } from "@/shared/lib/api-client";
 import { useCreateProject } from "../hooks";
 import { CreateProjectFormSchema, type CreateProjectFormValues } from "../schemas";
 
-export function CreateProjectForm() {
+export function CreateProjectForm({ onCreated }: { onCreated?: () => void }) {
   const createProject = useCreateProject();
   const t = useTranslations("Projects.CreateProjectForm");
   const tToasts = useTranslations("Toasts");
@@ -27,7 +27,7 @@ export function CreateProjectForm() {
   });
 
   function onSubmit(values: CreateProjectFormValues) {
-    createProject.mutate(values);
+    createProject.mutate(values, { onSuccess: () => onCreated?.() });
   }
 
   return (
