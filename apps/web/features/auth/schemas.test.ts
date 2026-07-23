@@ -12,6 +12,7 @@ const signupMessages = {
   emailInvalid: "Enter a valid email address",
   passwordTooShort: "Password must be at least 8 characters",
   passwordsDontMatch: "Passwords don't match",
+  accountKindRequired: "Choose whether you're a developer or a client",
 };
 
 describe("createLoginFormSchema", () => {
@@ -45,6 +46,7 @@ describe("createSignupFormSchema", () => {
     lastName: "Charles",
     email: "jc@example.com",
     password: "supersecret123",
+    accountKind: "developer" as const,
   };
   const schema = createSignupFormSchema(signupMessages);
 
@@ -79,6 +81,24 @@ describe("createSignupFormSchema", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].message).toBe(signupMessages.firstNameRequired);
+    }
+  });
+
+  it("accepts a client accountKind", () => {
+    const result = schema.safeParse({
+      ...base,
+      accountKind: "client",
+      confirmPassword: base.password,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a missing accountKind with a plain-language message", () => {
+    const { accountKind: _accountKind, ...withoutKind } = base;
+    const result = schema.safeParse({ ...withoutKind, confirmPassword: base.password });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(signupMessages.accountKindRequired);
     }
   });
 });

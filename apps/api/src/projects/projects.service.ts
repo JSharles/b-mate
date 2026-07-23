@@ -4,7 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Project, ProjectMember, ProjectMemberRole } from '@prisma/client';
+import {
+  AccountKind,
+  Project,
+  ProjectMember,
+  ProjectMemberRole,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -32,7 +37,19 @@ export class ProjectsService {
   // docs/PRODUCT.md "Ownership & handoff" for why is_admin is independent of
   // role. Both rows are created in one transaction so a project never briefly
   // exists without a member able to manage it.
-  async create(userId: string, dto: CreateProjectDto): Promise<Project> {
+  //
+  // A client-kind account can never create a project (specs/004-account-kind)
+  // — developer and client are non-overlapping audiences by design, so this
+  // is rejected at the API level, not merely hidden in the UI.
+  async create(
+    userId: string,
+    accountKind: AccountKind,
+    dto: CreateProjectDto,
+  ): Promise<Project> {
+    if (accountKind === 'client') {
+      throw new ForbiddenException('Client accounts cannot create projects');
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const project = await tx.project.create({
         data: { title: dto.title },
@@ -58,7 +75,10 @@ export class ProjectsService {
     });
   }
 
-  async findOneForUser(userId: string, projectId: string): Promise<ProjectDetails> {
+  async findOneForUser(
+    userId: string,
+    projectId: string,
+  ): Promise<ProjectDetails> {
     const membership = await this.assertIsMember(userId, projectId);
 
     const project = await this.prisma.project.findUniqueOrThrow({

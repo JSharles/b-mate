@@ -121,4 +121,16 @@ describe("ProjectPage", () => {
 
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("shows nothing when the query errors, even with a stale project still cached from a prior session", () => {
+    mockedUseProject.mockReturnValue({
+      data: { id: "project-1", title: "Someone else's project", role: "contributor", isAdmin: true },
+      isPending: false,
+      isError: true,
+    } as unknown as ReturnType<typeof useProject>);
+
+    const { container } = renderPage();
+
+    expect(container).toBeEmptyDOMElement();
+  });
 });

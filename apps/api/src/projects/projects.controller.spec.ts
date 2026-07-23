@@ -8,6 +8,7 @@ const fakeUser: User = {
   lastName: 'Charles',
   email: 'jc@example.com',
   passwordHash: 'hashed',
+  accountKind: 'developer',
   company: null,
   address: null,
   phone: null,
@@ -58,12 +59,12 @@ describe('ProjectsController', () => {
     );
   });
 
-  it('create delegates to the service with the current user', async () => {
+  it('create delegates to the service with the current user and their accountKind', async () => {
     projectsService.create.mockResolvedValue(fakeProject);
 
     const result = await controller.create(fakeUser, { title: 'My project' });
 
-    expect(projectsService.create).toHaveBeenCalledWith('user-1', {
+    expect(projectsService.create).toHaveBeenCalledWith('user-1', 'developer', {
       title: 'My project',
     });
     expect(result).toEqual(fakeProject);

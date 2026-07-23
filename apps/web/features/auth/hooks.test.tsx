@@ -40,9 +40,10 @@ describe("auth hooks", () => {
     vi.clearAllMocks();
   });
 
-  it("useSignup caches the user and redirects to /home", async () => {
+  it("useSignup caches the user, redirects to /home, and clears any stale cached data from a prior session", async () => {
     mockedSignup.mockResolvedValue(fakeUser);
     const { Wrapper, queryClient } = createWrapper();
+    queryClient.setQueryData(["projects", "1"], { id: "1", title: "Someone else's project" });
 
     const { result } = renderHook(() => useSignup(), { wrapper: Wrapper });
     act(() => {
@@ -56,12 +57,14 @@ describe("auth hooks", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(queryClient.getQueryData(currentUserKey)).toBe(fakeUser);
+    expect(queryClient.getQueryData(["projects", "1"])).toBeUndefined();
     expect(push).toHaveBeenCalledWith("/home");
   });
 
-  it("useLogin caches the user and redirects to /home", async () => {
+  it("useLogin caches the user, redirects to /home, and clears any stale cached data from a prior session", async () => {
     mockedLogin.mockResolvedValue(fakeUser);
     const { Wrapper, queryClient } = createWrapper();
+    queryClient.setQueryData(["projects", "1"], { id: "1", title: "Someone else's project" });
 
     const { result } = renderHook(() => useLogin(), { wrapper: Wrapper });
     act(() => {
@@ -70,13 +73,15 @@ describe("auth hooks", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(queryClient.getQueryData(currentUserKey)).toBe(fakeUser);
+    expect(queryClient.getQueryData(["projects", "1"])).toBeUndefined();
     expect(push).toHaveBeenCalledWith("/home");
   });
 
-  it("useLogout clears the cached user and redirects to /", async () => {
+  it("useLogout clears the cached user, any other cached data, and redirects to /", async () => {
     mockedLogout.mockResolvedValue({ success: true });
     const { Wrapper, queryClient } = createWrapper();
     queryClient.setQueryData(currentUserKey, fakeUser);
+    queryClient.setQueryData(["projects", "1"], { id: "1", title: "Their project" });
 
     const { result } = renderHook(() => useLogout(), { wrapper: Wrapper });
     act(() => {
@@ -85,6 +90,7 @@ describe("auth hooks", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(queryClient.getQueryData(currentUserKey)).toBeNull();
+    expect(queryClient.getQueryData(["projects", "1"])).toBeUndefined();
     expect(push).toHaveBeenCalledWith("/");
   });
 });

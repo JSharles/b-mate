@@ -215,6 +215,8 @@ These rules follow from structural decisions. Not all of them are expressible in
 
 This makes `is_admin` set at invitation time (see `Invitations.is_admin` above), decided by whoever sends the invite. A developer inviting the first client to a brand-new project should default to checking it; subsequent client invitations (e.g. a colleague added later) don't need to.
 
+**Under reconsideration (see Open decisions):** whether this broad "admin manages all members" model is even the right shape, versus a narrower, purpose-built capability — a client can always initiate transferring project ownership to a new developer, who must accept before it takes effect (never unilateral). The rationale above (client shouldn't be stuck if the developer disappears) stays the same either way; what's being reconsidered is whether that's best served by the general `is_admin` flag or a dedicated handoff action.
+
 ### Authentication
 
 **Server-side sessions, not JWT.** Both developer and client sign up and log in with email + password (Argon2id hash, `Users.password_hash`). On login, the API creates a row in `Sessions` and sends its id to the browser as an `httpOnly` cookie (`SameSite=Lax`, 30-day fixed expiry, `Secure` in production). Every request looks the session up in Postgres; logout deletes the row.
@@ -255,6 +257,9 @@ Context is useful to avoid "fixing" the schema in the wrong direction.
 - [ ] **Email delivery**: which service for invitations?
 - [ ] **`Users.status`**: what does this field actually represent?
 - [ ] **Which board/tracker(s) to support first for the fetch layer** (Jira, Linear, GitHub Issues, Trello...), and how auth/sync would work — full-vision item, not MVP.
+- [ ] **Should "developer" vs "client" move fully onto the `User` account, replacing `ProjectMembers.role`?** Surfaced while specifying the account-kind feature (`specs/004-account-kind`): since developer and client are being treated as two non-overlapping audiences (a developer never needs to *be* a client, or vice versa — see Positioning), keeping the distinction in two places (an account-level kind and a per-project role that could in theory diverge) may be redundant. Merging them onto `User` would simplify the model but requires revisiting the already-shipped per-project role gating (`specs/003-rich-project-view`). Not decided.
+- [ ] **Are per-project permission roles (`is_admin`) still needed at all, or does only one capability matter — a client-initiated ownership transfer to a new developer, which the new developer must accept (never unilateral)?** This would replace the current broad "admin manages all members" model with a single, narrower handoff mechanism purpose-built for the "developer disappeared" scenario (see "Ownership & handoff" below). Not decided.
+- [ ] **What happens to project settings (board connections, uploaded documentation) when project ownership transfers to a new developer?** Working hypothesis, not yet designed: personal credentials (OAuth tokens, board API keys) belong to the developer who connected them and would need to be reconnected by the new developer; project content (uploaded docs, written documentation) belongs to the project and would carry over. Moot until the board-connector/Settings feature (currently a placeholder) is actually designed.
 
 ---
 

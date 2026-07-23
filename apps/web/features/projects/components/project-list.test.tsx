@@ -1,12 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useCurrentUser } from "@/shared/hooks/use-current-user";
 import { useProjects } from "../hooks";
 import { ProjectList } from "./project-list";
 
 vi.mock("../hooks", () => ({
   useProjects: vi.fn(),
+}));
+
+vi.mock("@/shared/hooks/use-current-user", () => ({
+  useCurrentUser: vi.fn(),
 }));
 
 vi.mock("@/i18n/navigation", () => ({
@@ -28,8 +33,16 @@ vi.mock("./create-project-dialog", () => ({
 }));
 
 const mockedUseProjects = vi.mocked(useProjects);
+const mockedUseCurrentUser = vi.mocked(useCurrentUser);
 
 describe("ProjectList", () => {
+  beforeEach(() => {
+    mockedUseCurrentUser.mockReturnValue({
+      data: { accountKind: "developer" },
+      isPending: false,
+    } as unknown as ReturnType<typeof useCurrentUser>);
+  });
+
   it("shows an empty state whose create button opens the create-project dialog", async () => {
     mockedUseProjects.mockReturnValue({
       data: [],
@@ -133,5 +146,22 @@ describe("ProjectList", () => {
     await user.click(screen.getByRole("button", { name: "newProject" }));
 
     expect(screen.getByTestId("create-project-dialog")).toHaveTextContent("open");
+  });
+
+  it("hides every create-project affordance for a client-kind account", () => {
+    mockedUseCurrentUser.mockReturnValue({
+      data: { accountKind: "client" },
+      isPending: false,
+    } as unknown as ReturnType<typeof useCurrentUser>);
+    mockedUseProjects.mockReturnValue({
+      data: [],
+      isPending: false,
+    } as unknown as ReturnType<typeof useProjects>);
+
+    render(<ProjectList />);
+
+    expect(screen.queryByRole("button", { name: "newProject" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "emptyCta" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("create-project-dialog")).not.toBeInTheDocument();
   });
 });

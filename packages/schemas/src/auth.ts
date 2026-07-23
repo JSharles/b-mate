@@ -7,6 +7,7 @@ export const UserSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
   email: z.email(),
+  accountKind: z.enum(['developer', 'client']),
   company: z.string().nullable(),
   address: z.string().nullable(),
   phone: z.string().nullable(),
@@ -26,6 +27,7 @@ export const SignupRequestSchema = z.object({
   lastName: z.string().min(1),
   email: z.email(),
   password: z.string().min(8),
+  accountKind: z.enum(['developer', 'client']),
 });
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
 

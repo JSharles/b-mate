@@ -48,6 +48,16 @@ export class InvitationsService {
     });
 
     if (existingUser) {
+      // Developer and client are non-overlapping audiences by design
+      // (specs/004-account-kind) — a developer-kind account can never become
+      // a client-role member anywhere, so this is rejected immediately
+      // rather than left as an invitation that could never be accepted.
+      if (existingUser.accountKind === 'developer') {
+        throw new ForbiddenException(
+          'This person has a developer account and cannot be invited as a client',
+        );
+      }
+
       const membership = await this.prisma.projectMember.findUnique({
         where: {
           projectId_userId: { projectId, userId: existingUser.id },
@@ -231,6 +241,14 @@ export class InvitationsService {
       if (!valid) {
         throw new UnauthorizedException('Invalid credentials');
       }
+
+      // Mirrors the same check in create() — covers the case where the
+      // account was created (or switched) after the invitation was sent.
+      if (user.accountKind === 'developer') {
+        throw new ForbiddenException(
+          'Developer accounts cannot accept client invitations',
+        );
+      }
     } else {
       if (!dto.firstName || !dto.lastName) {
         throw new BadRequestException(
@@ -245,6 +263,7 @@ export class InvitationsService {
           lastName: dto.lastName,
           email: invitation.email,
           passwordHash,
+          accountKind: 'client',
         },
       });
     }

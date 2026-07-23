@@ -12,14 +12,18 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { data: project, isPending } = useProject(id);
+  const { data: project, isPending, isError } = useProject(id);
   const t = useTranslations("Projects.ProjectPage");
 
   if (isPending) {
     return <Skeleton className="h-8 w-64" />;
   }
 
-  if (!project) {
+  // A failed refetch keeps the previous `data` around by default (React
+  // Query) — without this check, a stale project from a prior session in
+  // this tab (e.g. after logout/login as someone else) would keep rendering,
+  // including admin-only cartouches, even once the fresh fetch is rejected.
+  if (isError || !project) {
     return null;
   }
 

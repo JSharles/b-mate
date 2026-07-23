@@ -17,6 +17,7 @@ const fakeUser = {
   lastName: 'Charles',
   email: 'jc@example.com',
   passwordHash: 'hashed',
+  accountKind: 'developer',
   company: null,
   address: null,
   phone: null,
@@ -57,6 +58,7 @@ describe('AuthService', () => {
         lastName: 'Charles',
         email: 'JC@Example.com',
         password: 'supersecret123',
+        accountKind: 'developer',
       });
 
       expect(prisma.user.findUnique).toHaveBeenCalledWith({
@@ -69,9 +71,43 @@ describe('AuthService', () => {
           lastName: 'Charles',
           email: 'jc@example.com',
           passwordHash: 'hashed-password',
+          accountKind: 'developer',
         },
       });
       expect(result).toEqual({ user: fakeUser, sessionId: 'session-1' });
+    });
+
+    it('persists a client accountKind when chosen', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      mockedArgon2.hash.mockResolvedValue('hashed-password');
+      prisma.user.create.mockResolvedValue({
+        ...fakeUser,
+        accountKind: 'client',
+      });
+      prisma.session.create.mockResolvedValue({
+        id: 'session-1',
+        userId: fakeUser.id,
+        expiresAt: new Date(),
+        createdAt: new Date(),
+      });
+
+      await service.signup({
+        firstName: 'Jean',
+        lastName: 'Charles',
+        email: 'jc@example.com',
+        password: 'supersecret123',
+        accountKind: 'client',
+      });
+
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: {
+          firstName: 'Jean',
+          lastName: 'Charles',
+          email: 'jc@example.com',
+          passwordHash: 'hashed-password',
+          accountKind: 'client',
+        },
+      });
     });
 
     it('rejects when the email already exists', async () => {
@@ -83,6 +119,7 @@ describe('AuthService', () => {
           lastName: 'Charles',
           email: 'jc@example.com',
           password: 'supersecret123',
+          accountKind: 'developer',
         }),
       ).rejects.toThrow(ConflictException);
 

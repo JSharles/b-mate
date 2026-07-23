@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { useCurrentUser } from "@/shared/hooks/use-current-user";
 import { CreateProjectDialog } from "./create-project-dialog";
 import { useProjects } from "../hooks";
 
@@ -65,14 +66,18 @@ function ProjectCard({ project }: { project: Project }) {
 
 export function ProjectList() {
   const { data: projects, isPending } = useProjects();
+  const { data: currentUser } = useCurrentUser();
   const [createOpen, setCreateOpen] = useState(false);
   const t = useTranslations("Home");
+  const canCreateProject = currentUser?.accountKind === "developer";
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">{t("title")}</h2>
-        <Button onClick={() => setCreateOpen(true)}>{t("newProject")}</Button>
+        {canCreateProject ? (
+          <Button onClick={() => setCreateOpen(true)}>{t("newProject")}</Button>
+        ) : null}
       </div>
 
       {isPending ? (
@@ -86,9 +91,11 @@ export function ProjectList() {
           <FolderKanban className="size-8 text-muted-foreground" strokeWidth={1.5} />
           <p className="font-medium">{t("emptyTitle")}</p>
           <p className="max-w-sm text-sm text-muted-foreground">{t("emptyDescription")}</p>
-          <Button className="mt-2" onClick={() => setCreateOpen(true)}>
-            {t("emptyCta")}
-          </Button>
+          {canCreateProject ? (
+            <Button className="mt-2" onClick={() => setCreateOpen(true)}>
+              {t("emptyCta")}
+            </Button>
+          ) : null}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -98,7 +105,9 @@ export function ProjectList() {
         </div>
       )}
 
-      <CreateProjectDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {canCreateProject ? (
+        <CreateProjectDialog open={createOpen} onOpenChange={setCreateOpen} />
+      ) : null}
     </div>
   );
 }

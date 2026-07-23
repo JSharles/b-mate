@@ -34,6 +34,7 @@ function baseMutation() {
 }
 
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "accountKindDeveloper" }));
   await user.type(screen.getByLabelText("firstName"), "Jean");
   await user.type(screen.getByLabelText("lastName"), "Charles");
   await user.type(screen.getByLabelText("email"), "jc@example.com");
@@ -60,7 +61,44 @@ describe("SignupForm", () => {
       lastName: "Charles",
       email: "jc@example.com",
       password: "supersecret123",
+      accountKind: "developer",
     });
+  });
+
+  it("submits with a client accountKind when that option is chosen", async () => {
+    const mutation = baseMutation();
+    mockedUseSignup.mockReturnValue(mutation);
+    const user = userEvent.setup();
+
+    render(<SignupForm />);
+    await user.click(screen.getByRole("button", { name: "accountKindClient" }));
+    await user.type(screen.getByLabelText("firstName"), "Jean");
+    await user.type(screen.getByLabelText("lastName"), "Charles");
+    await user.type(screen.getByLabelText("email"), "jc@example.com");
+    await user.type(screen.getByLabelText("password"), "supersecret123");
+    await user.type(screen.getByLabelText("confirmPassword"), "supersecret123");
+    await user.click(screen.getByRole("button", { name: "submit" }));
+
+    expect(mutation.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ accountKind: "client" }),
+    );
+  });
+
+  it("blocks submission when no account kind is chosen", async () => {
+    const mutation = baseMutation();
+    mockedUseSignup.mockReturnValue(mutation);
+    const user = userEvent.setup();
+
+    render(<SignupForm />);
+    await user.type(screen.getByLabelText("firstName"), "Jean");
+    await user.type(screen.getByLabelText("lastName"), "Charles");
+    await user.type(screen.getByLabelText("email"), "jc@example.com");
+    await user.type(screen.getByLabelText("password"), "supersecret123");
+    await user.type(screen.getByLabelText("confirmPassword"), "supersecret123");
+    await user.click(screen.getByRole("button", { name: "submit" }));
+
+    expect(mutation.mutate).not.toHaveBeenCalled();
+    expect(screen.getByText("accountKindRequired")).toBeInTheDocument();
   });
 
   it("blocks submission when passwords don't match", async () => {
@@ -69,6 +107,7 @@ describe("SignupForm", () => {
     const user = userEvent.setup();
 
     render(<SignupForm />);
+    await user.click(screen.getByRole("button", { name: "accountKindDeveloper" }));
     await user.type(screen.getByLabelText("firstName"), "Jean");
     await user.type(screen.getByLabelText("lastName"), "Charles");
     await user.type(screen.getByLabelText("email"), "jc@example.com");

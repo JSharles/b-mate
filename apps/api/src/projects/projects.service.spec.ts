@@ -50,7 +50,9 @@ describe('ProjectsService', () => {
         createdAt: new Date(),
       });
 
-      const result = await service.create('user-1', { title: 'My project' });
+      const result = await service.create('user-1', 'developer', {
+        title: 'My project',
+      });
 
       expect(prisma.project.create).toHaveBeenCalledWith({
         data: { title: 'My project' },
@@ -64,6 +66,15 @@ describe('ProjectsService', () => {
         },
       });
       expect(result).toEqual(fakeProject);
+    });
+
+    it('rejects a client-kind account and never touches the database', async () => {
+      await expect(
+        service.create('user-1', 'client', { title: 'My project' }),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(prisma.project.create).not.toHaveBeenCalled();
+      expect(prisma.projectMember.create).not.toHaveBeenCalled();
     });
   });
 

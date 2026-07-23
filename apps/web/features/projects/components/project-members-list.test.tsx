@@ -35,6 +35,28 @@ describe("ProjectMembersList", () => {
     expect(screen.getByText("empty")).toBeInTheDocument();
   });
 
+  it("shows the empty message instead of stale members when the query is in an error state", () => {
+    mockedUseProjectMembers.mockReturnValue({
+      data: [
+        {
+          userId: "user-1",
+          firstName: "Jean",
+          lastName: "Charles",
+          email: "jc@example.com",
+          isAdmin: true,
+        },
+      ],
+      isPending: false,
+      isError: true,
+    } as unknown as ReturnType<typeof useProjectMembers>);
+    stubRemoveMember();
+
+    render(<ProjectMembersList projectId="project-1" canManageMembers={true} />);
+
+    expect(screen.getByText("empty")).toBeInTheDocument();
+    expect(screen.queryByText("jc@example.com")).not.toBeInTheDocument();
+  });
+
   it("lists each member with a remove action, and marks admins", () => {
     mockedUseProjectMembers.mockReturnValue({
       data: [

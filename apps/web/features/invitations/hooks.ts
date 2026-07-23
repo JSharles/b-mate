@@ -94,6 +94,9 @@ export function useAcceptInvitation(token: string) {
     mutationFn: (data: AcceptInvitationRequest) => acceptInvitation(token, data),
     meta: { skipGlobalErrorToast: true },
     onSuccess: (user) => {
+      // See auth/hooks.ts useSignup — same tab-lifetime cache leak risk on
+      // identity change (this can also follow a prior logged-in session).
+      queryClient.clear();
       queryClient.setQueryData(currentUserKey, user);
       router.push("/home");
     },

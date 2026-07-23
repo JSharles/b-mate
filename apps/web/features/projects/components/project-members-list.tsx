@@ -11,7 +11,7 @@ interface ProjectMembersListProps {
 }
 
 export function ProjectMembersList({ projectId, canManageMembers }: ProjectMembersListProps) {
-  const { data: members, isPending } = useProjectMembers(projectId);
+  const { data: members, isPending, isError } = useProjectMembers(projectId);
   const removeMember = useRemoveMember(projectId);
   const t = useTranslations("Projects.ProjectMembersList");
 
@@ -19,7 +19,10 @@ export function ProjectMembersList({ projectId, canManageMembers }: ProjectMembe
     return <Skeleton className="h-16 w-full" />;
   }
 
-  if (!members || members.length === 0) {
+  // A failed refetch keeps the previous `data` around by default (React
+  // Query) — checking isError here stops stale members from a prior session
+  // rendering as if the fetch had succeeded.
+  if (isError || !members || members.length === 0) {
     return <p className="text-sm text-muted-foreground">{t("empty")}</p>;
   }
 

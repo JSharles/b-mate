@@ -25,6 +25,7 @@ export interface SignupFormMessages {
   emailInvalid: string;
   passwordTooShort: string;
   passwordsDontMatch: string;
+  accountKindRequired: string;
 }
 
 export function createSignupFormSchema(messages: SignupFormMessages) {
@@ -34,6 +35,9 @@ export function createSignupFormSchema(messages: SignupFormMessages) {
     email: z.email({ message: messages.emailInvalid }),
     password: z.string().min(8, messages.passwordTooShort),
     confirmPassword: z.string().min(8, messages.passwordTooShort),
+    accountKind: z.enum(["developer", "client"], {
+      message: messages.accountKindRequired,
+    }),
   }).refine((data) => data.password === data.confirmPassword, {
     message: messages.passwordsDontMatch,
     path: ["confirmPassword"],

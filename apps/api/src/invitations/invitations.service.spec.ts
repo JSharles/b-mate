@@ -46,6 +46,7 @@ const fakeUser = {
   lastName: 'Charles',
   email: 'client@example.com',
   passwordHash: 'hashed',
+  accountKind: 'client',
   company: null,
   address: null,
   phone: null,
@@ -139,6 +140,22 @@ describe('InvitationsService', () => {
         service.create('user-1', 'project-1', { email: 'client@example.com' }),
       ).rejects.toThrow(ConflictException);
 
+      expect(prisma.invitation.create).not.toHaveBeenCalled();
+    });
+
+    it('throws forbidden when the invited email already belongs to a developer account', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(adminMembership);
+      prisma.user.findUnique.mockResolvedValue({
+        ...fakeUser,
+        id: 'user-2',
+        accountKind: 'developer',
+      });
+
+      await expect(
+        service.create('user-1', 'project-1', { email: 'client@example.com' }),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(prisma.projectMember.findUnique).toHaveBeenCalledTimes(1);
       expect(prisma.invitation.create).not.toHaveBeenCalled();
     });
 
@@ -475,6 +492,22 @@ describe('InvitationsService', () => {
         expect(prisma.invitation.update).not.toHaveBeenCalled();
       });
 
+      it('throws forbidden when the existing account is developer-kind', async () => {
+        prisma.invitation.findUnique.mockResolvedValue(fakeInvitation);
+        prisma.user.findUnique.mockResolvedValue({
+          ...fakeUser,
+          accountKind: 'developer',
+        });
+        mockedArgon2.verify.mockResolvedValue(true);
+
+        await expect(
+          service.accept('a-random-token', { password: 'supersecret123' }),
+        ).rejects.toThrow(ForbiddenException);
+
+        expect(prisma.projectMember.create).not.toHaveBeenCalled();
+        expect(prisma.invitation.update).not.toHaveBeenCalled();
+      });
+
       it('does not create a duplicate membership if already a member', async () => {
         prisma.invitation.findUnique.mockResolvedValue(fakeInvitation);
         prisma.user.findUnique.mockResolvedValue(fakeUser);
@@ -526,6 +559,7 @@ describe('InvitationsService', () => {
             lastName: 'Charles',
             email: 'client@example.com',
             passwordHash: 'hashed-password',
+            accountKind: 'client',
           },
         });
         expect(prisma.projectMember.create).toHaveBeenCalledWith({
