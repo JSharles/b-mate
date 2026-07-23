@@ -25,6 +25,33 @@ interface ListBoardsResponse {
   viewer: { projectsV2: { nodes: GithubProjectsV2Node[] } };
 }
 
+export interface CurrentTaskItem {
+  title: string;
+  description: string | null;
+  url: string | null;
+}
+
+type GithubItemContentType = 'Issue' | 'PullRequest' | 'DraftIssue';
+
+interface GithubItemContent {
+  __typename: GithubItemContentType;
+  title: string;
+  body?: string;
+  url?: string;
+}
+
+interface GithubItemNode {
+  content: GithubItemContent | null;
+  fieldValueByName: { name: string } | null;
+}
+
+interface FetchItemsResponse {
+  user?: { projectV2: { items: { nodes: GithubItemNode[] } } | null } | null;
+  organization?: {
+    projectV2: { items: { nodes: GithubItemNode[] } } | null;
+  } | null;
+}
+
 // `viewer` resolves to whichever identity the token belongs to — this
 // returns exactly the boards the developer needs to pick from (research.md
 // Decision 2), and doubles as the access check for a specific board
@@ -47,6 +74,36 @@ const LIST_BOARDS_QUERY = `
     }
   }
 `;
+
+// GitHub's Status single-select field, looked up by its exact default name —
+// a board that renamed/removed it simply yields no matches (research.md
+// Decision 1). GraphQL has no dynamic root field, so `user`/`organization`
+// is chosen by string-building the query, not by a variable.
+function itemsQuery(ownerType: GithubOwnerType): string {
+  const rootField = ownerType === 'User' ? 'user' : 'organization';
+
+  return `
+    query($login: String!, $number: Int!) {
+      ${rootField}(login: $login) {
+        projectV2(number: $number) {
+          items(first: 100) {
+            nodes {
+              content {
+                __typename
+                ... on Issue { title body url }
+                ... on PullRequest { title body url }
+                ... on DraftIssue { title body }
+              }
+              fieldValueByName(name: "Status") {
+                ... on ProjectV2ItemFieldSingleSelectValue { name }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+}
 
 @Injectable()
 export class GithubProjectsClient {
@@ -80,14 +137,57 @@ export class GithubProjectsClient {
     );
   }
 
-  private async query<T>(token: string, query: string): Promise<T> {
+  // Matches items whose Status value (case-insensitive substring) contains
+  // "in progress" — the field name itself is matched exactly ("Status"),
+  // per the product decision (spec.md, research.md Decisions 1-2). Content
+  // with no matching fragment (e.g. a redacted item) is skipped rather than
+  // erroring (research.md Decision 3).
+  async fetchInProgressItems(
+    token: string,
+    ownerLogin: string,
+    ownerType: GithubOwnerType,
+    number: number,
+  ): Promise<CurrentTaskItem[]> {
+    const data = await this.query<FetchItemsResponse>(
+      token,
+      itemsQuery(ownerType),
+      {
+        login: ownerLogin,
+        number,
+      },
+    );
+
+    const owner = ownerType === 'User' ? data.user : data.organization;
+    const nodes = owner?.projectV2?.items.nodes ?? [];
+
+    const items: CurrentTaskItem[] = [];
+    for (const node of nodes) {
+      const status = node.fieldValueByName?.name;
+      if (!status || !status.toLowerCase().includes('in progress')) continue;
+      if (!node.content) continue;
+
+      items.push({
+        title: node.content.title,
+        description: node.content.body ?? null,
+        url: node.content.url ?? null,
+      });
+    }
+
+    return items;
+  }
+
+  private async query<T>(
+    token: string,
+    query: string,
+    variables?: Record<string, unknown>,
+  ): Promise<T> {
     const res = await fetch(GITHUB_GRAPHQL_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query, variables }),
     });
 
     // Never surface the raw GitHub response (or the token) in a thrown error.

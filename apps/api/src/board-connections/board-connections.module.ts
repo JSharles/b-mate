@@ -8,5 +8,6 @@ import { GithubProjectsClient } from './github-projects.client';
   imports: [AuthModule],
   controllers: [BoardConnectionsController],
   providers: [BoardConnectionsService, GithubProjectsClient],
+  exports: [GithubProjectsClient],
 })
 export class BoardConnectionsModule {}

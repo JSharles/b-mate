@@ -24,6 +24,12 @@ vi.mock("@/features/board-connections/components/board-connection-card", () => (
   ),
 }));
 
+vi.mock("@/features/current-task/components/current-task-card", () => ({
+  CurrentTaskCard: ({ projectId }: { projectId: string }) => (
+    <div>current-task-card:{projectId}</div>
+  ),
+}));
+
 vi.mock("@/features/projects/components/project-members-list", () => ({
   ProjectMembersList: ({
     projectId,
@@ -65,6 +71,7 @@ describe("ProjectPage", () => {
     expect(screen.getByText("board-connection-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("documentation")).toBeInTheDocument();
     expect(screen.queryByText("overview")).not.toBeInTheDocument();
+    expect(screen.queryByText("current-task-card:project-1")).not.toBeInTheDocument();
   });
 
   it("hides invitations but keeps dev-tooling placeholders for a non-admin contributor", () => {
@@ -93,7 +100,7 @@ describe("ProjectPage", () => {
     expect(screen.getByText("technicalDecisions")).toBeInTheDocument();
     expect(screen.getByText("roadmap")).toBeInTheDocument();
     expect(screen.getByText("clientDocumentation")).toBeInTheDocument();
-    expect(screen.getByText("currentTask")).toBeInTheDocument();
+    expect(screen.getByText("current-task-card:project-1")).toBeInTheDocument();
   });
 
   it("gives an admin client invitation management but not the dev-tooling placeholders", () => {
@@ -106,6 +113,7 @@ describe("ProjectPage", () => {
     expect(screen.queryByText("board-connection-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("documentation")).not.toBeInTheDocument();
     expect(screen.getByText("overview")).toBeInTheDocument();
+    expect(screen.getByText("current-task-card:project-1")).toBeInTheDocument();
   });
 
   it("shows no form control anywhere among the client placeholders", () => {
