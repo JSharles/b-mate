@@ -123,7 +123,8 @@
     "createdAt": "Créé le {date}",
     "emptyTitle": "Aucun projet pour le moment",
     "emptyDescription": "Créez votre premier projet pour commencer à suivre son avancement.",
-    "emptyCta": "Créer un projet"
+    "emptyCta": "Créer un projet",
+    "editProfile": "Modifier le profil"
   },
   "Projects": {
     "CreateProjectDialog": {
@@ -136,12 +137,21 @@
     },
     "ProjectPage": {
       "inviteClient": "Inviter un client",
-      "members": "Membres"
+      "members": "Membres",
+      "settings": "Paramètres",
+      "settingsComingSoon": "Connectez votre board — bientôt disponible",
+      "documentation": "Documentation",
+      "documentationComingSoon": "Bientôt disponible"
     },
     "InviteClientForm": {
       "email": "Email",
       "submit": "Inviter",
       "submitPending": "Envoi…"
+    },
+    "InvitationsCard": {
+      "title": "Invitations",
+      "invite": "Inviter",
+      "pendingCount": "{count} en attente"
     },
     "InvitationsList": {
       "empty": "Aucune invitation pour le moment",
