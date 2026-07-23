@@ -141,7 +141,19 @@
       "settings": "Settings",
       "settingsComingSoon": "Connect your board — coming soon",
       "documentation": "Documentation",
-      "documentationComingSoon": "Coming soon"
+      "documentationComingSoon": "Coming soon",
+      "overview": "Project overview",
+      "overviewComingSoon": "Coming soon",
+      "discoveryAudit": "Discovery & audit findings",
+      "discoveryAuditComingSoon": "Coming soon",
+      "technicalDecisions": "Technical decisions",
+      "technicalDecisionsComingSoon": "Coming soon",
+      "roadmap": "Roadmap",
+      "roadmapComingSoon": "Coming soon",
+      "clientDocumentation": "Documentation",
+      "clientDocumentationComingSoon": "Coming soon",
+      "currentTask": "Current task",
+      "currentTaskComingSoon": "Coming soon"
     },
     "InviteClientForm": {
       "email": "Email",

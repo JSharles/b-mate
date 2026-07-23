@@ -82,23 +82,43 @@ describe('ProjectsService', () => {
   });
 
   describe('findOneForUser', () => {
-    it('returns the project when the user is a member', async () => {
-      prisma.project.findFirst.mockResolvedValue(fakeProject);
+    it('returns the project plus the caller’s own role and admin status', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(adminMembership);
+      prisma.project.findUniqueOrThrow.mockResolvedValue(fakeProject);
 
       const result = await service.findOneForUser('user-1', 'project-1');
 
-      expect(prisma.project.findFirst).toHaveBeenCalledWith({
-        where: { id: 'project-1', members: { some: { userId: 'user-1' } } },
+      expect(prisma.project.findUniqueOrThrow).toHaveBeenCalledWith({
+        where: { id: 'project-1' },
       });
-      expect(result).toEqual(fakeProject);
+      expect(result).toEqual({
+        ...fakeProject,
+        role: 'contributor',
+        isAdmin: true,
+      });
+    });
+
+    it('reflects a non-admin client’s own role/admin status', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        ...adminMembership,
+        role: 'client',
+        isAdmin: false,
+      });
+      prisma.project.findUniqueOrThrow.mockResolvedValue(fakeProject);
+
+      const result = await service.findOneForUser('user-1', 'project-1');
+
+      expect(result.role).toBe('client');
+      expect(result.isAdmin).toBe(false);
     });
 
     it('throws not found when the project does not exist or the user is not a member', async () => {
-      prisma.project.findFirst.mockResolvedValue(null);
+      prisma.projectMember.findUnique.mockResolvedValue(null);
 
       await expect(
         service.findOneForUser('user-1', 'missing-project'),
       ).rejects.toThrow(NotFoundException);
+      expect(prisma.project.findUniqueOrThrow).not.toHaveBeenCalled();
     });
   });
 
@@ -189,15 +209,35 @@ describe('ProjectsService', () => {
       ]);
     });
 
-    it('throws forbidden when the requester is not an admin', async () => {
+    it('lists members for a non-admin member too (read access only requires membership)', async () => {
       prisma.projectMember.findUnique.mockResolvedValue({
         ...adminMembership,
         isAdmin: false,
       });
+      prisma.projectMember.findMany.mockResolvedValue([
+        {
+          ...adminMembership,
+          user: {
+            id: 'user-1',
+            firstName: 'Jean',
+            lastName: 'Charles',
+            email: 'jc@example.com',
+          },
+        },
+      ]);
+
+      const result = await service.findMembersForProject('user-1', 'project-1');
+
+      expect(result).toHaveLength(1);
+    });
+
+    it('throws not found when the requester is not a member at all', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(null);
 
       await expect(
         service.findMembersForProject('user-1', 'project-1'),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.projectMember.findMany).not.toHaveBeenCalled();
     });
   });
 

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Project, ProjectMemberRole } from '@prisma/client';
+import { Project, ProjectMember, ProjectMemberRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -16,6 +16,13 @@ export interface ProjectMemberDetails {
   email: string;
   isAdmin: boolean;
 }
+
+// The project plus the caller's own role/isAdmin on it — lets the frontend
+// decide what the project page shows them. See docs/PRODUCT.md "Access".
+export type ProjectDetails = Project & {
+  role: ProjectMemberRole;
+  isAdmin: boolean;
+};
 
 @Injectable()
 export class ProjectsService {
@@ -51,18 +58,14 @@ export class ProjectsService {
     });
   }
 
-  async findOneForUser(userId: string, projectId: string): Promise<Project> {
-    const project = await this.prisma.project.findFirst({
-      where: { id: projectId, members: { some: { userId } } },
+  async findOneForUser(userId: string, projectId: string): Promise<ProjectDetails> {
+    const membership = await this.assertIsMember(userId, projectId);
+
+    const project = await this.prisma.project.findUniqueOrThrow({
+      where: { id: projectId },
     });
 
-    if (!project) {
-      // Same response whether the project doesn't exist or the user isn't a
-      // member — never confirm a project's existence to a non-member.
-      throw new NotFoundException('Project not found');
-    }
-
-    return project;
+    return { ...project, role: membership.role, isAdmin: membership.isAdmin };
   }
 
   async update(
@@ -92,7 +95,7 @@ export class ProjectsService {
     userId: string,
     projectId: string,
   ): Promise<ProjectMemberDetails[]> {
-    await this.assertIsAdmin(userId, projectId);
+    await this.assertIsMember(userId, projectId);
 
     const members = await this.prisma.projectMember.findMany({
       where: { projectId },
@@ -154,16 +157,31 @@ export class ProjectsService {
     userId: string,
     projectId: string,
   ): Promise<void> {
+    const membership = await this.assertIsMember(userId, projectId);
+
+    if (!membership.isAdmin) {
+      throw new ForbiddenException('Only a project admin can manage members');
+    }
+  }
+
+  // Confirms the caller belongs to the project (any role/admin status) and
+  // returns their own membership row. Read access (viewing the project or
+  // its member list) only requires membership; assertIsAdmin layers the
+  // stricter admin check on top for management actions.
+  private async assertIsMember(
+    userId: string,
+    projectId: string,
+  ): Promise<ProjectMember> {
     const membership = await this.prisma.projectMember.findUnique({
       where: { projectId_userId: { projectId, userId } },
     });
 
     if (!membership) {
+      // Same response whether the project doesn't exist or the caller isn't
+      // a member — never confirm a project's existence to a non-member.
       throw new NotFoundException('Project not found');
     }
 
-    if (!membership.isAdmin) {
-      throw new ForbiddenException('Only a project admin can manage members');
-    }
+    return membership;
   }
 }
