@@ -13,7 +13,7 @@ function initials(user: User) {
 }
 
 interface WelcomeCardProps {
-  user: User | undefined;
+  user: User | null | undefined;
   isPending: boolean;
 }
 
