@@ -13,6 +13,12 @@ enum ProjectMemberRole {
   contributor
 }
 
+// Single value today — sized so a future provider (e.g. Notion) adds a value
+// rather than reshaping this table. See specs/005-github-project-connection.
+enum BoardProvider {
+  github
+}
+
 // Account-level, independent of ProjectMemberRole above (which is per-project).
 // See docs/PRODUCT.md "Open decisions" for the ongoing discussion about
 // whether these two should eventually merge.
@@ -72,9 +78,10 @@ model Project {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  members     ProjectMember[]
-  invitations Invitation[]
-  tasks       Task[]
+  members         ProjectMember[]
+  invitations     Invitation[]
+  tasks           Task[]
+  boardConnection BoardConnection?
 
   @@map("projects")
 }
@@ -133,4 +140,29 @@ model Task {
   assignee User?   @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
 
   @@map("tasks")
+}
+
+// One connection per project (see specs/005-github-project-connection). This
+// feature only stores the connection itself — no task/issue content is
+// fetched or stored here. `encryptedToken` is never returned by the API once
+// stored; it is the developer's own GitHub PAT, encrypted at rest.
+model BoardConnection {
+  id        String  @id @default(uuid()) @db.Uuid
+  projectId String  @unique @map("project_id") @db.Uuid
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  provider BoardProvider
+
+  boardOwnerLogin String @map("board_owner_login")
+  boardOwnerType  String @map("board_owner_type")
+  boardNumber     Int    @map("board_number")
+  boardTitle      String @map("board_title")
+  boardUrl        String @map("board_url")
+
+  encryptedToken String @map("encrypted_token")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("board_connections")
 }

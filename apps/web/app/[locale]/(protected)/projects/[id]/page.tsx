@@ -1,8 +1,9 @@
 "use client";
 
-import { BookOpen, Cpu, FileText, ListTodo, Map, Search, Settings2 } from "lucide-react";
+import { BookOpen, Cpu, FileText, ListTodo, Map, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { use } from "react";
+import { BoardConnectionCard } from "@/features/board-connections/components/board-connection-card";
 import { InvitationsCard } from "@/features/invitations/components/invitations-card";
 import { ComingSoonCard } from "@/features/projects/components/coming-soon-card";
 import { ProjectMembersList } from "@/features/projects/components/project-members-list";
@@ -52,7 +53,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
       {isContributor && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <ComingSoonCard icon={Settings2} title={t("settings")} message={t("settingsComingSoon")} />
+          <BoardConnectionCard projectId={id} />
           <ComingSoonCard
             icon={BookOpen}
             title={t("documentation")}

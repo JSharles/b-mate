@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { InvitationsModule } from './invitations/invitations.module';
+import { BoardConnectionsModule } from './board-connections/board-connections.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { InvitationsModule } from './invitations/invitations.module';
     AuthModule,
     ProjectsModule,
     InvitationsModule,
+    BoardConnectionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

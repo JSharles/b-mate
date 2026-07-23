@@ -142,8 +142,6 @@
     "ProjectPage": {
       "inviteClient": "Inviter un client",
       "members": "Membres",
-      "settings": "Paramètres",
-      "settingsComingSoon": "Connectez votre board — bientôt disponible",
       "documentation": "Documentation",
       "documentationComingSoon": "Bientôt disponible",
       "overview": "Aperçu du projet",
@@ -184,6 +182,27 @@
       "remove": "Retirer",
       "removing": "Retrait…",
       "lastAdminHint": "Un projet doit toujours garder au moins un admin"
+    },
+    "BoardConnectionCard": {
+      "title": "Board",
+      "notConnected": "Aucun board connecté pour le moment",
+      "connect": "Connecter un board",
+      "connectedTo": "Connecté à {title}",
+      "viewOnGithub": "Voir sur GitHub",
+      "disconnect": "Déconnecter",
+      "disconnecting": "Déconnexion…"
+    },
+    "ConnectBoardDialog": {
+      "title": "Connecter un board GitHub Projects",
+      "tokenLabel": "Token d'accès personnel GitHub",
+      "tokenHint": "Crée un token classique avec le scope \"project\" coché. GitHub ne prend pas encore en charge les tokens fine-grained pour les boards Projects d'un compte personnel.",
+      "tokenHintLink": "En créer un sur GitHub",
+      "previewSubmit": "Continuer",
+      "previewPending": "Vérification…",
+      "noBoards": "Ce token n'a accès à aucun board GitHub Projects.",
+      "connectSubmit": "Connecter",
+      "connectPending": "Connexion…",
+      "back": "Utiliser un autre token"
     }
   },
   "Invite": {
