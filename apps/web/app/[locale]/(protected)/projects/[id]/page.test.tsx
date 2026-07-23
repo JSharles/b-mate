@@ -12,15 +12,9 @@ vi.mock("@/features/projects/hooks", () => ({
   useProject: vi.fn(),
 }));
 
-vi.mock("@/features/invitations/components/invite-client-form", () => ({
-  InviteClientForm: ({ projectId }: { projectId: string }) => (
-    <div>invite-client-form:{projectId}</div>
-  ),
-}));
-
-vi.mock("@/features/invitations/components/invitations-list", () => ({
-  InvitationsList: ({ projectId }: { projectId: string }) => (
-    <div>invitations-list:{projectId}</div>
+vi.mock("@/features/invitations/components/invitations-card", () => ({
+  InvitationsCard: ({ projectId }: { projectId: string }) => (
+    <div>invitations-card:{projectId}</div>
   ),
 }));
 
@@ -39,7 +33,7 @@ function renderPage() {
 }
 
 describe("ProjectPage", () => {
-  it("renders the project title, invite form and invitations list", () => {
+  it("renders the project title, members, invitations, and the settings/documentation placeholders", () => {
     mockedUseProject.mockReturnValue({
       data: { id: "project-1", title: "Site vitrine client X" },
       isPending: false,
@@ -48,11 +42,13 @@ describe("ProjectPage", () => {
     renderPage();
 
     expect(screen.getByText("Site vitrine client X")).toBeInTheDocument();
-    expect(screen.getByText("inviteClient")).toBeInTheDocument();
-    expect(screen.getByText("invite-client-form:project-1")).toBeInTheDocument();
-    expect(screen.getByText("invitations-list:project-1")).toBeInTheDocument();
     expect(screen.getByText("members")).toBeInTheDocument();
     expect(screen.getByText("project-members-list:project-1")).toBeInTheDocument();
+    expect(screen.getByText("invitations-card:project-1")).toBeInTheDocument();
+    expect(screen.getByText("settings")).toBeInTheDocument();
+    expect(screen.getByText("settingsComingSoon")).toBeInTheDocument();
+    expect(screen.getByText("documentation")).toBeInTheDocument();
+    expect(screen.getByText("documentationComingSoon")).toBeInTheDocument();
   });
 
   it("shows nothing when the project is missing", () => {

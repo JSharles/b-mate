@@ -7,6 +7,12 @@ vi.mock("@/features/projects/components/project-list", () => ({
   ProjectList: () => <div>project-list</div>,
 }));
 
+vi.mock("@/features/home/components/welcome-card", () => ({
+  WelcomeCard: ({ isPending }: { isPending: boolean }) => (
+    <div>welcome-card:{isPending ? "pending" : "ready"}</div>
+  ),
+}));
+
 vi.mock("@/shared/hooks/use-current-user", () => ({
   useCurrentUser: vi.fn(),
 }));
@@ -18,7 +24,7 @@ describe("HomePage", () => {
     mockedUseCurrentUser.mockReset();
   });
 
-  it("renders the project list", () => {
+  it("renders the welcome card and the project list", () => {
     mockedUseCurrentUser.mockReturnValue({
       isPending: false,
       data: { firstName: "Jean", lastName: "Charles", email: "jc@example.com" },
@@ -26,29 +32,18 @@ describe("HomePage", () => {
 
     render(<HomePage />);
 
+    expect(screen.getByText("welcome-card:ready")).toBeInTheDocument();
     expect(screen.getByText("project-list")).toBeInTheDocument();
   });
 
-  it("shows a welcome heading with the signed-in user's first name", () => {
-    mockedUseCurrentUser.mockReturnValue({
-      isPending: false,
-      data: { firstName: "Jean", lastName: "Charles", email: "jc@example.com" },
-    } as unknown as ReturnType<typeof useCurrentUser>);
-
-    render(<HomePage />);
-
-    expect(screen.getByRole("heading", { name: "welcome" })).toBeInTheDocument();
-  });
-
-  it("shows a skeleton instead of the heading while pending", () => {
+  it("passes the pending state through to the welcome card", () => {
     mockedUseCurrentUser.mockReturnValue({
       isPending: true,
       data: undefined,
     } as unknown as ReturnType<typeof useCurrentUser>);
 
-    const { container } = render(<HomePage />);
+    render(<HomePage />);
 
-    expect(container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument();
-    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.getByText("welcome-card:pending")).toBeInTheDocument();
   });
 });
