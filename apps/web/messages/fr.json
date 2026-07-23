@@ -153,9 +153,7 @@
       "roadmap": "Roadmap",
       "roadmapComingSoon": "Bientôt disponible",
       "clientDocumentation": "Documentation",
-      "clientDocumentationComingSoon": "Bientôt disponible",
-      "currentTask": "Tâche en cours",
-      "currentTaskComingSoon": "Bientôt disponible"
+      "clientDocumentationComingSoon": "Bientôt disponible"
     },
     "InviteClientForm": {
       "email": "Email",
@@ -203,6 +201,10 @@
       "connectSubmit": "Connecter",
       "connectPending": "Connexion…",
       "back": "Utiliser un autre token"
+    },
+    "CurrentTaskCard": {
+      "title": "Tâche en cours",
+      "empty": "Rien en cours pour le moment"
     }
   },
   "Invite": {

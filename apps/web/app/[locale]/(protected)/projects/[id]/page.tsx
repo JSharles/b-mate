@@ -1,9 +1,10 @@
 "use client";
 
-import { BookOpen, Cpu, FileText, ListTodo, Map, Search } from "lucide-react";
+import { BookOpen, Cpu, FileText, Map, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { use } from "react";
 import { BoardConnectionCard } from "@/features/board-connections/components/board-connection-card";
+import { CurrentTaskCard } from "@/features/current-task/components/current-task-card";
 import { InvitationsCard } from "@/features/invitations/components/invitations-card";
 import { ComingSoonCard } from "@/features/projects/components/coming-soon-card";
 import { ProjectMembersList } from "@/features/projects/components/project-members-list";
@@ -81,11 +82,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             title={t("clientDocumentation")}
             message={t("clientDocumentationComingSoon")}
           />
-          <ComingSoonCard
-            icon={ListTodo}
-            title={t("currentTask")}
-            message={t("currentTaskComingSoon")}
-          />
+          <CurrentTaskCard projectId={id} />
         </div>
       )}
     </div>

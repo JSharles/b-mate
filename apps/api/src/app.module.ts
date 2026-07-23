@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './projects/projects.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { BoardConnectionsModule } from './board-connections/board-connections.module';
+import { CurrentTaskModule } from './current-task/current-task.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { BoardConnectionsModule } from './board-connections/board-connections.mo
     ProjectsModule,
     InvitationsModule,
     BoardConnectionsModule,
+    CurrentTaskModule,
   ],
   controllers: [AppController],
   providers: [AppService],

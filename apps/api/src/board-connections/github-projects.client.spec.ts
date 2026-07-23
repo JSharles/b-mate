@@ -139,4 +139,209 @@ describe('GithubProjectsClient', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('fetchInProgressItems', () => {
+    const inProgressIssue = {
+      content: {
+        __typename: 'Issue',
+        title: 'Fix race condition',
+        body: 'Details about the race condition',
+        url: 'https://github.com/acme/repo/issues/1',
+      },
+      fieldValueByName: { name: 'In Progress' },
+    };
+
+    it('includes an item whose Status value contains "in progress" (case-insensitive)', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: {
+            organization: {
+              projectV2: { items: { nodes: [inProgressIssue] } },
+            },
+          },
+        }),
+      });
+
+      const result = await client.fetchInProgressItems(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result).toEqual([
+        {
+          title: 'Fix race condition',
+          description: 'Details about the race condition',
+          url: 'https://github.com/acme/repo/issues/1',
+        },
+      ]);
+    });
+
+    it('queries the "user" root field for a User-owned board', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: { user: { projectV2: { items: { nodes: [] } } } },
+        }),
+      });
+
+      await client.fetchInProgressItems('a-token', 'jc', 'User', 3);
+
+      const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [
+        string,
+        RequestInit,
+      ];
+      const body = JSON.parse(init.body as string) as { query: string };
+      expect(body.query).toContain('user(login: $login)');
+    });
+
+    it('excludes an item whose Status value does not contain "in progress"', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: {
+            organization: {
+              projectV2: {
+                items: {
+                  nodes: [
+                    {
+                      ...inProgressIssue,
+                      fieldValueByName: { name: 'Done' },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      });
+
+      const result = await client.fetchInProgressItems(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('excludes an item with no Status field value at all', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: {
+            organization: {
+              projectV2: {
+                items: {
+                  nodes: [{ ...inProgressIssue, fieldValueByName: null }],
+                },
+              },
+            },
+          },
+        }),
+      });
+
+      const result = await client.fetchInProgressItems(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('includes a DraftIssue match with a null url', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: {
+            organization: {
+              projectV2: {
+                items: {
+                  nodes: [
+                    {
+                      content: {
+                        __typename: 'DraftIssue',
+                        title: 'Draft: sketch the new flow',
+                        body: 'Some notes',
+                      },
+                      fieldValueByName: { name: 'In Progress' },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      });
+
+      const result = await client.fetchInProgressItems(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result).toEqual([
+        {
+          title: 'Draft: sketch the new flow',
+          description: 'Some notes',
+          url: null,
+        },
+      ]);
+    });
+
+    it('skips an item whose content is null (e.g. a redacted item)', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: {
+            organization: {
+              projectV2: {
+                items: {
+                  nodes: [
+                    {
+                      content: null,
+                      fieldValueByName: { name: 'In Progress' },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      });
+
+      const result = await client.fetchInProgressItems(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns an empty list when the board has no items', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: { organization: { projectV2: { items: { nodes: [] } } } },
+        }),
+      });
+
+      const result = await client.fetchInProgressItems(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result).toEqual([]);
+    });
+  });
 });
