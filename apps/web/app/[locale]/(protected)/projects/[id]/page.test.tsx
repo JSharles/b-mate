@@ -19,8 +19,16 @@ vi.mock("@/features/invitations/components/invitations-card", () => ({
 }));
 
 vi.mock("@/features/projects/components/project-members-list", () => ({
-  ProjectMembersList: ({ projectId }: { projectId: string }) => (
-    <div>project-members-list:{projectId}</div>
+  ProjectMembersList: ({
+    projectId,
+    canManageMembers,
+  }: {
+    projectId: string;
+    canManageMembers: boolean;
+  }) => (
+    <div>
+      project-members-list:{projectId}:{String(canManageMembers)}
+    </div>
   ),
 }));
 
@@ -32,23 +40,75 @@ function renderPage() {
   );
 }
 
+function mockProject(role: "contributor" | "client", isAdmin: boolean) {
+  mockedUseProject.mockReturnValue({
+    data: { id: "project-1", title: "Site vitrine client X", role, isAdmin },
+    isPending: false,
+  } as unknown as ReturnType<typeof useProject>);
+}
+
 describe("ProjectPage", () => {
-  it("renders the project title, members, invitations, and the settings/documentation placeholders", () => {
-    mockedUseProject.mockReturnValue({
-      data: { id: "project-1", title: "Site vitrine client X" },
-      isPending: false,
-    } as unknown as ReturnType<typeof useProject>);
+  it("shows full management view to a contributor admin", () => {
+    mockProject("contributor", true);
 
     renderPage();
 
     expect(screen.getByText("Site vitrine client X")).toBeInTheDocument();
-    expect(screen.getByText("members")).toBeInTheDocument();
-    expect(screen.getByText("project-members-list:project-1")).toBeInTheDocument();
+    expect(screen.getByText("project-members-list:project-1:true")).toBeInTheDocument();
     expect(screen.getByText("invitations-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("settings")).toBeInTheDocument();
-    expect(screen.getByText("settingsComingSoon")).toBeInTheDocument();
     expect(screen.getByText("documentation")).toBeInTheDocument();
-    expect(screen.getByText("documentationComingSoon")).toBeInTheDocument();
+    expect(screen.queryByText("overview")).not.toBeInTheDocument();
+  });
+
+  it("hides invitations but keeps dev-tooling placeholders for a non-admin contributor", () => {
+    mockProject("contributor", false);
+
+    renderPage();
+
+    expect(screen.getByText("project-members-list:project-1:false")).toBeInTheDocument();
+    expect(screen.queryByText("invitations-card:project-1")).not.toBeInTheDocument();
+    expect(screen.getByText("settings")).toBeInTheDocument();
+    expect(screen.getByText("documentation")).toBeInTheDocument();
+  });
+
+  it("shows only the read-only client placeholders for a non-admin client", () => {
+    mockProject("client", false);
+
+    renderPage();
+
+    expect(screen.getByText("project-members-list:project-1:false")).toBeInTheDocument();
+    expect(screen.queryByText("invitations-card:project-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("settings")).not.toBeInTheDocument();
+    expect(screen.queryByText("documentation")).not.toBeInTheDocument();
+
+    expect(screen.getByText("overview")).toBeInTheDocument();
+    expect(screen.getByText("discoveryAudit")).toBeInTheDocument();
+    expect(screen.getByText("technicalDecisions")).toBeInTheDocument();
+    expect(screen.getByText("roadmap")).toBeInTheDocument();
+    expect(screen.getByText("clientDocumentation")).toBeInTheDocument();
+    expect(screen.getByText("currentTask")).toBeInTheDocument();
+  });
+
+  it("gives an admin client invitation management but not the dev-tooling placeholders", () => {
+    mockProject("client", true);
+
+    renderPage();
+
+    expect(screen.getByText("project-members-list:project-1:true")).toBeInTheDocument();
+    expect(screen.getByText("invitations-card:project-1")).toBeInTheDocument();
+    expect(screen.queryByText("settings")).not.toBeInTheDocument();
+    expect(screen.queryByText("documentation")).not.toBeInTheDocument();
+    expect(screen.getByText("overview")).toBeInTheDocument();
+  });
+
+  it("shows no form control anywhere among the client placeholders", () => {
+    mockProject("client", false);
+
+    renderPage();
+
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /upload/i })).not.toBeInTheDocument();
   });
 
   it("shows nothing when the project is missing", () => {

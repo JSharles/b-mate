@@ -141,7 +141,19 @@
       "settings": "Paramètres",
       "settingsComingSoon": "Connectez votre board — bientôt disponible",
       "documentation": "Documentation",
-      "documentationComingSoon": "Bientôt disponible"
+      "documentationComingSoon": "Bientôt disponible",
+      "overview": "Aperçu du projet",
+      "overviewComingSoon": "Bientôt disponible",
+      "discoveryAudit": "Retours d'audit et de découverte",
+      "discoveryAuditComingSoon": "Bientôt disponible",
+      "technicalDecisions": "Choix techniques",
+      "technicalDecisionsComingSoon": "Bientôt disponible",
+      "roadmap": "Roadmap",
+      "roadmapComingSoon": "Bientôt disponible",
+      "clientDocumentation": "Documentation",
+      "clientDocumentationComingSoon": "Bientôt disponible",
+      "currentTask": "Tâche en cours",
+      "currentTaskComingSoon": "Bientôt disponible"
     },
     "InviteClientForm": {
       "email": "Email",

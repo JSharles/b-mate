@@ -5,7 +5,12 @@ import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useProjectMembers, useRemoveMember } from "../hooks";
 
-export function ProjectMembersList({ projectId }: { projectId: string }) {
+interface ProjectMembersListProps {
+  projectId: string;
+  canManageMembers: boolean;
+}
+
+export function ProjectMembersList({ projectId, canManageMembers }: ProjectMembersListProps) {
   const { data: members, isPending } = useProjectMembers(projectId);
   const removeMember = useRemoveMember(projectId);
   const t = useTranslations("Projects.ProjectMembersList");
@@ -41,18 +46,20 @@ export function ProjectMembersList({ projectId }: { projectId: string }) {
                 </span>
               )}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={removeMember.isPending || isLastAdmin}
-              title={isLastAdmin ? t("lastAdminHint") : undefined}
-              onClick={() => removeMember.mutate(member.userId)}
-            >
-              {removeMember.isPending && removeMember.variables === member.userId
-                ? t("removing")
-                : t("remove")}
-            </Button>
+            {canManageMembers && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={removeMember.isPending || isLastAdmin}
+                title={isLastAdmin ? t("lastAdminHint") : undefined}
+                onClick={() => removeMember.mutate(member.userId)}
+              >
+                {removeMember.isPending && removeMember.variables === member.userId
+                  ? t("removing")
+                  : t("remove")}
+              </Button>
+            )}
           </li>
         );
       })}

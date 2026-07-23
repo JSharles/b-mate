@@ -30,7 +30,7 @@ describe("ProjectMembersList", () => {
     } as unknown as ReturnType<typeof useProjectMembers>);
     stubRemoveMember();
 
-    render(<ProjectMembersList projectId="project-1" />);
+    render(<ProjectMembersList projectId="project-1" canManageMembers={true} />);
 
     expect(screen.getByText("empty")).toBeInTheDocument();
   });
@@ -57,7 +57,7 @@ describe("ProjectMembersList", () => {
     } as unknown as ReturnType<typeof useProjectMembers>);
     stubRemoveMember();
 
-    render(<ProjectMembersList projectId="project-1" />);
+    render(<ProjectMembersList projectId="project-1" canManageMembers={true} />);
 
     expect(screen.getByText("ada@example.com")).toBeInTheDocument();
     expect(screen.getByText("admin")).toBeInTheDocument();
@@ -87,7 +87,7 @@ describe("ProjectMembersList", () => {
     const mutate = stubRemoveMember();
     const user = userEvent.setup();
 
-    render(<ProjectMembersList projectId="project-1" />);
+    render(<ProjectMembersList projectId="project-1" canManageMembers={true} />);
     await user.click(screen.getAllByRole("button", { name: "remove" })[1]);
 
     expect(mutate).toHaveBeenCalledWith("user-2");
@@ -108,8 +108,36 @@ describe("ProjectMembersList", () => {
     } as unknown as ReturnType<typeof useProjectMembers>);
     stubRemoveMember();
 
-    render(<ProjectMembersList projectId="project-1" />);
+    render(<ProjectMembersList projectId="project-1" canManageMembers={true} />);
 
     expect(screen.getByRole("button", { name: "remove" })).toBeDisabled();
+  });
+
+  it("hides the remove action entirely when the viewer cannot manage members", () => {
+    mockedUseProjectMembers.mockReturnValue({
+      data: [
+        {
+          userId: "user-1",
+          firstName: "Jean",
+          lastName: "Charles",
+          email: "jc@example.com",
+          isAdmin: true,
+        },
+        {
+          userId: "user-2",
+          firstName: "Ada",
+          lastName: "Lovelace",
+          email: "ada@example.com",
+          isAdmin: false,
+        },
+      ],
+      isPending: false,
+    } as unknown as ReturnType<typeof useProjectMembers>);
+    stubRemoveMember();
+
+    render(<ProjectMembersList projectId="project-1" canManageMembers={false} />);
+
+    expect(screen.getByText("ada@example.com")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "remove" })).not.toBeInTheDocument();
   });
 });
