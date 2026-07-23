@@ -18,6 +18,12 @@ vi.mock("@/features/invitations/components/invitations-card", () => ({
   ),
 }));
 
+vi.mock("@/features/board-connections/components/board-connection-card", () => ({
+  BoardConnectionCard: ({ projectId }: { projectId: string }) => (
+    <div>board-connection-card:{projectId}</div>
+  ),
+}));
+
 vi.mock("@/features/projects/components/project-members-list", () => ({
   ProjectMembersList: ({
     projectId,
@@ -56,7 +62,7 @@ describe("ProjectPage", () => {
     expect(screen.getByText("Site vitrine client X")).toBeInTheDocument();
     expect(screen.getByText("project-members-list:project-1:true")).toBeInTheDocument();
     expect(screen.getByText("invitations-card:project-1")).toBeInTheDocument();
-    expect(screen.getByText("settings")).toBeInTheDocument();
+    expect(screen.getByText("board-connection-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("documentation")).toBeInTheDocument();
     expect(screen.queryByText("overview")).not.toBeInTheDocument();
   });
@@ -68,7 +74,7 @@ describe("ProjectPage", () => {
 
     expect(screen.getByText("project-members-list:project-1:false")).toBeInTheDocument();
     expect(screen.queryByText("invitations-card:project-1")).not.toBeInTheDocument();
-    expect(screen.getByText("settings")).toBeInTheDocument();
+    expect(screen.getByText("board-connection-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("documentation")).toBeInTheDocument();
   });
 
@@ -79,7 +85,7 @@ describe("ProjectPage", () => {
 
     expect(screen.getByText("project-members-list:project-1:false")).toBeInTheDocument();
     expect(screen.queryByText("invitations-card:project-1")).not.toBeInTheDocument();
-    expect(screen.queryByText("settings")).not.toBeInTheDocument();
+    expect(screen.queryByText("board-connection-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("documentation")).not.toBeInTheDocument();
 
     expect(screen.getByText("overview")).toBeInTheDocument();
@@ -97,7 +103,7 @@ describe("ProjectPage", () => {
 
     expect(screen.getByText("project-members-list:project-1:true")).toBeInTheDocument();
     expect(screen.getByText("invitations-card:project-1")).toBeInTheDocument();
-    expect(screen.queryByText("settings")).not.toBeInTheDocument();
+    expect(screen.queryByText("board-connection-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("documentation")).not.toBeInTheDocument();
     expect(screen.getByText("overview")).toBeInTheDocument();
   });

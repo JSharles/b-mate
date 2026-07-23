@@ -30,6 +30,11 @@ export type PrismaMock = {
     findUnique: jest.Mock;
     update: jest.Mock;
   };
+  boardConnection: {
+    upsert: jest.Mock;
+    findUnique: jest.Mock;
+    deleteMany: jest.Mock;
+  };
   $queryRaw: jest.Mock;
   $transaction: jest.Mock;
 };
@@ -64,6 +69,11 @@ export function createPrismaMock(): PrismaMock {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+    },
+    boardConnection: {
+      upsert: jest.fn(),
+      findUnique: jest.fn(),
+      deleteMany: jest.fn(),
     },
     $queryRaw: jest.fn(),
     // Runs the callback with this same mock standing in for the transaction

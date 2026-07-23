@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch, ApiError } from "./api-client";
 
-function mockFetchOnce(response: Partial<Response> & { json?: () => Promise<unknown> }) {
+function mockFetchOnce(
+  response: Partial<Response> & { json?: () => Promise<unknown>; text?: () => Promise<string> },
+) {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
     statusText: "OK",
     json: async () => ({}),
+    text: async () => "{}",
     ...response,
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -23,7 +26,7 @@ describe("apiFetch", () => {
   });
 
   it("sends credentials and returns the parsed JSON body on success", async () => {
-    const fetchMock = mockFetchOnce({ json: async () => ({ id: "1" }) });
+    const fetchMock = mockFetchOnce({ text: async () => JSON.stringify({ id: "1" }) });
 
     const result = await apiFetch<{ id: string }>("/auth/me");
 
@@ -35,7 +38,7 @@ describe("apiFetch", () => {
   });
 
   it("serializes the body and sets Content-Type when a body is provided", async () => {
-    const fetchMock = mockFetchOnce({ json: async () => ({ ok: true }) });
+    const fetchMock = mockFetchOnce({ text: async () => JSON.stringify({ ok: true }) });
 
     await apiFetch("/auth/login", { method: "POST", body: { email: "a@b.com" } });
 
@@ -45,9 +48,22 @@ describe("apiFetch", () => {
   });
 
   it("returns undefined for a 204 response without parsing a body", async () => {
-    mockFetchOnce({ status: 204, json: async () => { throw new Error("should not be called"); } });
+    mockFetchOnce({
+      status: 204,
+      text: async () => {
+        throw new Error("should not be called");
+      },
+    });
 
     const result = await apiFetch("/auth/logout", { method: "POST" });
+
+    expect(result).toBeUndefined();
+  });
+
+  it("returns undefined for a 200 response with an empty body (Nest's null/undefined return)", async () => {
+    mockFetchOnce({ status: 200, text: async () => "" });
+
+    const result = await apiFetch("/projects/1/board-connection");
 
     expect(result).toBeUndefined();
   });
