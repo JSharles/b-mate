@@ -113,7 +113,11 @@
       "firstNameRequired": "First name is required",
       "lastNameRequired": "Last name is required",
       "emailInvalid": "Enter a valid email address",
-      "passwordTooShort": "Password must be at least 8 characters"
+      "passwordTooShort": "Password must be at least 8 characters",
+      "accountKindLabel": "I am a...",
+      "accountKindDeveloper": "Developer",
+      "accountKindClient": "Client",
+      "accountKindRequired": "Choose whether you're a developer or a client"
     }
   },
   "Home": {

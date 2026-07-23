@@ -16,6 +16,11 @@ export function useSignup() {
     mutationFn: signup,
     meta: { skipGlobalErrorToast: true },
     onSuccess: (user) => {
+      // Clear every cached query first — a browser tab keeps one QueryClient
+      // for its whole lifetime, and resource keys (project, invitations,
+      // members...) carry no user identity, so a previous session's cached
+      // data would otherwise leak into this new account's views.
+      queryClient.clear();
       queryClient.setQueryData(currentUserKey, user);
       router.push("/home");
     },
@@ -30,6 +35,8 @@ export function useLogin() {
     mutationFn: login,
     meta: { skipGlobalErrorToast: true },
     onSuccess: (user) => {
+      // See useSignup — same tab-lifetime cache leak risk on identity change.
+      queryClient.clear();
       queryClient.setQueryData(currentUserKey, user);
       router.push("/home");
     },
@@ -45,6 +52,8 @@ export function useLogout() {
     mutationFn: logout,
     meta: { successMessage: t("loggedOut") },
     onSuccess: () => {
+      // See useSignup — same tab-lifetime cache leak risk on identity change.
+      queryClient.clear();
       queryClient.setQueryData(currentUserKey, null);
       router.push("/");
     },

@@ -173,9 +173,10 @@ describe("invitations hooks", () => {
   });
 
   describe("useAcceptInvitation", () => {
-    it("caches the user and redirects to /home", async () => {
+    it("caches the user, redirects to /home, and clears any stale cached data from a prior session", async () => {
       mockedAcceptInvitation.mockResolvedValue(fakeUser);
       const { Wrapper, queryClient } = createWrapper();
+      queryClient.setQueryData(["projects", "1"], { id: "1", title: "Someone else's project" });
 
       const { result } = renderHook(() => useAcceptInvitation("the-token"), { wrapper: Wrapper });
       act(() => {
@@ -187,6 +188,7 @@ describe("invitations hooks", () => {
         password: "supersecret123",
       });
       expect(queryClient.getQueryData(currentUserKey)).toBe(fakeUser);
+      expect(queryClient.getQueryData(["projects", "1"])).toBeUndefined();
       expect(push).toHaveBeenCalledWith("/home");
     });
   });

@@ -37,6 +37,7 @@ export class AuthService {
         lastName: dto.lastName,
         email,
         passwordHash,
+        accountKind: dto.accountKind,
       },
     });
 

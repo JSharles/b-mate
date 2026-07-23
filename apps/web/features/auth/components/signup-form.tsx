@@ -32,6 +32,7 @@ export function SignupForm() {
         emailInvalid: t("emailInvalid"),
         passwordTooShort: t("passwordTooShort"),
         passwordsDontMatch: t("passwordsDontMatch"),
+        accountKindRequired: t("accountKindRequired"),
       }),
     [t],
   );
@@ -62,6 +63,36 @@ export function SignupForm() {
         noValidate
         className="flex flex-col gap-4"
       >
+        <FormField
+          control={form.control}
+          name="accountKind"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("accountKindLabel")}</FormLabel>
+              <FormControl>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={field.value === "developer" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => field.onChange("developer")}
+                  >
+                    {t("accountKindDeveloper")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={field.value === "client" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => field.onChange("client")}
+                  >
+                    {t("accountKindClient")}
+                  </Button>
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <div className="flex gap-4">
           <FormField
             control={form.control}

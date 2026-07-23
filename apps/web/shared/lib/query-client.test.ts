@@ -70,6 +70,29 @@ describe("getQueryClient", () => {
     expect(mockedToast.error).toHaveBeenCalledWith("Une erreur est survenue");
   });
 
+  it("never retries a 4xx ApiError (it can never succeed on retry)", () => {
+    const queryClient = getQueryClient();
+    const retry = queryClient.defaultQueryOptions({}).retry as (
+      failureCount: number,
+      error: unknown,
+    ) => boolean;
+
+    expect(retry(0, new ApiError("Not found", 404))).toBe(false);
+    expect(retry(0, new ApiError("Forbidden", 403))).toBe(false);
+  });
+
+  it("retries a non-4xx failure up to 3 times", () => {
+    const queryClient = getQueryClient();
+    const retry = queryClient.defaultQueryOptions({}).retry as (
+      failureCount: number,
+      error: unknown,
+    ) => boolean;
+
+    expect(retry(0, new ApiError("Server error", 500))).toBe(true);
+    expect(retry(2, new Error("network down"))).toBe(true);
+    expect(retry(3, new Error("network down"))).toBe(false);
+  });
+
   it("shows a success toast when a mutation sets meta.successMessage", async () => {
     const queryClient = getQueryClient();
 

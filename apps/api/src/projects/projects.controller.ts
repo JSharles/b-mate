@@ -23,7 +23,7 @@ export class ProjectsController {
 
   @Post()
   create(@CurrentUser() user: User, @Body() dto: CreateProjectDto) {
-    return this.projectsService.create(user.id, dto);
+    return this.projectsService.create(user.id, user.accountKind, dto);
   }
 
   @Get()

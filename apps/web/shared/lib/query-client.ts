@@ -24,11 +24,18 @@ function errorMessage(error: unknown): string {
   return messages[getCurrentLocale()].Toasts.genericError;
 }
 
+function isNonRetryableError(error: unknown): boolean {
+  return error instanceof ApiError && error.status >= 400 && error.status < 500;
+}
+
 function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
         staleTime: 60 * 1000,
+        // A 4xx (not found, forbidden, unauthorized...) will never succeed on
+        // retry — retrying just delays the UI reflecting the real outcome.
+        retry: (failureCount, error) => !isNonRetryableError(error) && failureCount < 3,
       },
     },
     queryCache: new QueryCache({
