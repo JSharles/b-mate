@@ -8,21 +8,14 @@ vi.mock("./invite-client-form", () => ({
   ),
 }));
 
-vi.mock("./invitations-list", () => ({
-  InvitationsList: ({ projectId }: { projectId: string }) => (
-    <div>invitations-list:{projectId}</div>
-  ),
-}));
-
 describe("InviteClientDialog", () => {
-  it("renders the invite form and invitations list when open", () => {
+  it("renders the invite form when open", () => {
     render(
       <InviteClientDialog projectId="project-1" open={true} onOpenChange={() => {}} />,
     );
 
     expect(screen.getByText("inviteClient")).toBeInTheDocument();
     expect(screen.getByText("invite-client-form:project-1")).toBeInTheDocument();
-    expect(screen.getByText("invitations-list:project-1")).toBeInTheDocument();
   });
 
   it("renders nothing when closed", () => {

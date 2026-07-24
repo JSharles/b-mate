@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-07-22T00:00:00.000Z",
+  "generatedAt": "2026-07-24T00:48:00.000Z",
   "title": "Design System: b-mate",
   "extensions": {
     "colorMeta": {
@@ -9,6 +9,12 @@
         "displayName": "Ink",
         "canonical": "oklch(0.18 0 0)",
         "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.25 0 0)", "oklch(0.35 0 0)", "oklch(0.48 0 0)", "oklch(0.62 0 0)", "oklch(0.75 0 0)", "oklch(0.87 0 0)", "oklch(0.95 0 0)"]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.28 0 0)", "oklch(0.42 0 0)", "oklch(0.56 0 0)", "oklch(0.7 0 0)", "oklch(0.82 0 0)", "oklch(0.92 0 0)", "oklch(1 0 0)"]
       },
       "soft-lavender": {
         "role": "secondary",
@@ -28,11 +34,41 @@
         "canonical": "oklch(0.96 0.01 300)",
         "tonalRamp": ["oklch(0.2 0.005 300)", "oklch(0.32 0.008 300)", "oklch(0.46 0.008 300)", "oklch(0.6 0.008 300)", "oklch(0.74 0.008 300)", "oklch(0.85 0.008 300)", "oklch(0.92 0.008 300)", "oklch(0.96 0.01 300)"]
       },
+      "border": {
+        "role": "neutral",
+        "displayName": "Border",
+        "canonical": "oklch(0.92 0.012 300)",
+        "tonalRamp": ["oklch(0.2 0.006 300)", "oklch(0.32 0.008 300)", "oklch(0.46 0.01 300)", "oklch(0.6 0.01 300)", "oklch(0.74 0.01 300)", "oklch(0.84 0.011 300)", "oklch(0.92 0.012 300)", "oklch(0.97 0.006 300)"]
+      },
+      "input-border": {
+        "role": "neutral",
+        "displayName": "Input Border",
+        "canonical": "oklch(0.85 0.035 290)",
+        "tonalRamp": ["oklch(0.24 0.025 290)", "oklch(0.36 0.03 290)", "oklch(0.5 0.035 290)", "oklch(0.63 0.035 290)", "oklch(0.75 0.035 290)", "oklch(0.82 0.035 290)", "oklch(0.85 0.035 290)", "oklch(0.93 0.02 290)"]
+      },
       "violet-glow": {
         "role": "tertiary",
         "displayName": "Violet Glow",
         "canonical": "oklch(0.55 0.2 285)",
         "tonalRamp": ["oklch(0.2 0.12 285)", "oklch(0.3 0.16 285)", "oklch(0.4 0.19 285)", "oklch(0.48 0.2 285)", "oklch(0.55 0.2 285)", "oklch(0.66 0.17 285)", "oklch(0.78 0.12 285)", "oklch(0.9 0.06 285)"]
+      },
+      "gradient-from": {
+        "role": "tertiary",
+        "displayName": "Gradient From",
+        "canonical": "oklch(0.86 0.05 290)",
+        "tonalRamp": ["oklch(0.22 0.035 290)", "oklch(0.34 0.045 290)", "oklch(0.48 0.055 290)", "oklch(0.6 0.058 290)", "oklch(0.72 0.055 290)", "oklch(0.8 0.052 290)", "oklch(0.86 0.05 290)", "oklch(0.94 0.025 290)"]
+      },
+      "gradient-via": {
+        "role": "tertiary",
+        "displayName": "Gradient Via",
+        "canonical": "oklch(0.94 0.025 290)",
+        "tonalRamp": ["oklch(0.25 0.018 290)", "oklch(0.38 0.022 290)", "oklch(0.52 0.026 290)", "oklch(0.65 0.026 290)", "oklch(0.78 0.026 290)", "oklch(0.87 0.025 290)", "oklch(0.94 0.025 290)", "oklch(0.98 0.012 290)"]
+      },
+      "gradient-to": {
+        "role": "tertiary",
+        "displayName": "Gradient To",
+        "canonical": "oklch(0.95 0.008 300)",
+        "tonalRamp": ["oklch(0.21 0.005 300)", "oklch(0.33 0.007 300)", "oklch(0.47 0.008 300)", "oklch(0.61 0.008 300)", "oklch(0.75 0.008 300)", "oklch(0.86 0.008 300)", "oklch(0.95 0.008 300)", "oklch(0.98 0.004 300)"]
       },
       "muted-surface": {
         "role": "neutral",
@@ -45,6 +81,12 @@
         "displayName": "Muted Ink",
         "canonical": "oklch(0.5 0.015 300)",
         "tonalRamp": ["oklch(0.18 0.01 300)", "oklch(0.28 0.012 300)", "oklch(0.38 0.014 300)", "oklch(0.5 0.015 300)", "oklch(0.62 0.014 300)", "oklch(0.74 0.012 300)", "oklch(0.85 0.01 300)", "oklch(0.93 0.008 300)"]
+      },
+      "destructive": {
+        "role": "destructive",
+        "displayName": "Destructive",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "tonalRamp": ["oklch(0.22 0.15 27)", "oklch(0.32 0.19 27)", "oklch(0.42 0.22 27)", "oklch(0.5 0.24 27)", "oklch(0.577 0.245 27.325)", "oklch(0.66 0.2 27)", "oklch(0.78 0.14 27)", "oklch(0.9 0.06 27)"]
       }
     },
     "typographyMeta": {

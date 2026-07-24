@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
-import { InvitationsList } from "./invitations-list";
 import { InviteClientForm } from "./invite-client-form";
 
 interface InviteClientDialogProps {
@@ -25,10 +24,7 @@ export function InviteClientDialog({ projectId, open, onOpenChange }: InviteClie
         <DialogHeader>
           <DialogTitle>{t("inviteClient")}</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-4">
-          <InviteClientForm projectId={projectId} />
-          <InvitationsList projectId={projectId} />
-        </div>
+        <InviteClientForm projectId={projectId} />
       </DialogContent>
     </Dialog>
   );
