@@ -141,7 +141,9 @@
     },
     "ProjectPage": {
       "inviteClient": "Inviter un client",
-      "members": "Membres",
+      "team": "Équipe",
+      "active": "Actifs",
+      "pending": "En attente",
       "documentation": "Documentation",
       "documentationComingSoon": "Bientôt disponible",
       "overview": "Aperçu du projet",
@@ -160,10 +162,8 @@
       "submit": "Inviter",
       "submitPending": "Envoi…"
     },
-    "InvitationsCard": {
-      "title": "Invitations",
-      "invite": "Inviter",
-      "pendingCount": "{count} en attente"
+    "InviteButton": {
+      "invite": "Inviter"
     },
     "InvitationsList": {
       "empty": "Aucune invitation pour le moment",

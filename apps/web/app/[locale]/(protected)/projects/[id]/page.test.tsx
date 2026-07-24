@@ -12,9 +12,15 @@ vi.mock("@/features/projects/hooks", () => ({
   useProject: vi.fn(),
 }));
 
-vi.mock("@/features/invitations/components/invitations-card", () => ({
-  InvitationsCard: ({ projectId }: { projectId: string }) => (
-    <div>invitations-card:{projectId}</div>
+vi.mock("@/features/invitations/components/invite-button", () => ({
+  InviteButton: ({ projectId }: { projectId: string }) => (
+    <div>invite-button:{projectId}</div>
+  ),
+}));
+
+vi.mock("@/features/invitations/components/invitations-list", () => ({
+  InvitationsList: ({ projectId }: { projectId: string }) => (
+    <div>invitations-list:{projectId}</div>
   ),
 }));
 
@@ -67,7 +73,8 @@ describe("ProjectPage", () => {
 
     expect(screen.getByText("Site vitrine client X")).toBeInTheDocument();
     expect(screen.getByText("project-members-list:project-1:true")).toBeInTheDocument();
-    expect(screen.getByText("invitations-card:project-1")).toBeInTheDocument();
+    expect(screen.getByText("invite-button:project-1")).toBeInTheDocument();
+    expect(screen.getByText("invitations-list:project-1")).toBeInTheDocument();
     expect(screen.getByText("board-connection-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("documentation")).toBeInTheDocument();
     expect(screen.queryByText("overview")).not.toBeInTheDocument();
@@ -80,7 +87,8 @@ describe("ProjectPage", () => {
     renderPage();
 
     expect(screen.getByText("project-members-list:project-1:false")).toBeInTheDocument();
-    expect(screen.queryByText("invitations-card:project-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("invite-button:project-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("invitations-list:project-1")).not.toBeInTheDocument();
     expect(screen.getByText("board-connection-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("documentation")).toBeInTheDocument();
   });
@@ -91,7 +99,8 @@ describe("ProjectPage", () => {
     renderPage();
 
     expect(screen.getByText("project-members-list:project-1:false")).toBeInTheDocument();
-    expect(screen.queryByText("invitations-card:project-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("invite-button:project-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("invitations-list:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("board-connection-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("documentation")).not.toBeInTheDocument();
 
@@ -109,7 +118,8 @@ describe("ProjectPage", () => {
     renderPage();
 
     expect(screen.getByText("project-members-list:project-1:true")).toBeInTheDocument();
-    expect(screen.getByText("invitations-card:project-1")).toBeInTheDocument();
+    expect(screen.getByText("invite-button:project-1")).toBeInTheDocument();
+    expect(screen.getByText("invitations-list:project-1")).toBeInTheDocument();
     expect(screen.queryByText("board-connection-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("documentation")).not.toBeInTheDocument();
     expect(screen.getByText("overview")).toBeInTheDocument();

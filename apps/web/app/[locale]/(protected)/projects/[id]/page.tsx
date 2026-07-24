@@ -5,11 +5,18 @@ import { useTranslations } from "next-intl";
 import { use } from "react";
 import { BoardConnectionCard } from "@/features/board-connections/components/board-connection-card";
 import { CurrentTaskCard } from "@/features/current-task/components/current-task-card";
-import { InvitationsCard } from "@/features/invitations/components/invitations-card";
+import { InviteButton } from "@/features/invitations/components/invite-button";
+import { InvitationsList } from "@/features/invitations/components/invitations-list";
 import { ComingSoonCard } from "@/features/projects/components/coming-soon-card";
 import { ProjectMembersList } from "@/features/projects/components/project-members-list";
 import { useProject } from "@/features/projects/hooks";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
@@ -38,22 +45,35 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-            {t("members")}
+            {t("team")}
           </CardTitle>
+          {project.isAdmin && (
+            <CardAction>
+              <InviteButton projectId={id} />
+            </CardAction>
+          )}
         </CardHeader>
-        <CardContent>
-          <ProjectMembersList projectId={id} canManageMembers={project.isAdmin} />
+        <CardContent className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              {t("active")}
+            </h3>
+            <ProjectMembersList projectId={id} canManageMembers={project.isAdmin} />
+          </div>
+
+          {project.isAdmin && (
+            <div className="flex flex-col gap-2">
+              <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                {t("pending")}
+              </h3>
+              <InvitationsList projectId={id} />
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {project.isAdmin && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <InvitationsCard projectId={id} />
-        </div>
-      )}
-
       {isContributor && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <BoardConnectionCard projectId={id} />
           <ComingSoonCard
             icon={BookOpen}
@@ -64,26 +84,36 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       )}
 
       {!isContributor && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <ComingSoonCard icon={FileText} title={t("overview")} message={t("overviewComingSoon")} />
-          <ComingSoonCard
-            icon={Search}
-            title={t("discoveryAudit")}
-            message={t("discoveryAuditComingSoon")}
-          />
-          <ComingSoonCard
-            icon={Cpu}
-            title={t("technicalDecisions")}
-            message={t("technicalDecisionsComingSoon")}
-          />
-          <ComingSoonCard icon={Map} title={t("roadmap")} message={t("roadmapComingSoon")} />
-          <ComingSoonCard
-            icon={BookOpen}
-            title={t("clientDocumentation")}
-            message={t("clientDocumentationComingSoon")}
-          />
+        <>
+          {/* The one real, live cartouche gets its own row rather than
+              competing for row-height with placeholder cards, and appears
+              first — it's the actual reason a client opens this page. */}
           <CurrentTaskCard projectId={id} />
-        </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <ComingSoonCard
+              icon={FileText}
+              title={t("overview")}
+              message={t("overviewComingSoon")}
+            />
+            <ComingSoonCard
+              icon={Search}
+              title={t("discoveryAudit")}
+              message={t("discoveryAuditComingSoon")}
+            />
+            <ComingSoonCard
+              icon={Cpu}
+              title={t("technicalDecisions")}
+              message={t("technicalDecisionsComingSoon")}
+            />
+            <ComingSoonCard icon={Map} title={t("roadmap")} message={t("roadmapComingSoon")} />
+            <ComingSoonCard
+              icon={BookOpen}
+              title={t("clientDocumentation")}
+              message={t("clientDocumentationComingSoon")}
+            />
+          </div>
+        </>
       )}
     </div>
   );
