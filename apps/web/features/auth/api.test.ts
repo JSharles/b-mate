@@ -15,7 +15,13 @@ describe("features/auth/api", () => {
 
   it("signup posts to /auth/signup", async () => {
     mockedApiFetch.mockResolvedValue({ id: "1" });
-    const data = { firstName: "Jean", lastName: "Charles", email: "jc@example.com", password: "supersecret123" };
+    const data = {
+      firstName: "Jean",
+      lastName: "Charles",
+      email: "jc@example.com",
+      password: "supersecret123",
+      accountKind: "developer" as const,
+    };
 
     await signup(data);
 

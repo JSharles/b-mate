@@ -31,6 +31,15 @@ const fakeProject = {
   updatedAt: new Date(),
 };
 
+// findOneForUser returns the caller's own role/isAdmin alongside the
+// project (ProjectDetails), unlike create/findAllForUser/update which
+// return the plain Project shape above.
+const fakeProjectDetails = {
+  ...fakeProject,
+  role: 'contributor' as const,
+  isAdmin: true,
+};
+
 describe('ProjectsController', () => {
   let projectsService: jest.Mocked<
     Pick<
@@ -80,7 +89,7 @@ describe('ProjectsController', () => {
   });
 
   it('findOne delegates to the service with the current user and project id', async () => {
-    projectsService.findOneForUser.mockResolvedValue(fakeProject);
+    projectsService.findOneForUser.mockResolvedValue(fakeProjectDetails);
 
     const result = await controller.findOne(fakeUser, 'project-1');
 
@@ -88,7 +97,7 @@ describe('ProjectsController', () => {
       'user-1',
       'project-1',
     );
-    expect(result).toEqual(fakeProject);
+    expect(result).toEqual(fakeProjectDetails);
   });
 
   it('update delegates to the service with the current user, project id and dto', async () => {

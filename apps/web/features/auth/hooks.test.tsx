@@ -52,6 +52,7 @@ describe("auth hooks", () => {
         lastName: "Charles",
         email: "jc@example.com",
         password: "supersecret123",
+        accountKind: "developer",
       });
     });
 

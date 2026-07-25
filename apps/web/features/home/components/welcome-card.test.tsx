@@ -20,6 +20,7 @@ const baseUser = {
   firstName: "Jean",
   lastName: "Charles",
   email: "jc@example.com",
+  accountKind: "developer" as const,
   company: null,
   address: null,
   phone: null,
