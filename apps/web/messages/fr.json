@@ -145,17 +145,23 @@
       "active": "Actifs",
       "pending": "En attente",
       "documentation": "Documentation",
-      "documentationComingSoon": "Bientôt disponible",
+      "comingSoon": "Bientôt disponible",
       "overview": "Aperçu du projet",
-      "overviewComingSoon": "Bientôt disponible",
       "discoveryAudit": "Retours d'audit et de découverte",
-      "discoveryAuditComingSoon": "Bientôt disponible",
-      "technicalDecisions": "Choix techniques",
-      "technicalDecisionsComingSoon": "Bientôt disponible",
+      "discoveryAuditHint": "Les conclusions de la phase de découverte, dès qu'elles seront disponibles.",
       "roadmap": "Roadmap",
-      "roadmapComingSoon": "Bientôt disponible",
+      "roadmapHint": "Ce qui est prévu ensuite, dès que ce sera prêt à partager.",
       "clientDocumentation": "Documentation",
-      "clientDocumentationComingSoon": "Bientôt disponible"
+      "clientDocumentationHint": "Guides et documents de votre projet, dès leur publication.",
+      "meetings": "Réunions",
+      "meetingsHint": "Réunions à venir et passées, dès qu'elles seront planifiées.",
+      "loadErrorTitle": "Impossible de charger ce projet",
+      "loadErrorRetry": "Réessayer"
+    },
+    "DeveloperCard": {
+      "title": "Votre développeur",
+      "roleFallback": "Développeur",
+      "empty": "Aucun développeur assigné pour le moment"
     },
     "InviteClientForm": {
       "email": "Email",
@@ -204,7 +210,8 @@
     },
     "CurrentTaskCard": {
       "title": "Tâche en cours",
-      "empty": "Rien en cours pour le moment"
+      "empty": "Votre développeur n'a pas encore commencé de tâche — revenez bientôt.",
+      "updatedAt": "Mis à jour {time}"
     }
   },
   "Invite": {

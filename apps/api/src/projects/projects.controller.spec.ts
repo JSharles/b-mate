@@ -115,6 +115,11 @@ describe('ProjectsController', () => {
         lastName: 'Lovelace',
         email: 'ada@example.com',
         isAdmin: false,
+        role: 'client' as const,
+        image: null,
+        roleTitle: null,
+        phone: null,
+        github: null,
       },
     ];
     projectsService.findMembersForProject.mockResolvedValue(members);

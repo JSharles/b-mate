@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { useProject } from "@/features/projects/hooks";
 import ProjectPage from "./page";
@@ -50,6 +51,12 @@ vi.mock("@/features/projects/components/project-members-list", () => ({
   ),
 }));
 
+vi.mock("@/features/projects/components/developer-card", () => ({
+  DeveloperCard: ({ projectId }: { projectId: string }) => (
+    <div>developer-card:{projectId}</div>
+  ),
+}));
+
 const mockedUseProject = vi.mocked(useProject);
 
 function renderPage() {
@@ -93,7 +100,7 @@ describe("ProjectPage", () => {
     expect(screen.getByText("documentation")).toBeInTheDocument();
   });
 
-  it("shows only the read-only client placeholders for a non-admin client", () => {
+  it("shows only the read-only client view for a non-admin client", () => {
     mockProject("client", false);
 
     renderPage();
@@ -104,11 +111,12 @@ describe("ProjectPage", () => {
     expect(screen.queryByText("board-connection-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("documentation")).not.toBeInTheDocument();
 
+    expect(screen.getByText("developer-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("overview")).toBeInTheDocument();
     expect(screen.getByText("discoveryAudit")).toBeInTheDocument();
-    expect(screen.getByText("technicalDecisions")).toBeInTheDocument();
     expect(screen.getByText("roadmap")).toBeInTheDocument();
     expect(screen.getByText("clientDocumentation")).toBeInTheDocument();
+    expect(screen.getByText("meetings")).toBeInTheDocument();
     expect(screen.getByText("current-task-card:project-1")).toBeInTheDocument();
   });
 
@@ -122,6 +130,7 @@ describe("ProjectPage", () => {
     expect(screen.getByText("invitations-list:project-1")).toBeInTheDocument();
     expect(screen.queryByText("board-connection-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("documentation")).not.toBeInTheDocument();
+    expect(screen.getByText("developer-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("overview")).toBeInTheDocument();
     expect(screen.getByText("current-task-card:project-1")).toBeInTheDocument();
   });
@@ -135,26 +144,45 @@ describe("ProjectPage", () => {
     expect(screen.queryByRole("button", { name: /upload/i })).not.toBeInTheDocument();
   });
 
-  it("shows nothing when the project is missing", () => {
+  it("shows an explicit error state with a retry action when the project is missing", () => {
     mockedUseProject.mockReturnValue({
       data: undefined,
       isPending: false,
+      refetch: vi.fn(),
     } as unknown as ReturnType<typeof useProject>);
 
-    const { container } = renderPage();
+    renderPage();
 
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByText("loadErrorTitle")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "loadErrorRetry" })).toBeInTheDocument();
   });
 
-  it("shows nothing when the query errors, even with a stale project still cached from a prior session", () => {
+  it("shows the error state, not a stale project from a prior session, when the query errors", () => {
     mockedUseProject.mockReturnValue({
       data: { id: "project-1", title: "Someone else's project", role: "contributor", isAdmin: true },
       isPending: false,
       isError: true,
+      refetch: vi.fn(),
     } as unknown as ReturnType<typeof useProject>);
 
-    const { container } = renderPage();
+    renderPage();
 
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByText("Someone else's project")).not.toBeInTheDocument();
+    expect(screen.getByText("loadErrorTitle")).toBeInTheDocument();
+  });
+
+  it("calls refetch when the retry button is clicked", async () => {
+    const refetch = vi.fn();
+    mockedUseProject.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      refetch,
+    } as unknown as ReturnType<typeof useProject>);
+    const user = userEvent.setup();
+
+    renderPage();
+    await user.click(screen.getByRole("button", { name: "loadErrorRetry" }));
+
+    expect(refetch).toHaveBeenCalled();
   });
 });

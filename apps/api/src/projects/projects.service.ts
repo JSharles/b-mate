@@ -20,6 +20,11 @@ export interface ProjectMemberDetails {
   lastName: string;
   email: string;
   isAdmin: boolean;
+  role: ProjectMemberRole;
+  image: string | null;
+  roleTitle: string | null;
+  phone: string | null;
+  github: string | null;
 }
 
 // The project plus the caller's own role/isAdmin on it — lets the frontend
@@ -129,6 +134,11 @@ export class ProjectsService {
       lastName: member.user.lastName,
       email: member.user.email,
       isAdmin: member.isAdmin,
+      role: member.role,
+      image: member.user.image,
+      roleTitle: member.user.roleTitle,
+      phone: member.user.phone,
+      github: member.user.github,
     }));
   }
 

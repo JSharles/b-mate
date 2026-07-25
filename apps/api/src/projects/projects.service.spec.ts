@@ -198,6 +198,10 @@ describe('ProjectsService', () => {
             firstName: 'Jean',
             lastName: 'Charles',
             email: 'jc@example.com',
+            image: null,
+            roleTitle: null,
+            phone: null,
+            github: null,
           },
         },
       ]);
@@ -216,6 +220,11 @@ describe('ProjectsService', () => {
           lastName: 'Charles',
           email: 'jc@example.com',
           isAdmin: true,
+          role: 'contributor',
+          image: null,
+          roleTitle: null,
+          phone: null,
+          github: null,
         },
       ]);
     });
@@ -233,6 +242,10 @@ describe('ProjectsService', () => {
             firstName: 'Jean',
             lastName: 'Charles',
             email: 'jc@example.com',
+            image: null,
+            roleTitle: null,
+            phone: null,
+            github: null,
           },
         },
       ]);
