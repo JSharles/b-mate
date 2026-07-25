@@ -23,15 +23,17 @@ function createWrapper() {
 }
 
 describe("useCurrentTask", () => {
-  it("returns the current task items for the project", async () => {
-    const items = [{ title: "Fix bug", description: "Details", url: null }];
+  it("returns the current task items for the project, requesting the active locale", async () => {
+    const items = [
+      { title: "Fix bug", description: "Details", updatedAt: "2026-07-20T10:00:00.000Z" },
+    ];
     mockedGetCurrentTask.mockResolvedValue(items);
     const { Wrapper } = createWrapper();
 
     const { result } = renderHook(() => useCurrentTask("project-1"), { wrapper: Wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockedGetCurrentTask).toHaveBeenCalledWith("project-1");
+    expect(mockedGetCurrentTask).toHaveBeenCalledWith("project-1", "fr");
     expect(result.current.data).toEqual(items);
   });
 });

@@ -1,9 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useProjectMembers, useRemoveMember } from "../hooks";
+
+function initials(firstName: string, lastName: string) {
+  return `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
+}
 
 interface ProjectMembersListProps {
   projectId: string;
@@ -36,18 +41,28 @@ export function ProjectMembersList({ projectId, canManageMembers }: ProjectMembe
         return (
           <li
             key={member.userId}
-            className="flex items-center justify-between gap-3 py-3 text-sm"
+            className="flex items-center justify-between gap-3 py-2 text-sm"
           >
-            <div className="flex items-center gap-2">
-              <span>
-                {member.firstName} {member.lastName}
-              </span>
-              <span className="text-muted-foreground">{member.email}</span>
-              {member.isAdmin && (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                  {t("admin")}
+            <div className="flex min-w-0 items-center gap-2">
+              <Avatar className="size-6 shrink-0">
+                {member.image && <AvatarImage src={member.image} alt="" />}
+                <AvatarFallback className="text-xs">
+                  {initials(member.firstName, member.lastName)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex min-w-0 flex-col">
+                <span className="flex items-center gap-1.5">
+                  <span className="truncate">
+                    {member.firstName} {member.lastName}
+                  </span>
+                  {member.isAdmin && (
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                      {t("admin")}
+                    </span>
+                  )}
                 </span>
-              )}
+                <span className="truncate text-xs text-muted-foreground">{member.email}</span>
+              </div>
             </div>
             {canManageMembers && (
               <Button

@@ -13,11 +13,13 @@ describe("features/current-task/api", () => {
     mockedApiFetch.mockReset();
   });
 
-  it("getCurrentTask gets /projects/:id/current-task", async () => {
+  it("getCurrentTask gets /projects/:id/current-task with the given locale", async () => {
     mockedApiFetch.mockResolvedValue([]);
 
-    await getCurrentTask("project-1");
+    await getCurrentTask("project-1", "fr");
 
-    expect(mockedApiFetch).toHaveBeenCalledWith("/projects/project-1/current-task");
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/current-task?locale=fr",
+    );
   });
 });

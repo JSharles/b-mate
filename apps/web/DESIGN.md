@@ -16,6 +16,10 @@ colors:
   gradient-via: "#eee9fa"
   gradient-to: "#f0eff2"
   destructive: "oklch(0.577 0.245 27.325)"
+  success: "#16a34a"
+  iris-pink: "#f6c9de"
+  iris-yellow: "#f5e6a8"
+  iris-blue: "#b8d4f5"
 typography:
   display:
     fontFamily: "Urbanist, system-ui, sans-serif"
@@ -119,10 +123,16 @@ The palette reads as ink on paper: one dark neutral for everything actionable, o
 - **Violet Glow** (`#6c5ce7`): the radial "glow" pool in the fixed background mesh, mixed at low opacity — never used as a solid fill anywhere else.
 - **Gradient From / Via / To** (`#d9d0fb` → `#eee9fa` → `#f0eff2`): the diagonal wash behind the whole app, from the top-left corner down to the neutral paper tone.
 
+### Semantic / Status
+- **Success** (`#16a34a`): reserved exclusively for a small "this is live/active right now" indicator (e.g. a pulsing status dot on a core-feature card). This is a *status* color, not a brand accent — it never appears on a button, link, badge of emphasis, or anywhere meaning "act on this." Added deliberately (2026-07-24) after clarifying that the No Second Accent Rule targets decorative/brand accents, not functional status semantics — see the Named Rules below.
+
+### Iridescent Glass (Signature Card only)
+- **Iris Pink** (`#f6c9de`) / **Iris Yellow** (`#f5e6a8`) / **Iris Blue** (`#b8d4f5`): a soft, pastel trio used exclusively as blurred decorative background blobs behind a frosted glass panel on the Signature Card (see Components → Cards). Never used for text, icons, borders, or anything read as emphasis — purely atmospheric texture, scoped to the one or two most differentiated surfaces in the product. Not a general accent palette.
+
 ### Named Rules
 **The One Voice Rule.** Ink is the only color allowed to mean "act on this" or "this is emphasized." Lavender is atmosphere and secondary surfaces only — it is never promoted to a button, a link, or a focus ring, no matter how tempting a second accent color looks.
 
-**The No Second Accent Rule.** Honey/ochre and raspberry were both explicitly tried as a second accent color and rejected. Don't reintroduce a warm or saturated accent color to "liven up" the palette — the calm, near-monochrome ink-and-lavender system is the deliberate choice, not a placeholder waiting for a real accent.
+**The No Second Accent Rule.** Honey/ochre and raspberry were both explicitly tried as a second *decorative brand accent* and rejected — don't reintroduce a warm or saturated color to "liven up" the palette as a stand-in second brand color. This rule targets accent proliferation, not functional status semantics: a narrowly-scoped status color (Success) used only for a literal "active/live" indicator is a different category and is allowed — see Semantic / Status above. The calm, near-monochrome ink-and-lavender system remains the deliberate choice for everything actionable and decorative.
 
 ## Typography
 
@@ -179,6 +189,16 @@ Corners are gently rounded, never sharp and never pill-shaped by default: `0.625
 - **Shadow Strategy:** `shadow-sm` at rest, `shadow-md` + slight lift on hover for interactive (clickable) cards only — see Elevation & Depth.
 - **Internal Padding:** `py-6`, with `px-6` on header/content sub-sections.
 
+#### Signature Card (scoped exception)
+A card representing a core, load-bearing value proposition (today: the Current Task card only) may take a deliberately richer treatment than an ordinary card — reserved for the one or two surfaces that actually carry the product's differentiation, not a general pattern:
+- **Iridescent glass background:** soft, blurred pink/yellow/blue blobs (Iris Pink/Yellow/Blue — see Colors) behind a frosted white panel (`backdrop-blur` + translucent white), evoking the "Glass Report" name literally rather than metaphorically. The blobs are decorative texture only — all text sits on the frosted panel, never directly on a blob, so contrast is governed by the panel, not the gradient underneath.
+- A soft ambient glow behind its lead icon, using Violet Glow at low opacity — the same token the background mesh already uses.
+- A continuously-rotating conic-gradient progress ring (Ink arc on a Lavender track) around a lead icon, signaling "actively in progress."
+- A small pulsing Success-green status dot (see Semantic / Status) directly on that same icon — "this is live right now."
+- Bolder, larger title typography than an ordinary card's content — this card's title is the closest thing product UI has to a headline moment.
+- Marginally deeper shadow and padding than sibling cards, so it physically sits forward on the page even when it isn't first in reading order.
+This is an intentional, named exception — not license to add shine to every card, and Iris Pink/Yellow/Blue are not general-purpose accent colors (don't use them anywhere else). Reserve the whole treatment for surfaces that are genuinely core to the product's promise.
+
 ### Inputs / Fields
 - **Style:** White background, `input-border` stroke, `rounded-md`, `shadow-sm` — deliberately given a visible fill and border after early feedback that a fully transparent input wasn't legible enough.
 - **Focus:** border shifts to Ink, 3px `ring/50` glow.
@@ -199,6 +219,9 @@ Corners are gently rounded, never sharp and never pill-shaped by default: `0.625
 
 ### Don't:
 - **Don't** reintroduce the dark ink/rust theme — the product is single-theme, light-only, by deliberate decision (see `docs/PRODUCT.md`).
-- **Don't** add a second accent color (honey/ochre and raspberry were both tried and rejected) — lavender stays atmospheric, it does not get promoted to an action color.
+- **Don't** add a second *decorative brand* accent color (honey/ochre and raspberry were both tried and rejected) — lavender stays atmospheric, it does not get promoted to an action color. This does not forbid Success (see Semantic / Status) — that's a status color, not a brand accent.
+- **Don't** use Success (green) for anything actionable or emphasized — it means "live/active" only, never a button, link, or badge of importance.
+- **Don't** apply the Signature Card treatment (iridescent glass, glow, progress ring, status dot) to an ordinary card — it's reserved for the handful of surfaces carrying the product's core differentiation.
+- **Don't** use Iris Pink/Yellow/Blue for text, icons, or borders, or anywhere outside the Signature Card's decorative background blobs.
 - **Don't** give the top nav a background fill or border — it was explicitly de-opaqued after user feedback.
 - **Don't** carry the landing hero's `rounded-full` pill button into product UI — it's a scoped marketing exception, not the button standard.

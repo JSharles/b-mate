@@ -10,6 +10,7 @@ const fakeUser: User = {
   lastName: 'Charles',
   email: 'client@example.com',
   passwordHash: 'hashed',
+  accountKind: 'client',
   company: null,
   address: null,
   phone: null,

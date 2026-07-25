@@ -10,6 +10,7 @@ const fakeUser: User = {
   lastName: 'Charles',
   email: 'jc@example.com',
   passwordHash: 'hashed',
+  accountKind: 'developer',
   company: null,
   address: null,
   phone: null,
@@ -56,6 +57,7 @@ describe('AuthController', () => {
         lastName: 'Charles',
         email: 'jc@example.com',
         password: 'supersecret123',
+        accountKind: 'developer',
       },
       res as unknown as Response,
     );

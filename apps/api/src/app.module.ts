@@ -8,6 +8,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { BoardConnectionsModule } from './board-connections/board-connections.module';
 import { CurrentTaskModule } from './current-task/current-task.module';
+import { TaskVulgarizationModule } from './task-vulgarization/task-vulgarization.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { CurrentTaskModule } from './current-task/current-task.module';
     ProjectsModule,
     InvitationsModule,
     BoardConnectionsModule,
+    TaskVulgarizationModule,
     CurrentTaskModule,
   ],
   controllers: [AppController],

@@ -4,6 +4,7 @@ build/
 .next/
 out/
 .turbo/
+.impeccable/
 *.log
 .env
 .env.*

@@ -87,6 +87,30 @@
         "displayName": "Destructive",
         "canonical": "oklch(0.577 0.245 27.325)",
         "tonalRamp": ["oklch(0.22 0.15 27)", "oklch(0.32 0.19 27)", "oklch(0.42 0.22 27)", "oklch(0.5 0.24 27)", "oklch(0.577 0.245 27.325)", "oklch(0.66 0.2 27)", "oklch(0.78 0.14 27)", "oklch(0.9 0.06 27)"]
+      },
+      "success": {
+        "role": "success",
+        "displayName": "Success",
+        "canonical": "oklch(0.627 0.194 149.214)",
+        "tonalRamp": ["oklch(0.22 0.12 149)", "oklch(0.32 0.15 149)", "oklch(0.42 0.17 149)", "oklch(0.5 0.19 149)", "oklch(0.627 0.194 149.214)", "oklch(0.72 0.17 149)", "oklch(0.82 0.12 149)", "oklch(0.92 0.06 149)"]
+      },
+      "iris-pink": {
+        "role": "tertiary",
+        "displayName": "Iris Pink",
+        "canonical": "oklch(0.86 0.06 350)",
+        "tonalRamp": ["oklch(0.3 0.05 350)", "oklch(0.42 0.07 350)", "oklch(0.55 0.08 350)", "oklch(0.68 0.07 350)", "oklch(0.86 0.06 350)", "oklch(0.9 0.045 350)", "oklch(0.94 0.03 350)", "oklch(0.97 0.015 350)"]
+      },
+      "iris-yellow": {
+        "role": "tertiary",
+        "displayName": "Iris Yellow",
+        "canonical": "oklch(0.9 0.07 95)",
+        "tonalRamp": ["oklch(0.35 0.06 95)", "oklch(0.48 0.08 95)", "oklch(0.6 0.09 95)", "oklch(0.75 0.08 95)", "oklch(0.9 0.07 95)", "oklch(0.93 0.05 95)", "oklch(0.96 0.03 95)", "oklch(0.98 0.015 95)"]
+      },
+      "iris-blue": {
+        "role": "tertiary",
+        "displayName": "Iris Blue",
+        "canonical": "oklch(0.83 0.06 245)",
+        "tonalRamp": ["oklch(0.3 0.06 245)", "oklch(0.42 0.08 245)", "oklch(0.55 0.09 245)", "oklch(0.68 0.08 245)", "oklch(0.83 0.06 245)", "oklch(0.88 0.045 245)", "oklch(0.93 0.03 245)", "oklch(0.97 0.015 245)"]
       }
     },
     "typographyMeta": {

@@ -32,9 +32,18 @@ export default async function ProtectedLayout({
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    // h-dvh + flex-1 here, not min-h-full: body's `min-h-full` alone does
+    // not reliably resolve as a definite height for this div's own
+    // percentage-based sizing in every browser (measured directly — a plain
+    // min-h-full child came out shorter than its flex-column parent despite
+    // the parent filling the viewport). flex-grow is a robust mechanism
+    // that doesn't depend on that percentage-resolution edge case. No
+    // overflow-hidden here — this layout wraps every protected page, and
+    // pages with more content than fits (e.g. Home with many projects)
+    // must still be able to scroll normally.
+    <div className="flex h-dvh flex-col">
       <TopNav user={user} />
-      <div className="flex flex-1 flex-col p-6">{children}</div>
+      <div className="flex flex-1 flex-col overflow-y-auto p-6">{children}</div>
     </div>
   );
 }

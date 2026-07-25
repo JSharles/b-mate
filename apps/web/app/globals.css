@@ -28,6 +28,19 @@
   --accent: #ece9ff;
   --accent-foreground: #242424;
   --destructive: oklch(0.577 0.245 27.325);
+  /* Semantic status color, not a second brand accent (see DESIGN.md "No
+     Second Accent Rule") — reserved for a small "this is live/active right
+     now" indicator (e.g. the Current Task card), never a button, link, or
+     any other decorative/emphasis use. */
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  /* Iridescent glass wash — Signature Card only (see DESIGN.md "Signature
+     Card"). Purely decorative background texture behind a frosted panel;
+     never used for text, icons, borders, or anything meaning emphasis. Not
+     a general-purpose accent — introducing it elsewhere is a rule break. */
+  --iris-pink: #f6c9de;
+  --iris-yellow: #f5e6a8;
+  --iris-blue: #b8d4f5;
   --border: #e7e5f2;
   --input: #d6d1ec;
   --ring: #242424;
@@ -66,6 +79,12 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-glow: var(--gradient-glow);
+  --color-iris-pink: var(--iris-pink);
+  --color-iris-yellow: var(--iris-yellow);
+  --color-iris-blue: var(--iris-blue);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

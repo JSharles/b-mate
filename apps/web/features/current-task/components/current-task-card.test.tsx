@@ -39,7 +39,7 @@ describe("CurrentTaskCard", () => {
         {
           title: "Fix race condition",
           description: "Details about the fix",
-          url: "https://github.com/acme/repo/issues/1",
+          updatedAt: "2026-07-20T10:00:00.000Z",
         },
       ],
       isPending: false,
@@ -54,7 +54,13 @@ describe("CurrentTaskCard", () => {
 
   it("shows the title with no description when the item has none (e.g. a draft issue)", () => {
     mockedUseCurrentTask.mockReturnValue({
-      data: [{ title: "Draft: sketch the new flow", description: null, url: null }],
+      data: [
+        {
+          title: "Draft: sketch the new flow",
+          description: null,
+          updatedAt: "2026-07-20T10:00:00.000Z",
+        },
+      ],
       isPending: false,
     } as unknown as ReturnType<typeof useCurrentTask>);
 
@@ -67,8 +73,8 @@ describe("CurrentTaskCard", () => {
   it("shows more than one item when multiple are in progress", () => {
     mockedUseCurrentTask.mockReturnValue({
       data: [
-        { title: "Task A", description: null, url: null },
-        { title: "Task B", description: null, url: null },
+        { title: "Task A", description: null, updatedAt: "2026-07-20T10:00:00.000Z" },
+        { title: "Task B", description: null, updatedAt: "2026-07-20T09:00:00.000Z" },
       ],
       isPending: false,
     } as unknown as ReturnType<typeof useCurrentTask>);

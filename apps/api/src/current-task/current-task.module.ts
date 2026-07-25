@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
-import { BoardConnectionsModule } from '../board-connections/board-connections.module';
+import { TaskVulgarizationModule } from '../task-vulgarization/task-vulgarization.module';
 import { CurrentTaskController } from './current-task.controller';
 import { CurrentTaskService } from './current-task.service';
 
 @Module({
-  imports: [AuthModule, BoardConnectionsModule],
+  imports: [AuthModule, TaskVulgarizationModule],
   controllers: [CurrentTaskController],
   providers: [CurrentTaskService],
 })

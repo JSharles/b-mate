@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { ApiError } from "@/shared/lib/api-client";
 import { useCreateProject } from "../hooks";
 import { CreateProjectForm } from "./create-project-form";
@@ -50,7 +50,10 @@ describe("CreateProjectForm", () => {
     await user.type(screen.getByLabelText("title"), "My project");
     await user.click(screen.getByRole("button", { name: "submit" }));
 
-    const [, options] = mutation.mutate.mock.calls[0] as [unknown, { onSuccess: () => void }];
+    const [, options] = (mutation.mutate as Mock).mock.calls[0] as [
+      unknown,
+      { onSuccess: () => void },
+    ];
     options.onSuccess();
 
     expect(onCreated).toHaveBeenCalled();

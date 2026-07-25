@@ -142,6 +142,7 @@ describe('GithubProjectsClient', () => {
 
   describe('fetchInProgressItems', () => {
     const inProgressIssue = {
+      id: 'PVTI_item1',
       content: {
         __typename: 'Issue',
         title: 'Fix race condition',
@@ -172,9 +173,9 @@ describe('GithubProjectsClient', () => {
 
       expect(result).toEqual([
         {
+          id: 'PVTI_item1',
           title: 'Fix race condition',
           description: 'Details about the race condition',
-          url: 'https://github.com/acme/repo/issues/1',
         },
       ]);
     });
@@ -254,7 +255,7 @@ describe('GithubProjectsClient', () => {
       expect(result).toEqual([]);
     });
 
-    it('includes a DraftIssue match with a null url', async () => {
+    it('includes a DraftIssue match', async () => {
       mockFetchOnce({
         ok: true,
         json: () => ({
@@ -264,6 +265,7 @@ describe('GithubProjectsClient', () => {
                 items: {
                   nodes: [
                     {
+                      id: 'PVTI_draft1',
                       content: {
                         __typename: 'DraftIssue',
                         title: 'Draft: sketch the new flow',
@@ -288,9 +290,9 @@ describe('GithubProjectsClient', () => {
 
       expect(result).toEqual([
         {
+          id: 'PVTI_draft1',
           title: 'Draft: sketch the new flow',
           description: 'Some notes',
-          url: null,
         },
       ]);
     });

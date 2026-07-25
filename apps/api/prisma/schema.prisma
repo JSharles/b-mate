@@ -82,6 +82,7 @@ model Project {
   invitations     Invitation[]
   tasks           Task[]
   boardConnection BoardConnection?
+  vulgarizedTasks VulgarizedTask[]
 
   @@map("projects")
 }
@@ -165,4 +166,32 @@ model BoardConnection {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("board_connections")
+}
+
+// One row per (project, GitHub board item, app locale) — see
+// specs/007-current-task-vulgarization data-model.md. `original*` and
+// `vulgarized*` are only ever written together, atomically, on a successful
+// vulgarization call; a failed attempt leaves the row untouched (research.md
+// Decision 4) so the next sweep keeps retrying rather than silently freezing
+// on stale content. `vulgarized*` stay nullable: no successful vulgarization
+// has ever completed yet for this (item, locale) pair.
+model VulgarizedTask {
+  id        String  @id @default(uuid()) @db.Uuid
+  projectId String  @map("project_id") @db.Uuid
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  githubItemId String @map("github_item_id")
+  locale       String
+
+  originalTitle       String  @map("original_title")
+  originalDescription String? @map("original_description")
+
+  vulgarizedTitle       String? @map("vulgarized_title")
+  vulgarizedDescription String? @map("vulgarized_description")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, githubItemId, locale])
+  @@map("vulgarized_tasks")
 }

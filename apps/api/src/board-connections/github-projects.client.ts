@@ -25,10 +25,17 @@ interface ListBoardsResponse {
   viewer: { projectsV2: { nodes: GithubProjectsV2Node[] } };
 }
 
-export interface CurrentTaskItem {
+// The ProjectV2Item's own node id — its identity as "this content's
+// placement on this specific board" (specs/007-current-task-vulgarization
+// research.md Decision 3), used by task-vulgarization to key persisted rows.
+// Not part of the public CurrentTaskItemSchema (packages/schemas) — that
+// shape has no `id`, since the frontend never needs one. No `url` either —
+// the client is never sent to GitHub (specs/006 feedback), so this feature
+// doesn't carry it any further than this fetch.
+export interface InProgressItem {
+  id: string;
   title: string;
   description: string | null;
-  url: string | null;
 }
 
 type GithubItemContentType = 'Issue' | 'PullRequest' | 'DraftIssue';
@@ -37,10 +44,10 @@ interface GithubItemContent {
   __typename: GithubItemContentType;
   title: string;
   body?: string;
-  url?: string;
 }
 
 interface GithubItemNode {
+  id: string;
   content: GithubItemContent | null;
   fieldValueByName: { name: string } | null;
 }
@@ -88,10 +95,11 @@ function itemsQuery(ownerType: GithubOwnerType): string {
         projectV2(number: $number) {
           items(first: 100) {
             nodes {
+              id
               content {
                 __typename
-                ... on Issue { title body url }
-                ... on PullRequest { title body url }
+                ... on Issue { title body }
+                ... on PullRequest { title body }
                 ... on DraftIssue { title body }
               }
               fieldValueByName(name: "Status") {
@@ -147,7 +155,7 @@ export class GithubProjectsClient {
     ownerLogin: string,
     ownerType: GithubOwnerType,
     number: number,
-  ): Promise<CurrentTaskItem[]> {
+  ): Promise<InProgressItem[]> {
     const data = await this.query<FetchItemsResponse>(
       token,
       itemsQuery(ownerType),
@@ -160,16 +168,16 @@ export class GithubProjectsClient {
     const owner = ownerType === 'User' ? data.user : data.organization;
     const nodes = owner?.projectV2?.items.nodes ?? [];
 
-    const items: CurrentTaskItem[] = [];
+    const items: InProgressItem[] = [];
     for (const node of nodes) {
       const status = node.fieldValueByName?.name;
       if (!status || !status.toLowerCase().includes('in progress')) continue;
       if (!node.content) continue;
 
       items.push({
+        id: node.id,
         title: node.content.title,
         description: node.content.body ?? null,
-        url: node.content.url ?? null,
       });
     }
 

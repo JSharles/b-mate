@@ -145,17 +145,23 @@
       "active": "Active",
       "pending": "Pending",
       "documentation": "Documentation",
-      "documentationComingSoon": "Coming soon",
+      "comingSoon": "Coming soon",
       "overview": "Project overview",
-      "overviewComingSoon": "Coming soon",
       "discoveryAudit": "Discovery & audit findings",
-      "discoveryAuditComingSoon": "Coming soon",
-      "technicalDecisions": "Technical decisions",
-      "technicalDecisionsComingSoon": "Coming soon",
+      "discoveryAuditHint": "Findings from the discovery phase, once available.",
       "roadmap": "Roadmap",
-      "roadmapComingSoon": "Coming soon",
+      "roadmapHint": "What's planned next, once it's ready to share.",
       "clientDocumentation": "Documentation",
-      "clientDocumentationComingSoon": "Coming soon"
+      "clientDocumentationHint": "Guides and docs for your project, once published.",
+      "meetings": "Meetings",
+      "meetingsHint": "Upcoming and past meetings, once scheduled.",
+      "loadErrorTitle": "Couldn't load this project",
+      "loadErrorRetry": "Retry"
+    },
+    "DeveloperCard": {
+      "title": "Your developer",
+      "roleFallback": "Developer",
+      "empty": "No developer assigned yet"
     },
     "InviteClientForm": {
       "email": "Email",
@@ -204,7 +210,8 @@
     },
     "CurrentTaskCard": {
       "title": "Current task",
-      "empty": "Nothing in progress right now"
+      "empty": "Your developer hasn't started a task yet — check back soon.",
+      "updatedAt": "Updated {time}"
     }
   },
   "Invite": {

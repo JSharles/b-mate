@@ -18,8 +18,10 @@ export function BoardConnectionCard({ projectId }: { projectId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          {t("title")}
+        <CardTitle>
+          <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+            {t("title")}
+          </h2>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex items-center justify-between gap-3">

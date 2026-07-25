@@ -72,7 +72,7 @@ describe("getQueryClient", () => {
 
   it("never retries a 4xx ApiError (it can never succeed on retry)", () => {
     const queryClient = getQueryClient();
-    const retry = queryClient.defaultQueryOptions({}).retry as (
+    const retry = queryClient.defaultQueryOptions({ queryKey: [] }).retry as (
       failureCount: number,
       error: unknown,
     ) => boolean;
@@ -83,7 +83,7 @@ describe("getQueryClient", () => {
 
   it("retries a non-4xx failure up to 3 times", () => {
     const queryClient = getQueryClient();
-    const retry = queryClient.defaultQueryOptions({}).retry as (
+    const retry = queryClient.defaultQueryOptions({ queryKey: [] }).retry as (
       failureCount: number,
       error: unknown,
     ) => boolean;
