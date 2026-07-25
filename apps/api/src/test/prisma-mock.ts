@@ -33,6 +33,13 @@ export type PrismaMock = {
   boardConnection: {
     upsert: jest.Mock;
     findUnique: jest.Mock;
+    findMany: jest.Mock;
+    deleteMany: jest.Mock;
+  };
+  vulgarizedTask: {
+    findUnique: jest.Mock;
+    findMany: jest.Mock;
+    upsert: jest.Mock;
     deleteMany: jest.Mock;
   };
   $queryRaw: jest.Mock;
@@ -73,6 +80,13 @@ export function createPrismaMock(): PrismaMock {
     boardConnection: {
       upsert: jest.fn(),
       findUnique: jest.fn(),
+      findMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    vulgarizedTask: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      upsert: jest.fn(),
       deleteMany: jest.fn(),
     },
     $queryRaw: jest.fn(),

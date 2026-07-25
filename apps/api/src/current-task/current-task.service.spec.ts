@@ -4,11 +4,8 @@ import {
   createPrismaMock,
   PrismaMock,
 } from '../test/prisma-mock';
-import { encryptToken } from '../board-connections/token-encryption';
-import { GithubProjectsClient } from '../board-connections/github-projects.client';
+import { TaskVulgarizationService } from '../task-vulgarization/task-vulgarization.service';
 import { CurrentTaskService } from './current-task.service';
-
-const ORIGINAL_ENV = process.env.BOARD_CONNECTION_ENCRYPTION_KEY;
 
 const membership = {
   id: 'member-1',
@@ -20,104 +17,48 @@ const membership = {
 };
 
 const item = {
-  title: 'Fix race condition',
-  description: 'Details',
-  url: 'https://github.com/acme/repo/issues/1',
+  title: 'Securing your logins',
+  description: 'We made sign-in safer for everyone.',
+  updatedAt: '2026-07-20T10:00:00.000Z',
 };
 
 describe('CurrentTaskService', () => {
   let prisma: PrismaMock;
-  let githubClient: jest.Mocked<
-    Pick<GithubProjectsClient, 'fetchInProgressItems'>
+  let taskVulgarizationService: jest.Mocked<
+    Pick<TaskVulgarizationService, 'getVulgarizedCurrentTask'>
   >;
   let service: CurrentTaskService;
-  let storedConnection: {
-    id: string;
-    projectId: string;
-    provider: 'github';
-    boardOwnerLogin: string;
-    boardOwnerType: string;
-    boardNumber: number;
-    boardTitle: string;
-    boardUrl: string;
-    encryptedToken: string;
-    createdAt: Date;
-    updatedAt: Date;
-  };
 
   beforeEach(() => {
-    process.env.BOARD_CONNECTION_ENCRYPTION_KEY =
-      '0000000000000000000000000000000000000000000000000000000000000000';
     prisma = createPrismaMock();
-    githubClient = { fetchInProgressItems: jest.fn() };
+    taskVulgarizationService = { getVulgarizedCurrentTask: jest.fn() };
     service = new CurrentTaskService(
       asPrismaService(prisma),
-      githubClient as unknown as GithubProjectsClient,
+      taskVulgarizationService as unknown as TaskVulgarizationService,
     );
-    storedConnection = {
-      id: 'connection-1',
-      projectId: 'project-1',
-      provider: 'github',
-      boardOwnerLogin: 'acme',
-      boardOwnerType: 'Organization',
-      boardNumber: 3,
-      boardTitle: 'Roadmap',
-      boardUrl: 'https://github.com/orgs/acme/projects/3',
-      encryptedToken: encryptToken('a-real-token'),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
   });
 
-  afterAll(() => {
-    process.env.BOARD_CONNECTION_ENCRYPTION_KEY = ORIGINAL_ENV;
-  });
-
-  it('returns the mapped items when a connection exists and GitHub succeeds', async () => {
+  it('delegates to TaskVulgarizationService.getVulgarizedCurrentTask with the project id and locale', async () => {
     prisma.projectMember.findUnique.mockResolvedValue(membership);
-    prisma.boardConnection.findUnique.mockResolvedValue(storedConnection);
-    githubClient.fetchInProgressItems.mockResolvedValue([item]);
+    taskVulgarizationService.getVulgarizedCurrentTask.mockResolvedValue([item]);
 
-    const result = await service.getCurrentTask('user-1', 'project-1');
+    const result = await service.getCurrentTask('user-1', 'project-1', 'en');
 
-    expect(githubClient.fetchInProgressItems).toHaveBeenCalledWith(
-      'a-real-token',
-      'acme',
-      'Organization',
-      3,
-    );
+    expect(
+      taskVulgarizationService.getVulgarizedCurrentTask,
+    ).toHaveBeenCalledWith('project-1', 'en');
     expect(result).toEqual([item]);
-  });
-
-  it('returns an empty list when no board connection exists', async () => {
-    prisma.projectMember.findUnique.mockResolvedValue(membership);
-    prisma.boardConnection.findUnique.mockResolvedValue(null);
-
-    const result = await service.getCurrentTask('user-1', 'project-1');
-
-    expect(result).toEqual([]);
-    expect(githubClient.fetchInProgressItems).not.toHaveBeenCalled();
-  });
-
-  it('returns an empty list, not a thrown error, when the GitHub call fails', async () => {
-    prisma.projectMember.findUnique.mockResolvedValue(membership);
-    prisma.boardConnection.findUnique.mockResolvedValue(storedConnection);
-    githubClient.fetchInProgressItems.mockRejectedValue(
-      new Error('GitHub is down'),
-    );
-
-    const result = await service.getCurrentTask('user-1', 'project-1');
-
-    expect(result).toEqual([]);
   });
 
   it('throws not found for a non-member of the project', async () => {
     prisma.projectMember.findUnique.mockResolvedValue(null);
 
-    await expect(service.getCurrentTask('user-1', 'project-1')).rejects.toThrow(
-      NotFoundException,
-    );
-    expect(prisma.boardConnection.findUnique).not.toHaveBeenCalled();
+    await expect(
+      service.getCurrentTask('user-1', 'project-1', 'fr'),
+    ).rejects.toThrow(NotFoundException);
+    expect(
+      taskVulgarizationService.getVulgarizedCurrentTask,
+    ).not.toHaveBeenCalled();
   });
 
   it('allows a contributor to call it too (not client-only at the API level)', async () => {
@@ -126,10 +67,9 @@ describe('CurrentTaskService', () => {
       role: 'contributor',
       isAdmin: true,
     });
-    prisma.boardConnection.findUnique.mockResolvedValue(storedConnection);
-    githubClient.fetchInProgressItems.mockResolvedValue([item]);
+    taskVulgarizationService.getVulgarizedCurrentTask.mockResolvedValue([item]);
 
-    const result = await service.getCurrentTask('user-1', 'project-1');
+    const result = await service.getCurrentTask('user-1', 'project-1', 'fr');
 
     expect(result).toEqual([item]);
   });

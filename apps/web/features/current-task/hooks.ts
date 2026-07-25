@@ -1,14 +1,17 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useLocale } from "next-intl";
 import { getCurrentTask } from "./api";
 
-export const currentTaskKey = (projectId: string) =>
-  ["projects", projectId, "current-task"] as const;
+export const currentTaskKey = (projectId: string, locale: string) =>
+  ["projects", projectId, "current-task", locale] as const;
 
 export function useCurrentTask(projectId: string) {
+  const locale = useLocale();
+
   return useQuery({
-    queryKey: currentTaskKey(projectId),
-    queryFn: () => getCurrentTask(projectId),
+    queryKey: currentTaskKey(projectId, locale),
+    queryFn: () => getCurrentTask(projectId, locale),
   });
 }

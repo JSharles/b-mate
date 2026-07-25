@@ -35,16 +35,43 @@ describe('CurrentTaskController', () => {
     );
   });
 
-  it('findAll delegates to the service with the current user and project id', async () => {
-    const items = [{ title: 'Fix bug', description: null, url: null }];
+  it('findAll delegates to the service with the current user, project id, and locale', async () => {
+    const items = [
+      {
+        title: 'Fix bug',
+        description: null,
+        updatedAt: '2026-07-20T10:00:00.000Z',
+      },
+    ];
     currentTaskService.getCurrentTask.mockResolvedValue(items);
 
-    const result = await controller.findAll(fakeUser, 'project-1');
+    const result = await controller.findAll(fakeUser, 'project-1', 'en');
 
     expect(currentTaskService.getCurrentTask).toHaveBeenCalledWith(
       'user-1',
       'project-1',
+      'en',
     );
     expect(result).toEqual(items);
+  });
+
+  it('defaults to the app default locale ("fr") when the query param is missing or invalid', async () => {
+    currentTaskService.getCurrentTask.mockResolvedValue([]);
+
+    await controller.findAll(fakeUser, 'project-1', undefined);
+    await controller.findAll(fakeUser, 'project-1', 'de');
+
+    expect(currentTaskService.getCurrentTask).toHaveBeenNthCalledWith(
+      1,
+      'user-1',
+      'project-1',
+      'fr',
+    );
+    expect(currentTaskService.getCurrentTask).toHaveBeenNthCalledWith(
+      2,
+      'user-1',
+      'project-1',
+      'fr',
+    );
   });
 });

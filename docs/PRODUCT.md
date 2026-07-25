@@ -277,3 +277,4 @@ Context is useful to avoid "fixing" the schema in the wrong direction.
 
 - Full project context, decisions made with the alternatives that were ruled out, and the data model diagrams are documented in Notion.
 - This file describes the MVP. AI features are deliberately absent: don't build ahead of them in code, but don't close the door on them architecturally either.
+- **Idea, not yet scoped**: a meeting/discussion-summary feature — a permanent, clickable Gmeet link on the project page, with each meeting summarized and viewable from within b-mate. Surfaced while discussing `specs/007-current-task-vulgarization`'s future context needs, as a natural future source of context (alongside docs, audit findings, tech stack) for the eventual document-vulgarization/RAG layer described in Positioning. Not designed, not decided — captured here so it isn't lost.
