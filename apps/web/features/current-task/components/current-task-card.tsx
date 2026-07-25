@@ -125,7 +125,7 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
                   <div className="flex items-start gap-3">
                     <LiveIndicator active />
                     <div className="flex min-w-0 flex-col gap-1">
-                      <span className="text-xl leading-snug font-bold text-balance">
+                      <span className="max-w-prose text-xl leading-snug font-bold text-balance">
                         {item.title}
                       </span>
                       <span className="text-xs text-muted-foreground">
@@ -134,7 +134,16 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
                     </div>
                   </div>
                   {item.description && (
-                    <p className="pl-12 text-sm text-muted-foreground">{item.description}</p>
+                    // max-w-prose caps line length at ~65 characters — the
+                    // card can span most of the page's width, and a
+                    // paragraph stretched that wide is measurably harder to
+                    // read than one wrapped to a comfortable measure.
+                    // text-foreground/80 (vs. text-muted-foreground) keeps
+                    // it visually secondary to the title while staying
+                    // legible on the frosted glass background.
+                    <p className="max-w-prose pl-12 text-sm leading-relaxed text-foreground/80">
+                      {item.description}
+                    </p>
                   )}
                 </li>
               ))}
