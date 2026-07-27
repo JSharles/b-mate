@@ -42,6 +42,11 @@ export type PrismaMock = {
     upsert: jest.Mock;
     deleteMany: jest.Mock;
   };
+  taskProgress: {
+    findUnique: jest.Mock;
+    upsert: jest.Mock;
+    deleteMany: jest.Mock;
+  };
   $queryRaw: jest.Mock;
   $transaction: jest.Mock;
 };
@@ -86,6 +91,11 @@ export function createPrismaMock(): PrismaMock {
     vulgarizedTask: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      upsert: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    taskProgress: {
+      findUnique: jest.fn(),
       upsert: jest.fn(),
       deleteMany: jest.fn(),
     },

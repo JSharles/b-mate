@@ -114,4 +114,83 @@ describe('AnthropicVulgarizationClient', () => {
       }),
     ).rejects.toThrow('request timed out');
   });
+
+  describe('estimateTask', () => {
+    it('parses a well-formed tool-use response into duration/complexity', async () => {
+      mockCreate.mockResolvedValue({
+        content: [
+          {
+            type: 'tool_use',
+            name: 'submit_task_estimate',
+            input: { estimatedDurationDays: 4, complexity: 'complex' },
+          },
+        ],
+      });
+
+      const result = await client.estimateTask({
+        taskTitle: 'N+1 query pattern in ProjectMembersList',
+        taskDescription: 'Loading /projects/:id triggers one query per member.',
+      });
+
+      expect(result).toEqual({
+        estimatedDurationDays: 4,
+        complexity: 'complex',
+      });
+    });
+
+    it('never asks for or receives an absolute date — only a duration', async () => {
+      mockCreate.mockResolvedValue({
+        content: [
+          {
+            type: 'tool_use',
+            name: 'submit_task_estimate',
+            input: { estimatedDurationDays: 1, complexity: 'simple' },
+          },
+        ],
+      });
+
+      await client.estimateTask({
+        taskTitle: 'Fix typo in footer copyright year',
+        taskDescription: null,
+      });
+
+      const [params] = mockCreate.mock.calls[0] as [{ system: string }];
+      expect(params.system).toContain('duration');
+      expect(params.system).toContain('never attempt calendar arithmetic');
+    });
+
+    it('throws when the response has no tool_use block', async () => {
+      mockCreate.mockResolvedValue({
+        content: [{ type: 'text', text: 'I refuse.' }],
+      });
+
+      await expect(
+        client.estimateTask({ taskTitle: 'Fix bug', taskDescription: null }),
+      ).rejects.toThrow('Anthropic response did not include a tool_use block');
+    });
+
+    it('throws when the tool_use input does not match the expected schema', async () => {
+      mockCreate.mockResolvedValue({
+        content: [
+          {
+            type: 'tool_use',
+            name: 'submit_task_estimate',
+            input: { estimatedDurationDays: 'a few', complexity: 'simple' },
+          },
+        ],
+      });
+
+      await expect(
+        client.estimateTask({ taskTitle: 'Fix bug', taskDescription: null }),
+      ).rejects.toThrow();
+    });
+
+    it('propagates an SDK-level error (network, timeout)', async () => {
+      mockCreate.mockRejectedValue(new Error('request timed out'));
+
+      await expect(
+        client.estimateTask({ taskTitle: 'Fix bug', taskDescription: null }),
+      ).rejects.toThrow('request timed out');
+    });
+  });
 });

@@ -16,11 +16,15 @@ export const PreviewBoardConnectionRequestSchema = z.object({
 });
 export type PreviewBoardConnectionRequest = z.infer<typeof PreviewBoardConnectionRequestSchema>;
 
+// estimateUnit (specs/008-current-task-progress FR-005b): how to interpret
+// the board's numeric "Estimate" field as a duration. Optional — defaults
+// to "days" server-side when omitted.
 export const CreateBoardConnectionRequestSchema = z.object({
   token: z.string().min(1),
   ownerLogin: z.string(),
   ownerType: z.enum(['User', 'Organization']),
   number: z.number().int().positive(),
+  estimateUnit: z.enum(['days', 'hours']).optional(),
 });
 export type CreateBoardConnectionRequest = z.infer<typeof CreateBoardConnectionRequestSchema>;
 
@@ -33,5 +37,6 @@ export const BoardConnectionSchema = z.object({
   boardNumber: z.number(),
   boardTitle: z.string(),
   boardUrl: z.url(),
+  estimateUnit: z.enum(['days', 'hours']),
 });
 export type BoardConnection = z.infer<typeof BoardConnectionSchema>;

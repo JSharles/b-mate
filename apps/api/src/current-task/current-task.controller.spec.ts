@@ -41,6 +41,9 @@ describe('CurrentTaskController', () => {
         title: 'Fix bug',
         description: null,
         updatedAt: '2026-07-20T10:00:00.000Z',
+        startedAt: '2026-07-18T10:00:00.000Z',
+        estimatedCompletionAt: null,
+        estimateConfidence: null,
       },
     ];
     currentTaskService.getCurrentTask.mockResolvedValue(items);

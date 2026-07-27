@@ -149,7 +149,10 @@ describe('GithubProjectsClient', () => {
         body: 'Details about the race condition',
         url: 'https://github.com/acme/repo/issues/1',
       },
-      fieldValueByName: { name: 'In Progress' },
+      status: { name: 'In Progress' },
+      startDate: null,
+      targetDate: null,
+      estimate: null,
     };
 
     it('includes an item whose Status value contains "in progress" (case-insensitive)', async () => {
@@ -176,8 +179,81 @@ describe('GithubProjectsClient', () => {
           id: 'PVTI_item1',
           title: 'Fix race condition',
           description: 'Details about the race condition',
+          boardStartDate: null,
+          boardTargetDate: null,
+          boardEstimateValue: null,
         },
       ]);
+    });
+
+    it('includes Start date/Target date/Estimate values when the board provides them', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: {
+            organization: {
+              projectV2: {
+                items: {
+                  nodes: [
+                    {
+                      ...inProgressIssue,
+                      startDate: { date: '2026-07-25' },
+                      targetDate: { date: '2026-07-27' },
+                      estimate: { number: 4 },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      });
+
+      const result = await client.fetchInProgressItems(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result).toEqual([
+        {
+          id: 'PVTI_item1',
+          title: 'Fix race condition',
+          description: 'Details about the race condition',
+          boardStartDate: '2026-07-25',
+          boardTargetDate: '2026-07-27',
+          boardEstimateValue: 4,
+        },
+      ]);
+    });
+
+    it('maps a field present but of the wrong underlying type to null rather than throwing', async () => {
+      // A text field named "Estimate" (not a Number field) doesn't match
+      // the ProjectV2ItemFieldNumberValue fragment — GitHub's GraphQL
+      // response yields null for that selection, same as a field that
+      // doesn't exist on the board at all.
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: {
+            organization: {
+              projectV2: {
+                items: { nodes: [{ ...inProgressIssue, estimate: null }] },
+              },
+            },
+          },
+        }),
+      });
+
+      const result = await client.fetchInProgressItems(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result[0].boardEstimateValue).toBeNull();
     });
 
     it('queries the "user" root field for a User-owned board', async () => {
@@ -209,7 +285,7 @@ describe('GithubProjectsClient', () => {
                   nodes: [
                     {
                       ...inProgressIssue,
-                      fieldValueByName: { name: 'Done' },
+                      status: { name: 'Done' },
                     },
                   ],
                 },
@@ -237,7 +313,7 @@ describe('GithubProjectsClient', () => {
             organization: {
               projectV2: {
                 items: {
-                  nodes: [{ ...inProgressIssue, fieldValueByName: null }],
+                  nodes: [{ ...inProgressIssue, status: null }],
                 },
               },
             },
@@ -271,7 +347,10 @@ describe('GithubProjectsClient', () => {
                         title: 'Draft: sketch the new flow',
                         body: 'Some notes',
                       },
-                      fieldValueByName: { name: 'In Progress' },
+                      status: { name: 'In Progress' },
+                      startDate: null,
+                      targetDate: null,
+                      estimate: null,
                     },
                   ],
                 },
@@ -293,6 +372,9 @@ describe('GithubProjectsClient', () => {
           id: 'PVTI_draft1',
           title: 'Draft: sketch the new flow',
           description: 'Some notes',
+          boardStartDate: null,
+          boardTargetDate: null,
+          boardEstimateValue: null,
         },
       ]);
     });
@@ -308,7 +390,10 @@ describe('GithubProjectsClient', () => {
                   nodes: [
                     {
                       content: null,
-                      fieldValueByName: { name: 'In Progress' },
+                      status: { name: 'In Progress' },
+                      startDate: null,
+                      targetDate: null,
+                      estimate: null,
                     },
                   ],
                 },

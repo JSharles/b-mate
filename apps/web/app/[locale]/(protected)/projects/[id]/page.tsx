@@ -123,7 +123,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               back into looking like a placeholder). */}
           <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-3">
             <DeveloperCard projectId={id} />
-            <div className="lg:col-span-2">
+            {/* h-full min-h-0: without it, this grid cell's height is
+                dictated by CurrentTaskCard's own content (CSS Grid items
+                default to min-height: auto) rather than the row's flex-1
+                allocation — exactly the bug already fixed on Row 2's cards
+                once. Surfaced when the progress bar/start-date additions
+                made the card's content taller, which ate into the gap
+                between rows. */}
+            <div className="h-full min-h-0 lg:col-span-2">
               <CurrentTaskCard projectId={id} />
             </div>
           </div>

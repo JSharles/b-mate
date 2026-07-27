@@ -20,6 +20,9 @@ const item = {
   title: 'Securing your logins',
   description: 'We made sign-in safer for everyone.',
   updatedAt: '2026-07-20T10:00:00.000Z',
+  startedAt: '2026-07-18T10:00:00.000Z',
+  estimatedCompletionAt: '2026-07-24T10:00:00.000Z',
+  estimateConfidence: 'medium' as const,
 };
 
 describe('CurrentTaskService', () => {

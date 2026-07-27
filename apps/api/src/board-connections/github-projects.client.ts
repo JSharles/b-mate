@@ -32,10 +32,17 @@ interface ListBoardsResponse {
 // shape has no `id`, since the frontend never needs one. No `url` either —
 // the client is never sent to GitHub (specs/006 feedback), so this feature
 // doesn't carry it any further than this fetch.
+//
+// boardStartDate/boardTargetDate/boardEstimateValue (specs/008
+// data-model.md): the board's own custom fields, when present and validly
+// typed — null otherwise (field absent, empty, or the wrong field type).
 export interface InProgressItem {
   id: string;
   title: string;
   description: string | null;
+  boardStartDate: string | null;
+  boardTargetDate: string | null;
+  boardEstimateValue: number | null;
 }
 
 type GithubItemContentType = 'Issue' | 'PullRequest' | 'DraftIssue';
@@ -49,7 +56,10 @@ interface GithubItemContent {
 interface GithubItemNode {
   id: string;
   content: GithubItemContent | null;
-  fieldValueByName: { name: string } | null;
+  status: { name: string } | null;
+  startDate: { date: string } | null;
+  targetDate: { date: string } | null;
+  estimate: { number: number } | null;
 }
 
 interface FetchItemsResponse {
@@ -86,6 +96,14 @@ const LIST_BOARDS_QUERY = `
 // a board that renamed/removed it simply yields no matches (research.md
 // Decision 1). GraphQL has no dynamic root field, so `user`/`organization`
 // is chosen by string-building the query, not by a variable.
+//
+// startDate/targetDate/estimate (specs/008-current-task-progress
+// data-model.md): the same board-item custom fields the user's own GitHub
+// Projects v2 board template already provides, looked up by exact name the
+// same way Status is — aliased since fieldValueByName can't be called more
+// than once per node without one. A field of the wrong underlying type (or
+// absent entirely) simply doesn't match its fragment, yielding null with no
+// extra handling needed.
 function itemsQuery(ownerType: GithubOwnerType): string {
   const rootField = ownerType === 'User' ? 'user' : 'organization';
 
@@ -102,8 +120,17 @@ function itemsQuery(ownerType: GithubOwnerType): string {
                 ... on PullRequest { title body }
                 ... on DraftIssue { title body }
               }
-              fieldValueByName(name: "Status") {
+              status: fieldValueByName(name: "Status") {
                 ... on ProjectV2ItemFieldSingleSelectValue { name }
+              }
+              startDate: fieldValueByName(name: "Start date") {
+                ... on ProjectV2ItemFieldDateValue { date }
+              }
+              targetDate: fieldValueByName(name: "Target date") {
+                ... on ProjectV2ItemFieldDateValue { date }
+              }
+              estimate: fieldValueByName(name: "Estimate") {
+                ... on ProjectV2ItemFieldNumberValue { number }
               }
             }
           }
@@ -170,7 +197,7 @@ export class GithubProjectsClient {
 
     const items: InProgressItem[] = [];
     for (const node of nodes) {
-      const status = node.fieldValueByName?.name;
+      const status = node.status?.name;
       if (!status || !status.toLowerCase().includes('in progress')) continue;
       if (!node.content) continue;
 
@@ -178,6 +205,9 @@ export class GithubProjectsClient {
         id: node.id,
         title: node.content.title,
         description: node.content.body ?? null,
+        boardStartDate: node.startDate?.date ?? null,
+        boardTargetDate: node.targetDate?.date ?? null,
+        boardEstimateValue: node.estimate?.number ?? null,
       });
     }
 

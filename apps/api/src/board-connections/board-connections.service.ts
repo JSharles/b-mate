@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { BoardProvider, ProjectMember } from '@prisma/client';
+import { BoardProvider, EstimateUnit, ProjectMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBoardConnectionDto } from './dto/create-board-connection.dto';
 import { PreviewBoardConnectionDto } from './dto/preview-board-connection.dto';
@@ -18,6 +18,7 @@ export interface BoardConnectionDetails {
   boardNumber: number;
   boardTitle: string;
   boardUrl: string;
+  estimateUnit: EstimateUnit;
 }
 
 @Injectable()
@@ -74,6 +75,8 @@ export class BoardConnectionsService {
       boardTitle: board.title,
       boardUrl: board.url,
       encryptedToken,
+      // specs/008-current-task-progress FR-005b.
+      estimateUnit: dto.estimateUnit ?? EstimateUnit.days,
     };
 
     const connection = await this.prisma.boardConnection.upsert({
@@ -130,6 +133,7 @@ export class BoardConnectionsService {
       boardNumber: connection.boardNumber,
       boardTitle: connection.boardTitle,
       boardUrl: connection.boardUrl,
+      estimateUnit: connection.estimateUnit,
     };
   }
 
