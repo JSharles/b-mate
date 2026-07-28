@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleDot } from "lucide-react";
+import { Calendar, CircleDot, Clock, Flag } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -73,6 +73,97 @@ function formatRelativeTime(isoDate: string, locale: string): string {
   return rtf.format(-Math.round(diffHours / 24), "day");
 }
 
+// Plain helper (not the component body) computing everything time-derived —
+// keeps Date.now() out of the component's render body, same reasoning as
+// formatRelativeTime above (react-hooks/purity flags an impure call written
+// directly inside a component/hook, not one hidden behind a called function).
+function computeProgress(startedAt: string, estimatedCompletionAt: string) {
+  const start = new Date(startedAt).getTime();
+  const end = new Date(estimatedCompletionAt).getTime();
+  const now = Date.now();
+  const totalMs = Math.max(end - start, 1);
+  return {
+    percent: Math.min(100, Math.max(0, ((now - start) / totalMs) * 100)),
+    isOver: now > end,
+    diffDays: Math.round((end - now) / (24 * 60 * 60 * 1000)),
+  };
+}
+
+// specs/008-current-task-progress: renders nothing when there's no estimate
+// to show (FR-008) — never a misleading 0%/broken bar. `isOver` (elapsed
+// time already past the estimate) gets a distinct visual/textual state
+// (FR-009) instead of a bar silently capped at 100% reading as "finished".
+// Lives in the metrics column now (no pl-12/max-w-prose — those were for
+// sitting under the title in a single-column layout).
+//
+// Impeccable critique (P0/P2, 2026-07-25): the fill was `bg-accent` on
+// `bg-muted` — two near-white tones with almost no contrast, confirmed live
+// as a barely-visible sliver. The on-track fill is a green gradient built
+// from --success's own documented tonal ramp (apps/web/.impeccable/design.json
+// — the lighter and canonical steps of the "success" ramp), not a new color:
+// --success is the same token the live pulse dot already uses for "active/
+// on track," so a healthy in-progress task reads as "green," matching that
+// existing association, while severity (running over, low confidence) still
+// reuses `text-destructive` — the same semantic-status color, not a second
+// one — instead of every line reading in identical muted gray regardless of
+// whether it's reassuring or concerning. `role="progressbar"` puts the
+// actual percentage in the DOM for assistive tech even where the eye only
+// sees a bar.
+function ProgressIndicator({
+  startedAt,
+  estimatedCompletionAt,
+  confidence,
+  locale,
+  t,
+}: {
+  startedAt: string;
+  estimatedCompletionAt: string;
+  confidence: "high" | "medium" | "low" | null;
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const { percent, isOver, diffDays } = computeProgress(startedAt, estimatedCompletionAt);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <Flag className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className={isOver ? "text-destructive" : "text-muted-foreground"}>
+          {isOver ? t("runningOver") : t("estimatedCompletion", { time: rtf.format(diffDays, "day") })}
+        </span>
+      </div>
+      {confidence && (
+        <span className={cn("pl-[22px]", confidence === "low" ? "text-destructive" : "text-muted-foreground")}>
+          {t(`confidence.${confidence}`)}
+        </span>
+      )}
+      <div
+        role="progressbar"
+        aria-valuenow={Math.round(percent)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+      >
+        <div
+          className={cn("h-full rounded-full", isOver && "bg-destructive")}
+          style={
+            isOver
+              ? { width: `${percent}%` }
+              : {
+                  width: `${percent}%`,
+                  // Lighter → canonical steps of --success's own tonal ramp
+                  // (design.json), not a new color — see comment above.
+                  backgroundImage:
+                    "linear-gradient(to right, oklch(0.82 0.12 149), oklch(0.627 0.194 149.214))",
+                }
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
 // Purely decorative texture behind the frosted panel — never anything text
 // sits directly on top of.
 function IridescentGlow() {
@@ -91,9 +182,9 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
   const locale = useLocale();
 
   return (
-    <div className="relative h-full overflow-hidden rounded-xl">
+    <div className="relative h-full min-h-0 overflow-hidden rounded-xl">
       <IridescentGlow />
-      <Card className="relative h-full border-2 border-white/80 bg-white/50 shadow-xl backdrop-blur-2xl">
+      <Card className="relative h-full min-h-0 border-2 border-white/80 bg-white/50 shadow-xl backdrop-blur-2xl">
         <CardHeader>
           <CardTitle>
             <h2 className="text-sm font-bold tracking-wide text-foreground uppercase">
@@ -101,7 +192,14 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
             </h2>
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-1 flex-col justify-center gap-3 overflow-y-auto py-1">
+          {/* justify-start, not justify-center: with the progress bar/start
+              date additions, real content can now be taller than the card's
+              allocated height. A centered flex column anchors its overflow
+              scroll position mid-content, cutting off the title at the top
+              with no visual cue to scroll — justify-start guarantees the
+              title is always the first thing visible, scrolling down for
+              the rest. */}
+        <CardContent className="flex flex-1 flex-col justify-start gap-3 overflow-y-auto py-1">
           {isPending ? (
             <Skeleton className="h-10 w-full" />
           ) : !items || items.length === 0 ? (
@@ -120,31 +218,70 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
                 // re-render.
                 <li
                   key={item.title}
-                  className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 flex flex-col gap-2 motion-safe:duration-300"
+                  className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 grid grid-cols-1 gap-4 motion-safe:duration-300 sm:grid-cols-3"
                 >
-                  <div className="flex items-start gap-3">
-                    <LiveIndicator active />
-                    <div className="flex min-w-0 flex-col gap-1">
-                      <span className="max-w-prose text-xl leading-snug font-bold text-balance">
+                  {/* Left, 2/3: what the task is — title + description.
+                      Right, 1/3: everything metric/temporal — started/
+                      updated timestamps, estimate, confidence, progress
+                      bar. Splitting them keeps a long description from
+                      pushing the progress bar out of view (it used to sit
+                      stacked below the description and could scroll off),
+                      and reads more like a dashboard stat panel than a
+                      wall of text. */}
+                  <div className="flex min-w-0 flex-col gap-2 sm:col-span-2">
+                    <div className="flex items-start gap-3">
+                      <LiveIndicator active />
+                      {/* h3, not a bare span: "TÂCHE EN COURS" above is
+                          the card's own h2 label — the task's own title is
+                          genuinely the most important string on the card
+                          and belongs in the heading outline, not skipped
+                          by a screen reader navigating by heading. */}
+                      <h3 className="max-w-prose text-xl leading-snug font-bold text-balance">
                         {item.title}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {t("updatedAt", { time: formatRelativeTime(item.updatedAt, locale) })}
-                      </span>
+                      </h3>
                     </div>
+                    {item.description && (
+                      // max-w-prose caps line length at ~65 characters — the
+                      // card can span most of the page's width, and a
+                      // paragraph stretched that wide is measurably harder
+                      // to read than one wrapped to a comfortable measure.
+                      // text-foreground/80 (vs. text-muted-foreground) keeps
+                      // it visually secondary to the title while staying
+                      // legible on the frosted glass background.
+                      <p className="max-w-prose pl-12 text-sm leading-relaxed text-foreground/80">
+                        {item.description}
+                      </p>
+                    )}
                   </div>
-                  {item.description && (
-                    // max-w-prose caps line length at ~65 characters — the
-                    // card can span most of the page's width, and a
-                    // paragraph stretched that wide is measurably harder to
-                    // read than one wrapped to a comfortable measure.
-                    // text-foreground/80 (vs. text-muted-foreground) keeps
-                    // it visually secondary to the title while staying
-                    // legible on the frosted glass background.
-                    <p className="max-w-prose pl-12 text-sm leading-relaxed text-foreground/80">
-                      {item.description}
-                    </p>
-                  )}
+                  {/* Impeccable critique (P1/P3, 2026-07-25): matches
+                      DeveloperCard's icon + label pattern for the same
+                      "stacked metadata under a divider" problem, instead of
+                      reinventing it as bare gray text — the two cards
+                      sharing this row now read as one design system, not
+                      two. text-sm (Body, DESIGN.md) replaces text-xs, which
+                      matched neither Body nor Caption. border-white/80
+                      matches the outer card's own border opacity — the
+                      previous /60 read as barely-there against the glass
+                      background. */}
+                  <div className="flex flex-col gap-2 border-white/80 pl-0 text-sm sm:col-span-1 sm:border-l sm:pl-4">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Calendar className="size-3.5 shrink-0" />
+                      {t("startedAt", { time: formatRelativeTime(item.startedAt, locale) })}
+                    </span>
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="size-3.5 shrink-0" />
+                      {t("updatedAt", { time: formatRelativeTime(item.updatedAt, locale) })}
+                    </span>
+                    {item.estimatedCompletionAt && (
+                      <ProgressIndicator
+                        startedAt={item.startedAt}
+                        estimatedCompletionAt={item.estimatedCompletionAt}
+                        confidence={item.estimateConfidence}
+                        locale={locale}
+                        t={t}
+                      />
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

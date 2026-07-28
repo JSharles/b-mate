@@ -206,12 +206,23 @@
       "noBoards": "This token doesn't have access to any GitHub Projects board.",
       "connectSubmit": "Connect",
       "connectPending": "Connecting…",
-      "back": "Use a different token"
+      "back": "Use a different token",
+      "estimateUnitLabel": "When a task has an \"Estimate\" number but no \"Target date\", treat it as:",
+      "estimateUnitDays": "Days",
+      "estimateUnitHours": "Hours"
     },
     "CurrentTaskCard": {
       "title": "Current task",
       "empty": "Your developer hasn't started a task yet — check back soon.",
-      "updatedAt": "Updated {time}"
+      "startedAt": "Started {time}",
+      "updatedAt": "Updated {time}",
+      "estimatedCompletion": "Expected to finish {time}",
+      "runningOver": "Taking longer than expected",
+      "confidence": {
+        "high": "High confidence",
+        "medium": "Medium confidence",
+        "low": "Low confidence"
+      }
     }
   },
   "Invite": {

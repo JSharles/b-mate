@@ -122,7 +122,33 @@ describe("ConnectBoardDialog", () => {
         ownerLogin: "acme",
         ownerType: "Organization",
         number: 3,
+        estimateUnit: "days",
       },
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    );
+  });
+
+  it("passes the selected estimate unit through to connect", async () => {
+    const preview = baseMutation();
+    (preview.mutate as ReturnType<typeof vi.fn>).mockImplementation(
+      (_vars: unknown, options: { onSuccess: (boards: unknown) => void }) => {
+        options.onSuccess([fakeBoard]);
+      },
+    );
+    mockedUsePreview.mockReturnValue(preview);
+    const connect = baseMutation();
+    mockedUseConnect.mockReturnValue(connect as unknown as ReturnType<typeof useConnectBoard>);
+    const user = userEvent.setup();
+
+    render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
+    await user.type(screen.getByLabelText("tokenLabel"), "a-token");
+    await user.click(screen.getByRole("button", { name: "previewSubmit" }));
+    await user.click(screen.getByRole("button", { name: /acme.*Roadmap/ }));
+    await user.click(screen.getByRole("button", { name: "estimateUnitHours" }));
+    await user.click(screen.getByRole("button", { name: "connectSubmit" }));
+
+    expect(connect.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ estimateUnit: "hours" }),
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
   });

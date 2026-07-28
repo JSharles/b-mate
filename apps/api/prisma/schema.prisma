@@ -19,6 +19,27 @@ enum BoardProvider {
   github
 }
 
+// How the board's own numeric "Estimate" field converts to a duration when
+// used as a fallback for the estimated completion date (specs/008, FR-005b).
+enum EstimateUnit {
+  days
+  hours
+}
+
+// The AI's own judgment of a task's complexity, from its title/description —
+// one input to the confidence matrix (specs/008, FR-003a).
+enum TaskComplexity {
+  simple
+  complex
+}
+
+// Which tier ultimately supplied a task's estimated completion date — the
+// other input to the confidence matrix (specs/008, FR-003a).
+enum EstimateSource {
+  board
+  ai
+}
+
 // Account-level, independent of ProjectMemberRole above (which is per-project).
 // See docs/PRODUCT.md "Open decisions" for the ongoing discussion about
 // whether these two should eventually merge.
@@ -83,6 +104,7 @@ model Project {
   tasks           Task[]
   boardConnection BoardConnection?
   vulgarizedTasks VulgarizedTask[]
+  taskProgress    TaskProgress[]
 
   @@map("projects")
 }
@@ -162,6 +184,12 @@ model BoardConnection {
 
   encryptedToken String @map("encrypted_token")
 
+  // How to interpret the board's numeric "Estimate" field as a duration
+  // when there's no "Target date" field to read directly (specs/008,
+  // FR-005b). Set at connection-creation time; no edit endpoint exists yet
+  // (research.md Decision 5) — reconnect to change it.
+  estimateUnit EstimateUnit @default(days) @map("estimate_unit")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -194,4 +222,53 @@ model VulgarizedTask {
 
   @@unique([projectId, githubItemId, locale])
   @@map("vulgarized_tasks")
+}
+
+// One row per (project, GitHub board item) — locale-independent, unlike
+// VulgarizedTask, since none of this data varies by language
+// (specs/008-current-task-progress research.md Decision 1).
+model TaskProgress {
+  id        String  @id @default(uuid()) @db.Uuid
+  projectId String  @map("project_id") @db.Uuid
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  githubItemId String @map("github_item_id")
+
+  // Set once, the first time this item is observed as in-progress, and
+  // never updated again — the fallback start date when the board provides
+  // none (FR-002/FR-006).
+  detectedStartedAt DateTime @map("detected_started_at")
+
+  // Resolved fresh every sweep: the board's own "Start date" field when
+  // present, else detectedStartedAt (research.md's write-path flow).
+  resolvedStartedAt DateTime @map("resolved_started_at")
+
+  // Resolved once per sweep via the three-tier priority order (FR-004).
+  // Nullable: no source has ever successfully produced one yet — same
+  // "not there yet" semantics as VulgarizedTask.vulgarizedTitle.
+  estimatedCompletionAt DateTime?       @map("estimated_completion_at")
+  estimateSource        EstimateSource? @map("estimate_source")
+
+  // Always populated whenever the AI call has ever succeeded, independent
+  // of whether its estimate is the one actually shown (FR-003a requires the
+  // complexity judgment regardless of estimate source). Stored as a
+  // duration (not a date, research.md Decision 3) so the AI-tier candidate
+  // in estimatedCompletionAt's resolution can be recomputed against a
+  // possibly-shifted resolvedStartedAt without re-calling the LLM.
+  aiComplexity            TaskComplexity? @map("ai_complexity")
+  aiEstimatedDurationDays Int?            @map("ai_estimated_duration_days")
+
+  // The content this row's AI estimate/complexity were computed against —
+  // mirrors VulgarizedTask's original* change-detection, but per-item, not
+  // per-locale (research.md Decision 6). A failed AI call leaves
+  // aiComplexity/the ai-tier estimate untouched and does NOT update these,
+  // so the next sweep retries against the same baseline.
+  lastEstimatedTitle       String  @map("last_estimated_title")
+  lastEstimatedDescription String? @map("last_estimated_description")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, githubItemId])
+  @@map("task_progress")
 }

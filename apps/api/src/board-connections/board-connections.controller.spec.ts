@@ -29,6 +29,7 @@ const fakeConnection = {
   boardNumber: 3,
   boardTitle: 'Roadmap',
   boardUrl: 'https://github.com/orgs/acme/projects/3',
+  estimateUnit: 'days' as const,
 };
 
 describe('BoardConnectionsController', () => {

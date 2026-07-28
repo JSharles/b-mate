@@ -48,6 +48,7 @@ const storedConnection = {
   boardTitle: 'Roadmap',
   boardUrl: 'https://github.com/orgs/acme/projects/3',
   encryptedToken: 'encrypted-value',
+  estimateUnit: 'days' as const,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -181,6 +182,7 @@ describe('BoardConnectionsService', () => {
           boardTitle: 'Roadmap',
           boardUrl: 'https://github.com/orgs/acme/projects/3',
           encryptedToken: expect.any(String) as string,
+          estimateUnit: 'days',
         },
         update: {
           provider: BoardProvider.github,
@@ -190,6 +192,7 @@ describe('BoardConnectionsService', () => {
           boardTitle: 'Roadmap',
           boardUrl: 'https://github.com/orgs/acme/projects/3',
           encryptedToken: expect.any(String) as string,
+          estimateUnit: 'days',
         },
       });
       expect(decryptToken(capturedEncryptedToken)).toBe('a-token');
@@ -200,7 +203,28 @@ describe('BoardConnectionsService', () => {
         boardNumber: 3,
         boardTitle: 'Roadmap',
         boardUrl: 'https://github.com/orgs/acme/projects/3',
+        estimateUnit: 'days',
       });
+    });
+
+    it('defaults estimateUnit to "days" when omitted, and passes it through when explicitly provided', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
+      githubClient.verifyBoardAccess.mockResolvedValue(availableBoard);
+      prisma.boardConnection.upsert.mockResolvedValue(storedConnection);
+
+      await service.connect('user-1', 'project-1', {
+        token: 'a-token',
+        ownerLogin: 'acme',
+        ownerType: 'Organization',
+        number: 3,
+        estimateUnit: 'hours',
+      });
+
+      expect(prisma.boardConnection.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ estimateUnit: 'hours' }) as unknown,
+        }),
+      );
     });
 
     it('throws not found for a client-role member and never calls GitHub', async () => {
@@ -278,6 +302,7 @@ describe('BoardConnectionsService', () => {
         boardNumber: 3,
         boardTitle: 'Roadmap',
         boardUrl: 'https://github.com/orgs/acme/projects/3',
+        estimateUnit: 'days',
       });
       expect(result).not.toHaveProperty('encryptedToken');
     });

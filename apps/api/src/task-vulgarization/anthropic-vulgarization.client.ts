@@ -2,6 +2,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import { Injectable } from '@nestjs/common';
 import { Locale } from './locale';
 import {
+  TaskEstimateOutput,
+  TaskEstimateOutputSchema,
+} from './task-estimate-output.schema';
+import {
   VulgarizationOutput,
   VulgarizationOutputSchema,
 } from './vulgarization-output.schema';
@@ -13,6 +17,7 @@ import {
 const MODEL = 'claude-haiku-4-5';
 
 const TOOL_NAME = 'submit_vulgarization';
+const ESTIMATE_TOOL_NAME = 'submit_task_estimate';
 
 // FR-006: one call per app-supported locale — the model must be told
 // explicitly which language to answer in, since the source ticket's own
@@ -45,6 +50,19 @@ export interface VulgarizationInput {
   taskDescription: string | null;
   locale: Locale;
 }
+
+// specs/008-current-task-progress research.md Decision 2/3: a separate call
+// from vulgarize() — this judgment is locale-independent (asked once per
+// item, not once per locale, research.md Decision 1) and must never receive
+// or return an absolute date, only a duration, to avoid LLM date-arithmetic
+// errors (the caller computes the real date from the task's own start date).
+const ESTIMATE_SYSTEM_PROMPT = `You judge how long a software development task will likely take and how complex it is, based only on its own title and description — no external context about the team, their velocity, or their calendar.
+
+Rules:
+- Estimate a duration in whole days, not an absolute date — you have no reliable way to know today's date, so never attempt calendar arithmetic yourself.
+- Judge complexity as either "simple" (a small, well-scoped, low-risk change) or "complex" (touches multiple systems, has unclear scope, carries real risk of hidden work) — based only on what the task's own content actually describes, not a guess about the codebase you cannot see.
+- Base both judgments only on the task's own title/description. Do not assume information that isn't there.
+- Respond only by calling the ${ESTIMATE_TOOL_NAME} tool with your duration estimate and complexity judgment.`;
 
 @Injectable()
 export class AnthropicVulgarizationClient {
@@ -82,6 +100,47 @@ export class AnthropicVulgarizationClient {
       ],
     });
 
+    return VulgarizationOutputSchema.parse(this.extractToolInput(response));
+  }
+
+  // Task title/description only — never the project title, which has no
+  // bearing on how long a task takes or how complex it is.
+  async estimateTask(input: {
+    taskTitle: string;
+    taskDescription: string | null;
+  }): Promise<TaskEstimateOutput> {
+    const response = await this.client.messages.create({
+      model: MODEL,
+      max_tokens: 1024,
+      system: ESTIMATE_SYSTEM_PROMPT,
+      tools: [
+        {
+          name: ESTIMATE_TOOL_NAME,
+          description:
+            "Submit the task's estimated duration (in days) and complexity judgment.",
+          input_schema: {
+            type: 'object',
+            properties: {
+              estimatedDurationDays: { type: 'number' },
+              complexity: { type: 'string', enum: ['simple', 'complex'] },
+            },
+            required: ['estimatedDurationDays', 'complexity'],
+          },
+        },
+      ],
+      tool_choice: { type: 'tool', name: ESTIMATE_TOOL_NAME },
+      messages: [
+        {
+          role: 'user',
+          content: `Task title: ${input.taskTitle}\n\nTask description: ${input.taskDescription ?? '(none)'}`,
+        },
+      ],
+    });
+
+    return TaskEstimateOutputSchema.parse(this.extractToolInput(response));
+  }
+
+  private extractToolInput(response: Anthropic.Message): unknown {
     const toolUseBlock = response.content.find(
       (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use',
     );
@@ -93,6 +152,6 @@ export class AnthropicVulgarizationClient {
     // Defense in depth (Constitution II): the API's input_schema already
     // constrains the model's output, but this is still a third-party
     // boundary — narrow it explicitly rather than trusting the shape.
-    return VulgarizationOutputSchema.parse(toolUseBlock.input);
+    return toolUseBlock.input;
   }
 }

@@ -32,6 +32,10 @@ export function ConnectBoardDialog({ projectId, open, onOpenChange }: ConnectBoa
   const [token, setToken] = useState("");
   const [boards, setBoards] = useState<AvailableBoard[] | null>(null);
   const [selectedBoard, setSelectedBoard] = useState<AvailableBoard | null>(null);
+  // specs/008-current-task-progress FR-005b — how the board's numeric
+  // "Estimate" field converts to a duration when there's no "Target date"
+  // field to read directly. Defaults to "days", the common convention.
+  const [estimateUnit, setEstimateUnit] = useState<"days" | "hours">("days");
   const preview = usePreviewBoardConnection(projectId);
   const connect = useConnectBoard(projectId);
 
@@ -39,6 +43,7 @@ export function ConnectBoardDialog({ projectId, open, onOpenChange }: ConnectBoa
     setToken("");
     setBoards(null);
     setSelectedBoard(null);
+    setEstimateUnit("days");
     preview.reset();
     connect.reset();
   }
@@ -66,6 +71,7 @@ export function ConnectBoardDialog({ projectId, open, onOpenChange }: ConnectBoa
         ownerLogin: selectedBoard.ownerLogin,
         ownerType: selectedBoard.ownerType,
         number: selectedBoard.number,
+        estimateUnit,
       },
       { onSuccess: () => handleOpenChange(false) },
     );
@@ -140,6 +146,27 @@ export function ConnectBoardDialog({ projectId, open, onOpenChange }: ConnectBoa
                 })}
               </ul>
             )}
+            <div className="flex flex-col gap-1">
+              <Label>{t("estimateUnitLabel")}</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={estimateUnit === "days" ? "default" : "outline"}
+                  onClick={() => setEstimateUnit("days")}
+                >
+                  {t("estimateUnitDays")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={estimateUnit === "hours" ? "default" : "outline"}
+                  onClick={() => setEstimateUnit("hours")}
+                >
+                  {t("estimateUnitHours")}
+                </Button>
+              </div>
+            </div>
             <Button
               type="button"
               disabled={!selectedBoard || connect.isPending}

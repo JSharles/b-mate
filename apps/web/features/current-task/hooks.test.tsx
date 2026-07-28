@@ -25,7 +25,14 @@ function createWrapper() {
 describe("useCurrentTask", () => {
   it("returns the current task items for the project, requesting the active locale", async () => {
     const items = [
-      { title: "Fix bug", description: "Details", updatedAt: "2026-07-20T10:00:00.000Z" },
+      {
+        title: "Fix bug",
+        description: "Details",
+        updatedAt: "2026-07-20T10:00:00.000Z",
+        startedAt: "2026-07-18T10:00:00.000Z",
+        estimatedCompletionAt: null,
+        estimateConfidence: null,
+      },
     ];
     mockedGetCurrentTask.mockResolvedValue(items);
     const { Wrapper } = createWrapper();
