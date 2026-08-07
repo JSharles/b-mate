@@ -1,4 +1,4 @@
-# b-mate
+# Diaphane
 
 Client-facing project tracking portal. Developers manage projects and tasks; non-technical clients get email invites and a read-only view of progress.
 

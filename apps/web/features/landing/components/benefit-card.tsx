@@ -19,7 +19,6 @@ export function BenefitCard({ icon: Icon, title, description, span, tone, badge 
         tone === "paper"
           ? "bg-card text-foreground"
           : "border border-border bg-foreground text-background",
-        badge ? "opacity-75" : undefined
       )}
     >
       <div className="flex items-center justify-between gap-2">

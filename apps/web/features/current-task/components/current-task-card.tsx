@@ -184,7 +184,7 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
   return (
     <div className="relative h-full min-h-0 overflow-hidden rounded-xl">
       <IridescentGlow />
-      <Card className="relative h-full min-h-0 border-2 border-white/80 bg-white/50 shadow-xl backdrop-blur-2xl">
+      <Card className="relative h-full min-h-0 border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
         <CardHeader>
           <CardTitle>
             <h2 className="text-sm font-bold tracking-wide text-foreground uppercase">
@@ -259,11 +259,11 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
                       reinventing it as bare gray text — the two cards
                       sharing this row now read as one design system, not
                       two. text-sm (Body, DESIGN.md) replaces text-xs, which
-                      matched neither Body nor Caption. border-white/80
-                      matches the outer card's own border opacity — the
-                      previous /60 read as barely-there against the glass
-                      background. */}
-                  <div className="flex flex-col gap-2 border-white/80 pl-0 text-sm sm:col-span-1 sm:border-l sm:pl-4">
+                      matched neither Body nor Caption. border-white/15
+                      matches the outer card's own (dark-glass) border
+                      opacity, updated together in the 2026-08-07 dark
+                      rebrand. */}
+                  <div className="flex flex-col gap-2 border-white/15 pl-0 text-sm sm:col-span-1 sm:border-l sm:pl-4">
                     <span className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="size-3.5 shrink-0" />
                       {t("startedAt", { time: formatRelativeTime(item.startedAt, locale) })}

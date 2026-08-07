@@ -1,6 +1,6 @@
 {
   "Metadata": {
-    "title": "b-mate",
+    "title": "Diaphane",
     "description": "Track your project's progress with total transparency."
   },
   "Landing": {
@@ -12,7 +12,7 @@
       "titleBefore": "Your project is no longer ",
       "titleHighlight": "a black box",
       "titleAfter": ".",
-      "subhead": "b-mate shows your clients what's actually happening on their project — no jargon, no status meetings, no re-explaining it all yourself."
+      "subhead": "Diaphane shows your clients what's actually happening on their project — no jargon, no status meetings, no re-explaining it all yourself."
     },
     "clients": {
       "eyebrow": "For your clients",
@@ -28,7 +28,7 @@
       "card1Title": "Stop re-explaining",
       "card1Description": "Clients check progress themselves. You get back the time you used to spend telling them.",
       "card2Title": "Your tools, your pace",
-      "card2Description": "b-mate doesn't add any process, doesn't impose any method.",
+      "card2Description": "Diaphane doesn't add any process, doesn't impose any method.",
       "card3Title": "A client who sees, a client who stays",
       "card3Description": "Fewer doubts, fewer questions about price, more projects that stick around."
     },
@@ -66,20 +66,20 @@
       "navLabel": "FAQ",
       "groupHowItWorks": "How it works",
       "groupTrustPricing": "Trust & pricing",
-      "q1": "Does b-mate replace my current tools?",
-      "a1": "No. b-mate doesn't replace your task tracker or your tech stack — it simply makes what's happening in them visible to your client.",
+      "q1": "Does Diaphane replace my current tools?",
+      "a1": "No. Diaphane doesn't replace your task tracker or your tech stack — it simply makes what's happening in them visible to your client.",
       "q2": "Does my client need to create an account?",
       "a2": "Yes, via an email invitation link. Signing up takes under a minute, no technical skill required.",
       "q3": "Is it secure?",
       "a3": "Every session is authenticated and tied to one user — your client only ever sees the projects they've been invited to.",
       "q4": "How much does it cost?",
-      "a4": "b-mate is in launch phase — pricing will be announced soon.",
+      "a4": "Diaphane is in launch phase — pricing will be announced soon.",
       "q5": "Can I try it before committing?",
-      "a5": "Yes — you can create an account and a first project right now to see how b-mate fits into the way you work."
+      "a5": "Yes — you can create an account and a first project right now to see how Diaphane fits into the way you work."
     },
     "closing": {
       "title": "Show what's really happening. Earn their trust.",
-      "cta": "Create a project"
+      "cta": "Sign up"
     }
   },
   "Auth": {

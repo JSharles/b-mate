@@ -16,15 +16,20 @@ const TRANSLATED_ITEMS = [
   { key: "translated4", statusKey: "translated4Status" },
 ] as const;
 
-// The "dev board" panel intentionally stays dark — it's illustrating a
-// generic, other technical tool (Jira/Linear-style), contrasted against the
-// "client view" panel which uses the app's own light tokens, since that one
-// represents b-mate itself. This is a deliberate visual metaphor within the
-// marketing copy, not the app's own theme (see FR-002 — no dark app theme).
+// The "dev board" panel represents a generic, other technical tool
+// (Jira/Linear-style) — busy and muted. The "client view" panel represents
+// Diaphane itself and gets the same bright "ink" inversion BenefitCard uses
+// elsewhere on this page (bg-foreground/text-background): the comparison
+// only reads if the client-view panel is visibly the calmer, lighter
+// surface. Before the 2026-08-07 dark rebrand this fell out of the app's own
+// theme being light by default; on a dark-only app it has to be authored
+// explicitly, or both panels render at the same darkness (Impeccable
+// critique P0, 2026-08-07) — same reasoning is why this file now uses design
+// tokens throughout instead of raw Tailwind neutral-* (critique P1).
 const TAG_STYLES: Record<(typeof TICKETS)[number]["tag"], string> = {
-  chore: "bg-neutral-100/10 text-neutral-100/60",
+  chore: "bg-foreground/10 text-foreground/60",
   bug: "bg-primary/40 text-background",
-  feature: "bg-neutral-100/15 text-neutral-100/80",
+  feature: "bg-foreground/15 text-foreground/80",
 };
 
 export function AiPreview() {
@@ -42,12 +47,12 @@ export function AiPreview() {
       </div>
 
       <div className="grid grid-cols-1 items-center gap-6 sm:grid-cols-[1fr_auto_1fr]">
-        <div className="rounded-2xl bg-neutral-900 p-5">
+        <div className="rounded-2xl bg-muted p-5">
           <div className="mb-4 flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-neutral-100/20" />
-            <span className="size-2.5 rounded-full bg-neutral-100/20" />
-            <span className="size-2.5 rounded-full bg-neutral-100/20" />
-            <span className="ml-2 text-xs font-semibold tracking-wide text-neutral-100/50 uppercase">
+            <span className="size-2.5 rounded-full bg-muted-foreground/30" />
+            <span className="size-2.5 rounded-full bg-muted-foreground/30" />
+            <span className="size-2.5 rounded-full bg-muted-foreground/30" />
+            <span className="ml-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               {t("devBoardLabel")}
             </span>
           </div>
@@ -55,9 +60,9 @@ export function AiPreview() {
             {TICKETS.map(({ key, tag }) => (
               <li
                 key={key}
-                className="flex items-center justify-between gap-3 rounded-lg bg-neutral-800 px-3 py-2 text-sm"
+                className="flex items-center justify-between gap-3 rounded-lg bg-secondary px-3 py-2 text-sm"
               >
-                <span className="font-mono text-neutral-100/80">{t(key)}</span>
+                <span className="font-mono text-foreground/80">{t(key)}</span>
                 <span
                   className={cn(
                     "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold uppercase",
@@ -73,18 +78,18 @@ export function AiPreview() {
 
         <ArrowRight className="mx-auto size-6 rotate-90 text-primary sm:rotate-0" />
 
-        <div className="rounded-2xl border border-border bg-background p-5 text-foreground">
-          <div className="mb-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        <div className="rounded-2xl border border-border bg-foreground p-5 text-background">
+          <div className="mb-4 text-xs font-semibold tracking-wide text-background/70 uppercase">
             {t("clientViewLabel")}
           </div>
           <ul className="flex flex-col gap-2">
             {TRANSLATED_ITEMS.map(({ key, statusKey }) => (
               <li
                 key={key}
-                className="flex items-center justify-between gap-3 rounded-lg bg-card px-3 py-2 text-sm"
+                className="flex items-center justify-between gap-3 rounded-lg bg-background/10 px-3 py-2 text-sm"
               >
                 <span>{t(key)}</span>
-                <span className="shrink-0 text-xs font-medium text-primary">{t(statusKey)}</span>
+                <span className="shrink-0 text-xs font-semibold text-background">{t(statusKey)}</span>
               </li>
             ))}
           </ul>

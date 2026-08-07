@@ -24,23 +24,34 @@ The full vision includes an AI-assisted simplification layer. **It is not part o
 
 ## Positioning
 
-**Full vision, not yet implemented — see "Out of scope" in MVP scope below for what exists today.** The mechanism that a neighboring "client portal" or generic status-report tool could not truthfully copy: b-mate connects to the developer's **existing** task board (whatever tool they already use day to day — Jira, Linear, GitHub Issues, Trello, etc.) and automatically translates its real content into plain language for the client, across two views: the task currently in progress, and the roadmap. The client is never asked to learn the developer's tool, and never reads a summary the developer had to write by hand — they read the real board, worded for them.
+**Full vision, not yet implemented — see "Out of scope" in MVP scope below for what exists today.** The mechanism that a neighboring "client portal" or generic status-report tool could not truthfully copy: Diaphane connects to the developer's **existing** task board (whatever tool they already use day to day — Jira, Linear, GitHub Issues, Trello, etc.) and automatically translates its real content into plain language for the client, across two views: the task currently in progress, and the roadmap. The client is never asked to learn the developer's tool, and never reads a summary the developer had to write by hand — they read the real board, worded for them.
 
 This is the product's ultimate differentiator; it is deliberately **not** part of the MVP (see "Out of scope" — no external integrations, no AI layer yet), but architecture should not accidentally rule it out.
 
 ## Operating Context
 
-The developer's real workflow already lives inside whatever task tracker they use for their own work — b-mate is not meant to replace that tool. The full vision has b-mate fetch from that existing board rather than require re-entry, then vulgarize the fetched content for the client across two client-facing surfaces: current task status and roadmap.
+The developer's real workflow already lives inside whatever task tracker they use for their own work — Diaphane is not meant to replace that tool. The full vision has Diaphane fetch from that existing board rather than require re-entry, then vulgarize the fetched content for the client across two client-facing surfaces: current task status and roadmap.
 
-Today (MVP), this fetch/translate layer does not exist: tasks are entered directly in b-mate (see "Out of scope" — no Jira/Linear/GitHub/Notion integration, no AI layer), and this gap is deliberate rather than an oversight — see Positioning above.
+Today (MVP), this fetch/translate layer does not exist: tasks are entered directly in Diaphane (see "Out of scope" — no Jira/Linear/GitHub/Notion integration, no AI layer), and this gap is deliberate rather than an oversight — see Positioning above.
 
 ## Evidence on Hand
 
-**Pre-launch. No paying customers, no case studies, no testimonials on hand.** The landing page FAQ says as much directly: "b-mate est en phase de lancement — la tarification sera communiquée prochainement." Future work (landing copy, onboarding, marketing surfaces) must not fabricate customer quotes, usage numbers, logos, or case studies until real ones exist.
+**Pre-launch. No paying customers, no case studies, no testimonials on hand.** The landing page FAQ says as much directly: "Diaphane est en phase de lancement — la tarification sera communiquée prochainement." Future work (landing copy, onboarding, marketing surfaces) must not fabricate customer quotes, usage numbers, logos, or case studies until real ones exist.
 
 ## Brand Commitments
 
-Product name: **b-mate**. Tagline (from app metadata): "Track your project's progress with total transparency." No other voice or visual-identity commitment has been confirmed as binding at the product-truth level — the current visual system lives in code, not in a confirmed brand brief.
+Product name: **Diaphane**. Tagline (from app metadata): "Track your project's progress with total transparency."
+
+**Visual identity — confirmed binding at the product-truth level** (2026-08-07): a single dark theme built from four signature colors, no light mode.
+
+| Color | Role | Value |
+|---|---|---|
+| **Black** | The void — page background, the ground everything else sits on | `#000000` |
+| **Midnight Blue** | Atmosphere — a soft glow in the fixed background mesh, never a flat fill | `#1c2245` (the brand's periwinkle-blue glow token, `#5c71e7`, blended into the black ground) |
+| **Pale Mauve** | The one interactive/emphasis color — buttons, links, focus rings, the logo's own wordmark | `#dae1ff` (documented in the design system as "Periwinkle" — same color, read as a pale mauve-blue) |
+| **White** | Body text and bright surfaces — a barely-tinted off-white, not pure white | `#eff0f6` |
+
+Full token-level detail (elevation, borders, semantic/status colors, component treatments) lives in `apps/web/DESIGN.md` — this table is the confirmed brand-truth summary; DESIGN.md is where it's implemented.
 
 ---
 
@@ -266,7 +277,7 @@ Context is useful to avoid "fixing" the schema in the wrong direction.
 ## Product Principles
 
 - **Never fabricate.** Everything the client sees traces back to real, existing content — the foundational constraint the product is named for (see "Product principles (locked)" above).
-- **Zero added process.** b-mate must not force the developer to adopt a new methodology, board, or tool just to use it — today that means manual entry; the full vision fetches from their existing tool instead of replacing it (see Positioning, Operating Context).
+- **Zero added process.** Diaphane must not force the developer to adopt a new methodology, board, or tool just to use it — today that means manual entry; the full vision fetches from their existing tool instead of replacing it (see Positioning, Operating Context).
 - **Translation, not replacement.** The client-facing view reworks real technical content into plain language; it never invents or tidies up beyond what's true.
 - **Escalate rather than guess.** Missing or ambiguous information routes to the developer instead of being improvised.
 - **MVP scope guides what's built; full vision guides how it's architected.** Don't build the fetch/AI layer ahead of schedule, but don't foreclose it either.
@@ -277,4 +288,4 @@ Context is useful to avoid "fixing" the schema in the wrong direction.
 
 - Full project context, decisions made with the alternatives that were ruled out, and the data model diagrams are documented in Notion.
 - This file describes the MVP. AI features are deliberately absent: don't build ahead of them in code, but don't close the door on them architecturally either.
-- **Idea, not yet scoped**: a meeting/discussion-summary feature — a permanent, clickable Gmeet link on the project page, with each meeting summarized and viewable from within b-mate. Surfaced while discussing `specs/007-current-task-vulgarization`'s future context needs, as a natural future source of context (alongside docs, audit findings, tech stack) for the eventual document-vulgarization/RAG layer described in Positioning. Not designed, not decided — captured here so it isn't lost.
+- **Idea, not yet scoped**: a meeting/discussion-summary feature — a permanent, clickable Gmeet link on the project page, with each meeting summarized and viewable from within Diaphane. Surfaced while discussing `specs/007-current-task-vulgarization`'s future context needs, as a natural future source of context (alongside docs, audit findings, tech stack) for the eventual document-vulgarization/RAG layer described in Positioning. Not designed, not decided — captured here so it isn't lost.

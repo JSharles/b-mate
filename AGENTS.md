@@ -1,10 +1,10 @@
-# b-mate
+# Diaphane
 
 Monorepo managed with **pnpm workspaces** + **Turborepo**.
 
 ## Product
 
-`b-mate` is a client-facing project tracking portal: developers manage projects and tasks, invite non-technical clients by email, clients get a read-only view of progress. Full product spec, data model and rationale, and business rules: **[docs/PRODUCT.md](docs/PRODUCT.md) — read it before implementing any feature.**
+`Diaphane` is a client-facing project tracking portal: developers manage projects and tasks, invite non-technical clients by email, clients get a read-only view of progress. Full product spec, data model and rationale, and business rules: **[docs/PRODUCT.md](docs/PRODUCT.md) — read it before implementing any feature.**
 
 The spec is still evolving (early ideation). It contains an explicit "Open decisions" list — DB choice, auth strategy, status enums, etc. **Never resolve one of those unilaterally.** Ask about each one only when the current implementation step actually needs it, not upfront.
 

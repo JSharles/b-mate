@@ -91,7 +91,7 @@ export function ConnectBoardDialog({ projectId, open, onOpenChange }: ConnectBoa
               <p className="text-xs text-muted-foreground">
                 {t("tokenHint")}{" "}
                 <a
-                  href="https://github.com/settings/tokens/new?scopes=project&description=b-mate"
+                  href="https://github.com/settings/tokens/new?scopes=project&description=Diaphane"
                   target="_blank"
                   rel="noreferrer"
                   className="underline"

@@ -1,6 +1,6 @@
 {
   "Metadata": {
-    "title": "b-mate",
+    "title": "Diaphane",
     "description": "Suivez l'avancement de vos projets en toute transparence."
   },
   "Landing": {
@@ -12,7 +12,7 @@
       "titleBefore": "Votre projet n'est plus ",
       "titleHighlight": "une boîte noire",
       "titleAfter": ".",
-      "subhead": "b-mate montre à vos clients ce qui se passe réellement dans leur projet — sans jargon, sans réunion de statut, sans que vous ayez à tout réexpliquer."
+      "subhead": "Diaphane montre à vos clients ce qui se passe réellement dans leur projet — sans jargon, sans réunion de statut, sans que vous ayez à tout réexpliquer."
     },
     "clients": {
       "eyebrow": "Pour vos clients",
@@ -28,7 +28,7 @@
       "card1Title": "Vous arrêtez de réexpliquer",
       "card1Description": "Le client consulte lui-même ce qui se passe. Vous récupérez le temps que vous perdiez à le lui raconter.",
       "card2Title": "Vos outils, votre rythme",
-      "card2Description": "b-mate n'ajoute aucun process, aucune méthode imposée.",
+      "card2Description": "Diaphane n'ajoute aucun process, aucune méthode imposée.",
       "card3Title": "Un client qui voit, un client qui reste",
       "card3Description": "Moins de doutes, moins de questions sur le prix, plus de projets qui suivent."
     },
@@ -66,20 +66,20 @@
       "navLabel": "FAQ",
       "groupHowItWorks": "Fonctionnement",
       "groupTrustPricing": "Confiance & tarifs",
-      "q1": "b-mate remplace-t-il mes outils actuels ?",
-      "a1": "Non. b-mate ne remplace ni votre gestionnaire de tâches ni votre stack technique — il vient simplement rendre visible, pour votre client, ce qui s'y passe.",
+      "q1": "Diaphane remplace-t-il mes outils actuels ?",
+      "a1": "Non. Diaphane ne remplace ni votre gestionnaire de tâches ni votre stack technique — il vient simplement rendre visible, pour votre client, ce qui s'y passe.",
       "q2": "Mon client doit-il créer un compte ?",
       "a2": "Oui, via un lien d'invitation envoyé par email. L'inscription prend moins d'une minute, aucune compétence technique n'est requise.",
       "q3": "Est-ce sécurisé ?",
       "a3": "Chaque session est authentifiée et propre à un utilisateur : votre client ne voit que les projets auxquels il a été invité.",
       "q4": "Combien ça coûte ?",
-      "a4": "b-mate est en phase de lancement — la tarification sera communiquée prochainement.",
+      "a4": "Diaphane est en phase de lancement — la tarification sera communiquée prochainement.",
       "q5": "Puis-je essayer avant de m'engager ?",
-      "a5": "Oui : vous pouvez créer un compte et un premier projet dès maintenant pour voir comment b-mate s'intègre à votre façon de travailler."
+      "a5": "Oui : vous pouvez créer un compte et un premier projet dès maintenant pour voir comment Diaphane s'intègre à votre façon de travailler."
     },
     "closing": {
       "title": "Montrez ce qui se passe vraiment. Gagnez leur confiance.",
-      "cta": "Créer un projet"
+      "cta": "S'inscrire"
     }
   },
   "Auth": {

@@ -45,7 +45,7 @@ describe("ConnectBoardDialog", () => {
     expect(screen.getByText("tokenHint")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "tokenHintLink" })).toHaveAttribute(
       "href",
-      "https://github.com/settings/tokens/new?scopes=project&description=b-mate",
+      "https://github.com/settings/tokens/new?scopes=project&description=Diaphane",
     );
   });
 
