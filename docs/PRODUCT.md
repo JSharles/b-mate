@@ -110,13 +110,14 @@ A single table for every person. A client and a developer are the same kind of t
 | first_name | string | |
 | last_name | string | |
 | email | string | unique — used as the invitation identifier |
-| password_hash | string | Argon2id hash. Both developer and client authenticate with email + password. |
+| password_hash | string, nullable | Argon2id hash. Clients authenticate with email + password; developers authenticate via GitHub OAuth only (see "Authentication" below) and have no password — `null`. |
 | company | string | |
 | address | string | |
 | phone | string | |
 | image | string | |
 | bio | string | |
-| github | string | |
+| github | string | Free-text, declarative profile field ("here's my GitHub"). Unrelated to authentication — not to be confused with `github_id` below. |
+| github_id | string, nullable | GitHub's stable numeric account id, set on first GitHub OAuth login (developers only). |
 | socials | string | |
 | role_title | string | Job title, **free text**, purely declarative. No effect on permissions. Not to be confused with `ProjectMembers.role`. |
 | status | string | |
@@ -230,13 +231,17 @@ This makes `is_admin` set at invitation time (see `Invitations.is_admin` above),
 
 ### Authentication
 
-**Server-side sessions, not JWT.** Both developer and client sign up and log in with email + password (Argon2id hash, `Users.password_hash`). On login, the API creates a row in `Sessions` and sends its id to the browser as an `httpOnly` cookie (`SameSite=Lax`, 30-day fixed expiry, `Secure` in production). Every request looks the session up in Postgres; logout deletes the row.
+**Server-side sessions, not JWT**, for both account kinds. On successful authentication (however it happened — see below), the API creates a row in `Sessions` and sends its id to the browser as an `httpOnly` cookie (`SameSite=Lax`, 30-day fixed expiry, `Secure` in production). Every request looks the session up in Postgres; logout deletes the row.
+
+**Developers authenticate via GitHub OAuth exclusively** (specs/009-developer-github-oauth) — a "Continue with GitHub" action creates or logs into a developer account from their GitHub identity; `Users.password_hash` is `null` for every GitHub-authenticated developer. This is a deliberate reversal of the original MVP decision (below) to also offer email/password to developers — kept exclusively GitHub for this first version, not offered alongside it.
+
+**Clients still sign up and log in with email + password** (Argon2id hash, `Users.password_hash`), unchanged. `/login` and `/signup` each show a Developer/Client toggle (`AuthGateway`, defaulting to Developer): choosing "Client" reveals the same email/password form clients have always used, in place, on the same page — no separate route to remember. A client's actual first-time entry is still the invitation-acceptance flow (`/invite/[token]`), untouched by this feature; the toggle only matters for a *returning* client logging back in.
 
 **Why not JWT:** a bare JWT (no refresh token, what was used on past projects) can't be revoked before it expires — if a client removes a developer's access (see "Ownership & handoff" above), that developer's token would stay valid regardless. A refresh-token setup fixes that but adds real complexity (rotation, replay detection) for a team still building auth fundamentals. Sessions give instant, unconditional revocation for free, at negligible DB cost at this scale.
 
-**Why not an auth library (Better Auth, etc.):** those are built to run inside a JS frontend framework (chiefly Next.js). This project deliberately keeps `apps/api` (NestJS) as the single source of truth for identity and authorization — introducing a frontend-side auth library would split that across two systems. Revisit if the architecture ever collapses into a single Next.js fullstack app.
+**Why not an auth library (Better Auth, etc.):** those are built to run inside a JS frontend framework (chiefly Next.js). This project deliberately keeps `apps/api` (NestJS) as the single source of truth for identity and authorization — introducing a frontend-side auth library would split that across two systems. Revisit if the architecture ever collapses into a single Next.js fullstack app. The GitHub OAuth exchange itself is two plain HTTP calls made directly from `apps/api`, not a frontend-side OAuth library, for the same reason.
 
-OAuth (Google/GitHub) as an additional sign-up method is a possible later addition, not MVP.
+Google OAuth (or any provider beyond GitHub) remains a possible later addition, not decided.
 
 ---
 

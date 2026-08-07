@@ -27,6 +27,7 @@ const baseUser = {
   image: null,
   bio: null,
   github: null,
+  githubId: null,
   socials: null,
   roleTitle: null,
   status: null,

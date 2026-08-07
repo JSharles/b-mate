@@ -3,11 +3,10 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { currentUserKey } from "@/shared/hooks/use-current-user";
-import { login, logout, signup } from "./api";
-import { useLogin, useLogout, useSignup } from "./hooks";
+import { login, logout } from "./api";
+import { useLogin, useLogout } from "./hooks";
 
 vi.mock("./api", () => ({
-  signup: vi.fn(),
   login: vi.fn(),
   logout: vi.fn(),
 }));
@@ -17,7 +16,6 @@ vi.mock("@/i18n/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
-const mockedSignup = vi.mocked(signup);
 const mockedLogin = vi.mocked(login);
 const mockedLogout = vi.mocked(logout);
 
@@ -38,28 +36,6 @@ const fakeUser = { id: "1", firstName: "Jean" } as never;
 describe("auth hooks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it("useSignup caches the user, redirects to /home, and clears any stale cached data from a prior session", async () => {
-    mockedSignup.mockResolvedValue(fakeUser);
-    const { Wrapper, queryClient } = createWrapper();
-    queryClient.setQueryData(["projects", "1"], { id: "1", title: "Someone else's project" });
-
-    const { result } = renderHook(() => useSignup(), { wrapper: Wrapper });
-    act(() => {
-      result.current.mutate({
-        firstName: "Jean",
-        lastName: "Charles",
-        email: "jc@example.com",
-        password: "supersecret123",
-        accountKind: "developer",
-      });
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(queryClient.getQueryData(currentUserKey)).toBe(fakeUser);
-    expect(queryClient.getQueryData(["projects", "1"])).toBeUndefined();
-    expect(push).toHaveBeenCalledWith("/home");
   });
 
   it("useLogin caches the user, redirects to /home, and clears any stale cached data from a prior session", async () => {

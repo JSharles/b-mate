@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import Image from "next/image";
-import { LoginForm } from "@/features/auth/components/login-form";
+import { Suspense } from "react";
+import { AuthGateway } from "@/features/auth/components/auth-gateway";
 import { Link } from "@/i18n/navigation";
 import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
 
@@ -25,7 +26,13 @@ export default async function LoginPage({
             <h1 className="text-2xl font-semibold">{t("title")}</h1>
           </CardHeader>
           <CardContent>
-            <LoginForm />
+            {/* Suspense: AuthGateway's developer path (GitHubAuthCard) reads
+                useSearchParams (the `error` param from a failed callback
+                redirect), which Next.js requires to be boundary-wrapped on
+                an otherwise statically rendered route. */}
+            <Suspense fallback={null}>
+              <AuthGateway />
+            </Suspense>
           </CardContent>
         </Card>
       </div>

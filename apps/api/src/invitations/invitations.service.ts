@@ -237,17 +237,23 @@ export class InvitationsService {
     });
 
     if (user) {
-      const valid = await argon2.verify(user.passwordHash, dto.password);
-      if (!valid) {
-        throw new UnauthorizedException('Invalid credentials');
-      }
-
       // Mirrors the same check in create() — covers the case where the
       // account was created (or switched) after the invitation was sent.
+      // Checked before the password verify below: a GitHub-only developer
+      // account (specs/009-developer-github-oauth) has no passwordHash at
+      // all, so this order also avoids ever calling argon2.verify with null.
       if (user.accountKind === 'developer') {
         throw new ForbiddenException(
           'Developer accounts cannot accept client invitations',
         );
+      }
+      if (!user.passwordHash) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      const valid = await argon2.verify(user.passwordHash, dto.password);
+      if (!valid) {
+        throw new UnauthorizedException('Invalid credentials');
       }
     } else {
       if (!dto.firstName || !dto.lastName) {

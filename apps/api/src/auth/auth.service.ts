@@ -3,52 +3,23 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
-import { SignupDto } from './dto/signup.dto';
+import type { GithubProfile } from './github-oauth.client';
 import { SESSION_TTL_MS } from './session-cookie';
 
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async signup(dto: SignupDto): Promise<{ user: User; sessionId: string }> {
-    const email = dto.email.toLowerCase();
-
-    const existing = await this.prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      // Deliberately generic: doesn't confirm-by-name that this email is
-      // already registered, to reduce (not eliminate — the 409 status/timing
-      // still differs from a successful signup) account enumeration via this
-      // form. Full request-shape neutrality would need an email-verification
-      // step, which doesn't exist yet — see docs/PRODUCT.md open decisions.
-      throw new ConflictException(
-        "We couldn't create your account with these details. If you already have one, try logging in instead.",
-      );
-    }
-
-    const passwordHash = await argon2.hash(dto.password);
-
-    const user = await this.prisma.user.create({
-      data: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        email,
-        passwordHash,
-        accountKind: dto.accountKind,
-      },
-    });
-
-    const session = await this.createSession(user.id);
-    return { user, sessionId: session.id };
-  }
-
   async login(dto: LoginDto): Promise<{ user: User; sessionId: string }> {
     const email = dto.email.toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) {
+    // A GitHub-only developer account (specs/009) has no password to check
+    // against — reject exactly like a wrong password, not a crash.
+    if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -59,6 +30,63 @@ export class AuthService {
 
     const session = await this.createSession(user.id);
     return { user, sessionId: session.id };
+  }
+
+  // specs/009-developer-github-oauth: finds the developer account already
+  // linked to this GitHub identity, or creates one — the single entry point
+  // both GET /auth/github/callback branches (new vs. returning developer)
+  // resolve to (FR-001/FR-003/FR-004).
+  async findOrCreateFromGitHub(
+    profile: GithubProfile,
+  ): Promise<{ user: User; sessionId: string }> {
+    const existing = await this.prisma.user.findUnique({
+      where: { githubId: profile.githubId },
+    });
+
+    const user = existing ?? (await this.createFromGithubProfile(profile));
+
+    const session = await this.createSession(user.id);
+    return { user, sessionId: session.id };
+  }
+
+  private async createFromGithubProfile(profile: GithubProfile): Promise<User> {
+    // Split on the first space only. When GitHub has no `name` set (common
+    // for personal accounts) this falls back to `login` — a single word, so
+    // lastName is deliberately left empty rather than duplicating it: the
+    // UI renders "{firstName} {lastName}", and repeating the username in
+    // both fields showed up as "octocat octocat" (caught live, 2026-08-07).
+    const nameParts = (profile.name ?? profile.login).trim().split(/\s+/);
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+    try {
+      return await this.prisma.user.create({
+        data: {
+          firstName,
+          lastName,
+          // Caller (auth.controller.ts) never reaches here without a
+          // verified email — see FR-006.
+          email: profile.verifiedEmail!.toLowerCase(),
+          passwordHash: null,
+          accountKind: 'developer',
+          githubId: profile.githubId,
+          image: profile.avatarUrl,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        // research.md Decision 6: this feature never links/merges with a
+        // pre-existing account by email — a genuine collision is a dead end,
+        // reported cleanly rather than as a raw constraint error.
+        throw new ConflictException(
+          'An account already exists with this email.',
+        );
+      }
+      throw error;
+    }
   }
 
   async logout(sessionId: string): Promise<void> {

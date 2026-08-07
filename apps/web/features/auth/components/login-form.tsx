@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
 import {
   Form,
@@ -86,12 +85,11 @@ export function LoginForm() {
         <Button type="submit" disabled={login.isPending}>
           {login.isPending ? t("submitPending") : t("submit")}
         </Button>
-        <p className="text-sm text-muted-foreground">
-          {t("noAccount")}{" "}
-          <Link href="/signup" className="underline">
-            {t("signUp")}
-          </Link>
-        </p>
+        {/* No self-serve signup exists here (research.md Decision 10,
+            specs/009-developer-github-oauth) — a client's account only ever
+            comes from a developer's invitation, so plain text, not a
+            "Sign up" link, which would have nowhere correct to point. */}
+        <p className="text-sm text-muted-foreground">{t("noAccount")}</p>
       </form>
     </Form>
   );

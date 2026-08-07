@@ -2,6 +2,11 @@ import type { User } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import type { GithubOauthClient } from './github-oauth.client';
+import {
+  OAUTH_FLOW_COOKIE_NAME,
+  serializeOAuthFlowCookie,
+} from './oauth-state-cookie';
 import { SESSION_COOKIE_NAME } from './session-cookie';
 
 const fakeUser: User = {
@@ -17,6 +22,7 @@ const fakeUser: User = {
   image: null,
   bio: null,
   github: null,
+  githubId: null,
   socials: null,
   roleTitle: null,
   status: null,
@@ -25,50 +31,43 @@ const fakeUser: User = {
 };
 
 function createResponseMock(): jest.Mocked<
-  Pick<Response, 'cookie' | 'clearCookie'>
+  Pick<Response, 'cookie' | 'clearCookie' | 'redirect'>
 > {
   return {
     cookie: jest.fn(),
     clearCookie: jest.fn(),
+    redirect: jest.fn(),
   };
 }
 
 describe('AuthController', () => {
   let authService: jest.Mocked<
-    Pick<AuthService, 'signup' | 'login' | 'logout'>
+    Pick<AuthService, 'login' | 'logout' | 'findOrCreateFromGitHub'>
+  >;
+  let githubOauthClient: jest.Mocked<
+    Pick<
+      GithubOauthClient,
+      'buildAuthorizeUrl' | 'exchangeCodeForToken' | 'fetchProfile'
+    >
   >;
   let controller: AuthController;
 
   beforeEach(() => {
-    authService = { signup: jest.fn(), login: jest.fn(), logout: jest.fn() };
-    controller = new AuthController(authService as unknown as AuthService);
-  });
-
-  it('signup sets the session cookie and returns the user without the password hash', async () => {
-    authService.signup.mockResolvedValue({
-      user: fakeUser,
-      sessionId: 'session-1',
-    });
-    const res = createResponseMock();
-
-    const result = await controller.signup(
-      {
-        firstName: 'Jean',
-        lastName: 'Charles',
-        email: 'jc@example.com',
-        password: 'supersecret123',
-        accountKind: 'developer',
-      },
-      res as unknown as Response,
+    process.env.WEB_ORIGIN = 'http://localhost:3000';
+    authService = {
+      login: jest.fn(),
+      logout: jest.fn(),
+      findOrCreateFromGitHub: jest.fn(),
+    };
+    githubOauthClient = {
+      buildAuthorizeUrl: jest.fn(),
+      exchangeCodeForToken: jest.fn(),
+      fetchProfile: jest.fn(),
+    };
+    controller = new AuthController(
+      authService as unknown as AuthService,
+      githubOauthClient as unknown as GithubOauthClient,
     );
-
-    expect(res.cookie).toHaveBeenCalledWith(
-      SESSION_COOKIE_NAME,
-      'session-1',
-      expect.any(Object),
-    );
-    expect(result).not.toHaveProperty('passwordHash');
-    expect(result).toMatchObject({ id: 'user-1', email: 'jc@example.com' });
   });
 
   it('login sets the session cookie and returns the user without the password hash', async () => {
@@ -122,5 +121,167 @@ describe('AuthController', () => {
 
     expect(result).not.toHaveProperty('passwordHash');
     expect(result).toMatchObject({ id: 'user-1', email: 'jc@example.com' });
+  });
+
+  describe('githubStart', () => {
+    it('sets the flow cookie and redirects to the authorize URL', () => {
+      githubOauthClient.buildAuthorizeUrl.mockReturnValue(
+        'https://github.com/login/oauth/authorize?state=abc',
+      );
+      const res = createResponseMock();
+
+      controller.githubStart('en', res as unknown as Response);
+
+      expect(res.cookie).toHaveBeenCalledWith(
+        OAUTH_FLOW_COOKIE_NAME,
+        expect.any(String),
+        expect.any(Object),
+      );
+      const [, cookieValue] = res.cookie.mock.calls[0] as [string, string];
+      expect(JSON.parse(cookieValue)).toMatchObject({ locale: 'en' });
+      expect(githubOauthClient.buildAuthorizeUrl).toHaveBeenCalledWith(
+        expect.any(String),
+      );
+      expect(res.redirect).toHaveBeenCalledWith(
+        'https://github.com/login/oauth/authorize?state=abc',
+      );
+    });
+
+    it('falls back to the default locale when none/invalid is given', () => {
+      githubOauthClient.buildAuthorizeUrl.mockReturnValue(
+        'https://github.com/x',
+      );
+      const res = createResponseMock();
+
+      controller.githubStart('xx', res as unknown as Response);
+
+      const [, cookieValue] = res.cookie.mock.calls[0] as [string, string];
+      expect(JSON.parse(cookieValue)).toMatchObject({ locale: 'fr' });
+    });
+  });
+
+  describe('githubCallback', () => {
+    function reqWithFlowCookie(state: string, locale = 'en'): Request {
+      return {
+        cookies: {
+          [OAUTH_FLOW_COOKIE_NAME]: serializeOAuthFlowCookie({ state, locale }),
+        },
+      } as unknown as Request;
+    }
+
+    it('rejects and redirects when state does not match the flow cookie', async () => {
+      const req = reqWithFlowCookie('expected-state');
+      const res = createResponseMock();
+
+      await controller.githubCallback(
+        'code',
+        'wrong-state',
+        req,
+        res as unknown as Response,
+      );
+
+      expect(res.clearCookie).toHaveBeenCalledWith(
+        OAUTH_FLOW_COOKIE_NAME,
+        expect.any(Object),
+      );
+      expect(authService.findOrCreateFromGitHub).not.toHaveBeenCalled();
+      expect(res.redirect).toHaveBeenCalledWith(
+        'http://localhost:3000/en/login?error=state_mismatch',
+      );
+    });
+
+    it('rejects and redirects when there is no flow cookie at all', async () => {
+      const req = { cookies: {} } as unknown as Request;
+      const res = createResponseMock();
+
+      await controller.githubCallback(
+        'code',
+        'any-state',
+        req,
+        res as unknown as Response,
+      );
+
+      expect(authService.findOrCreateFromGitHub).not.toHaveBeenCalled();
+      expect(res.redirect).toHaveBeenCalledWith(
+        'http://localhost:3000/fr/login?error=state_mismatch',
+      );
+    });
+
+    it('redirects with an error when GitHub returns no verified email', async () => {
+      const req = reqWithFlowCookie('matching-state');
+      const res = createResponseMock();
+      githubOauthClient.exchangeCodeForToken.mockResolvedValue('token');
+      githubOauthClient.fetchProfile.mockResolvedValue({
+        githubId: '42',
+        login: 'octocat',
+        name: 'The Octocat',
+        avatarUrl: 'https://example.com/avatar.png',
+        verifiedEmail: null,
+      });
+
+      await controller.githubCallback(
+        'code',
+        'matching-state',
+        req,
+        res as unknown as Response,
+      );
+
+      expect(authService.findOrCreateFromGitHub).not.toHaveBeenCalled();
+      expect(res.redirect).toHaveBeenCalledWith(
+        'http://localhost:3000/en/login?error=github_email_required',
+      );
+    });
+
+    it('redirects with a generic error when the GitHub exchange fails', async () => {
+      const req = reqWithFlowCookie('matching-state');
+      const res = createResponseMock();
+      githubOauthClient.exchangeCodeForToken.mockRejectedValue(
+        new Error('network down'),
+      );
+
+      await controller.githubCallback(
+        'code',
+        'matching-state',
+        req,
+        res as unknown as Response,
+      );
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        'http://localhost:3000/en/login?error=github_auth_failed',
+      );
+    });
+
+    it('on success sets the session cookie and redirects to the locale-aware dashboard', async () => {
+      const req = reqWithFlowCookie('matching-state', 'fr');
+      const res = createResponseMock();
+      githubOauthClient.exchangeCodeForToken.mockResolvedValue('token');
+      githubOauthClient.fetchProfile.mockResolvedValue({
+        githubId: '42',
+        login: 'octocat',
+        name: 'The Octocat',
+        avatarUrl: 'https://example.com/avatar.png',
+        verifiedEmail: 'octocat@example.com',
+      });
+      authService.findOrCreateFromGitHub.mockResolvedValue({
+        user: fakeUser,
+        sessionId: 'session-9',
+      });
+
+      await controller.githubCallback(
+        'code',
+        'matching-state',
+        req,
+        res as unknown as Response,
+      );
+
+      expect(res.cookie).toHaveBeenCalledWith(
+        SESSION_COOKIE_NAME,
+        'session-9',
+        expect.any(Object),
+      );
+      expect(res.redirect).toHaveBeenCalledWith(
+        'http://localhost:3000/fr/home',
+      );
+    });
   });
 });

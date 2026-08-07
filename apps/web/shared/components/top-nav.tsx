@@ -5,7 +5,7 @@ import Image from "next/image";
 import type { User } from "schemas";
 import { useLogout } from "@/features/auth/hooks";
 import { Link } from "@/i18n/navigation";
-import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +31,7 @@ export function TopNav({ user }: { user: User }) {
       <DropdownMenu>
         <DropdownMenuTrigger className="hover:bg-accent flex items-center gap-2 rounded-md p-1.5">
           <Avatar className="size-8">
+            {user.image ? <AvatarImage src={user.image} alt="" /> : null}
             <AvatarFallback>{initials(user)}</AvatarFallback>
           </Avatar>
           <span className="hidden truncate text-sm sm:inline">
