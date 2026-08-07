@@ -53,14 +53,22 @@ model User {
   firstName    String      @map("first_name")
   lastName     String      @map("last_name")
   email        String      @unique
-  passwordHash String      @map("password_hash")
+  // Nullable: a developer created via GitHub OAuth (specs/009) never has a
+  // password. Client accounts (still email/password) always set this.
+  passwordHash String?     @map("password_hash")
   accountKind  AccountKind @map("account_kind")
   company      String?
   address      String?
   phone        String?
   image        String?
   bio          String?
+  // Free-text, declarative profile field ("here's my GitHub"), unrelated to
+  // authentication — do not conflate with githubId below.
   github       String?
+  // GitHub's stable numeric account id (as a string), set on first GitHub
+  // OAuth login (specs/009-developer-github-oauth). Null for client accounts
+  // and for any developer account never authenticated via GitHub.
+  githubId     String?     @unique @map("github_id")
   socials      String?
   roleTitle    String?     @map("role_title")
   status       String?

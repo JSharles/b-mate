@@ -14,6 +14,9 @@ export const UserSchema = z.object({
   image: z.string().nullable(),
   bio: z.string().nullable(),
   github: z.string().nullable(),
+  // Set once a developer authenticates via GitHub OAuth (specs/009); null
+  // for client accounts and pre-existing password-based developer accounts.
+  githubId: z.string().nullable(),
   socials: z.string().nullable(),
   roleTitle: z.string().nullable(),
   status: z.string().nullable(),
@@ -21,15 +24,6 @@ export const UserSchema = z.object({
   updatedAt: z.string(),
 });
 export type User = z.infer<typeof UserSchema>;
-
-export const SignupRequestSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  email: z.email(),
-  password: z.string().min(8),
-  accountKind: z.enum(['developer', 'client']),
-});
-export type SignupRequest = z.infer<typeof SignupRequestSchema>;
 
 export const LoginRequestSchema = z.object({
   email: z.email(),

@@ -91,33 +91,22 @@
       "password": "Mot de passe",
       "submit": "Se connecter",
       "submitPending": "Connexion…",
-      "noAccount": "Pas encore de compte ?",
-      "signUp": "S'inscrire",
+      "noAccount": "Pas de compte ? Demandez à la personne qui gère votre projet de vous envoyer une invitation.",
       "emailInvalid": "Saisissez une adresse email valide",
       "passwordRequired": "Le mot de passe est requis"
     },
     "SignupPage": {
       "title": "S'inscrire"
     },
-    "SignupForm": {
-      "firstName": "Prénom",
-      "lastName": "Nom",
-      "email": "Email",
-      "password": "Mot de passe",
-      "confirmPassword": "Confirmer le mot de passe",
-      "submit": "S'inscrire",
-      "submitPending": "Création du compte…",
-      "alreadyHaveAccount": "Déjà un compte ?",
-      "logIn": "Se connecter",
-      "passwordsDontMatch": "Les mots de passe ne correspondent pas",
-      "firstNameRequired": "Le prénom est requis",
-      "lastNameRequired": "Le nom est requis",
-      "emailInvalid": "Saisissez une adresse email valide",
-      "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères",
-      "accountKindLabel": "Je suis...",
-      "accountKindDeveloper": "Développeur",
-      "accountKindClient": "Client",
-      "accountKindRequired": "Choisissez si vous êtes développeur ou client"
+    "GitHubAuthCard": {
+      "continue": "Continuer avec GitHub",
+      "errorEmailRequired": "GitHub n'a pas transmis d'adresse email vérifiée. Rendez un email public et vérifié sur votre compte GitHub, puis réessayez.",
+      "errorGeneric": "Une erreur est survenue lors de la connexion à GitHub. Merci de réessayer."
+    },
+    "AuthGateway": {
+      "prompt": "Je suis...",
+      "developer": "Développeur",
+      "client": "Client"
     }
   },
   "Home": {

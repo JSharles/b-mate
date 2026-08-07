@@ -1,4 +1,4 @@
-import { LoginRequestSchema, SignupRequestSchema } from "schemas";
+import { LoginRequestSchema } from "schemas";
 import { z } from "zod";
 
 // Factories rather than static schemas: Zod's own built-in messages (via
@@ -18,29 +18,3 @@ export function createLoginFormSchema(messages: LoginFormMessages) {
   });
 }
 export type LoginFormValues = z.infer<ReturnType<typeof createLoginFormSchema>>;
-
-export interface SignupFormMessages {
-  firstNameRequired: string;
-  lastNameRequired: string;
-  emailInvalid: string;
-  passwordTooShort: string;
-  passwordsDontMatch: string;
-  accountKindRequired: string;
-}
-
-export function createSignupFormSchema(messages: SignupFormMessages) {
-  return SignupRequestSchema.extend({
-    firstName: z.string().min(1, messages.firstNameRequired),
-    lastName: z.string().min(1, messages.lastNameRequired),
-    email: z.email({ message: messages.emailInvalid }),
-    password: z.string().min(8, messages.passwordTooShort),
-    confirmPassword: z.string().min(8, messages.passwordTooShort),
-    accountKind: z.enum(["developer", "client"], {
-      message: messages.accountKindRequired,
-    }),
-  }).refine((data) => data.password === data.confirmPassword, {
-    message: messages.passwordsDontMatch,
-    path: ["confirmPassword"],
-  });
-}
-export type SignupFormValues = z.infer<ReturnType<typeof createSignupFormSchema>>;

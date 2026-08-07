@@ -3,8 +3,8 @@ import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import LoginPage from "./page";
 
-vi.mock("@/features/auth/components/login-form", () => ({
-  LoginForm: () => <div data-testid="login-form" />,
+vi.mock("@/features/auth/components/auth-gateway", () => ({
+  AuthGateway: () => <div data-testid="auth-gateway" />,
 }));
 
 vi.mock("@/i18n/navigation", () => ({
@@ -20,11 +20,11 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 
 describe("LoginPage", () => {
-  it("renders the heading and the login form", async () => {
+  it("renders the heading and the auth gateway", async () => {
     const ui = await LoginPage({ params: Promise.resolve({ locale: "fr" }) });
     render(ui);
 
     expect(screen.getByRole("heading", { name: "title" })).toBeInTheDocument();
-    expect(screen.getByTestId("login-form")).toBeInTheDocument();
+    expect(screen.getByTestId("auth-gateway")).toBeInTheDocument();
   });
 });

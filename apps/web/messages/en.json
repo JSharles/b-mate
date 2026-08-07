@@ -91,33 +91,22 @@
       "password": "Password",
       "submit": "Log in",
       "submitPending": "Logging in…",
-      "noAccount": "No account yet?",
-      "signUp": "Sign up",
+      "noAccount": "No account? Ask the person managing your project to send you an invitation.",
       "emailInvalid": "Enter a valid email address",
       "passwordRequired": "Password is required"
     },
     "SignupPage": {
       "title": "Sign up"
     },
-    "SignupForm": {
-      "firstName": "First name",
-      "lastName": "Last name",
-      "email": "Email",
-      "password": "Password",
-      "confirmPassword": "Confirm password",
-      "submit": "Sign up",
-      "submitPending": "Creating account…",
-      "alreadyHaveAccount": "Already have an account?",
-      "logIn": "Log in",
-      "passwordsDontMatch": "Passwords don't match",
-      "firstNameRequired": "First name is required",
-      "lastNameRequired": "Last name is required",
-      "emailInvalid": "Enter a valid email address",
-      "passwordTooShort": "Password must be at least 8 characters",
-      "accountKindLabel": "I am a...",
-      "accountKindDeveloper": "Developer",
-      "accountKindClient": "Client",
-      "accountKindRequired": "Choose whether you're a developer or a client"
+    "GitHubAuthCard": {
+      "continue": "Continue with GitHub",
+      "errorEmailRequired": "GitHub didn't share a verified email address. Make an email public and verified on your GitHub account, then try again.",
+      "errorGeneric": "Something went wrong connecting to GitHub. Please try again."
+    },
+    "AuthGateway": {
+      "prompt": "I am a...",
+      "developer": "Developer",
+      "client": "Client"
     }
   },
   "Home": {

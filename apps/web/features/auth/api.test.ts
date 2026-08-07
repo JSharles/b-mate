@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/shared/lib/api-client";
-import { login, logout, signup } from "./api";
+import { login, logout } from "./api";
 
 vi.mock("@/shared/lib/api-client", () => ({
   apiFetch: vi.fn(),
@@ -11,21 +11,6 @@ const mockedApiFetch = vi.mocked(apiFetch);
 describe("features/auth/api", () => {
   beforeEach(() => {
     mockedApiFetch.mockReset();
-  });
-
-  it("signup posts to /auth/signup", async () => {
-    mockedApiFetch.mockResolvedValue({ id: "1" });
-    const data = {
-      firstName: "Jean",
-      lastName: "Charles",
-      email: "jc@example.com",
-      password: "supersecret123",
-      accountKind: "developer" as const,
-    };
-
-    await signup(data);
-
-    expect(mockedApiFetch).toHaveBeenCalledWith("/auth/signup", { method: "POST", body: data });
   });
 
   it("login posts to /auth/login", async () => {

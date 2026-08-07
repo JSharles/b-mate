@@ -89,4 +89,13 @@ describe("LoginForm", () => {
 
     expect(screen.getByRole("button", { name: "submitPending" })).toBeDisabled();
   });
+
+  it("tells a client with no account to ask their developer for an invitation, not to sign up", () => {
+    render(<LoginForm />);
+
+    expect(screen.getByText("noAccount")).toBeInTheDocument();
+    // No self-serve signup exists for clients (research.md Decision 10) — a
+    // link would point somewhere wrong, so this must be plain text, not a Link.
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
 });
