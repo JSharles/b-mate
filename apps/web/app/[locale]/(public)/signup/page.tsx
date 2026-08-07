@@ -17,8 +17,8 @@ export default async function SignupPage({
     <main className="flex flex-1 items-center justify-center px-6 py-12">
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/images/brand-logo.png" alt="" width={28} height={28} className="size-7" />
-          <span className="text-base font-black tracking-tight">b-mate</span>
+          <Image src="/images/logo-square.png" alt="" width={332} height={332} className="size-8" />
+          <span className="text-base font-black tracking-tight text-primary">Diaphane</span>
         </Link>
         <Card className="w-full">
           <CardHeader>

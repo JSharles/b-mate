@@ -3,31 +3,43 @@
 
 :root {
   --radius: 0.625rem;
-  /* Brand palette: near-black + white/gray for everything interactive
-     (emphasis, primary actions, focus rings), lavender reserved for the
-     page-background gradient and soft/secondary touches only — no
-     accent color as such. One theme only, applied app-wide including the
-     marketing landing page. No dark theme exists; see docs/PRODUCT.md and
-     specs/002-design-system-rebrand for why. */
-  --gradient-from: #d9d0fb;
-  --gradient-via: #eee9fa;
-  --gradient-to: #f0eff2;
-  --gradient-glow: #6c5ce7;
-  --background: #f1eff7;
-  --foreground: #242424;
-  --card: #ffffff;
-  --card-foreground: #242424;
-  --popover: #ffffff;
-  --popover-foreground: #242424;
-  --primary: #242424;
-  --primary-foreground: #ffffff;
-  --secondary: #d0ccff;
-  --secondary-foreground: #242424;
-  --muted: #efeef6;
-  --muted-foreground: #6b6874;
-  --accent: #ece9ff;
-  --accent-foreground: #242424;
-  --destructive: oklch(0.577 0.245 27.325);
+  /* 2026-08-07 dark rebrand: the new brand-logo asset is a lockup baked
+     onto a pure-black chip, its wordmark set in the brand's own periwinkle
+     (#dae1ff) — sampled directly from the asset, not eyeballed. That pairing
+     (black ground, periwinkle ink) replaces the prior "single light theme,
+     no dark mode" commitment (docs/PRODUCT.md, DESIGN.md) as the one and
+     only theme — this is still a single committed theme, not a toggle.
+     Polarity inverts but the structure survives: periwinkle was purely
+     atmospheric before (backgrounds/secondary surfaces) and is now promoted
+     to the one interactive color (buttons, links, focus rings) — the same
+     single-accent discipline the old "ink" role had, just carried by
+     periwinkle instead, because near-black ink has no contrast left to give
+     once it *is* the page. Every neutral tone below (card/muted/accent/
+     border/input) is the same periwinkle hue (~278°) recomputed at low
+     lightness via OKLCH so elevation still reads as "the same family,
+     lighter," never a flat gray. destructive is a lightness bump over the
+     light-theme value (oklch L 0.577→0.65) — the original measured 4.4:1 on
+     pure black, under the 4.5:1 body-text floor; success/iris-* are
+     unchanged, already well clear of it. */
+  --gradient-from: #000000;
+  --gradient-via: #000002;
+  --gradient-to: #010206;
+  --gradient-glow: #5c71e7;
+  --background: #000000;
+  --foreground: #eff0f6;
+  --card: #0c0d17;
+  --card-foreground: #eff0f6;
+  --popover: #0c0d17;
+  --popover-foreground: #eff0f6;
+  --primary: #dae1ff;
+  --primary-foreground: #090a0f;
+  --secondary: #181a25;
+  --secondary-foreground: #eff0f6;
+  --muted: #04050a;
+  --muted-foreground: #898b99;
+  --accent: #141622;
+  --accent-foreground: #eff0f6;
+  --destructive: oklch(0.65 0.22 27.325);
   /* Semantic status color, not a second brand accent (see DESIGN.md "No
      Second Accent Rule") — reserved for a small "this is live/active right
      now" indicator (e.g. the Current Task card), never a button, link, or
@@ -41,22 +53,22 @@
   --iris-pink: #f6c9de;
   --iris-yellow: #f5e6a8;
   --iris-blue: #b8d4f5;
-  --border: #e7e5f2;
-  --input: #d6d1ec;
-  --ring: #242424;
+  --border: #20222d;
+  --input: #2d2f3e;
+  --ring: #dae1ff;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: #ffffff;
-  --sidebar-foreground: #242424;
-  --sidebar-primary: #242424;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ece9ff;
-  --sidebar-accent-foreground: #242424;
-  --sidebar-border: #e7e5f2;
-  --sidebar-ring: #242424;
+  --sidebar: #0c0d17;
+  --sidebar-foreground: #eff0f6;
+  --sidebar-primary: #dae1ff;
+  --sidebar-primary-foreground: #090a0f;
+  --sidebar-accent: #141622;
+  --sidebar-accent-foreground: #eff0f6;
+  --sidebar-border: #20222d;
+  --sidebar-ring: #dae1ff;
 }
 
 @theme inline {
@@ -119,15 +131,19 @@
      grows taller than one viewport. A dedicated fixed layer behind
      everything sidesteps that entirely. Layered radial "glow" pools plus the
      diagonal wash read closer to a designed gradient-mesh image than a flat
-     two-stop linear-gradient, without needing an actual image asset. */
+     two-stop linear-gradient, without needing an actual image asset. The
+     top-left pool has a transparent core (0%→18%, not 0%→0%) so the corner
+     itself — where the brand-logo's own pure-black chip sits, in every nav —
+     stays true void black; without it the glow visibly washed out the chip's
+     contrast against the page right where the logo lives. */
   body::before {
     content: "";
     position: fixed;
     inset: 0;
     z-index: -1;
     background:
-      radial-gradient(at 8% 8%, color-mix(in oklab, var(--gradient-glow) 35%, transparent) 0%, transparent 42%),
-      radial-gradient(at 100% 100%, color-mix(in oklab, var(--gradient-to) 80%, white) 0%, transparent 55%),
+      radial-gradient(at 8% 8%, transparent 0%, color-mix(in oklab, var(--gradient-glow) 30%, transparent) 18%, transparent 46%),
+      radial-gradient(at 100% 100%, color-mix(in oklab, var(--gradient-glow) 14%, transparent) 0%, transparent 55%),
       linear-gradient(135deg, var(--gradient-from) 0%, var(--gradient-via) 45%, var(--gradient-to) 100%);
   }
   html {

@@ -14,7 +14,7 @@ Sync Impact Report
 - Follow-up TODOs: none blocking; see AGENTS.md cross-reference note above.
 -->
 
-# b-mate Constitution
+# Diaphane Constitution
 
 ## Core Principles
 

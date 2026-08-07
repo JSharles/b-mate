@@ -24,8 +24,8 @@ export function TopNav({ user }: { user: User }) {
   return (
     <header className="flex h-14 items-center justify-between px-4 sm:px-6">
       <Link href="/home" className="flex items-center gap-2">
-        <Image src="/images/brand-logo.png" alt="" width={20} height={20} className="size-5" />
-        <span className="text-sm font-semibold">b-mate</span>
+        <Image src="/images/logo-square.png" alt="" width={332} height={332} className="size-6" />
+        <span className="text-sm font-semibold text-primary">Diaphane</span>
       </Link>
 
       <DropdownMenu>

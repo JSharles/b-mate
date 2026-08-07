@@ -41,7 +41,7 @@ describe("TopNav", () => {
   it("shows the brand mark, the user's initials and full name", () => {
     render(<TopNav user={fakeUser} />);
 
-    expect(screen.getByText("b-mate")).toBeInTheDocument();
+    expect(screen.getByText("Diaphane")).toBeInTheDocument();
     expect(screen.getByText("JC")).toBeInTheDocument();
     expect(screen.getByText("Jean Charles")).toBeInTheDocument();
   });
