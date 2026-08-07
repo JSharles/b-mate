@@ -6,9 +6,11 @@ import {
 } from '@nestjs/common';
 import { BoardProvider, EstimateUnit, ProjectMember } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateBoardConnectionDto } from './dto/create-board-connection.dto';
-import { PreviewBoardConnectionDto } from './dto/preview-board-connection.dto';
-import { AvailableBoard, GithubProjectsClient } from './github-projects.client';
+import {
+  AvailableBoard,
+  GithubOwnerType,
+  GithubProjectsClient,
+} from './github-projects.client';
 import { encryptToken } from './token-encryption';
 
 export interface BoardConnectionDetails {
@@ -19,6 +21,14 @@ export interface BoardConnectionDetails {
   boardTitle: string;
   boardUrl: string;
   estimateUnit: EstimateUnit;
+  needsReconnect: boolean;
+}
+
+export interface BoardSelection {
+  ownerLogin: string;
+  ownerType: GithubOwnerType;
+  number: number;
+  estimateUnit?: EstimateUnit;
 }
 
 @Injectable()
@@ -28,37 +38,40 @@ export class BoardConnectionsService {
     private readonly githubClient: GithubProjectsClient,
   ) {}
 
-  // Nothing is persisted here — just calls GitHub with the pasted token and
-  // returns what it can see, for the developer to pick from (FR-001).
+  // Nothing is persisted here — just calls GitHub with the resolved token
+  // (pasted PAT or OAuth-obtained, specs/010-github-oauth-board-connection
+  // — the caller has already resolved which one) and returns what it can
+  // see, for the developer to pick from (FR-001).
   async preview(
     userId: string,
     projectId: string,
-    dto: PreviewBoardConnectionDto,
+    token: string,
   ): Promise<AvailableBoard[]> {
     await this.assertIsContributor(userId, projectId);
 
-    return this.callGithub(() =>
-      this.githubClient.listAccessibleBoards(dto.token),
-    );
+    return this.callGithub(() => this.githubClient.listAccessibleBoards(token));
   }
 
   // Re-validates access (FR-002) even though preview() already showed this
   // board — the two calls are a real round-trip apart. Upserts on
   // projectId so connecting a new board always replaces the old one in the
-  // same operation (FR-006, research.md Decision 5).
+  // same operation (FR-006, research.md Decision 5). Also clears
+  // needsReconnect (specs/010, FR-008) — a fresh, working token was just
+  // verified, so any prior "reconnect" state no longer applies.
   async connect(
     userId: string,
     projectId: string,
-    dto: CreateBoardConnectionDto,
+    token: string,
+    selection: BoardSelection,
   ): Promise<BoardConnectionDetails> {
     await this.assertIsContributor(userId, projectId);
 
     const board = await this.callGithub(() =>
       this.githubClient.verifyBoardAccess(
-        dto.token,
-        dto.ownerLogin,
-        dto.ownerType,
-        dto.number,
+        token,
+        selection.ownerLogin,
+        selection.ownerType,
+        selection.number,
       ),
     );
 
@@ -66,7 +79,7 @@ export class BoardConnectionsService {
       throw new ForbiddenException('You do not have access to this board');
     }
 
-    const encryptedToken = encryptToken(dto.token);
+    const encryptedToken = encryptToken(token);
     const boardData = {
       provider: BoardProvider.github,
       boardOwnerLogin: board.ownerLogin,
@@ -76,7 +89,8 @@ export class BoardConnectionsService {
       boardUrl: board.url,
       encryptedToken,
       // specs/008-current-task-progress FR-005b.
-      estimateUnit: dto.estimateUnit ?? EstimateUnit.days,
+      estimateUnit: selection.estimateUnit ?? EstimateUnit.days,
+      needsReconnect: false,
     };
 
     const connection = await this.prisma.boardConnection.upsert({
@@ -134,6 +148,7 @@ export class BoardConnectionsService {
       boardTitle: connection.boardTitle,
       boardUrl: connection.boardUrl,
       estimateUnit: connection.estimateUnit,
+      needsReconnect: connection.needsReconnect,
     };
   }
 
@@ -142,8 +157,10 @@ export class BoardConnectionsService {
   // module's service must not reach into another module's Prisma queries.
   // A client-role member gets the exact same response as a non-member
   // (FR-009) — never a distinct "forbidden" that would confirm a connection
-  // exists.
-  private async assertIsContributor(
+  // exists. Exposed publicly (specs/010-github-oauth-board-connection) so
+  // the controller's GitHub-authorize endpoint can run the same check
+  // before starting an OAuth redirect.
+  async assertIsContributor(
     userId: string,
     projectId: string,
   ): Promise<ProjectMember> {

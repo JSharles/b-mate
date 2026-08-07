@@ -54,6 +54,8 @@ describe('AuthController', () => {
 
   beforeEach(() => {
     process.env.WEB_ORIGIN = 'http://localhost:3000';
+    process.env.BOARD_CONNECTION_ENCRYPTION_KEY =
+      '0000000000000000000000000000000000000000000000000000000000000000';
     authService = {
       login: jest.fn(),
       logout: jest.fn(),
@@ -138,7 +140,10 @@ describe('AuthController', () => {
         expect.any(Object),
       );
       const [, cookieValue] = res.cookie.mock.calls[0] as [string, string];
-      expect(JSON.parse(cookieValue)).toMatchObject({ locale: 'en' });
+      expect(JSON.parse(cookieValue)).toMatchObject({
+        locale: 'en',
+        flow: 'login',
+      });
       expect(githubOauthClient.buildAuthorizeUrl).toHaveBeenCalledWith(
         expect.any(String),
       );
@@ -164,7 +169,11 @@ describe('AuthController', () => {
     function reqWithFlowCookie(state: string, locale = 'en'): Request {
       return {
         cookies: {
-          [OAUTH_FLOW_COOKIE_NAME]: serializeOAuthFlowCookie({ state, locale }),
+          [OAUTH_FLOW_COOKIE_NAME]: serializeOAuthFlowCookie({
+            state,
+            locale,
+            flow: 'login',
+          }),
         },
       } as unknown as Request;
     }
@@ -282,6 +291,84 @@ describe('AuthController', () => {
       expect(res.redirect).toHaveBeenCalledWith(
         'http://localhost:3000/fr/home',
       );
+    });
+
+    describe('board-connection flow', () => {
+      function reqWithBoardFlowCookie(state: string, locale = 'en'): Request {
+        return {
+          cookies: {
+            [OAUTH_FLOW_COOKIE_NAME]: serializeOAuthFlowCookie({
+              state,
+              locale,
+              flow: 'board-connection',
+              projectId: 'project-1',
+            }),
+          },
+        } as unknown as Request;
+      }
+
+      it('on success sets the board_oauth_token cookie and redirects to the project with connectBoard=1', async () => {
+        const req = reqWithBoardFlowCookie('matching-state', 'fr');
+        const res = createResponseMock();
+        githubOauthClient.exchangeCodeForToken.mockResolvedValue(
+          'gho_board_token',
+        );
+
+        await controller.githubCallback(
+          'code',
+          'matching-state',
+          req,
+          res as unknown as Response,
+        );
+
+        expect(authService.findOrCreateFromGitHub).not.toHaveBeenCalled();
+        expect(githubOauthClient.fetchProfile).not.toHaveBeenCalled();
+        expect(res.cookie).toHaveBeenCalledWith(
+          'board_oauth_token',
+          expect.any(String),
+          expect.any(Object),
+        );
+        expect(res.redirect).toHaveBeenCalledWith(
+          'http://localhost:3000/fr/projects/project-1?connectBoard=1',
+        );
+      });
+
+      it('redirects to the project with an error when the exchange fails, and sets no board_oauth_token cookie', async () => {
+        const req = reqWithBoardFlowCookie('matching-state', 'en');
+        const res = createResponseMock();
+        githubOauthClient.exchangeCodeForToken.mockRejectedValue(
+          new Error('network down'),
+        );
+
+        await controller.githubCallback(
+          'code',
+          'matching-state',
+          req,
+          res as unknown as Response,
+        );
+
+        expect(res.cookie).not.toHaveBeenCalled();
+        expect(res.redirect).toHaveBeenCalledWith(
+          'http://localhost:3000/en/projects/project-1?boardConnectError=github_auth_failed',
+        );
+      });
+
+      it('still rejects on a state mismatch, before ever branching into the board-connection flow', async () => {
+        const req = reqWithBoardFlowCookie('expected-state');
+        const res = createResponseMock();
+
+        await controller.githubCallback(
+          'code',
+          'wrong-state',
+          req,
+          res as unknown as Response,
+        );
+
+        expect(githubOauthClient.exchangeCodeForToken).not.toHaveBeenCalled();
+        expect(res.redirect).toHaveBeenCalledWith(
+          'http://localhost:3000/en/login?error=state_mismatch',
+        );
+      });
     });
   });
 });

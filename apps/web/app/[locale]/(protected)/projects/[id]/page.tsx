@@ -2,7 +2,7 @@
 
 import { BookOpen, FileText, Map, Search, TriangleAlert, Video } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { use } from "react";
+import { Suspense, use } from "react";
 import { BoardConnectionCard } from "@/features/board-connections/components/board-connection-card";
 import { CurrentTaskCard } from "@/features/current-task/components/current-task-card";
 import { InviteButton } from "@/features/invitations/components/invite-button";
@@ -100,7 +100,12 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         <>
           {teamCard}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <BoardConnectionCard projectId={id} />
+            {/* Suspense: BoardConnectionCard reads useSearchParams (the
+                `connectBoard` param set by the GitHub OAuth callback
+                redirect), which Next.js requires to be boundary-wrapped. */}
+            <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+              <BoardConnectionCard projectId={id} />
+            </Suspense>
             <ComingSoonCard
               icon={BookOpen}
               title={t("documentation")}

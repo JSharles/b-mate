@@ -3,7 +3,10 @@ import {
   createPrismaMock,
   PrismaMock,
 } from '../test/prisma-mock';
-import { GithubProjectsClient } from '../board-connections/github-projects.client';
+import {
+  GithubAuthError,
+  GithubProjectsClient,
+} from '../board-connections/github-projects.client';
 import { encryptToken } from '../board-connections/token-encryption';
 import { AnthropicVulgarizationClient } from './anthropic-vulgarization.client';
 import {
@@ -27,6 +30,7 @@ const connection = {
   boardUrl: 'https://github.com/orgs/acme/projects/3',
   encryptedToken: encryptToken('a-real-token'),
   estimateUnit: 'days' as const,
+  needsReconnect: false,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -269,6 +273,32 @@ describe('TaskVulgarizationService', () => {
 
       expect(githubClient.fetchInProgressItems).toHaveBeenCalledTimes(2);
       expect(anthropicClient.vulgarize).toHaveBeenCalledTimes(2); // en + fr, for project-2 only
+    });
+
+    // specs/010-github-oauth-board-connection FR-008.
+    it('flags the connection as needing reconnect when the GitHub call fails with an auth error', async () => {
+      prisma.boardConnection.findMany.mockResolvedValue([connection]);
+      githubClient.fetchInProgressItems.mockRejectedValue(
+        new GithubAuthError('GitHub API request failed with status 401'),
+      );
+
+      await service.sweep();
+
+      expect(prisma.boardConnection.update).toHaveBeenCalledWith({
+        where: { id: 'connection-1' },
+        data: { needsReconnect: true },
+      });
+    });
+
+    it('does not flag the connection for a non-auth failure (transient, will retry)', async () => {
+      prisma.boardConnection.findMany.mockResolvedValue([connection]);
+      githubClient.fetchInProgressItems.mockRejectedValue(
+        new Error('GitHub is down'),
+      );
+
+      await service.sweep();
+
+      expect(prisma.boardConnection.update).not.toHaveBeenCalled();
     });
   });
 

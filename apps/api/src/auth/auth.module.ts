@@ -7,6 +7,6 @@ import { SessionGuard } from './session.guard';
 @Module({
   controllers: [AuthController],
   providers: [AuthService, SessionGuard, GithubOauthClient],
-  exports: [AuthService, SessionGuard],
+  exports: [AuthService, SessionGuard, GithubOauthClient],
 })
 export class AuthModule {}

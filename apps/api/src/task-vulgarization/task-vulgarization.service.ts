@@ -6,6 +6,7 @@ import type {
   TaskComplexity,
 } from '@prisma/client';
 import {
+  GithubAuthError,
   GithubOwnerType,
   GithubProjectsClient,
   InProgressItem,
@@ -79,7 +80,18 @@ export class TaskVulgarizationService {
       );
     } catch (error) {
       // One broken connection must not abort the sweep for every other
-      // project (spec.md Edge Cases) — log and move on.
+      // project (spec.md Edge Cases) — log and move on. A GithubAuthError
+      // specifically (401/403 — the token was revoked or is otherwise
+      // invalid) additionally flags the connection for FR-008's "reconnect"
+      // state; any other failure (network blip, GitHub outage) is
+      // transient and gets retried next sweep without touching the flag
+      // (specs/010-github-oauth-board-connection, research.md Decision 6).
+      if (error instanceof GithubAuthError) {
+        await this.prisma.boardConnection.update({
+          where: { id: connection.id },
+          data: { needsReconnect: true },
+        });
+      }
       this.logger.warn(
         `Failed to fetch in-progress items for project ${connection.projectId}: ${String(error)}`,
       );

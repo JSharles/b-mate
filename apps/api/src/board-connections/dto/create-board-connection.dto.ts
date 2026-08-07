@@ -8,10 +8,12 @@ import {
 } from 'class-validator';
 import type { GithubOwnerType } from '../github-projects.client';
 
+// `token` is optional — see preview-board-connection.dto.ts.
 export class CreateBoardConnectionDto {
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  token: string;
+  token?: string;
 
   @IsString()
   ownerLogin: string;

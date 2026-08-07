@@ -11,8 +11,12 @@ export const AvailableBoardSchema = z.object({
 });
 export type AvailableBoard = z.infer<typeof AvailableBoardSchema>;
 
+// `token` is optional as of specs/010-github-oauth-board-connection: the
+// OAuth flow carries the token via a short-lived server-side cookie
+// instead (research.md Decision 5) — only the legacy paste-a-PAT path
+// still sends one in the request body (FR-007).
 export const PreviewBoardConnectionRequestSchema = z.object({
-  token: z.string().min(1),
+  token: z.string().min(1).optional(),
 });
 export type PreviewBoardConnectionRequest = z.infer<typeof PreviewBoardConnectionRequestSchema>;
 
@@ -20,7 +24,7 @@ export type PreviewBoardConnectionRequest = z.infer<typeof PreviewBoardConnectio
 // the board's numeric "Estimate" field as a duration. Optional — defaults
 // to "days" server-side when omitted.
 export const CreateBoardConnectionRequestSchema = z.object({
-  token: z.string().min(1),
+  token: z.string().min(1).optional(),
   ownerLogin: z.string(),
   ownerType: z.enum(['User', 'Organization']),
   number: z.number().int().positive(),
@@ -38,5 +42,8 @@ export const BoardConnectionSchema = z.object({
   boardTitle: z.string(),
   boardUrl: z.url(),
   estimateUnit: z.enum(['days', 'hours']),
+  // specs/010-github-oauth-board-connection FR-008 — true when the
+  // background sweep detected the stored token was revoked/invalid.
+  needsReconnect: z.boolean(),
 });
 export type BoardConnection = z.infer<typeof BoardConnectionSchema>;

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useSearchParams } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/shared/lib/api-client";
 import { useConnectBoard, usePreviewBoardConnection } from "../hooks";
@@ -10,8 +11,13 @@ vi.mock("../hooks", () => ({
   useConnectBoard: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useSearchParams: vi.fn(),
+}));
+
 const mockedUsePreview = vi.mocked(usePreviewBoardConnection);
 const mockedUseConnect = vi.mocked(useConnectBoard);
+const mockedUseSearchParams = vi.mocked(useSearchParams);
 
 const fakeBoard = {
   ownerLogin: "acme",
@@ -31,40 +37,42 @@ function baseMutation() {
   } as unknown as ReturnType<typeof usePreviewBoardConnection>;
 }
 
+function paramsWith(entries: Record<string, string> = {}) {
+  return {
+    get: (key: string) => entries[key] ?? null,
+  } as unknown as ReturnType<typeof useSearchParams>;
+}
+
 describe("ConnectBoardDialog", () => {
   beforeEach(() => {
     mockedUsePreview.mockReturnValue(baseMutation());
     mockedUseConnect.mockReturnValue(
       baseMutation() as unknown as ReturnType<typeof useConnectBoard>,
     );
+    mockedUseSearchParams.mockReturnValue(paramsWith());
   });
 
-  it("shows a hint explaining what kind of token to create, with a link to GitHub", () => {
+  it("renders a single Continue-with-GitHub link, no token input anywhere", () => {
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
 
-    expect(screen.getByText("tokenHint")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "tokenHintLink" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "continueWithGithub" })).toHaveAttribute(
       "href",
-      "https://github.com/settings/tokens/new?scopes=project&description=Diaphane",
+      "http://localhost:3001/projects/project-1/board-connection/github/authorize?locale=fr",
     );
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
-  it("submits the pasted token to preview", async () => {
+  it("does not call preview automatically when there is no connectBoard flag in the URL", () => {
     const preview = baseMutation();
     mockedUsePreview.mockReturnValue(preview);
-    const user = userEvent.setup();
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
-    await user.type(screen.getByLabelText("tokenLabel"), "a-token");
-    await user.click(screen.getByRole("button", { name: "previewSubmit" }));
 
-    expect(preview.mutate).toHaveBeenCalledWith(
-      { token: "a-token" },
-      expect.objectContaining({ onSuccess: expect.any(Function) }),
-    );
+    expect(preview.mutate).not.toHaveBeenCalled();
   });
 
-  it("shows the boards from a successful preview and lets the developer pick one", async () => {
+  it("calls preview with no token and shows the board picker directly when connectBoard=1 is in the URL", async () => {
+    mockedUseSearchParams.mockReturnValue(paramsWith({ connectBoard: "1" }));
     const preview = baseMutation();
     (preview.mutate as ReturnType<typeof vi.fn>).mockImplementation(
       (_vars: unknown, options: { onSuccess: (boards: unknown) => void }) => {
@@ -72,16 +80,21 @@ describe("ConnectBoardDialog", () => {
       },
     );
     mockedUsePreview.mockReturnValue(preview);
-    const user = userEvent.setup();
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
-    await user.type(screen.getByLabelText("tokenLabel"), "a-token");
-    await user.click(screen.getByRole("button", { name: "previewSubmit" }));
 
-    expect(screen.getByRole("button", { name: /acme.*Roadmap/ })).toBeInTheDocument();
+    expect(preview.mutate).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    );
+    expect(
+      await screen.findByRole("button", { name: /acme.*Roadmap/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "continueWithGithub" })).not.toBeInTheDocument();
   });
 
-  it("shows a message when the token has no accessible boards", async () => {
+  it("shows a message when the authorized account has no accessible boards", async () => {
+    mockedUseSearchParams.mockReturnValue(paramsWith({ connectBoard: "1" }));
     const preview = baseMutation();
     (preview.mutate as ReturnType<typeof vi.fn>).mockImplementation(
       (_vars: unknown, options: { onSuccess: (boards: unknown) => void }) => {
@@ -89,16 +102,14 @@ describe("ConnectBoardDialog", () => {
       },
     );
     mockedUsePreview.mockReturnValue(preview);
-    const user = userEvent.setup();
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
-    await user.type(screen.getByLabelText("tokenLabel"), "a-token");
-    await user.click(screen.getByRole("button", { name: "previewSubmit" }));
 
-    expect(screen.getByText("noBoards")).toBeInTheDocument();
+    expect(await screen.findByText("noBoards")).toBeInTheDocument();
   });
 
-  it("connects the selected board when confirmed", async () => {
+  it("connects the selected board without a token in the payload", async () => {
+    mockedUseSearchParams.mockReturnValue(paramsWith({ connectBoard: "1" }));
     const preview = baseMutation();
     (preview.mutate as ReturnType<typeof vi.fn>).mockImplementation(
       (_vars: unknown, options: { onSuccess: (boards: unknown) => void }) => {
@@ -111,14 +122,11 @@ describe("ConnectBoardDialog", () => {
     const user = userEvent.setup();
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
-    await user.type(screen.getByLabelText("tokenLabel"), "a-token");
-    await user.click(screen.getByRole("button", { name: "previewSubmit" }));
-    await user.click(screen.getByRole("button", { name: /acme.*Roadmap/ }));
+    await user.click(await screen.findByRole("button", { name: /acme.*Roadmap/ }));
     await user.click(screen.getByRole("button", { name: "connectSubmit" }));
 
     expect(connect.mutate).toHaveBeenCalledWith(
       {
-        token: "a-token",
         ownerLogin: "acme",
         ownerType: "Organization",
         number: 3,
@@ -129,6 +137,7 @@ describe("ConnectBoardDialog", () => {
   });
 
   it("passes the selected estimate unit through to connect", async () => {
+    mockedUseSearchParams.mockReturnValue(paramsWith({ connectBoard: "1" }));
     const preview = baseMutation();
     (preview.mutate as ReturnType<typeof vi.fn>).mockImplementation(
       (_vars: unknown, options: { onSuccess: (boards: unknown) => void }) => {
@@ -141,9 +150,7 @@ describe("ConnectBoardDialog", () => {
     const user = userEvent.setup();
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
-    await user.type(screen.getByLabelText("tokenLabel"), "a-token");
-    await user.click(screen.getByRole("button", { name: "previewSubmit" }));
-    await user.click(screen.getByRole("button", { name: /acme.*Roadmap/ }));
+    await user.click(await screen.findByRole("button", { name: /acme.*Roadmap/ }));
     await user.click(screen.getByRole("button", { name: "estimateUnitHours" }));
     await user.click(screen.getByRole("button", { name: "connectSubmit" }));
 
@@ -154,6 +161,7 @@ describe("ConnectBoardDialog", () => {
   });
 
   it("disables the connect button until a board is selected", async () => {
+    mockedUseSearchParams.mockReturnValue(paramsWith({ connectBoard: "1" }));
     const preview = baseMutation();
     (preview.mutate as ReturnType<typeof vi.fn>).mockImplementation(
       (_vars: unknown, options: { onSuccess: (boards: unknown) => void }) => {
@@ -161,28 +169,28 @@ describe("ConnectBoardDialog", () => {
       },
     );
     mockedUsePreview.mockReturnValue(preview);
-    const user = userEvent.setup();
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
-    await user.type(screen.getByLabelText("tokenLabel"), "a-token");
-    await user.click(screen.getByRole("button", { name: "previewSubmit" }));
+    await screen.findByRole("button", { name: /acme.*Roadmap/ });
 
     expect(screen.getByRole("button", { name: "connectSubmit" })).toBeDisabled();
   });
 
-  it("shows the API error message inline when preview fails", () => {
+  it("shows the API error message inline when the automatic preview fails", () => {
+    mockedUseSearchParams.mockReturnValue(paramsWith({ connectBoard: "1" }));
     mockedUsePreview.mockReturnValue({
       ...baseMutation(),
       isError: true,
-      error: new ApiError("Invalid token", 401),
+      error: new ApiError("No GitHub authorization found.", 400),
     } as unknown as ReturnType<typeof usePreviewBoardConnection>);
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
 
-    expect(screen.getByText("Invalid token")).toBeInTheDocument();
+    expect(screen.getByText("No GitHub authorization found.")).toBeInTheDocument();
   });
 
   it("shows the API error message inline when connect fails", async () => {
+    mockedUseSearchParams.mockReturnValue(paramsWith({ connectBoard: "1" }));
     const preview = baseMutation();
     (preview.mutate as ReturnType<typeof vi.fn>).mockImplementation(
       (_vars: unknown, options: { onSuccess: (boards: unknown) => void }) => {
@@ -195,11 +203,9 @@ describe("ConnectBoardDialog", () => {
       isError: true,
       error: new ApiError("You do not have access to this board", 403),
     } as unknown as ReturnType<typeof useConnectBoard>);
-    const user = userEvent.setup();
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
-    await user.type(screen.getByLabelText("tokenLabel"), "a-token");
-    await user.click(screen.getByRole("button", { name: "previewSubmit" }));
+    await screen.findByRole("button", { name: /acme.*Roadmap/ });
 
     expect(screen.getByText("You do not have access to this board")).toBeInTheDocument();
   });

@@ -183,19 +183,17 @@
       "connectedTo": "Connecté à {title}",
       "viewOnGithub": "Voir sur GitHub",
       "disconnect": "Déconnecter",
-      "disconnecting": "Déconnexion…"
+      "disconnecting": "Déconnexion…",
+      "needsReconnect": "Votre autorisation GitHub a été révoquée — reconnectez-vous pour garder ce board synchronisé.",
+      "reconnect": "Reconnecter"
     },
     "ConnectBoardDialog": {
       "title": "Connecter un board GitHub Projects",
-      "tokenLabel": "Token d'accès personnel GitHub",
-      "tokenHint": "Crée un token classique avec le scope \"project\" coché. GitHub ne prend pas encore en charge les tokens fine-grained pour les boards Projects d'un compte personnel.",
-      "tokenHintLink": "En créer un sur GitHub",
-      "previewSubmit": "Continuer",
+      "continueWithGithub": "Continuer avec GitHub",
       "previewPending": "Vérification…",
-      "noBoards": "Ce token n'a accès à aucun board GitHub Projects.",
+      "noBoards": "Ce compte GitHub n'a accès à aucun board GitHub Projects.",
       "connectSubmit": "Connecter",
       "connectPending": "Connexion…",
-      "back": "Utiliser un autre token",
       "estimateUnitLabel": "Quand une tâche a un nombre \"Estimate\" mais pas de \"Target date\", l'interpréter en :",
       "estimateUnitDays": "Jours",
       "estimateUnitHours": "Heures"
