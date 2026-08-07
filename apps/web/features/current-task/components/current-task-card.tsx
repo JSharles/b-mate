@@ -169,9 +169,9 @@ function ProgressIndicator({
 function IridescentGlow() {
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden>
-      <span className="bg-iris-pink absolute -top-16 -left-16 size-72 rounded-full opacity-80 blur-3xl" />
-      <span className="bg-iris-blue absolute top-1/4 -right-16 size-72 rounded-full opacity-80 blur-3xl" />
-      <span className="bg-iris-yellow absolute -bottom-20 left-1/3 size-80 rounded-full opacity-70 blur-3xl" />
+      <span className="bg-iris-pink absolute -top-16 -left-16 size-72 rounded-full opacity-50 blur-3xl" />
+      <span className="bg-iris-blue absolute top-1/4 -right-16 size-72 rounded-full opacity-50 blur-3xl" />
+      <span className="bg-iris-yellow absolute -bottom-20 left-1/3 size-80 rounded-full opacity-40 blur-3xl" />
     </div>
   );
 }

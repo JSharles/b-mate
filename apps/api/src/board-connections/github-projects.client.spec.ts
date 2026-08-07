@@ -1,4 +1,7 @@
-import { GithubProjectsClient } from './github-projects.client';
+import {
+  GithubAuthError,
+  GithubProjectsClient,
+} from './github-projects.client';
 
 function mockFetchOnce(response: {
   ok: boolean;
@@ -68,12 +71,33 @@ describe('GithubProjectsClient', () => {
       expect(result).toEqual([]);
     });
 
-    it('throws without leaking the token when the request fails', async () => {
+    it('throws a GithubAuthError without leaking the token on a 401', async () => {
       mockFetchOnce({ ok: false, status: 401, json: () => ({}) });
 
       await expect(
         client.listAccessibleBoards('super-secret-token'),
       ).rejects.toThrow('GitHub API request failed with status 401');
+      await expect(
+        client.listAccessibleBoards('super-secret-token'),
+      ).rejects.toBeInstanceOf(GithubAuthError);
+    });
+
+    it('throws a GithubAuthError on a 403', async () => {
+      mockFetchOnce({ ok: false, status: 403, json: () => ({}) });
+
+      await expect(
+        client.listAccessibleBoards('a-token'),
+      ).rejects.toBeInstanceOf(GithubAuthError);
+    });
+
+    it('throws a plain Error, not a GithubAuthError, on a non-auth failure', async () => {
+      mockFetchOnce({ ok: false, status: 500, json: () => ({}) });
+
+      const error = await client
+        .listAccessibleBoards('a-token')
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(Error);
+      expect(error).not.toBeInstanceOf(GithubAuthError);
     });
 
     it('throws when GitHub returns GraphQL errors', async () => {

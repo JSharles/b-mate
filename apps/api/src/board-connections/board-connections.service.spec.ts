@@ -49,6 +49,7 @@ const storedConnection = {
   boardUrl: 'https://github.com/orgs/acme/projects/3',
   encryptedToken: 'encrypted-value',
   estimateUnit: 'days' as const,
+  needsReconnect: false,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -83,9 +84,7 @@ describe('BoardConnectionsService', () => {
       prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
       githubClient.listAccessibleBoards.mockResolvedValue([availableBoard]);
 
-      const result = await service.preview('user-1', 'project-1', {
-        token: 'a-token',
-      });
+      const result = await service.preview('user-1', 'project-1', 'a-token');
 
       expect(githubClient.listAccessibleBoards).toHaveBeenCalledWith('a-token');
       expect(result).toEqual([availableBoard]);
@@ -95,7 +94,7 @@ describe('BoardConnectionsService', () => {
       prisma.projectMember.findUnique.mockResolvedValue(clientMembership);
 
       await expect(
-        service.preview('user-1', 'project-1', { token: 'a-token' }),
+        service.preview('user-1', 'project-1', 'a-token'),
       ).rejects.toThrow(NotFoundException);
       expect(githubClient.listAccessibleBoards).not.toHaveBeenCalled();
     });
@@ -104,7 +103,7 @@ describe('BoardConnectionsService', () => {
       prisma.projectMember.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.preview('user-1', 'project-1', { token: 'a-token' }),
+        service.preview('user-1', 'project-1', 'a-token'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -115,12 +114,18 @@ describe('BoardConnectionsService', () => {
       );
 
       await expect(
-        service.preview('user-1', 'project-1', { token: 'a-token' }),
+        service.preview('user-1', 'project-1', 'a-token'),
       ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('connect', () => {
+    const selection = {
+      ownerLogin: 'acme',
+      ownerType: 'Organization' as const,
+      number: 3,
+    };
+
     it('translates a GitHub client failure into a clean, sanitized 4xx (never a raw 500)', async () => {
       prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
       githubClient.verifyBoardAccess.mockRejectedValue(
@@ -128,12 +133,7 @@ describe('BoardConnectionsService', () => {
       );
 
       await expect(
-        service.connect('user-1', 'project-1', {
-          token: 'a-token',
-          ownerLogin: 'acme',
-          ownerType: 'Organization',
-          number: 3,
-        }),
+        service.connect('user-1', 'project-1', 'a-token', selection),
       ).rejects.toThrow(BadRequestException);
       expect(prisma.boardConnection.upsert).not.toHaveBeenCalled();
     });
@@ -143,12 +143,7 @@ describe('BoardConnectionsService', () => {
       githubClient.verifyBoardAccess.mockResolvedValue(null);
 
       await expect(
-        service.connect('user-1', 'project-1', {
-          token: 'a-token',
-          ownerLogin: 'acme',
-          ownerType: 'Organization',
-          number: 3,
-        }),
+        service.connect('user-1', 'project-1', 'a-token', selection),
       ).rejects.toThrow(ForbiddenException);
       expect(prisma.boardConnection.upsert).not.toHaveBeenCalled();
     });
@@ -164,12 +159,12 @@ describe('BoardConnectionsService', () => {
         },
       );
 
-      const result = await service.connect('user-1', 'project-1', {
-        token: 'a-token',
-        ownerLogin: 'acme',
-        ownerType: 'Organization',
-        number: 3,
-      });
+      const result = await service.connect(
+        'user-1',
+        'project-1',
+        'a-token',
+        selection,
+      );
 
       expect(prisma.boardConnection.upsert).toHaveBeenCalledWith({
         where: { projectId: 'project-1' },
@@ -183,6 +178,7 @@ describe('BoardConnectionsService', () => {
           boardUrl: 'https://github.com/orgs/acme/projects/3',
           encryptedToken: expect.any(String) as string,
           estimateUnit: 'days',
+          needsReconnect: false,
         },
         update: {
           provider: BoardProvider.github,
@@ -193,6 +189,7 @@ describe('BoardConnectionsService', () => {
           boardUrl: 'https://github.com/orgs/acme/projects/3',
           encryptedToken: expect.any(String) as string,
           estimateUnit: 'days',
+          needsReconnect: false,
         },
       });
       expect(decryptToken(capturedEncryptedToken)).toBe('a-token');
@@ -204,6 +201,7 @@ describe('BoardConnectionsService', () => {
         boardTitle: 'Roadmap',
         boardUrl: 'https://github.com/orgs/acme/projects/3',
         estimateUnit: 'days',
+        needsReconnect: false,
       });
     });
 
@@ -212,11 +210,8 @@ describe('BoardConnectionsService', () => {
       githubClient.verifyBoardAccess.mockResolvedValue(availableBoard);
       prisma.boardConnection.upsert.mockResolvedValue(storedConnection);
 
-      await service.connect('user-1', 'project-1', {
-        token: 'a-token',
-        ownerLogin: 'acme',
-        ownerType: 'Organization',
-        number: 3,
+      await service.connect('user-1', 'project-1', 'a-token', {
+        ...selection,
         estimateUnit: 'hours',
       });
 
@@ -231,12 +226,7 @@ describe('BoardConnectionsService', () => {
       prisma.projectMember.findUnique.mockResolvedValue(clientMembership);
 
       await expect(
-        service.connect('user-1', 'project-1', {
-          token: 'a-token',
-          ownerLogin: 'acme',
-          ownerType: 'Organization',
-          number: 3,
-        }),
+        service.connect('user-1', 'project-1', 'a-token', selection),
       ).rejects.toThrow(NotFoundException);
       expect(githubClient.verifyBoardAccess).not.toHaveBeenCalled();
     });
@@ -266,16 +256,38 @@ describe('BoardConnectionsService', () => {
         },
       );
 
-      const result = await service.connect('user-1', 'project-1', {
-        token: 'a-different-token',
-        ownerLogin: 'someone-else',
-        ownerType: 'User',
-        number: 7,
-      });
+      const result = await service.connect(
+        'user-1',
+        'project-1',
+        'a-different-token',
+        {
+          ownerLogin: 'someone-else',
+          ownerType: 'User',
+          number: 7,
+        },
+      );
 
       expect(prisma.boardConnection.upsert).toHaveBeenCalledTimes(1);
       expect(capturedWhere).toEqual({ projectId: 'project-1' });
       expect(result.boardTitle).toBe('Personal board');
+    });
+
+    it('clears needsReconnect on a successful (re)connection', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
+      githubClient.verifyBoardAccess.mockResolvedValue(availableBoard);
+      prisma.boardConnection.upsert.mockResolvedValue({
+        ...storedConnection,
+        needsReconnect: false,
+      });
+
+      const result = await service.connect(
+        'user-1',
+        'project-1',
+        'a-token',
+        selection,
+      );
+
+      expect(result.needsReconnect).toBe(false);
     });
   });
 
@@ -303,6 +315,7 @@ describe('BoardConnectionsService', () => {
         boardTitle: 'Roadmap',
         boardUrl: 'https://github.com/orgs/acme/projects/3',
         estimateUnit: 'days',
+        needsReconnect: false,
       });
       expect(result).not.toHaveProperty('encryptedToken');
     });

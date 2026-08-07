@@ -20,7 +20,18 @@
      lighter," never a flat gray. destructive is a lightness bump over the
      light-theme value (oklch L 0.577→0.65) — the original measured 4.4:1 on
      pure black, under the 4.5:1 body-text floor; success/iris-* are
-     unchanged, already well clear of it. */
+     unchanged, already well clear of it.
+
+     2026-08-07, later same day: iris-* turned out NOT fine — caught live
+     against a real Current Task card. Those three were the light theme's
+     pastel wash (L 0.83–0.9), tuned to glow softly under a *white* frosted
+     panel; on the new black ground they read as three loud, unrelated
+     primary-ish blobs (hot pink / yellow-green / sky blue) instead of a
+     subtle iridescent sheen — a direct clash with the periwinkle-only
+     brand palette. Recomputed as three analogous hues drawn from the same
+     ~272–275° periwinkle family (a rose-violet, the periwinkle itself, a
+     cooler blue-violet), at mid lightness (L 0.58–0.62) so they glow
+     against black instead of washing out a light surface. */
   --gradient-from: #000000;
   --gradient-via: #000002;
   --gradient-to: #010206;
@@ -50,9 +61,14 @@
      Card"). Purely decorative background texture behind a frosted panel;
      never used for text, icons, borders, or anything meaning emphasis. Not
      a general-purpose accent — introducing it elsewhere is a rule break. */
-  --iris-pink: #f6c9de;
-  --iris-yellow: #f5e6a8;
-  --iris-blue: #b8d4f5;
+  --iris-pink: oklch(0.55 0.1 300);
+  /* Despite the name (kept to avoid renaming the Tailwind class already
+     used at every call site) this is no longer yellow — a low-chroma warm
+     hue read as muddy brown against black, not a shimmer. Replaced with a
+     third cool tone from the same periwinkle family as pink/blue, so all
+     three glow spans stay analogous instead of one clashing outlier. */
+  --iris-yellow: oklch(0.58 0.1 290);
+  --iris-blue: oklch(0.55 0.13 272);
   --border: #20222d;
   --input: #2d2f3e;
   --ring: #dae1ff;

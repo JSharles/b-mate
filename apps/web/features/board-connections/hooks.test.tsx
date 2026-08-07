@@ -56,6 +56,7 @@ const fakeConnection = {
   boardTitle: "Roadmap",
   boardUrl: "https://github.com/orgs/acme/projects/3",
   estimateUnit: "days" as const,
+  needsReconnect: false,
 };
 
 describe("board-connections hooks", () => {

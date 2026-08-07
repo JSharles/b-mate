@@ -35,6 +35,19 @@ describe('GithubOauthClient', () => {
       expect(url.searchParams.get('scope')).toBe('read:user user:email');
       expect(url.searchParams.get('state')).toBe('random-state');
     });
+
+    it('requests the given scope override instead of the login-only default', () => {
+      const url = new URL(
+        client.buildAuthorizeUrl(
+          'random-state',
+          'read:user user:email read:project',
+        ),
+      );
+
+      expect(url.searchParams.get('scope')).toBe(
+        'read:user user:email read:project',
+      );
+    });
   });
 
   describe('exchangeCodeForToken', () => {

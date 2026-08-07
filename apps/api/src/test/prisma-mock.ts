@@ -35,6 +35,7 @@ export type PrismaMock = {
     findUnique: jest.Mock;
     findMany: jest.Mock;
     deleteMany: jest.Mock;
+    update: jest.Mock;
   };
   vulgarizedTask: {
     findUnique: jest.Mock;
@@ -87,6 +88,7 @@ export function createPrismaMock(): PrismaMock {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       deleteMany: jest.fn(),
+      update: jest.fn(),
     },
     vulgarizedTask: {
       findUnique: jest.fn(),

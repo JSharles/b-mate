@@ -1,7 +1,8 @@
 "use client";
 
-import { ExternalLink, KanbanSquare } from "lucide-react";
+import { ExternalLink, KanbanSquare, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -10,7 +11,12 @@ import { useBoardConnection, useDisconnectBoard } from "../hooks";
 import { ConnectBoardDialog } from "./connect-board-dialog";
 
 export function BoardConnectionCard({ projectId }: { projectId: string }) {
-  const [open, setOpen] = useState(false);
+  const searchParams = useSearchParams();
+  // specs/010-github-oauth-board-connection: the GitHub OAuth callback
+  // redirects back here with ?connectBoard=1 — open straight into the
+  // dialog's board-picker step instead of making the developer click
+  // "Connect" again after already authorizing.
+  const [open, setOpen] = useState(() => searchParams.get("connectBoard") === "1");
   const { data: connection, isPending } = useBoardConnection(projectId);
   const disconnect = useDisconnectBoard(projectId);
   const t = useTranslations("Projects.BoardConnectionCard");
@@ -27,6 +33,15 @@ export function BoardConnectionCard({ projectId }: { projectId: string }) {
       <CardContent className="flex items-center justify-between gap-3">
         {isPending ? (
           <Skeleton className="h-5 w-32" />
+        ) : connection?.needsReconnect ? (
+          // specs/010-github-oauth-board-connection FR-008: the background
+          // sweep detected the stored GitHub authorization was revoked —
+          // surface it clearly rather than letting the board silently go
+          // stale.
+          <p className="flex items-center gap-2 text-sm text-destructive">
+            <TriangleAlert className="size-4 shrink-0" />
+            {t("needsReconnect")}
+          </p>
         ) : connection ? (
           <a
             href={connection.boardUrl}
@@ -44,7 +59,11 @@ export function BoardConnectionCard({ projectId }: { projectId: string }) {
           </p>
         )}
 
-        {connection ? (
+        {connection?.needsReconnect ? (
+          <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+            {t("reconnect")}
+          </Button>
+        ) : connection ? (
           <Button
             type="button"
             variant="outline"

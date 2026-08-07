@@ -28,17 +28,23 @@ interface GithubEmailResponse {
   verified: boolean;
 }
 
-const GITHUB_SCOPE = 'read:user user:email';
+export const GITHUB_SCOPE = 'read:user user:email';
+export const GITHUB_BOARD_READ_SCOPE = `${GITHUB_SCOPE} read:project`;
 
 // Two/three plain HTTP calls — deliberately no OAuth client library, see
 // specs/009-developer-github-oauth/plan.md Technical Context.
 @Injectable()
 export class GithubOauthClient {
-  buildAuthorizeUrl(state: string): string {
+  // `scope` defaults to the login-only scope; the board-connection flow
+  // (specs/010-github-oauth-board-connection) passes a broader scope
+  // (adding `read:project`) to request that permission from the same
+  // registered OAuth App (research.md Decision 1) — GitHub aggregates
+  // scopes already granted with what's newly requested (Decision 4).
+  buildAuthorizeUrl(state: string, scope: string = GITHUB_SCOPE): string {
     const url = new URL('https://github.com/login/oauth/authorize');
     url.searchParams.set('client_id', this.clientId());
     url.searchParams.set('redirect_uri', this.callbackUrl());
-    url.searchParams.set('scope', GITHUB_SCOPE);
+    url.searchParams.set('scope', scope);
     url.searchParams.set('state', state);
     return url.toString();
   }

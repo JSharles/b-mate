@@ -198,6 +198,13 @@ model BoardConnection {
   // (research.md Decision 5) — reconnect to change it.
   estimateUnit EstimateUnit @default(days) @map("estimate_unit")
 
+  // Set by the background sweep (task-vulgarization.service.ts) when a
+  // GitHub call for this connection fails with an auth error (401/403) —
+  // the stored token was revoked or is otherwise invalid. Cleared back to
+  // false whenever connect() next succeeds for this project (specs/010-
+  // github-oauth-board-connection, FR-008, data-model.md).
+  needsReconnect Boolean @default(false) @map("needs_reconnect")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

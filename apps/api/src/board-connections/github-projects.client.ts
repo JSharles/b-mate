@@ -6,6 +6,9 @@ const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql';
 
 export type GithubOwnerType = 'User' | 'Organization';
 
+// Thrown specifically for a 401/403 GitHub response — see query() below.
+export class GithubAuthError extends Error {}
+
 export interface AvailableBoard {
   ownerLogin: string;
   ownerType: GithubOwnerType;
@@ -229,6 +232,16 @@ export class GithubProjectsClient {
     });
 
     // Never surface the raw GitHub response (or the token) in a thrown error.
+    // 401/403 specifically means the stored token was revoked or is
+    // otherwise invalid — distinguished from other failures (5xx, network)
+    // so the background sweep can tell "needs reconnecting" apart from
+    // "transient, will retry" (specs/010-github-oauth-board-connection,
+    // FR-008, research.md Decision 6).
+    if (res.status === 401 || res.status === 403) {
+      throw new GithubAuthError(
+        `GitHub API request failed with status ${res.status}`,
+      );
+    }
     if (!res.ok) {
       throw new Error(`GitHub API request failed with status ${res.status}`);
     }
