@@ -1,7 +1,8 @@
 "use client";
 
-import { Calendar, CircleDot, Clock, Flag } from "lucide-react";
+import { CircleDot } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
@@ -89,26 +90,15 @@ function computeProgress(startedAt: string, estimatedCompletionAt: string) {
   };
 }
 
-// specs/008-current-task-progress: renders nothing when there's no estimate
-// to show (FR-008) — never a misleading 0%/broken bar. `isOver` (elapsed
-// time already past the estimate) gets a distinct visual/textual state
-// (FR-009) instead of a bar silently capped at 100% reading as "finished".
-// Lives in the metrics column now (no pl-12/max-w-prose — those were for
-// sitting under the title in a single-column layout).
-//
-// Impeccable critique (P0/P2, 2026-07-25): the fill was `bg-accent` on
-// `bg-muted` — two near-white tones with almost no contrast, confirmed live
-// as a barely-visible sliver. The on-track fill is a green gradient built
-// from --success's own documented tonal ramp (apps/web/.impeccable/design.json
-// — the lighter and canonical steps of the "success" ramp), not a new color:
-// --success is the same token the live pulse dot already uses for "active/
-// on track," so a healthy in-progress task reads as "green," matching that
-// existing association, while severity (running over, low confidence) still
-// reuses `text-destructive` — the same semantic-status color, not a second
-// one — instead of every line reading in identical muted gray regardless of
-// whether it's reassuring or concerning. `role="progressbar"` puts the
-// actual percentage in the DOM for assistive tech even where the eye only
-// sees a bar.
+// 2026-08-09, second pass: the two-column split (title/sections on the
+// left, every timestamp/estimate/confidence stacked in a bordered sidebar
+// on the right) read as a dashboard stat panel bolted onto a paragraph —
+// the user asked for one vertical reading order instead, and for the time/
+// confidence info to read as real sentences rather than short icon-led
+// labels. Confidence in particular used to just print "high"/"medium"/
+// "low" (via the confidence.* keys) — now a full sentence explaining what
+// that level actually means for the estimate's reliability, since a bare
+// adjective assumes the client already knows what "confidence" refers to.
 function ProgressIndicator({
   startedAt,
   estimatedCompletionAt,
@@ -126,17 +116,14 @@ function ProgressIndicator({
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-2">
-        <Flag className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className={isOver ? "text-destructive" : "text-muted-foreground"}>
-          {isOver ? t("runningOver") : t("estimatedCompletion", { time: rtf.format(diffDays, "day") })}
-        </span>
-      </div>
+    <div className="flex flex-col gap-1.5 text-sm">
+      <p className={isOver ? "text-destructive" : "text-muted-foreground"}>
+        {isOver ? t("runningOver") : t("estimatedCompletion", { time: rtf.format(diffDays, "day") })}
+      </p>
       {confidence && (
-        <span className={cn("pl-[22px]", confidence === "low" ? "text-destructive" : "text-muted-foreground")}>
+        <p className={confidence === "low" ? "text-destructive" : "text-muted-foreground"}>
           {t(`confidence.${confidence}`)}
-        </span>
+        </p>
       )}
       <div
         role="progressbar"
@@ -160,6 +147,23 @@ function ProgressIndicator({
           }
         />
       </div>
+    </div>
+  );
+}
+
+// One consistent "label above content" treatment for every section — En
+// cours/Pourquoi/Impact/État all read as parallel, equally-weighted parts
+// of the same structure (docs/PRODUCT.md "Working notes" sketches this
+// literally as a flat bullet list: "En cours — ...", "Pourquoi c'est
+// nécessaire — ...", etc.), not a title with three lesser footnotes under
+// it.
+function Section({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs font-semibold tracking-wide text-foreground/50 uppercase">
+        {label}
+      </span>
+      {children}
     </div>
   );
 }
@@ -204,7 +208,7 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
               <p className="text-sm text-muted-foreground">{t("empty")}</p>
             </div>
           ) : (
-            <ul className="flex flex-col gap-4">
+            <ul className="flex flex-col gap-6">
               {items.map((item) => (
                 // key is the item's own (vulgarized) title, so a real
                 // content change (the task moved on, or its wording was
@@ -214,105 +218,66 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
                 // re-render.
                 <li
                   key={item.title}
-                  className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 grid grid-cols-1 gap-4 motion-safe:duration-300 sm:grid-cols-3"
+                  className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 flex max-w-prose flex-col gap-3 motion-safe:duration-300"
                 >
-                  {/* Left, 2/3: what the task is — title + description.
-                      Right, 1/3: everything metric/temporal — started/
-                      updated timestamps, estimate, confidence, progress
-                      bar. Splitting them keeps a long description from
-                      pushing the progress bar out of view (it used to sit
-                      stacked below the description and could scroll off),
-                      and reads more like a dashboard stat panel than a
-                      wall of text. */}
-                  <div className="flex min-w-0 flex-col gap-2 sm:col-span-2">
-                    <div className="flex items-start gap-3">
+                  <Section label={t("inProgress")}>
+                    <div className="flex items-center gap-3">
                       <LiveIndicator active />
-                      {/* h3, not a bare span: "TÂCHE EN COURS" above is
-                          the card's own h2 label — the task's own title is
+                      {/* h3, not a bare span: the task's own title is
                           genuinely the most important string on the card
                           and belongs in the heading outline, not skipped
                           by a screen reader navigating by heading. */}
-                      <h3 className="max-w-prose text-xl leading-snug font-bold text-balance">
+                      <h3 className="text-xl leading-snug font-bold text-balance">
                         {item.title}
                       </h3>
                     </div>
-                    {(item.why || item.impact || item.status) && (
-                      // 2026-08-09: replaces the single description
-                      // paragraph with named, independently-optional
-                      // sections (docs/PRODUCT.md "Working notes") — a
-                      // client scans "why/impact/status" far faster than
-                      // one blob of text. Any section can be absent: the
-                      // vulgarization prompt is instructed to leave one out
-                      // rather than invent content the source doesn't
-                      // support (Constitution II, "Never fabricate"), so
-                      // this never assumes all three are present.
-                      // max-w-prose caps line length at ~65 characters —
-                      // text-foreground/80 (vs. text-muted-foreground)
-                      // keeps it visually secondary to the title while
-                      // staying legible on the frosted glass background.
-                      <div className="flex max-w-prose flex-col gap-2.5 pl-12">
-                        {item.why && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xs font-semibold tracking-wide text-foreground/50 uppercase">
-                              {t("why")}
-                            </span>
-                            <p className="text-sm leading-relaxed text-foreground/80">
-                              {item.why}
-                            </p>
-                          </div>
-                        )}
-                        {item.impact && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xs font-semibold tracking-wide text-foreground/50 uppercase">
-                              {t("impact")}
-                            </span>
-                            <p className="text-sm leading-relaxed text-foreground/80">
-                              {item.impact}
-                            </p>
-                          </div>
-                        )}
-                        {item.status && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xs font-semibold tracking-wide text-foreground/50 uppercase">
-                              {t("status")}
-                            </span>
-                            <p className="text-sm leading-relaxed text-foreground/80">
-                              {item.status}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {/* Impeccable critique (P1/P3, 2026-07-25): matches
-                      DeveloperCard's icon + label pattern for the same
-                      "stacked metadata under a divider" problem, instead of
-                      reinventing it as bare gray text — the two cards
-                      sharing this row now read as one design system, not
-                      two. text-sm (Body, DESIGN.md) replaces text-xs, which
-                      matched neither Body nor Caption. border-white/15
-                      matches the outer card's own (dark-glass) border
-                      opacity, updated together in the 2026-08-07 dark
-                      rebrand. */}
-                  <div className="flex flex-col gap-2 border-white/15 pl-0 text-sm sm:col-span-1 sm:border-l sm:pl-4">
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Calendar className="size-3.5 shrink-0" />
-                      {t("startedAt", { time: formatRelativeTime(item.startedAt, locale) })}
-                    </span>
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Clock className="size-3.5 shrink-0" />
-                      {t("updatedAt", { time: formatRelativeTime(item.updatedAt, locale) })}
-                    </span>
-                    {item.estimatedCompletionAt && (
-                      <ProgressIndicator
-                        startedAt={item.startedAt}
-                        estimatedCompletionAt={item.estimatedCompletionAt}
-                        confidence={item.estimateConfidence}
-                        locale={locale}
-                        t={t}
-                      />
-                    )}
-                  </div>
+                  </Section>
+
+                  {/* 2026-08-09: why/impact/status replace the old single
+                      description blob (docs/PRODUCT.md "Working notes") —
+                      a client scans named sections far faster than one
+                      blob of text. Any can be absent: the vulgarization
+                      prompt is instructed to leave a section out rather
+                      than invent content the source doesn't support
+                      (Constitution II, "Never fabricate"). */}
+                  {item.why && (
+                    <Section label={t("why")}>
+                      <p className="text-sm leading-relaxed text-foreground/80">{item.why}</p>
+                    </Section>
+                  )}
+                  {item.impact && (
+                    <Section label={t("impact")}>
+                      <p className="text-sm leading-relaxed text-foreground/80">{item.impact}</p>
+                    </Section>
+                  )}
+                  {item.status && (
+                    <Section label={t("status")}>
+                      <p className="text-sm leading-relaxed text-foreground/80">{item.status}</p>
+                    </Section>
+                  )}
+
+                  {/* Time/estimate/confidence: one vertical reading order,
+                      not a separate bordered sidebar (that read as a
+                      dashboard stat panel bolted onto a paragraph) — a
+                      plain sentence rather than an icon-led label,
+                      consistent with the why/impact/status sections above
+                      it, closing out the card instead of racing it
+                      side by side. */}
+                  <p className="border-t border-white/15 pt-3 text-sm text-muted-foreground">
+                    {t("timeline", {
+                      started: formatRelativeTime(item.startedAt, locale),
+                      updated: formatRelativeTime(item.updatedAt, locale),
+                    })}
+                  </p>
+                  {item.estimatedCompletionAt && (
+                    <ProgressIndicator
+                      startedAt={item.startedAt}
+                      estimatedCompletionAt={item.estimatedCompletionAt}
+                      confidence={item.estimateConfidence}
+                      locale={locale}
+                      t={t}
+                    />
+                  )}
                 </li>
               ))}
             </ul>

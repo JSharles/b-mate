@@ -117,7 +117,7 @@ describe("CurrentTaskCard", () => {
     expect(screen.getByText("Task B")).toBeInTheDocument();
   });
 
-  it("shows the start date alongside the updated-at time", () => {
+  it("shows a combined timeline sentence with the start date and the updated-at time", () => {
     mockedUseCurrentTask.mockReturnValue({
       data: [{ ...baseItem, title: "Task A" }],
       isPending: false,
@@ -125,7 +125,7 @@ describe("CurrentTaskCard", () => {
 
     render(<CurrentTaskCard projectId="project-1" />);
 
-    expect(screen.getByText(/startedAt/)).toBeInTheDocument();
+    expect(screen.getByText(/timeline/)).toBeInTheDocument();
   });
 
   // specs/008-current-task-progress FR-008: no progress bar / no estimate

@@ -282,17 +282,17 @@
     "CurrentTaskCard": {
       "title": "Current task",
       "empty": "Your developer hasn't started a task yet — check back soon.",
-      "why": "Why",
+      "inProgress": "In progress",
+      "why": "Why it's necessary",
       "impact": "Impact for you",
-      "status": "Current status",
-      "startedAt": "Started {time}",
-      "updatedAt": "Updated {time}",
+      "status": "Status",
+      "timeline": "Started {started}, last updated {updated}.",
       "estimatedCompletion": "Expected to finish {time}",
       "runningOver": "Taking longer than expected",
       "confidence": {
-        "high": "High confidence",
-        "medium": "Medium confidence",
-        "low": "Low confidence"
+        "high": "This estimate is reliable.",
+        "medium": "This estimate is a reasonable approximation.",
+        "low": "This estimate is uncertain — the date could change."
       }
     },
     "TeamPanel": {
