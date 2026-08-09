@@ -159,7 +159,7 @@ function ProgressIndicator({
 // it.
 function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1.5">
       <span className="text-xs font-semibold tracking-wide text-foreground/50 uppercase">
         {label}
       </span>
@@ -199,7 +199,7 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
               cutting off the title at the top with no visual cue to scroll
               — justify-start guarantees the title is always the first
               thing visible, scrolling down for the rest. */}
-        <CardContent className="flex flex-1 flex-col justify-start gap-3 overflow-y-auto py-1">
+        <CardContent className="flex flex-1 flex-col justify-start gap-3 overflow-y-auto py-6">
           {isPending ? (
             <Skeleton className="h-10 w-full" />
           ) : !items || items.length === 0 ? (
@@ -218,7 +218,7 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
                 // re-render.
                 <li
                   key={item.title}
-                  className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 flex max-w-prose flex-col gap-3 motion-safe:duration-300"
+                  className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 flex max-w-prose flex-col gap-5 motion-safe:duration-300"
                 >
                   <Section label={t("inProgress")}>
                     <div className="flex items-center gap-3">
