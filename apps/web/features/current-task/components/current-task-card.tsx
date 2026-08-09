@@ -127,6 +127,7 @@ function ProgressIndicator({
       )}
       <div
         role="progressbar"
+        aria-label={t("progressLabel")}
         aria-valuenow={Math.round(percent)}
         aria-valuemin={0}
         aria-valuemax={100}
@@ -139,10 +140,13 @@ function ProgressIndicator({
               ? { width: `${percent}%` }
               : {
                   width: `${percent}%`,
-                  // Lighter → canonical steps of --success's own tonal ramp
-                  // (design.json), not a new color — see comment above.
+                  // Anchored to the real --success token (impeccable audit,
+                  // 2026-08-09) rather than two hand-typed oklch literals —
+                  // the previous values happened to match --success exactly
+                  // but weren't actually derived from it, so a future retune
+                  // of --success would have silently drifted out of sync.
                   backgroundImage:
-                    "linear-gradient(to right, oklch(0.82 0.12 149), oklch(0.627 0.194 149.214))",
+                    "linear-gradient(to right, color-mix(in oklch, var(--success) 60%, white), var(--success))",
                 }
           }
         />
@@ -160,7 +164,7 @@ function ProgressIndicator({
 function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-semibold tracking-wide text-foreground/50 uppercase">
+      <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
         {label}
       </span>
       {children}
@@ -223,13 +227,16 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
                   <Section label={t("inProgress")}>
                     <div className="flex items-center gap-3">
                       <LiveIndicator active />
-                      {/* h3, not a bare span: the task's own title is
+                      {/* h2, not a bare span: the task's own title is
                           genuinely the most important string on the card
                           and belongs in the heading outline, not skipped
-                          by a screen reader navigating by heading. */}
-                      <h3 className="text-xl leading-snug font-bold text-balance">
+                          by a screen reader navigating by heading. h2, not
+                          h3 — nothing in the client view sits between this
+                          card and the page's own h1, same level as
+                          TeamPanel/MeetingCard's own section headings. */}
+                      <h2 className="text-xl leading-snug font-bold text-balance">
                         {item.title}
-                      </h3>
+                      </h2>
                     </div>
                   </Section>
 
@@ -242,17 +249,17 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
                       (Constitution II, "Never fabricate"). */}
                   {item.why && (
                     <Section label={t("why")}>
-                      <p className="text-sm leading-relaxed text-foreground/80">{item.why}</p>
+                      <p className="text-sm leading-relaxed text-foreground">{item.why}</p>
                     </Section>
                   )}
                   {item.impact && (
                     <Section label={t("impact")}>
-                      <p className="text-sm leading-relaxed text-foreground/80">{item.impact}</p>
+                      <p className="text-sm leading-relaxed text-foreground">{item.impact}</p>
                     </Section>
                   )}
                   {item.status && (
                     <Section label={t("status")}>
-                      <p className="text-sm leading-relaxed text-foreground/80">{item.status}</p>
+                      <p className="text-sm leading-relaxed text-foreground">{item.status}</p>
                     </Section>
                   )}
 
