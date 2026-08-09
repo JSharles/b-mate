@@ -133,7 +133,7 @@ describe("ProjectList", () => {
     openSpy.mockRestore();
   });
 
-  it("shows the creation date, and the status/progress only when present", () => {
+  it("shows the creation date, and the status pill/progress bar only when a percentage is present", () => {
     mockedUseProjects.mockReturnValue({
       data: [
         {
@@ -146,7 +146,7 @@ describe("ProjectList", () => {
         {
           id: "2",
           title: "App mobile client Y",
-          status: "En cours",
+          status: null,
           progressPercentage: 42,
           createdAt: "2026-02-01T00:00:00.000Z",
         },
@@ -157,8 +157,28 @@ describe("ProjectList", () => {
     render(<ProjectList />);
 
     expect(screen.getAllByText("createdAt")).toHaveLength(2);
-    expect(screen.queryByText("En cours")).toBeInTheDocument();
+    expect(screen.getByText("status.inProgress")).toBeInTheDocument();
     expect(screen.getByText("42%")).toBeInTheDocument();
+  });
+
+  // docs/PRODUCT.md: progress_percentage is computed from the board's task
+  // counts, not manual — the pill's label is a derived bucket of that number
+  // (0% / 1-99% / 100%), never its own free-text field.
+  it("derives the status pill's label from the progress percentage bucket", () => {
+    mockedUseProjects.mockReturnValue({
+      data: [
+        { id: "1", title: "Not started", status: null, progressPercentage: 0, createdAt: null },
+        { id: "2", title: "In progress", status: null, progressPercentage: 50, createdAt: null },
+        { id: "3", title: "Complete", status: null, progressPercentage: 100, createdAt: null },
+      ],
+      isPending: false,
+    } as unknown as ReturnType<typeof useProjects>);
+
+    render(<ProjectList />);
+
+    expect(screen.getByText("status.notStarted")).toBeInTheDocument();
+    expect(screen.getByText("status.inProgress")).toBeInTheDocument();
+    expect(screen.getByText("status.complete")).toBeInTheDocument();
   });
 
   it("shows loading skeletons while pending", () => {

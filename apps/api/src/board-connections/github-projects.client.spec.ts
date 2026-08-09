@@ -455,4 +455,118 @@ describe('GithubProjectsClient', () => {
       expect(result).toEqual([]);
     });
   });
+
+  describe('fetchTaskCounts', () => {
+    function itemNode(
+      status: string | null,
+      content: unknown = {
+        __typename: 'Issue',
+        title: 'Some task',
+        body: null,
+      },
+    ) {
+      return {
+        content,
+        status: status ? { name: status } : null,
+        startDate: null,
+        targetDate: null,
+        estimate: null,
+      };
+    }
+
+    it('counts items whose Status contains "done" (case-insensitive) as done, out of every triaged item', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: {
+            organization: {
+              projectV2: {
+                items: {
+                  nodes: [
+                    itemNode('Todo'),
+                    itemNode('In Progress'),
+                    itemNode('Done'),
+                    itemNode('DONE'),
+                  ],
+                },
+              },
+            },
+          },
+        }),
+      });
+
+      const result = await client.fetchTaskCounts(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result).toEqual({ total: 4, done: 2 });
+    });
+
+    it('excludes items with no Status value from the total (not yet triaged)', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: {
+            organization: {
+              projectV2: {
+                items: { nodes: [itemNode('Todo'), itemNode(null)] },
+              },
+            },
+          },
+        }),
+      });
+
+      const result = await client.fetchTaskCounts(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result).toEqual({ total: 1, done: 0 });
+    });
+
+    it('excludes an item with no content (e.g. a redacted item) even if it has a Status', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: {
+            organization: {
+              projectV2: { items: { nodes: [itemNode('Done', null)] } },
+            },
+          },
+        }),
+      });
+
+      const result = await client.fetchTaskCounts(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result).toEqual({ total: 0, done: 0 });
+    });
+
+    it('returns zero counts when the board has no items', async () => {
+      mockFetchOnce({
+        ok: true,
+        json: () => ({
+          data: { organization: { projectV2: { items: { nodes: [] } } } },
+        }),
+      });
+
+      const result = await client.fetchTaskCounts(
+        'a-token',
+        'acme',
+        'Organization',
+        3,
+      );
+
+      expect(result).toEqual({ total: 0, done: 0 });
+    });
+  });
 });
