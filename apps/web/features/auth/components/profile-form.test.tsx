@@ -93,6 +93,34 @@ describe("ProfileForm", () => {
     });
   });
 
+  it("hides github and malt for a client account — meaningless for a non-developer", () => {
+    render(<ProfileForm user={fakeUser({ accountKind: "client" })} />);
+
+    expect(screen.getByLabelText("roleTitle")).toBeInTheDocument();
+    expect(screen.getByLabelText("phone")).toBeInTheDocument();
+    expect(screen.getByLabelText("linkedin")).toBeInTheDocument();
+    expect(screen.getByLabelText("website")).toBeInTheDocument();
+    expect(screen.queryByLabelText("github")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("malt")).not.toBeInTheDocument();
+  });
+
+  it("only submits the fields a client account actually sees", async () => {
+    const mutation = baseMutation();
+    mockedUseUpdateProfile.mockReturnValue(mutation);
+    const user = userEvent.setup();
+
+    render(<ProfileForm user={fakeUser({ accountKind: "client" })} />);
+    await user.type(screen.getByLabelText("linkedin"), "in/jc");
+    await user.click(screen.getByRole("button", { name: "submit" }));
+
+    expect(mutation.mutate).toHaveBeenCalledWith({
+      roleTitle: null,
+      phone: null,
+      linkedin: "in/jc",
+      website: null,
+    });
+  });
+
   it("shows the mutation's error message when it fails", () => {
     mockedUseUpdateProfile.mockReturnValue({
       ...baseMutation(),

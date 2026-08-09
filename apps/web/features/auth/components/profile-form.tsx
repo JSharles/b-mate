@@ -17,13 +17,25 @@ import { Input } from "@/shared/components/ui/input";
 import { ApiError } from "@/shared/lib/api-client";
 import { useUpdateProfile } from "../hooks";
 
-const FIELDS = ["roleTitle", "phone", "github", "linkedin", "malt", "website"] as const;
+const ALL_FIELDS = ["roleTitle", "phone", "github", "linkedin", "malt", "website"] as const;
+type ProfileField = (typeof ALL_FIELDS)[number];
+
+// GitHub (a code host) and Malt (a French freelance-developer marketplace)
+// only mean anything for a developer account — showing them to a client
+// would just be two fields with nothing sensible to put in them.
+const DEVELOPER_ONLY_FIELDS: ReadonlyArray<ProfileField> = ["github", "malt"];
+
+function fieldsFor(accountKind: User["accountKind"]): readonly ProfileField[] {
+  return accountKind === "developer"
+    ? ALL_FIELDS
+    : ALL_FIELDS.filter((field) => !DEVELOPER_ONLY_FIELDS.includes(field));
+}
 
 // github/linkedin/malt/website are rendered as real links on the client-
 // facing identity card (TeamPanel) — a bare username there would build a
 // broken URL, so the placeholder asks for a domain-inclusive value up
 // front rather than silently mangling whatever's typed.
-const PLACEHOLDERS: Partial<Record<(typeof FIELDS)[number], string>> = {
+const PLACEHOLDERS: Partial<Record<ProfileField, string>> = {
   github: "github.com/username",
   linkedin: "linkedin.com/in/username",
   malt: "malt.fr/profile/username",
@@ -39,31 +51,29 @@ export function ProfileForm({ user }: { user: User }) {
   const updateProfile = useUpdateProfile();
   const t = useTranslations("Profile");
   const tToasts = useTranslations("Toasts");
-  const form = useForm({
+  const fields = fieldsFor(user.accountKind);
+  const form = useForm<UpdateProfileRequest>({
     resolver: zodResolver(UpdateProfileRequestSchema),
-    defaultValues: {
-      roleTitle: user.roleTitle ?? "",
-      phone: user.phone ?? "",
-      github: user.github ?? "",
-      linkedin: user.linkedin ?? "",
-      malt: user.malt ?? "",
-      website: user.website ?? "",
-    },
+    defaultValues: Object.fromEntries(
+      fields.map((field) => [field, user[field] ?? ""]),
+    ) as UpdateProfileRequest,
   });
 
   function onSubmit(values: UpdateProfileRequest) {
     // Empty string means "cleared" here, same as explicit null — the DTO's
     // null-clears/undefined-leaves-untouched convention only matters for
-    // partial updates, and this form always submits every field.
+    // partial updates, and this form always submits every field it shows.
+    // A field this account kind never sees (e.g. github for a client) is
+    // simply never in `fields`, so it's never submitted and stays untouched.
     updateProfile.mutate(
-      Object.fromEntries(FIELDS.map((field) => [field, values[field] || null])) as UpdateProfileRequest,
+      Object.fromEntries(fields.map((field) => [field, values[field] || null])) as UpdateProfileRequest,
     );
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
-        {FIELDS.map((field) => (
+        {fields.map((field) => (
           <FormField
             key={field}
             control={form.control}
