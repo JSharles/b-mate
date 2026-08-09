@@ -58,12 +58,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     <div className={cn("flex w-full flex-col gap-6", !isContributor && "h-full")}>
       <div className="flex shrink-0 items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">{project.title}</h1>
-        {/* A prominent shortcut alongside the settings-row link inside
-            MeetingLinkCard/MeetingCard further down — this one is for
-            "I need to get into the call right now", not for managing the
-            link itself. Shown to both roles: a client needs this at least
-            as much as the developer does. */}
-        {project.meetingUrl && (
+        {/* Contributor-only: on their page the meeting link is just one
+            compact row in a long settings list (MeetingLinkCard), easy to
+            miss, so this header shortcut earns its place. On the client
+            page MeetingCard is already a full, prominent sidebar card with
+            its own "Join meeting" button — a second one up here would just
+            be the same action shown twice. */}
+        {isContributor && project.meetingUrl && (
           <Button asChild size="sm">
             <a href={project.meetingUrl} target="_blank" rel="noreferrer">
               <Video className="size-4" />

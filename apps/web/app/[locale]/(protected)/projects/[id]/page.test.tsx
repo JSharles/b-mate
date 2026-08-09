@@ -122,7 +122,7 @@ describe("ProjectPage", () => {
     );
   });
 
-  it("shows the same join-meeting shortcut for a client, not just a contributor", () => {
+  it("hides the header join-meeting shortcut for a client — MeetingCard already shows one prominently in the sidebar", () => {
     mockedUseProject.mockReturnValue({
       data: {
         id: "project-1",
@@ -136,10 +136,7 @@ describe("ProjectPage", () => {
 
     renderPage();
 
-    expect(screen.getByRole("link", { name: "joinMeeting" })).toHaveAttribute(
-      "href",
-      "https://meet.google.com/abc-defg-hij",
-    );
+    expect(screen.queryByRole("link", { name: "joinMeeting" })).not.toBeInTheDocument();
   });
 
   it("shows the same full set of sections for a non-admin contributor", () => {
