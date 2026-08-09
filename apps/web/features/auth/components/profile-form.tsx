@@ -19,6 +19,17 @@ import { useUpdateProfile } from "../hooks";
 
 const FIELDS = ["roleTitle", "phone", "github", "linkedin", "malt", "website"] as const;
 
+// github/linkedin/malt/website are rendered as real links on the client-
+// facing identity card (TeamPanel) — a bare username there would build a
+// broken URL, so the placeholder asks for a domain-inclusive value up
+// front rather than silently mangling whatever's typed.
+const PLACEHOLDERS: Partial<Record<(typeof FIELDS)[number], string>> = {
+  github: "github.com/username",
+  linkedin: "linkedin.com/in/username",
+  malt: "malt.fr/profile/username",
+  website: "yoursite.com",
+};
+
 // 2026-08-09: the first (and only) way to set phone/github/roleTitle/
 // linkedin/malt/website — until now these were schema fields with no
 // editing UI anywhere (populated manually, e.g. via Prisma Studio). This is
@@ -61,7 +72,7 @@ export function ProfileForm({ user }: { user: User }) {
               <FormItem>
                 <FormLabel>{t(field)}</FormLabel>
                 <FormControl>
-                  <Input {...formField} value={formField.value ?? ""} />
+                  <Input {...formField} value={formField.value ?? ""} placeholder={PLACEHOLDERS[field]} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

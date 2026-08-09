@@ -353,7 +353,8 @@
   },
   "Toasts": {
     "loggedOut": "Déconnecté",
-    "genericError": "Une erreur est survenue"
+    "genericError": "Une erreur est survenue",
+    "profileSaved": "Profil enregistré"
   },
   "Profile": {
     "back": "Retour",

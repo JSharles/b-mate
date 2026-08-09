@@ -28,13 +28,16 @@ export function useLogin() {
 }
 
 // Error is surfaced inline in the form (see ProfileForm), not as a generic
-// toast — skipGlobalErrorToast opts this out of that default.
+// toast — skipGlobalErrorToast opts this out of that default. Success has no
+// inline equivalent (the form doesn't navigate away or reset), so it still
+// gets the generic success toast, same as useLogout below.
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
+  const t = useTranslations("Toasts");
 
   return useMutation({
     mutationFn: updateProfile,
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("profileSaved") },
     onSuccess: (user) => {
       queryClient.setQueryData(currentUserKey, user);
     },

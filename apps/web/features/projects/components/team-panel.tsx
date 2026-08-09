@@ -23,15 +23,37 @@ function initials(firstName: string, lastName: string) {
   return `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
 }
 
-function ContactRow({ icon: Icon, value }: { icon: LucideIcon; value: string | null }) {
+// "url" values are entered without a scheme (e.g. "linkedin.com/in/jc") —
+// prepending https:// makes them a real, clickable link without forcing the
+// developer to type the protocol in their own profile settings.
+function toHref(type: "mailto" | "tel" | "url", value: string): string {
+  if (type === "mailto") return `mailto:${value}`;
+  if (type === "tel") return `tel:${value}`;
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+function ContactRow({
+  icon: Icon,
+  value,
+  type,
+}: {
+  icon: LucideIcon;
+  value: string | null;
+  type: "mailto" | "tel" | "url";
+}) {
   if (!value) {
     return null;
   }
   return (
-    <span className="flex items-center gap-2 truncate text-muted-foreground">
+    <a
+      href={toHref(type, value)}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center gap-2 truncate text-muted-foreground hover:text-foreground hover:underline"
+    >
       <Icon className="size-3.5 shrink-0" />
       <span className="truncate">{value}</span>
-    </span>
+    </a>
   );
 }
 
@@ -98,12 +120,12 @@ export function TeamPanel({
                 </span>
               </div>
               <div className="flex w-full flex-col gap-1.5 border-t pt-3 text-xs">
-                <ContactRow icon={Mail} value={developer.email} />
-                <ContactRow icon={Phone} value={developer.phone} />
-                <ContactRow icon={Code2} value={developer.github} />
-                <ContactRow icon={Briefcase} value={developer.linkedin} />
-                <ContactRow icon={Link2} value={developer.malt} />
-                <ContactRow icon={Globe} value={developer.website} />
+                <ContactRow icon={Mail} value={developer.email} type="mailto" />
+                <ContactRow icon={Phone} value={developer.phone} type="tel" />
+                <ContactRow icon={Code2} value={developer.github} type="url" />
+                <ContactRow icon={Briefcase} value={developer.linkedin} type="url" />
+                <ContactRow icon={Link2} value={developer.malt} type="url" />
+                <ContactRow icon={Globe} value={developer.website} type="url" />
               </div>
             </div>
           )}

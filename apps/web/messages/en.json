@@ -353,7 +353,8 @@
   },
   "Toasts": {
     "loggedOut": "Logged out",
-    "genericError": "Something went wrong"
+    "genericError": "Something went wrong",
+    "profileSaved": "Profile saved"
   },
   "Profile": {
     "back": "Back",

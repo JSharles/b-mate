@@ -102,6 +102,54 @@ describe("TeamPanel", () => {
     expect(screen.getByText("jeancharles.dev")).toBeInTheDocument();
   });
 
+  it("makes every contact detail a clickable link that opens in a new tab", () => {
+    mockedUseProjectMembers.mockReturnValue({
+      data: [
+        member("1", "Jean", "Charles", {
+          role: "contributor",
+          phone: "0600000000",
+          github: "github.com/jc",
+          linkedin: "linkedin.com/in/jean-charles",
+          malt: "malt.fr/jc",
+          website: "jeancharles.dev",
+        }),
+      ],
+      isPending: false,
+    } as unknown as ReturnType<typeof useProjectMembers>);
+
+    render(<TeamPanel projectId="project-1" isAdmin={true} />);
+
+    expect(screen.getByRole("link", { name: /jean@example\.com/ })).toHaveAttribute(
+      "href",
+      "mailto:jean@example.com",
+    );
+    expect(screen.getByRole("link", { name: /0600000000/ })).toHaveAttribute(
+      "href",
+      "tel:0600000000",
+    );
+    expect(screen.getByRole("link", { name: /github\.com\/jc/ })).toHaveAttribute(
+      "href",
+      "https://github.com/jc",
+    );
+    const socialLink = screen.getByRole("link", { name: /linkedin\.com\/in\/jean-charles/ });
+    expect(socialLink).toHaveAttribute("href", "https://linkedin.com/in/jean-charles");
+    expect(socialLink).toHaveAttribute("target", "_blank");
+  });
+
+  it("prepends https:// to a social/website value that has no scheme", () => {
+    mockedUseProjectMembers.mockReturnValue({
+      data: [member("1", "Jean", "Charles", { role: "contributor", website: "jeancharles.dev" })],
+      isPending: false,
+    } as unknown as ReturnType<typeof useProjectMembers>);
+
+    render(<TeamPanel projectId="project-1" isAdmin={true} />);
+
+    expect(screen.getByRole("link", { name: /jeancharles\.dev/ })).toHaveAttribute(
+      "href",
+      "https://jeancharles.dev",
+    );
+  });
+
   it("only renders contact rows for fields that are actually set", () => {
     mockedUseProjectMembers.mockReturnValue({
       data: [member("1", "Jean", "Charles", { role: "contributor" })],
