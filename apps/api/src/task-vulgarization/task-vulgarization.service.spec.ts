@@ -61,7 +61,9 @@ const vulgarizedRow = {
   originalTitle: item.title,
   originalDescription: item.description,
   vulgarizedTitle: 'Securing your logins',
-  vulgarizedDescription: 'We made sign-in safer for everyone.',
+  vulgarizedWhy: 'Some accounts could stay accessible longer than they should.',
+  vulgarizedImpact: 'Nothing changes in how you use the product.',
+  vulgarizedStatus: 'A first version was built and is being reviewed.',
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -124,7 +126,9 @@ describe('TaskVulgarizationService', () => {
       prisma.project.findUniqueOrThrow.mockResolvedValue(project);
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins',
-        description: 'We made sign-in safer for everyone.',
+        why: 'Some accounts could stay accessible longer than they should.',
+        impact: 'Nothing changes in how you use the product.',
+        status: 'A first version was built and is being reviewed.',
       });
 
       await service.sweep();
@@ -139,7 +143,11 @@ describe('TaskVulgarizationService', () => {
             originalTitle: item.title,
             originalDescription: item.description,
             vulgarizedTitle: 'Securing your logins',
-            vulgarizedDescription: 'We made sign-in safer for everyone.',
+            vulgarizedWhy:
+              'Some accounts could stay accessible longer than they should.',
+            vulgarizedImpact: 'Nothing changes in how you use the product.',
+            vulgarizedStatus:
+              'A first version was built and is being reviewed.',
           }) as unknown,
         }),
       );
@@ -186,7 +194,9 @@ describe('TaskVulgarizationService', () => {
       prisma.project.findUniqueOrThrow.mockResolvedValue(project);
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins, now with auto-renewal',
-        description: 'We made sign-in safer and more convenient.',
+        why: 'Some accounts could stay accessible longer than they should.',
+        impact: 'Nothing changes in how you use the product.',
+        status: 'A first version was built and is being reviewed.',
       });
 
       await service.sweep();
@@ -206,7 +216,11 @@ describe('TaskVulgarizationService', () => {
             originalTitle: changedItem.title,
             originalDescription: changedItem.description,
             vulgarizedTitle: 'Securing your logins, now with auto-renewal',
-            vulgarizedDescription: 'We made sign-in safer and more convenient.',
+            vulgarizedWhy:
+              'Some accounts could stay accessible longer than they should.',
+            vulgarizedImpact: 'Nothing changes in how you use the product.',
+            vulgarizedStatus:
+              'A first version was built and is being reviewed.',
           }) as unknown,
         }),
       );
@@ -266,7 +280,9 @@ describe('TaskVulgarizationService', () => {
       prisma.project.findUniqueOrThrow.mockResolvedValue(project);
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins',
-        description: null,
+        why: null,
+        impact: null,
+        status: null,
       });
 
       await service.sweep();
@@ -311,7 +327,9 @@ describe('TaskVulgarizationService', () => {
       prisma.project.findUniqueOrThrow.mockResolvedValue(project);
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins',
-        description: null,
+        why: null,
+        impact: null,
+        status: null,
       });
       const before = Date.now();
 
@@ -351,7 +369,9 @@ describe('TaskVulgarizationService', () => {
       prisma.taskProgress.findUnique.mockResolvedValue(taskProgressRow);
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins v2',
-        description: null,
+        why: null,
+        impact: null,
+        status: null,
       });
 
       await service.sweep();
@@ -493,7 +513,9 @@ describe('TaskVulgarizationService', () => {
       prisma.taskProgress.findUnique.mockResolvedValue(taskProgressRow); // prior success: simple, 4 days
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins v2',
-        description: null,
+        why: null,
+        impact: null,
+        status: null,
       });
       anthropicClient.estimateTask.mockRejectedValue(new Error('LLM timeout'));
 
@@ -626,7 +648,9 @@ describe('TaskVulgarizationService', () => {
       expect(result).toEqual([
         {
           title: 'Securing your logins',
-          description: 'We made sign-in safer for everyone.',
+          why: 'Some accounts could stay accessible longer than they should.',
+          impact: 'Nothing changes in how you use the product.',
+          status: 'A first version was built and is being reviewed.',
           updatedAt: vulgarizedRow.updatedAt.toISOString(),
           startedAt: taskProgressRow.resolvedStartedAt.toISOString(),
           estimatedCompletionAt:

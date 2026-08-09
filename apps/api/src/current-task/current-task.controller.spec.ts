@@ -43,7 +43,9 @@ describe('CurrentTaskController', () => {
     const items = [
       {
         title: 'Fix bug',
-        description: null,
+        why: null,
+        impact: null,
+        status: null,
         updatedAt: '2026-07-20T10:00:00.000Z',
         startedAt: '2026-07-18T10:00:00.000Z',
         estimatedCompletionAt: null,

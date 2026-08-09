@@ -282,6 +282,9 @@
     "CurrentTaskCard": {
       "title": "Tâche en cours",
       "empty": "Votre développeur n'a pas encore commencé de tâche — revenez bientôt.",
+      "why": "Pourquoi",
+      "impact": "Impact pour vous",
+      "status": "État actuel",
       "startedAt": "Commencée {time}",
       "updatedAt": "Mis à jour {time}",
       "estimatedCompletion": "Fin prévue {time}",

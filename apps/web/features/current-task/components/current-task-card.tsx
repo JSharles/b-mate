@@ -236,17 +236,52 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
                         {item.title}
                       </h3>
                     </div>
-                    {item.description && (
-                      // max-w-prose caps line length at ~65 characters — the
-                      // card can span most of the page's width, and a
-                      // paragraph stretched that wide is measurably harder
-                      // to read than one wrapped to a comfortable measure.
-                      // text-foreground/80 (vs. text-muted-foreground) keeps
-                      // it visually secondary to the title while staying
-                      // legible on the frosted glass background.
-                      <p className="max-w-prose pl-12 text-sm leading-relaxed text-foreground/80">
-                        {item.description}
-                      </p>
+                    {(item.why || item.impact || item.status) && (
+                      // 2026-08-09: replaces the single description
+                      // paragraph with named, independently-optional
+                      // sections (docs/PRODUCT.md "Working notes") — a
+                      // client scans "why/impact/status" far faster than
+                      // one blob of text. Any section can be absent: the
+                      // vulgarization prompt is instructed to leave one out
+                      // rather than invent content the source doesn't
+                      // support (Constitution II, "Never fabricate"), so
+                      // this never assumes all three are present.
+                      // max-w-prose caps line length at ~65 characters —
+                      // text-foreground/80 (vs. text-muted-foreground)
+                      // keeps it visually secondary to the title while
+                      // staying legible on the frosted glass background.
+                      <div className="flex max-w-prose flex-col gap-2.5 pl-12">
+                        {item.why && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-semibold tracking-wide text-foreground/50 uppercase">
+                              {t("why")}
+                            </span>
+                            <p className="text-sm leading-relaxed text-foreground/80">
+                              {item.why}
+                            </p>
+                          </div>
+                        )}
+                        {item.impact && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-semibold tracking-wide text-foreground/50 uppercase">
+                              {t("impact")}
+                            </span>
+                            <p className="text-sm leading-relaxed text-foreground/80">
+                              {item.impact}
+                            </p>
+                          </div>
+                        )}
+                        {item.status && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-semibold tracking-wide text-foreground/50 uppercase">
+                              {t("status")}
+                            </span>
+                            <p className="text-sm leading-relaxed text-foreground/80">
+                              {item.status}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                   {/* Impeccable critique (P1/P3, 2026-07-25): matches

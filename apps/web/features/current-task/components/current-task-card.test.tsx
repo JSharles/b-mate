@@ -10,6 +10,9 @@ vi.mock("../hooks", () => ({
 const mockedUseCurrentTask = vi.mocked(useCurrentTask);
 
 const baseItem = {
+  why: null,
+  impact: null,
+  status: null,
   updatedAt: "2026-07-20T10:00:00.000Z",
   startedAt: "2026-07-18T10:00:00.000Z",
   estimatedCompletionAt: null,
@@ -40,13 +43,15 @@ describe("CurrentTaskCard", () => {
     expect(screen.getByText("empty")).toBeInTheDocument();
   });
 
-  it("shows each item's title and description, with no link to GitHub (clients never go there)", () => {
+  it("shows each item's title and every present section (why/impact/status), with no link to GitHub (clients never go there)", () => {
     mockedUseCurrentTask.mockReturnValue({
       data: [
         {
           ...baseItem,
           title: "Fix race condition",
-          description: "Details about the fix",
+          why: "Two people editing the same thing could silently lose one change.",
+          impact: "Nothing changes in how you use the product.",
+          status: "A first version was built and is being reviewed.",
         },
       ],
       isPending: false,
@@ -55,27 +60,53 @@ describe("CurrentTaskCard", () => {
     render(<CurrentTaskCard projectId="project-1" />);
 
     expect(screen.getByText("Fix race condition")).toBeInTheDocument();
-    expect(screen.getByText("Details about the fix")).toBeInTheDocument();
+    expect(
+      screen.getByText("Two people editing the same thing could silently lose one change."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Nothing changes in how you use the product.")).toBeInTheDocument();
+    expect(
+      screen.getByText("A first version was built and is being reviewed."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("why")).toBeInTheDocument();
+    expect(screen.getByText("impact")).toBeInTheDocument();
+    expect(screen.getByText("status")).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("shows the title with no description when the item has none (e.g. a draft issue)", () => {
+  it("shows the title with no sections when the item has why/impact/status all null (e.g. a draft issue)", () => {
     mockedUseCurrentTask.mockReturnValue({
-      data: [{ ...baseItem, title: "Draft: sketch the new flow", description: null }],
+      data: [{ ...baseItem, title: "Draft: sketch the new flow" }],
       isPending: false,
     } as unknown as ReturnType<typeof useCurrentTask>);
 
     render(<CurrentTaskCard projectId="project-1" />);
 
     expect(screen.getByText("Draft: sketch the new flow")).toBeInTheDocument();
+    expect(screen.queryByText("why")).not.toBeInTheDocument();
+    expect(screen.queryByText("impact")).not.toBeInTheDocument();
+    expect(screen.queryByText("status")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("shows only the sections that are actually present, not every one unconditionally", () => {
+    mockedUseCurrentTask.mockReturnValue({
+      data: [{ ...baseItem, title: "Task A", why: "Because reasons." }],
+      isPending: false,
+    } as unknown as ReturnType<typeof useCurrentTask>);
+
+    render(<CurrentTaskCard projectId="project-1" />);
+
+    expect(screen.getByText("why")).toBeInTheDocument();
+    expect(screen.getByText("Because reasons.")).toBeInTheDocument();
+    expect(screen.queryByText("impact")).not.toBeInTheDocument();
+    expect(screen.queryByText("status")).not.toBeInTheDocument();
   });
 
   it("shows more than one item when multiple are in progress", () => {
     mockedUseCurrentTask.mockReturnValue({
       data: [
-        { ...baseItem, title: "Task A", description: null },
-        { ...baseItem, title: "Task B", description: null },
+        { ...baseItem, title: "Task A" },
+        { ...baseItem, title: "Task B" },
       ],
       isPending: false,
     } as unknown as ReturnType<typeof useCurrentTask>);
@@ -88,7 +119,7 @@ describe("CurrentTaskCard", () => {
 
   it("shows the start date alongside the updated-at time", () => {
     mockedUseCurrentTask.mockReturnValue({
-      data: [{ ...baseItem, title: "Task A", description: null }],
+      data: [{ ...baseItem, title: "Task A" }],
       isPending: false,
     } as unknown as ReturnType<typeof useCurrentTask>);
 
@@ -101,7 +132,7 @@ describe("CurrentTaskCard", () => {
   // text at all when there's no estimate — never a misleading 0%/broken bar.
   it("shows no progress bar and no estimate text when estimatedCompletionAt is null", () => {
     mockedUseCurrentTask.mockReturnValue({
-      data: [{ ...baseItem, title: "Task A", description: null, estimatedCompletionAt: null }],
+      data: [{ ...baseItem, title: "Task A", estimatedCompletionAt: null }],
       isPending: false,
     } as unknown as ReturnType<typeof useCurrentTask>);
 
@@ -118,7 +149,6 @@ describe("CurrentTaskCard", () => {
         {
           ...baseItem,
           title: "Task A",
-          description: null,
           startedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
           estimatedCompletionAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           estimateConfidence: "medium",
@@ -141,7 +171,6 @@ describe("CurrentTaskCard", () => {
         {
           ...baseItem,
           title: "Task A",
-          description: null,
           startedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
           estimatedCompletionAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
           estimateConfidence: "low",
@@ -160,7 +189,7 @@ describe("CurrentTaskCard", () => {
 
   it("renders the task title as a heading, not a bare span (screen-reader heading navigation)", () => {
     mockedUseCurrentTask.mockReturnValue({
-      data: [{ ...baseItem, title: "Task A", description: null }],
+      data: [{ ...baseItem, title: "Task A" }],
       isPending: false,
     } as unknown as ReturnType<typeof useCurrentTask>);
 
@@ -175,7 +204,6 @@ describe("CurrentTaskCard", () => {
         {
           ...baseItem,
           title: "Task A",
-          description: null,
           startedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
           estimatedCompletionAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           estimateConfidence: "medium",
@@ -198,7 +226,6 @@ describe("CurrentTaskCard", () => {
         {
           ...baseItem,
           title: "Task A",
-          description: null,
           startedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
           estimatedCompletionAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
           estimateConfidence: "low",
@@ -219,7 +246,6 @@ describe("CurrentTaskCard", () => {
         {
           ...baseItem,
           title: "Task A",
-          description: null,
           startedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
           estimatedCompletionAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           estimateConfidence: "high",

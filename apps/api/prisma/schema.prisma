@@ -450,8 +450,16 @@ model VulgarizedTask {
   originalTitle       String  @map("original_title")
   originalDescription String? @map("original_description")
 
-  vulgarizedTitle       String? @map("vulgarized_title")
-  vulgarizedDescription String? @map("vulgarized_description")
+  vulgarizedTitle  String? @map("vulgarized_title")
+  // 2026-08-09: replaces the old single vulgarizedDescription blob — the
+  // client-facing card now shows named sections instead of one paragraph
+  // (docs/PRODUCT.md "Working notes"). Each stays independently nullable:
+  // the source material may not support a truthful answer for every
+  // section, and the vulgarization prompt is instructed to leave a section
+  // null rather than invent one (Constitution II, "Never fabricate").
+  vulgarizedWhy    String? @map("vulgarized_why")
+  vulgarizedImpact String? @map("vulgarized_impact")
+  vulgarizedStatus String? @map("vulgarized_status")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

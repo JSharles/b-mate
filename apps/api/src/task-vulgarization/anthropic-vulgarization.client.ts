@@ -31,17 +31,29 @@ const LANGUAGE_NAME: Record<Locale, string> = {
 // word-swapping), never fabricate, no added opinion/marketing, always short
 // regardless of source length. See docs/PRODUCT.md Product Principles
 // ("Never fabricate") and spec.md FR-002.
+//
+// 2026-08-09: restructured from one title+description pair into four named
+// sections (docs/PRODUCT.md "Working notes") — a client scans "what/why/
+// impact/status" far faster than one paragraph, provided each section is
+// only ever filled when the source genuinely supports it (never a plausible
+// guess to avoid an empty-looking card).
 function systemPrompt(locale: Locale): string {
-  return `You vulgarize a software development task's title and description for a client with no technical background — someone who has never written code and doesn't know what terms like "API", "race condition", "database", or "refactor" mean.
+  return `You vulgarize a software development task for a client with no technical background — someone who has never written code and doesn't know what terms like "API", "race condition", "database", or "refactor" mean.
 
 Vulgarizing is not the same as rephrasing. Swapping a technical term for a slightly simpler synonym is not enough — explain the real-world purpose or consequence of the work in plain terms a non-technical person immediately understands, the way a developer would explain it out loud to a friend outside the industry. For example, given a source about "a race condition in optimistic locking causing lost updates on task reassignment," do not write "a timing problem when saving changes" — that is still jargon in disguise. Instead write something like "when two people try to update the same thing at the same time, one person's change could silently get lost — we're fixing that so it can't happen anymore."
 
+Break your answer into four parts, each based only on what the source actually contains:
+- title: what the task is, in one short sentence. Always required.
+- why: why this work is necessary — the real problem or risk it addresses. Leave this null if the source gives you nothing genuine to say about motivation.
+- impact: what changes for the client, day to day — this is often "nothing visible" for internal/technical work, but only say so, or describe a concrete change, when the source actually supports that specific claim. Leave this null if you cannot say anything truthful either way.
+- status: the current state of the work in plain language, beyond just "it's being worked on" (e.g. a first version exists and is being reviewed). Leave this null unless the source actually describes progress like that.
+
 Rules:
 - Write your response in ${LANGUAGE_NAME[locale]}, regardless of what language the source is written in.
-- Never invent facts, statuses, dates, priorities, or details that are not present in the source. Vulgarizing changes HOW something is explained, never WHAT is being described.
-- Always keep the result short, no matter how long or technical the source is: the title is one short sentence, the description is at most two or three short sentences. Summarize down to the essence — do not paraphrase line by line.
+- Never invent facts, statuses, dates, priorities, or details that are not present in the source. Vulgarizing changes HOW something is explained, never WHAT is being described. When the source doesn't support a section, leave it null — never fill the gap with a plausible-sounding guess.
+- Keep every section short, no matter how long or technical the source is: one short sentence for the title, at most one or two short sentences for each other section. Summarize down to the essence — do not paraphrase line by line.
 - Do not add opinions, reassurance, or marketing language that isn't present in the source.
-- Respond only by calling the ${TOOL_NAME} tool with the rewritten title and description.`;
+- Respond only by calling the ${TOOL_NAME} tool.`;
 }
 
 export interface VulgarizationInput {
@@ -80,14 +92,17 @@ export class AnthropicVulgarizationClient {
       tools: [
         {
           name: TOOL_NAME,
-          description: 'Submit the plain-language rewrite of the task.',
+          description:
+            'Submit the plain-language rewrite of the task, broken into sections.',
           input_schema: {
             type: 'object',
             properties: {
               title: { type: 'string' },
-              description: { type: ['string', 'null'] },
+              why: { type: ['string', 'null'] },
+              impact: { type: ['string', 'null'] },
+              status: { type: ['string', 'null'] },
             },
-            required: ['title', 'description'],
+            required: ['title', 'why', 'impact', 'status'],
           },
         },
       ],
