@@ -364,7 +364,7 @@
     "linkedin": "LinkedIn",
     "malt": "Malt",
     "website": "Site web",
-    "submit": "Enregistrer",
-    "submitPending": "Enregistrement…"
+    "save": "Enregistrer",
+    "cancel": "Annuler"
   }
 }

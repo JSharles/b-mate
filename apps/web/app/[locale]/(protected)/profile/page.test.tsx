@@ -13,8 +13,8 @@ vi.mock("@/i18n/navigation", () => ({
   useRouter: () => ({ back: mockedBack }),
 }));
 
-vi.mock("@/features/auth/components/profile-form", () => ({
-  ProfileForm: () => <div>profile-form</div>,
+vi.mock("@/features/auth/components/profile-fields", () => ({
+  ProfileFields: () => <div>profile-fields</div>,
 }));
 
 const mockedUseCurrentUser = vi.mocked(useCurrentUser);
@@ -35,17 +35,18 @@ describe("ProfilePage", () => {
     expect(container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument();
   });
 
-  it("renders the user's name and email once loaded, plus the edit form", () => {
+  it("renders the user's name, email, and avatar initials once loaded, plus the editable fields", () => {
     mockedUseCurrentUser.mockReturnValue({
       isPending: false,
-      data: { firstName: "Jean", lastName: "Charles", email: "jc@example.com" },
+      data: { firstName: "Jean", lastName: "Charles", email: "jc@example.com", image: null },
     } as unknown as ReturnType<typeof useCurrentUser>);
 
     render(<ProfilePage />);
 
     expect(screen.getByText("Jean Charles")).toBeInTheDocument();
     expect(screen.getByText("jc@example.com")).toBeInTheDocument();
-    expect(screen.getByText("profile-form")).toBeInTheDocument();
+    expect(screen.getByText("JC")).toBeInTheDocument();
+    expect(screen.getByText("profile-fields")).toBeInTheDocument();
   });
 
   it("navigates back to wherever the user came from when Back is clicked", async () => {
