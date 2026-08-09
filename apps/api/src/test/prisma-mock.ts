@@ -4,6 +4,7 @@ export type PrismaMock = {
   user: {
     findUnique: jest.Mock;
     create: jest.Mock;
+    update: jest.Mock;
   };
   session: {
     create: jest.Mock;
@@ -84,6 +85,7 @@ export function createPrismaMock(): PrismaMock {
     user: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
     session: {
       create: jest.fn(),

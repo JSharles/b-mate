@@ -45,7 +45,10 @@ function createResponseMock(): jest.Mocked<
 
 describe('AuthController', () => {
   let authService: jest.Mocked<
-    Pick<AuthService, 'login' | 'logout' | 'findOrCreateFromGitHub'>
+    Pick<
+      AuthService,
+      'login' | 'logout' | 'findOrCreateFromGitHub' | 'updateProfile'
+    >
   >;
   let githubOauthClient: jest.Mocked<
     Pick<
@@ -63,6 +66,7 @@ describe('AuthController', () => {
       login: jest.fn(),
       logout: jest.fn(),
       findOrCreateFromGitHub: jest.fn(),
+      updateProfile: jest.fn(),
     };
     githubOauthClient = {
       buildAuthorizeUrl: jest.fn(),
@@ -126,6 +130,29 @@ describe('AuthController', () => {
 
     expect(result).not.toHaveProperty('passwordHash');
     expect(result).toMatchObject({ id: 'user-1', email: 'jc@example.com' });
+  });
+
+  it('updateMe delegates to the service with the current user and dto, and returns the result without the password hash', async () => {
+    authService.updateProfile.mockResolvedValue({
+      ...fakeUser,
+      roleTitle: 'Full-stack developer',
+      linkedin: 'in/jc',
+    });
+
+    const result = await controller.updateMe(fakeUser, {
+      roleTitle: 'Full-stack developer',
+      linkedin: 'in/jc',
+    });
+
+    expect(authService.updateProfile).toHaveBeenCalledWith('user-1', {
+      roleTitle: 'Full-stack developer',
+      linkedin: 'in/jc',
+    });
+    expect(result).not.toHaveProperty('passwordHash');
+    expect(result).toMatchObject({
+      roleTitle: 'Full-stack developer',
+      linkedin: 'in/jc',
+    });
   });
 
   describe('githubStart', () => {

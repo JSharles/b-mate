@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/shared/lib/api-client";
-import { login, logout } from "./api";
+import { login, logout, updateProfile } from "./api";
 
 vi.mock("@/shared/lib/api-client", () => ({
   apiFetch: vi.fn(),
@@ -28,5 +28,14 @@ describe("features/auth/api", () => {
     await logout();
 
     expect(mockedApiFetch).toHaveBeenCalledWith("/auth/logout", { method: "POST" });
+  });
+
+  it("updateProfile patches /auth/me", async () => {
+    mockedApiFetch.mockResolvedValue({ id: "1" });
+    const data = { roleTitle: "Lead developer" };
+
+    await updateProfile(data);
+
+    expect(mockedApiFetch).toHaveBeenCalledWith("/auth/me", { method: "PATCH", body: data });
   });
 });

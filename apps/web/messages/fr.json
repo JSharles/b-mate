@@ -354,5 +354,16 @@
   "Toasts": {
     "loggedOut": "Déconnecté",
     "genericError": "Une erreur est survenue"
+  },
+  "Profile": {
+    "back": "Retour",
+    "roleTitle": "Intitulé de poste",
+    "phone": "Téléphone",
+    "github": "GitHub",
+    "linkedin": "LinkedIn",
+    "malt": "Malt",
+    "website": "Site web",
+    "submit": "Enregistrer",
+    "submitPending": "Enregistrement…"
   }
 }

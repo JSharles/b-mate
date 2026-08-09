@@ -354,5 +354,16 @@
   "Toasts": {
     "loggedOut": "Logged out",
     "genericError": "Something went wrong"
+  },
+  "Profile": {
+    "back": "Back",
+    "roleTitle": "Role title",
+    "phone": "Phone",
+    "github": "GitHub",
+    "linkedin": "LinkedIn",
+    "malt": "Malt",
+    "website": "Website",
+    "submit": "Save",
+    "submitPending": "Saving…"
   }
 }

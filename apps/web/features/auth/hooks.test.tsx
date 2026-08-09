@@ -3,12 +3,13 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { currentUserKey } from "@/shared/hooks/use-current-user";
-import { login, logout } from "./api";
-import { useLogin, useLogout } from "./hooks";
+import { login, logout, updateProfile } from "./api";
+import { useLogin, useLogout, useUpdateProfile } from "./hooks";
 
 vi.mock("./api", () => ({
   login: vi.fn(),
   logout: vi.fn(),
+  updateProfile: vi.fn(),
 }));
 
 const push = vi.fn();
@@ -18,6 +19,7 @@ vi.mock("@/i18n/navigation", () => ({
 
 const mockedLogin = vi.mocked(login);
 const mockedLogout = vi.mocked(logout);
+const mockedUpdateProfile = vi.mocked(updateProfile);
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -69,5 +71,20 @@ describe("auth hooks", () => {
     expect(queryClient.getQueryData(currentUserKey)).toBeNull();
     expect(queryClient.getQueryData(["projects", "1"])).toBeUndefined();
     expect(push).toHaveBeenCalledWith("/");
+  });
+
+  it("useUpdateProfile replaces the cached user with the mutation's response", async () => {
+    const updatedUser = { id: "1", firstName: "Jean", roleTitle: "Lead developer" } as never;
+    mockedUpdateProfile.mockResolvedValue(updatedUser);
+    const { Wrapper, queryClient } = createWrapper();
+    queryClient.setQueryData(currentUserKey, fakeUser);
+
+    const { result } = renderHook(() => useUpdateProfile(), { wrapper: Wrapper });
+    act(() => {
+      result.current.mutate({ roleTitle: "Lead developer" });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(queryClient.getQueryData(currentUserKey)).toEqual(updatedUser);
   });
 });

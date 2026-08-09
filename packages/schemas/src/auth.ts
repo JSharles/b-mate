@@ -18,6 +18,9 @@ export const UserSchema = z.object({
   // for client accounts and pre-existing password-based developer accounts.
   githubId: z.string().nullable(),
   socials: z.string().nullable(),
+  linkedin: z.string().nullable(),
+  malt: z.string().nullable(),
+  website: z.string().nullable(),
   roleTitle: z.string().nullable(),
   status: z.string().nullable(),
   createdAt: z.string(),
@@ -30,3 +33,15 @@ export const LoginRequestSchema = z.object({
   password: z.string().min(1),
 });
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
+
+// PATCH /auth/me — a user's own contact/social fields. Never
+// firstName/lastName/email here (see AuthService.updateProfile).
+export const UpdateProfileRequestSchema = z.object({
+  roleTitle: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  github: z.string().nullable().optional(),
+  linkedin: z.string().nullable().optional(),
+  malt: z.string().nullable().optional(),
+  website: z.string().nullable().optional(),
+});
+export type UpdateProfileRequest = z.infer<typeof UpdateProfileRequestSchema>;
