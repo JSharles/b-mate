@@ -15,5 +15,8 @@ export const ProjectMemberSchema = z.object({
   roleTitle: z.string().nullable(),
   phone: z.string().nullable(),
   github: z.string().nullable(),
+  linkedin: z.string().nullable(),
+  malt: z.string().nullable(),
+  website: z.string().nullable(),
 });
 export type ProjectMember = z.infer<typeof ProjectMemberSchema>;

@@ -15,6 +15,10 @@ const fakeProject = {
   title: 'My project',
   status: null,
   progressPercentage: null,
+  meetingUrl: null,
+  timezone: null,
+  dateFormat: null,
+  language: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -181,9 +185,111 @@ describe('ProjectsService', () => {
 
       expect(prisma.project.update).toHaveBeenCalledWith({
         where: { id: 'project-1' },
-        data: { title: 'New title' },
+        data: {
+          title: 'New title',
+          meetingUrl: undefined,
+          timezone: undefined,
+          dateFormat: undefined,
+          language: undefined,
+        },
       });
       expect(result.title).toBe('New title');
+    });
+
+    it('sets the meeting link when the member is a contributor', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        id: 'member-1',
+        projectId: 'project-1',
+        userId: 'user-1',
+        role: 'contributor',
+        isAdmin: true,
+        createdAt: new Date(),
+      });
+      prisma.project.update.mockResolvedValue({
+        ...fakeProject,
+        meetingUrl: 'https://meet.google.com/abc-defg-hij',
+      });
+
+      const result = await service.update('user-1', 'project-1', {
+        meetingUrl: 'https://meet.google.com/abc-defg-hij',
+      });
+
+      expect(prisma.project.update).toHaveBeenCalledWith({
+        where: { id: 'project-1' },
+        data: {
+          title: undefined,
+          meetingUrl: 'https://meet.google.com/abc-defg-hij',
+          timezone: undefined,
+          dateFormat: undefined,
+          language: undefined,
+        },
+      });
+      expect(result.meetingUrl).toBe('https://meet.google.com/abc-defg-hij');
+    });
+
+    it('clears the meeting link when explicitly set to null', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        id: 'member-1',
+        projectId: 'project-1',
+        userId: 'user-1',
+        role: 'contributor',
+        isAdmin: true,
+        createdAt: new Date(),
+      });
+      prisma.project.update.mockResolvedValue({
+        ...fakeProject,
+        meetingUrl: null,
+      });
+
+      await service.update('user-1', 'project-1', { meetingUrl: null });
+
+      expect(prisma.project.update).toHaveBeenCalledWith({
+        where: { id: 'project-1' },
+        data: {
+          title: undefined,
+          meetingUrl: null,
+          timezone: undefined,
+          dateFormat: undefined,
+          language: undefined,
+        },
+      });
+    });
+
+    it('sets the timezone, date format, and language when the member is a contributor', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue({
+        id: 'member-1',
+        projectId: 'project-1',
+        userId: 'user-1',
+        role: 'contributor',
+        isAdmin: true,
+        createdAt: new Date(),
+      });
+      prisma.project.update.mockResolvedValue({
+        ...fakeProject,
+        timezone: 'Europe/Paris',
+        dateFormat: 'dmy',
+        language: 'fr',
+      });
+
+      const result = await service.update('user-1', 'project-1', {
+        timezone: 'Europe/Paris',
+        dateFormat: 'dmy',
+        language: 'fr',
+      });
+
+      expect(prisma.project.update).toHaveBeenCalledWith({
+        where: { id: 'project-1' },
+        data: {
+          title: undefined,
+          meetingUrl: undefined,
+          timezone: 'Europe/Paris',
+          dateFormat: 'dmy',
+          language: 'fr',
+        },
+      });
+      expect(result.timezone).toBe('Europe/Paris');
+      expect(result.dateFormat).toBe('dmy');
+      expect(result.language).toBe('fr');
     });
   });
 
@@ -202,6 +308,9 @@ describe('ProjectsService', () => {
             roleTitle: null,
             phone: null,
             github: null,
+            linkedin: null,
+            malt: null,
+            website: null,
           },
         },
       ]);
@@ -225,6 +334,9 @@ describe('ProjectsService', () => {
           roleTitle: null,
           phone: null,
           github: null,
+          linkedin: null,
+          malt: null,
+          website: null,
         },
       ]);
     });
@@ -246,6 +358,9 @@ describe('ProjectsService', () => {
             roleTitle: null,
             phone: null,
             github: null,
+            linkedin: null,
+            malt: null,
+            website: null,
           },
         },
       ]);

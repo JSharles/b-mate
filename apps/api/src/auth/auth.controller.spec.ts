@@ -24,6 +24,9 @@ const fakeUser: User = {
   github: null,
   githubId: null,
   socials: null,
+  linkedin: null,
+  malt: null,
+  website: null,
   roleTitle: null,
   status: null,
   createdAt: new Date(),
@@ -307,7 +310,7 @@ describe('AuthController', () => {
         } as unknown as Request;
       }
 
-      it('on success sets the board_oauth_token cookie and redirects to the project with connectBoard=1', async () => {
+      it('on success sets the board_oauth_token cookie and redirects to the project page with connectBoard=1', async () => {
         const req = reqWithBoardFlowCookie('matching-state', 'fr');
         const res = createResponseMock();
         githubOauthClient.exchangeCodeForToken.mockResolvedValue(
@@ -333,7 +336,7 @@ describe('AuthController', () => {
         );
       });
 
-      it('redirects to the project with an error when the exchange fails, and sets no board_oauth_token cookie', async () => {
+      it('redirects to the project page with an error when the exchange fails, and sets no board_oauth_token cookie', async () => {
         const req = reqWithBoardFlowCookie('matching-state', 'en');
         const res = createResponseMock();
         githubOauthClient.exchangeCodeForToken.mockRejectedValue(

@@ -12,10 +12,11 @@ import {
 export const boardConnectionKey = (projectId: string) =>
   ["projects", projectId, "board-connection"] as const;
 
-export function useBoardConnection(projectId: string) {
+export function useBoardConnection(projectId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: boardConnectionKey(projectId),
     queryFn: () => getBoardConnection(projectId),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -42,11 +43,15 @@ export function useConnectBoard(projectId: string) {
   });
 }
 
+// Error is surfaced inline in the disconnect confirmation dialog (see
+// BoardConnectionCard), not as a generic toast — skipGlobalErrorToast opts
+// this out of that default.
 export function useDisconnectBoard(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: () => disconnectBoard(projectId),
+    meta: { skipGlobalErrorToast: true },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: boardConnectionKey(projectId) });
     },

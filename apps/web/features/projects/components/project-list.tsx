@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderKanban } from "lucide-react";
+import { FolderKanban, Video } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import type { Project } from "schemas";
@@ -29,6 +29,8 @@ function CreatedAt({ createdAt }: { createdAt: string }) {
 }
 
 function ProjectCard({ project }: { project: Project }) {
+  const t = useTranslations("Home");
+
   return (
     <Link key={project.id} href={`/projects/${project.id}`}>
       <Card className="h-full gap-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
@@ -46,6 +48,26 @@ function ProjectCard({ project }: { project: Project }) {
           <CardTitle className="text-lg">{project.title}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
+          {project.meetingUrl ? (
+            // Not a nested <a> — the whole card is already a Link, and a
+            // real anchor here would be invalid/inaccessible HTML nested
+            // inside another. stopPropagation keeps this click from also
+            // triggering the card's own navigation to the project page.
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-fit"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                window.open(project.meetingUrl ?? "", "_blank", "noopener,noreferrer");
+              }}
+            >
+              <Video className="size-4" />
+              {t("joinMeeting")}
+            </Button>
+          ) : null}
           {project.createdAt ? <CreatedAt createdAt={project.createdAt} /> : null}
           {project.progressPercentage != null ? (
             <div className="flex flex-col gap-1.5">

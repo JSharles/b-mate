@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useSearchParams } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/shared/lib/api-client";
 import { useBoardConnection, useDisconnectBoard } from "../hooks";
 import { BoardConnectionCard } from "./board-connection-card";
 
@@ -40,11 +41,16 @@ const fakeConnection = {
   needsReconnect: false,
 };
 
-function stubDisconnect() {
+function stubDisconnect(overrides: Record<string, unknown> = {}) {
   const mutate = vi.fn();
+  const reset = vi.fn();
   mockedUseDisconnectBoard.mockReturnValue({
     mutate,
+    reset,
     isPending: false,
+    isError: false,
+    error: null,
+    ...overrides,
   } as unknown as ReturnType<typeof useDisconnectBoard>);
   return mutate;
 }
@@ -141,7 +147,7 @@ describe("BoardConnectionCard", () => {
     expect(screen.getByTestId("connect-board-dialog")).toHaveTextContent("open");
   });
 
-  it("disconnects the board when the disconnect button is clicked", async () => {
+  it("asks for confirmation before disconnecting, and does not disconnect on its own", async () => {
     mockedUseBoardConnection.mockReturnValue({
       data: fakeConnection,
       isPending: false,
@@ -152,6 +158,97 @@ describe("BoardConnectionCard", () => {
     render(<BoardConnectionCard projectId="project-1" />);
     await user.click(screen.getByRole("button", { name: "disconnect" }));
 
+    expect(screen.getByText("disconnectConfirmTitle")).toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it("disconnects the board only after confirming in the alert dialog", async () => {
+    mockedUseBoardConnection.mockReturnValue({
+      data: fakeConnection,
+      isPending: false,
+    } as unknown as ReturnType<typeof useBoardConnection>);
+    const mutate = stubDisconnect();
+    const user = userEvent.setup();
+
+    render(<BoardConnectionCard projectId="project-1" />);
+    await user.click(screen.getByRole("button", { name: "disconnect" }));
+    await user.click(screen.getByRole("button", { name: "disconnectConfirmAction" }));
+
     expect(mutate).toHaveBeenCalled();
+  });
+
+  it("closes the confirmation dialog only once the disconnect mutation succeeds", async () => {
+    mockedUseBoardConnection.mockReturnValue({
+      data: fakeConnection,
+      isPending: false,
+    } as unknown as ReturnType<typeof useBoardConnection>);
+    stubDisconnect({
+      mutate: vi.fn((_data: unknown, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.()),
+    });
+    const user = userEvent.setup();
+
+    render(<BoardConnectionCard projectId="project-1" />);
+    await user.click(screen.getByRole("button", { name: "disconnect" }));
+    expect(screen.getByText("disconnectConfirmTitle")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "disconnectConfirmAction" }));
+
+    expect(screen.queryByText("disconnectConfirmTitle")).not.toBeInTheDocument();
+  });
+
+  it("keeps the confirmation open and shows the error when the disconnect mutation fails", async () => {
+    mockedUseBoardConnection.mockReturnValue({
+      data: fakeConnection,
+      isPending: false,
+    } as unknown as ReturnType<typeof useBoardConnection>);
+    stubDisconnect({ isError: true, error: new ApiError("GitHub rejected the request", 502) });
+    const user = userEvent.setup();
+
+    render(<BoardConnectionCard projectId="project-1" />);
+    await user.click(screen.getByRole("button", { name: "disconnect" }));
+
+    expect(screen.getByText("disconnectConfirmTitle")).toBeInTheDocument();
+    expect(screen.getByText("GitHub rejected the request")).toBeInTheDocument();
+  });
+
+  it("does not disconnect the board when the confirmation is cancelled", async () => {
+    mockedUseBoardConnection.mockReturnValue({
+      data: fakeConnection,
+      isPending: false,
+    } as unknown as ReturnType<typeof useBoardConnection>);
+    const mutate = stubDisconnect();
+    const user = userEvent.setup();
+
+    render(<BoardConnectionCard projectId="project-1" />);
+    await user.click(screen.getByRole("button", { name: "disconnect" }));
+    await user.click(screen.getByRole("button", { name: "disconnectConfirmCancel" }));
+
+    expect(mutate).not.toHaveBeenCalled();
+    expect(screen.queryByText("disconnectConfirmTitle")).not.toBeInTheDocument();
+  });
+
+  it("disables Cancel and blocks Escape while the disconnect mutation is pending, so a running request always has somewhere to report to", async () => {
+    mockedUseBoardConnection.mockReturnValue({
+      data: fakeConnection,
+      isPending: false,
+    } as unknown as ReturnType<typeof useBoardConnection>);
+    stubDisconnect();
+    const user = userEvent.setup();
+
+    const { rerender } = render(<BoardConnectionCard projectId="project-1" />);
+    await user.click(screen.getByRole("button", { name: "disconnect" }));
+    expect(screen.getByText("disconnectConfirmTitle")).toBeInTheDocument();
+
+    // Simulate the mutation now being in flight (reset() cannot cancel the
+    // underlying request, so Cancel and Escape must stay blocked for as
+    // long as isPending is true, not just the Action button).
+    stubDisconnect({ isPending: true });
+    rerender(<BoardConnectionCard projectId="project-1" />);
+
+    expect(screen.getByRole("button", { name: "disconnectConfirmCancel" })).toBeDisabled();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByText("disconnectConfirmTitle")).toBeInTheDocument();
   });
 });

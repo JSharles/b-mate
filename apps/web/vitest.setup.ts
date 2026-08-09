@@ -17,6 +17,23 @@ if (typeof window !== "undefined" && !window.matchMedia) {
   });
 }
 
+// jsdom doesn't implement these — needed by Radix's Select (first used by
+// ProjectPreferences) to open/scroll its popover without throwing.
+if (typeof Element !== "undefined") {
+  if (!Element.prototype.hasPointerCapture) {
+    Element.prototype.hasPointerCapture = () => false;
+  }
+  if (!Element.prototype.setPointerCapture) {
+    Element.prototype.setPointerCapture = () => {};
+  }
+  if (!Element.prototype.releasePointerCapture) {
+    Element.prototype.releasePointerCapture = () => {};
+  }
+  if (!Element.prototype.scrollIntoView) {
+    Element.prototype.scrollIntoView = () => {};
+  }
+}
+
 // Global next-intl mock: translations resolve to their raw key rather than
 // real copy. Keeps component tests decoupled from actual wording (a
 // translation edit shouldn't break assertions) — tests assert against keys,

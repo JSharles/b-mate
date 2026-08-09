@@ -160,6 +160,10 @@ export class AuthController {
   ): Promise<void> {
     const webOrigin = process.env.WEB_ORIGIN;
     const { locale, projectId } = oauthFlow;
+    // 2026-08-09: the dedicated Settings route was folded back into the
+    // main project page (BoardConnectionCard now renders there directly,
+    // as one of several linear sections) — the callback must land back on
+    // the screen that actually renders it.
     const projectUrl = `${webOrigin}/${locale}/projects/${projectId}`;
 
     let accessToken: string;
