@@ -15,7 +15,6 @@ import { useProject } from "@/features/projects/hooks";
 import { Button } from "@/shared/components/ui/button";
 import { SettingsSectionHeading } from "@/shared/components/settings-section-heading";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { cn } from "@/shared/lib/utils";
 import { ClientMainTabs } from "./client-main-tabs";
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
@@ -48,14 +47,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const isContributor = project.role === "contributor";
 
   return (
-    // h-full only for the client branch, which needs it: ClientMainTabs'
-    // row below uses lg:flex-1 to fill the rest of the viewport, which only
-    // works if this ancestor actually has a definite height to grow into.
-    // The contributor branch is a plain top-to-bottom scrolling settings
-    // page now — forcing it into the same fixed viewport height served no
-    // purpose and left every section fighting for a fixed height it didn't
-    // need (the actual cause of Team's content getting squeezed/clipped).
-    <div className={cn("flex w-full flex-col gap-6", !isContributor && "h-full")}>
+    // Both branches are natural-height now, not forced to fill the
+    // viewport — see the client branch's own comment below for why the
+    // last remnant of that (ClientMainTabs' lg:h-full) was dropped too.
+    <div className="flex w-full flex-col gap-6">
       <div className="flex shrink-0 items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">{project.title}</h1>
         {/* Contributor-only: on their page the meeting link is just one
@@ -107,28 +102,33 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           <ProjectPreferences projectId={id} />
         </div>
       ) : (
-        // Redesigned 2026-08-09, second pass (previous version reported:
+        // Redesigned 2026-08-09, third pass (previous version reported:
         // Resources buried in a nested 1fr sub-cell, squeezed illegible on
         // a shorter viewport, and outranked in visual weight by two
-        // "coming soon" placeholders with zero real content). That first
-        // redesign fixed the squeeze but still framed Resources as a
-        // secondary card next to Current Task's hero — user feedback: with
-        // real content to show, the Bento-of-small-cards shape itself was
-        // wrong, not just its proportions. Current Task and the AI-detected
+        // "coming soon" placeholders with zero real content). A second pass
+        // fixed the squeeze but still framed Resources as a secondary card
+        // next to Current Task's hero — Current Task and the AI-detected
         // document categories (Roadmap resurfaces here too, once a
         // developer writes/uploads one — it isn't a separate feature
-        // anymore) now live together as tabs in one containerless,
-        // full-height surface — Current Task first and open by default, so
-        // it keeps the positional weight its Signature Card treatment
-        // earns. Developer + Team + the Meetings placeholder move into a
-        // narrow sidebar (self-start: it must not stretch to match the
-        // tabs column's full height).
-        <div className="grid min-h-0 grid-cols-1 gap-4 lg:flex-1 lg:grid-cols-3">
+        // anymore) now live together as tabs in one containerless surface,
+        // Current Task first and open by default. That second pass also
+        // forced the tabs area to fill the full remaining viewport height
+        // (lg:h-full) regardless of content — fine for a tab with many
+        // resources, but with a real (short) vulgarized task write-up this
+        // left the Signature Card's glass panel mostly empty, its glow
+        // blobs diluted across a huge dead zone below the actual text (seen
+        // live once a board was actually connected). Dropped in favor of
+        // natural content height, same fix already applied to the
+        // contributor branch above for the same reason. Developer + Team +
+        // the Meetings placeholder stay in a narrow sidebar (self-start:
+        // it must not stretch to match whatever height the tabs column
+        // ends up at).
+        <div className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="flex flex-col gap-4 lg:self-start">
             <TeamPanel projectId={id} isAdmin={project.isAdmin} />
             <MeetingCard projectId={id} />
           </div>
-          <ClientMainTabs projectId={id} className="lg:col-span-2 lg:h-full" />
+          <ClientMainTabs projectId={id} className="lg:col-span-2" />
         </div>
       )}
     </div>
