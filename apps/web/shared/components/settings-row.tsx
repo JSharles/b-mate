@@ -17,8 +17,8 @@ export function SettingsRow({
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-border py-4 last:border-b-0">
-      <div className="flex flex-col gap-0.5 text-sm">
+    <div className="flex flex-col gap-3 border-b border-border py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="flex min-w-0 flex-col gap-0.5 text-sm">
         <span className="font-medium text-foreground">{title}</span>
         {description && <div className="text-muted-foreground">{description}</div>}
       </div>

@@ -40,7 +40,7 @@ export function ProjectPreferences({ projectId }: { projectId: string }) {
           value={project?.timezone ?? undefined}
           onValueChange={(value) => update.mutate({ timezone: value })}
         >
-          <SelectTrigger size="sm" className="w-56">
+          <SelectTrigger size="sm" className="w-full sm:w-56">
             <SelectValue placeholder={t("timezonePlaceholder")} />
           </SelectTrigger>
           <SelectContent>
@@ -58,7 +58,7 @@ export function ProjectPreferences({ projectId }: { projectId: string }) {
           value={project?.dateFormat ?? undefined}
           onValueChange={(value) => update.mutate({ dateFormat: value as ProjectDateFormat })}
         >
-          <SelectTrigger size="sm" className="w-56">
+          <SelectTrigger size="sm" className="w-full sm:w-56">
             <SelectValue placeholder={t("dateFormatPlaceholder")} />
           </SelectTrigger>
           <SelectContent>
@@ -76,7 +76,7 @@ export function ProjectPreferences({ projectId }: { projectId: string }) {
           value={project?.language ?? undefined}
           onValueChange={(value) => update.mutate({ language: value as ProjectLanguage })}
         >
-          <SelectTrigger size="sm" className="w-40">
+          <SelectTrigger size="sm" className="w-full sm:w-40">
             <SelectValue placeholder={t("languagePlaceholder")} />
           </SelectTrigger>
           <SelectContent>

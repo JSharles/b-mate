@@ -88,7 +88,7 @@ describe("ConnectBoardDialog", () => {
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
     expect(
-      await screen.findByRole("button", { name: /acme.*Roadmap/ }),
+      await screen.findByRole("radio", { name: /acme.*Roadmap/ }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "continueWithGithub" })).not.toBeInTheDocument();
   });
@@ -122,7 +122,7 @@ describe("ConnectBoardDialog", () => {
     const user = userEvent.setup();
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
-    await user.click(await screen.findByRole("button", { name: /acme.*Roadmap/ }));
+    await user.click(await screen.findByRole("radio", { name: /acme.*Roadmap/ }));
     await user.click(screen.getByRole("button", { name: "connectSubmit" }));
 
     expect(connect.mutate).toHaveBeenCalledWith(
@@ -150,8 +150,8 @@ describe("ConnectBoardDialog", () => {
     const user = userEvent.setup();
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
-    await user.click(await screen.findByRole("button", { name: /acme.*Roadmap/ }));
-    await user.click(screen.getByRole("button", { name: "estimateUnitHours" }));
+    await user.click(await screen.findByRole("radio", { name: /acme.*Roadmap/ }));
+    await user.click(screen.getByRole("radio", { name: "estimateUnitHours" }));
     await user.click(screen.getByRole("button", { name: "connectSubmit" }));
 
     expect(connect.mutate).toHaveBeenCalledWith(
@@ -171,7 +171,7 @@ describe("ConnectBoardDialog", () => {
     mockedUsePreview.mockReturnValue(preview);
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
-    await screen.findByRole("button", { name: /acme.*Roadmap/ });
+    await screen.findByRole("radio", { name: /acme.*Roadmap/ });
 
     expect(screen.getByRole("button", { name: "connectSubmit" })).toBeDisabled();
   });
@@ -205,7 +205,7 @@ describe("ConnectBoardDialog", () => {
     } as unknown as ReturnType<typeof useConnectBoard>);
 
     render(<ConnectBoardDialog projectId="project-1" open={true} onOpenChange={() => {}} />);
-    await screen.findByRole("button", { name: /acme.*Roadmap/ });
+    await screen.findByRole("radio", { name: /acme.*Roadmap/ });
 
     expect(screen.getByText("You do not have access to this board")).toBeInTheDocument();
   });

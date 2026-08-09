@@ -51,8 +51,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     // viewport — see the client branch's own comment below for why the
     // last remnant of that (ClientMainTabs' lg:h-full) was dropped too.
     <div className="flex w-full flex-col gap-6">
-      <div className="flex shrink-0 items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{project.title}</h1>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-4">
+        <h1 className="min-w-0 truncate text-2xl font-semibold">{project.title}</h1>
         {/* Contributor-only: on their page the meeting link is just one
             compact row in a long settings list (MeetingLinkCard), easy to
             miss, so this header shortcut earns its place. On the client

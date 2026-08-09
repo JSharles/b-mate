@@ -87,9 +87,9 @@ export function TeamPanel({
     <Card className={cn("overflow-hidden", className)}>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
-          <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             {t("developer")}
-          </h3>
+          </h2>
           {isPending ? (
             <div className="flex flex-col items-center gap-2">
               <Skeleton className="size-20 rounded-full" />
@@ -132,9 +132,9 @@ export function TeamPanel({
         </div>
 
         <div className="flex flex-col gap-2 border-t pt-4">
-          <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             {t("team")}
-          </h3>
+          </h2>
           {isPending ? (
             <Skeleton className="h-8 w-24" />
           ) : members && members.length > 0 ? (

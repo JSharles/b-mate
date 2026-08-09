@@ -195,7 +195,7 @@ describe("CurrentTaskCard", () => {
 
     render(<CurrentTaskCard projectId="project-1" />);
 
-    expect(screen.getByRole("heading", { level: 3, name: "Task A" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Task A" })).toBeInTheDocument();
   });
 
   it("exposes the progress bar's percentage to assistive tech via role=progressbar", () => {

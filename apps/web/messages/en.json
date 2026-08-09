@@ -298,7 +298,8 @@
         "high": "This estimate is reliable.",
         "medium": "This estimate is a reasonable approximation.",
         "low": "This estimate is uncertain — the date could change."
-      }
+      },
+      "progressLabel": "Estimated completion progress"
     },
     "TeamPanel": {
       "developer": "Developer",

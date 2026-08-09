@@ -109,7 +109,7 @@ function CategoryChips({
               <Button
                 type="button"
                 variant="ghost"
-                size="xs"
+                size="sm"
                 disabled={pending}
                 onClick={() =>
                   approve.mutate({
@@ -123,7 +123,7 @@ function CategoryChips({
               <Button
                 type="button"
                 variant="ghost"
-                size="xs"
+                size="sm"
                 className="text-destructive hover:text-destructive"
                 disabled={pending}
                 onClick={() =>

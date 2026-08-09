@@ -298,7 +298,8 @@
         "high": "Cette estimation est fiable.",
         "medium": "Cette estimation est une approximation raisonnable.",
         "low": "Cette estimation est incertaine — la date pourrait changer."
-      }
+      },
+      "progressLabel": "Progression de l'estimation"
     },
     "TeamPanel": {
       "developer": "Développeur",
