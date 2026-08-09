@@ -18,7 +18,9 @@ const membership = {
 
 const item = {
   title: 'Securing your logins',
-  description: 'We made sign-in safer for everyone.',
+  why: 'Some accounts could stay accessible longer than they should.',
+  impact: 'Nothing changes in how you use the product.',
+  status: 'A first version was built and is being reviewed.',
   updatedAt: '2026-07-20T10:00:00.000Z',
   startedAt: '2026-07-18T10:00:00.000Z',
   estimatedCompletionAt: '2026-07-24T10:00:00.000Z',

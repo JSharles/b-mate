@@ -16,7 +16,7 @@ describe('AnthropicVulgarizationClient', () => {
     client = new AnthropicVulgarizationClient();
   });
 
-  it('parses a well-formed tool-use response into title/description', async () => {
+  it('parses a well-formed tool-use response into title/why/impact/status', async () => {
     mockCreate.mockResolvedValue({
       content: [
         {
@@ -24,7 +24,9 @@ describe('AnthropicVulgarizationClient', () => {
           name: 'submit_vulgarization',
           input: {
             title: 'Securing your logins',
-            description: 'We made sign-in safer for everyone.',
+            why: 'Some accounts could stay accessible longer than they should.',
+            impact: 'Nothing changes in how you use the product.',
+            status: 'A first version was built and is being reviewed.',
           },
         },
       ],
@@ -39,7 +41,9 @@ describe('AnthropicVulgarizationClient', () => {
 
     expect(result).toEqual({
       title: 'Securing your logins',
-      description: 'We made sign-in safer for everyone.',
+      why: 'Some accounts could stay accessible longer than they should.',
+      impact: 'Nothing changes in how you use the product.',
+      status: 'A first version was built and is being reviewed.',
     });
   });
 
@@ -49,7 +53,12 @@ describe('AnthropicVulgarizationClient', () => {
         {
           type: 'tool_use',
           name: 'submit_vulgarization',
-          input: { title: 'Sécurisation des connexions', description: null },
+          input: {
+            title: 'Sécurisation des connexions',
+            why: null,
+            impact: null,
+            status: null,
+          },
         },
       ],
     });
@@ -87,7 +96,7 @@ describe('AnthropicVulgarizationClient', () => {
         {
           type: 'tool_use',
           name: 'submit_vulgarization',
-          input: { title: 42, description: null },
+          input: { title: 42, why: null, impact: null, status: null },
         },
       ],
     });
