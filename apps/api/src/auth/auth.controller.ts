@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   Post,
   Query,
   Req,
@@ -20,6 +21,7 @@ import {
 } from './board-oauth-cookie';
 import { CurrentUser } from './current-user.decorator';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { GithubOauthClient, type GithubProfile } from './github-oauth.client';
 import { DEFAULT_LOCALE, resolveLocale } from './locale';
 import {
@@ -66,6 +68,13 @@ export class AuthController {
   @UseGuards(SessionGuard)
   me(@CurrentUser() user: User) {
     return toPublicUser(user);
+  }
+
+  @Patch('me')
+  @UseGuards(SessionGuard)
+  async updateMe(@CurrentUser() user: User, @Body() dto: UpdateProfileDto) {
+    const updated = await this.authService.updateProfile(user.id, dto);
+    return toPublicUser(updated);
   }
 
   // specs/009-developer-github-oauth: the sole developer-facing entry point
@@ -160,6 +169,10 @@ export class AuthController {
   ): Promise<void> {
     const webOrigin = process.env.WEB_ORIGIN;
     const { locale, projectId } = oauthFlow;
+    // 2026-08-09: the dedicated Settings route was folded back into the
+    // main project page (BoardConnectionCard now renders there directly,
+    // as one of several linear sections) — the callback must land back on
+    // the screen that actually renders it.
     const projectUrl = `${webOrigin}/${locale}/projects/${projectId}`;
 
     let accessToken: string;

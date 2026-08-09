@@ -7,6 +7,7 @@ import { Prisma, User } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import type { GithubProfile } from './github-oauth.client';
 import { SESSION_TTL_MS } from './session-cookie';
 
@@ -87,6 +88,23 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  // Contact/social fields only — never firstName/lastName/email here (those
+  // are identity, not profile info, and email in particular is tied to
+  // login; changing it is a bigger, unscoped flow of its own).
+  updateProfile(userId: string, dto: UpdateProfileDto): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        roleTitle: dto.roleTitle,
+        phone: dto.phone,
+        github: dto.github,
+        linkedin: dto.linkedin,
+        malt: dto.malt,
+        website: dto.website,
+      },
+    });
   }
 
   async logout(sessionId: string): Promise<void> {

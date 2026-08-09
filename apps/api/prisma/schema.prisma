@@ -48,6 +48,43 @@ enum AccountKind {
   client
 }
 
+// specs/011-project-resources.
+enum ResourceSource {
+  upload
+  notion
+}
+
+// processing: just created, AI processing not done yet (FR-015).
+// ready_for_review: AI processing succeeded, awaiting the developer's
+// explicit publish action (FR-016) — never client-visible.
+// published: visible to clients (FR-010).
+// failed: AI processing could not complete (FR-011) — the only action left
+// is delete, never publishable.
+enum ResourceStatus {
+  processing
+  ready_for_review
+  published
+  failed
+}
+
+// A developer can juggle clients in several countries at once — this is a
+// per-project preference (not a per-user one) so a French client and a US
+// client on two different projects each see dates formatted the way they
+// expect. 2026-08-09.
+enum ProjectDateFormat {
+  mdy
+  dmy
+  ymd
+}
+
+// Same reasoning as ProjectDateFormat above: which language this project's
+// content defaults to for its own client, independent of the developer's
+// own browsing locale. Mirrors apps/web/i18n/routing.ts's locale set.
+enum ProjectLanguage {
+  en
+  fr
+}
+
 model User {
   id           String      @id @default(uuid()) @db.Uuid
   firstName    String      @map("first_name")
@@ -70,15 +107,23 @@ model User {
   // and for any developer account never authenticated via GitHub.
   githubId     String?     @unique @map("github_id")
   socials      String?
+  linkedin     String?
+  // Malt is a French freelance-marketplace profile, distinct from a generic
+  // personal site — kept as its own field rather than folded into `socials`
+  // (a single untyped string can't cleanly hold several distinct profile
+  // URLs).
+  malt         String?
+  website      String?
   roleTitle    String?     @map("role_title")
   status       String?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  memberships   ProjectMember[]
-  assignedTasks Task[]
-  sessions      Session[]
+  memberships    ProjectMember[]
+  assignedTasks  Task[]
+  sessions       Session[]
+  addedResources Resource[]
 
   @@map("users")
 }
@@ -103,16 +148,30 @@ model Project {
   title              String
   status             String?
   progressPercentage Int?    @map("progress_percentage")
+  // Not yet surfaced client-side — a Settings field the developer can fill
+  // in today so meetings have somewhere to live once the meeting/summary
+  // feature (docs/PRODUCT.md "Working notes") is actually built.
+  meetingUrl         String? @map("meeting_url")
+  // Not yet consumed by any date-rendering or content-localization logic
+  // elsewhere in the app (same "field exists before the feature that reads
+  // it" precedent as meetingUrl above) — a developer can set them per
+  // project today so the values exist once that wiring happens.
+  timezone           String?
+  dateFormat         ProjectDateFormat? @map("date_format")
+  language           ProjectLanguage?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  members         ProjectMember[]
-  invitations     Invitation[]
-  tasks           Task[]
-  boardConnection BoardConnection?
-  vulgarizedTasks VulgarizedTask[]
-  taskProgress    TaskProgress[]
+  members            ProjectMember[]
+  invitations        Invitation[]
+  tasks              Task[]
+  boardConnection    BoardConnection?
+  vulgarizedTasks    VulgarizedTask[]
+  taskProgress       TaskProgress[]
+  resources          Resource[]
+  notionConnection   NotionConnection?
+  resourceCategories ResourceCategory[]
 
   @@map("projects")
 }
@@ -209,6 +268,168 @@ model BoardConnection {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("board_connections")
+}
+
+// specs/011-project-resources data-model.md. Unlike BoardConnection (1:1
+// with a project), a project can have many resources. `original*` fields
+// are set only for `source: upload`; `notionPageUrl` only for
+// `source: notion` — enforced in ResourcesService, not by Prisma (no clean
+// way to express "required based on this enum" in the schema itself).
+model Resource {
+  id        String  @id @default(uuid()) @db.Uuid
+  projectId String  @map("project_id") @db.Uuid
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  source ResourceSource
+  status ResourceStatus @default(processing)
+
+  // Uploaded filename (minus extension) or the Notion page's title — shown
+  // on the tile immediately, before/regardless of processing completing.
+  title String
+
+  // source: upload only.
+  originalFileKey       String? @map("original_file_key")
+  originalFileName      String? @map("original_file_name")
+  originalFileMimeType  String? @map("original_file_mime_type")
+  originalFileSizeBytes Int?    @map("original_file_size_bytes")
+
+  // source: notion only — the "original" link for a resource with no
+  // uploaded file (FR-007/FR-008's Notion equivalent).
+  notionPageUrl String? @map("notion_page_url")
+
+  // Set only when status: failed (FR-011) — a short, developer-facing note,
+  // never shown to a client.
+  failureReason String? @map("failure_reason")
+
+  // The Claude Batch API request ID this resource's processing was
+  // submitted under (research.md Decision 4) — a single batch holding one
+  // request per supported locale (both submitted together, one poll target
+  // — see ResourceVulgarization below), read by ResourceBatchSweepService.
+  // Cleared once terminal.
+  anthropicBatchId String? @map("anthropic_batch_id")
+
+  addedByUserId String @map("added_by_user_id") @db.Uuid
+  addedByUser   User   @relation(fields: [addedByUserId], references: [id])
+
+  publishedAt       DateTime? @map("published_at")
+  // Informational only (who published it), not an access-control field —
+  // FR-009 already restricts publishing to contributors generally. Left as
+  // a plain id, not a formal relation, to avoid a second named relation to
+  // User for a field nothing joins against today.
+  publishedByUserId String?   @map("published_by_user_id") @db.Uuid
+
+  vulgarizations      ResourceVulgarization[]
+  categoryAssignments ResourceCategoryAssignment[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("resources")
+}
+
+// One row per (resource, app locale) — mirrors VulgarizedTask's own shape
+// (specs/007) for the same reason: the app is bilingual (en/fr), so a
+// client reads the vulgarized content in their own interface locale, not
+// whatever language the developer happened to be in when they added the
+// resource. Both locales are submitted as two requests in the same Claude
+// Batch (Resource.anthropicBatchId), so they complete together.
+model ResourceVulgarization {
+  id         String   @id @default(uuid()) @db.Uuid
+  resourceId String   @map("resource_id") @db.Uuid
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  locale  String
+  title   String
+  content String
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([resourceId, locale])
+  @@map("resource_vulgarizations")
+}
+
+// specs/013-ai-resource-categorization data-model.md. A project-scoped,
+// canonical "type of information" label (e.g. "Architecture," "Audit
+// findings") — not a technical topic. `key` is a stable, English,
+// kebab-case identity used only for AI reuse-matching (research.md
+// Decision 2), never shown to a user; `labelEn`/`labelFr` are the display
+// text, mirroring ResourceVulgarization's per-locale pattern.
+model ResourceCategory {
+  id        String  @id @default(uuid()) @db.Uuid
+  projectId String  @map("project_id") @db.Uuid
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  key     String
+  labelEn String @map("label_en")
+  labelFr String @map("label_fr")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  assignments ResourceCategoryAssignment[]
+
+  @@unique([projectId, key])
+  @@map("resource_categories")
+}
+
+// The many-to-many join between Resource and ResourceCategory — a resource
+// can carry several categories at once, each approved/rejected
+// independently of the others and of the resource's own publish action
+// (research.md Decision 3, Decision 4). One row per (resource, category)
+// pair ever proposed; re-processing the same pair upserts rather than
+// duplicates (mirrors ResourceVulgarization's resourceId_locale upsert).
+model ResourceCategoryAssignment {
+  id         String           @id @default(uuid()) @db.Uuid
+  resourceId String           @map("resource_id") @db.Uuid
+  resource   Resource         @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  categoryId String           @map("category_id") @db.Uuid
+  category   ResourceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  status ResourceCategoryAssignmentStatus @default(proposed)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([resourceId, categoryId])
+  @@map("resource_category_assignments")
+}
+
+enum ResourceCategoryAssignmentStatus {
+  proposed
+  approved
+  rejected
+}
+
+// Per-resource, 1:1, present only when Resource.source == notion. Kept as
+// its own table (not columns on Resource) so the credential is physically
+// distinct from the resource's own display/content data — mirrors
+// Project-level, 1:1 — mirrors BoardConnection's shape (research.md
+// Decision 7 still applies: same encryption utility, but a deliberately
+// separate, unshared credential). Revised from the original per-resource
+// design: a developer connecting several Notion pages to the same project
+// shouldn't have to re-paste the integration token for every single one —
+// it's connected once per project and reused, exactly like BoardConnection.
+// A resource's own page id is parsed on demand from `Resource.notionPageUrl`
+// (see ResourcesService.createFromNotion), not stored here.
+model NotionConnection {
+  id        String  @id @default(uuid()) @db.Uuid
+  projectId String  @unique @map("project_id") @db.Uuid
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  encryptedToken String @map("encrypted_token")
+
+  // The workspace (or, absent that, integration) name Notion's own
+  // GET /v1/users/me response returns at connect time (NotionClient.
+  // verifyToken) — surfaced on NotionConnectionCard so a developer sees
+  // *what* they're connected to, not just a bare "Connected" (2026-08-08
+  // critique, P1). Nullable only because a row created before this field
+  // existed would otherwise fail to read; every row created going forward
+  // always sets it.
+  workspaceName String? @map("workspace_name")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("notion_connections")
 }
 
 // One row per (project, GitHub board item, app locale) — see

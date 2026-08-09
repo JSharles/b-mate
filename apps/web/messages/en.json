@@ -117,7 +117,8 @@
     "emptyTitle": "No projects yet",
     "emptyDescription": "Create your first project to start tracking its progress.",
     "emptyCta": "Create a project",
-    "editProfile": "Edit profile"
+    "editProfile": "Edit profile",
+    "joinMeeting": "Join meeting"
   },
   "Projects": {
     "CreateProjectDialog": {
@@ -130,27 +131,26 @@
     },
     "ProjectPage": {
       "inviteClient": "Invite a client",
-      "team": "Team",
-      "active": "Active",
-      "pending": "Pending",
-      "documentation": "Documentation",
-      "comingSoon": "Coming soon",
-      "overview": "Project overview",
-      "discoveryAudit": "Discovery & audit findings",
-      "discoveryAuditHint": "Findings from the discovery phase, once available.",
-      "roadmap": "Roadmap",
-      "roadmapHint": "What's planned next, once it's ready to share.",
-      "clientDocumentation": "Documentation",
-      "clientDocumentationHint": "Guides and docs for your project, once published.",
-      "meetings": "Meetings",
-      "meetingsHint": "Upcoming and past meetings, once scheduled.",
       "loadErrorTitle": "Couldn't load this project",
-      "loadErrorRetry": "Retry"
+      "loadErrorRetry": "Retry",
+      "tools": "Tools",
+      "preferences": "Preferences",
+      "joinMeeting": "Join meeting"
     },
-    "DeveloperCard": {
-      "title": "Your developer",
-      "roleFallback": "Developer",
-      "empty": "No developer assigned yet"
+    "TeamSummaryCard": {
+      "title": "Team",
+      "empty": "No members yet",
+      "manage": "Manage",
+      "view": "View",
+      "moreMembers": "+{count} more"
+    },
+    "TeamPage": {
+      "title": "Team",
+      "backToProject": "Back to project",
+      "loadErrorTitle": "Couldn't load this project's team",
+      "loadErrorRetry": "Retry",
+      "active": "Active",
+      "pending": "Pending"
     },
     "InviteClientForm": {
       "email": "Email",
@@ -174,7 +174,51 @@
       "admin": "Admin",
       "remove": "Remove",
       "removing": "Removing…",
-      "lastAdminHint": "A project must always have at least one admin"
+      "lastAdminHint": "A project must always have at least one admin",
+      "removeConfirmTitle": "Remove {name} from this project?",
+      "removeConfirmDescription": "They'll lose access to this project immediately.",
+      "removeConfirmCancel": "Cancel",
+      "removeConfirmAction": "Remove"
+    },
+    "ResourcesList": {
+      "title": "Resources",
+      "add": "Add a resource",
+      "empty": "No resources yet",
+      "statusProcessing": "Processing…",
+      "statusReadyForReview": "Ready for review",
+      "statusFailed": "Failed",
+      "uncategorized": "Other"
+    },
+    "AddResourceDialog": {
+      "title": "Add a resource",
+      "uploadTab": "Upload a file",
+      "notionTab": "Connect Notion",
+      "fileLabel": "File",
+      "fileHint": "PDF, Word (.docx), PNG, or JPEG — up to 25 MB.",
+      "uploadSubmit": "Upload",
+      "uploadPending": "Uploading…",
+      "notionPageUrlLabel": "Notion page URL",
+      "notionConnectSubmit": "Connect",
+      "notionConnectPending": "Connecting…",
+      "notionNotConnectedMessage": "Connect a Notion integration for this project before adding a page as a resource.",
+      "notionGoToSettings": "Go to Settings"
+    },
+    "ResourceDetailPage": {
+      "processing": "Still processing — check back in a few minutes.",
+      "failed": "Something went wrong processing this resource.",
+      "publish": "Publish",
+      "publishPending": "Publishing…",
+      "delete": "Delete",
+      "deletePending": "Deleting…",
+      "downloadOriginal": "Download the original document",
+      "viewOnNotion": "View the original Notion page",
+      "backToProject": "Back to project",
+      "loadErrorTitle": "Couldn't load this resource",
+      "loadErrorRetry": "Retry",
+      "categoryApprove": "Approve",
+      "categoryReject": "Reject",
+      "categoryApproved": "Approved",
+      "categoryRejected": "Rejected"
     },
     "BoardConnectionCard": {
       "title": "Board",
@@ -185,7 +229,11 @@
       "disconnect": "Disconnect",
       "disconnecting": "Disconnecting…",
       "needsReconnect": "Your GitHub authorization was revoked — reconnect to keep this board in sync.",
-      "reconnect": "Reconnect"
+      "reconnect": "Reconnect",
+      "disconnectConfirmTitle": "Disconnect this board?",
+      "disconnectConfirmDescription": "The client will stop seeing task progress from this board until it's reconnected.",
+      "disconnectConfirmCancel": "Cancel",
+      "disconnectConfirmAction": "Disconnect"
     },
     "ConnectBoardDialog": {
       "title": "Connect a GitHub Projects board",
@@ -197,6 +245,39 @@
       "estimateUnitLabel": "When a task has an \"Estimate\" number but no \"Target date\", treat it as:",
       "estimateUnitDays": "Days",
       "estimateUnitHours": "Hours"
+    },
+    "NotionConnectionCard": {
+      "title": "Notion",
+      "notConnected": "No Notion integration connected yet",
+      "connected": "Connected",
+      "connectedTo": "Connected to {name}",
+      "connect": "Connect",
+      "reconnect": "Reconnect",
+      "disconnect": "Disconnect",
+      "disconnecting": "Disconnecting…",
+      "disconnectConfirmTitle": "Disconnect this Notion integration?",
+      "disconnectConfirmDescription": "New Notion resources won't be addable until it's reconnected. Existing resources already added from Notion are unaffected.",
+      "disconnectConfirmCancel": "Cancel",
+      "disconnectConfirmAction": "Disconnect"
+    },
+    "ConnectNotionDialog": {
+      "title": "Connect a Notion integration",
+      "tokenLabel": "Notion integration token",
+      "tokenHint": "Create one and copy its secret at",
+      "connectSubmit": "Connect",
+      "connectPending": "Connecting…"
+    },
+    "MeetingLinkCard": {
+      "title": "Meetings",
+      "notSet": "No meeting link set yet",
+      "viewLink": "View meeting link",
+      "edit": "Edit"
+    },
+    "EditMeetingLinkDialog": {
+      "title": "Set the meeting link",
+      "urlLabel": "Meeting link",
+      "save": "Save",
+      "savePending": "Saving…"
     },
     "CurrentTaskCard": {
       "title": "Current task",
@@ -210,6 +291,45 @@
         "medium": "Medium confidence",
         "low": "Low confidence"
       }
+    },
+    "TeamPanel": {
+      "developer": "Developer",
+      "developerEmpty": "No developer assigned yet",
+      "team": "Team",
+      "teamEmpty": "No members yet",
+      "manage": "Manage",
+      "view": "View",
+      "moreMembers": "+{count} more",
+      "roleFallback": "Developer"
+    },
+    "ClientMainTabs": {
+      "tabsLabel": "Project content",
+      "uncategorized": "Other"
+    },
+    "ProjectPreferences": {
+      "timezone": "Timezone",
+      "timezoneHint": "Used for this client's meetings and deadlines",
+      "timezonePlaceholder": "Select a timezone",
+      "dateFormat": "Date format",
+      "dateFormatHint": "How dates are shown to this client",
+      "dateFormatPlaceholder": "Select a format",
+      "dateFormatOption": {
+        "mdy": "Month/Day/Year (08/09/2026)",
+        "dmy": "Day/Month/Year (09/08/2026)",
+        "ymd": "Year/Month/Day (2026-08-09)"
+      },
+      "language": "Language",
+      "languageHint": "The language this client sees project content in",
+      "languagePlaceholder": "Select a language",
+      "languageOption": {
+        "en": "English",
+        "fr": "French"
+      }
+    },
+    "MeetingCard": {
+      "title": "Meetings",
+      "hint": "Upcoming and past meetings, once scheduled.",
+      "join": "Join meeting"
     }
   },
   "Invite": {
@@ -233,6 +353,18 @@
   },
   "Toasts": {
     "loggedOut": "Logged out",
-    "genericError": "Something went wrong"
+    "genericError": "Something went wrong",
+    "profileSaved": "Profile saved"
+  },
+  "Profile": {
+    "back": "Back",
+    "roleTitle": "Role title",
+    "phone": "Phone",
+    "github": "GitHub",
+    "linkedin": "LinkedIn",
+    "malt": "Malt",
+    "website": "Website",
+    "save": "Save",
+    "cancel": "Cancel"
   }
 }

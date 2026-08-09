@@ -25,6 +25,9 @@ export interface ProjectMemberDetails {
   roleTitle: string | null;
   phone: string | null;
   github: string | null;
+  linkedin: string | null;
+  malt: string | null;
+  website: string | null;
 }
 
 // The project plus the caller's own role/isAdmin on it — lets the frontend
@@ -112,7 +115,13 @@ export class ProjectsService {
 
     return this.prisma.project.update({
       where: { id: projectId },
-      data: { title: dto.title },
+      data: {
+        title: dto.title,
+        meetingUrl: dto.meetingUrl,
+        timezone: dto.timezone,
+        dateFormat: dto.dateFormat,
+        language: dto.language,
+      },
     });
   }
 
@@ -139,6 +148,9 @@ export class ProjectsService {
       roleTitle: member.user.roleTitle,
       phone: member.user.phone,
       github: member.user.github,
+      linkedin: member.user.linkedin,
+      malt: member.user.malt,
+      website: member.user.website,
     }));
   }
 

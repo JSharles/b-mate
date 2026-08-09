@@ -4,6 +4,7 @@ export type PrismaMock = {
   user: {
     findUnique: jest.Mock;
     create: jest.Mock;
+    update: jest.Mock;
   };
   session: {
     create: jest.Mock;
@@ -48,6 +49,33 @@ export type PrismaMock = {
     upsert: jest.Mock;
     deleteMany: jest.Mock;
   };
+  resource: {
+    create: jest.Mock;
+    findUnique: jest.Mock;
+    findMany: jest.Mock;
+    update: jest.Mock;
+    delete: jest.Mock;
+  };
+  resourceVulgarization: {
+    upsert: jest.Mock;
+    findUnique: jest.Mock;
+  };
+  resourceCategory: {
+    upsert: jest.Mock;
+    findMany: jest.Mock;
+  };
+  resourceCategoryAssignment: {
+    upsert: jest.Mock;
+    findUnique: jest.Mock;
+    findMany: jest.Mock;
+    update: jest.Mock;
+  };
+  notionConnection: {
+    findUnique: jest.Mock;
+    upsert: jest.Mock;
+    delete: jest.Mock;
+    deleteMany: jest.Mock;
+  };
   $queryRaw: jest.Mock;
   $transaction: jest.Mock;
 };
@@ -57,6 +85,7 @@ export function createPrismaMock(): PrismaMock {
     user: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
     session: {
       create: jest.fn(),
@@ -99,6 +128,33 @@ export function createPrismaMock(): PrismaMock {
     taskProgress: {
       findUnique: jest.fn(),
       upsert: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    resource: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    resourceVulgarization: {
+      upsert: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    resourceCategory: {
+      upsert: jest.fn(),
+      findMany: jest.fn(),
+    },
+    resourceCategoryAssignment: {
+      upsert: jest.fn(),
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+    },
+    notionConnection: {
+      findUnique: jest.fn(),
+      upsert: jest.fn(),
+      delete: jest.fn(),
       deleteMany: jest.fn(),
     },
     $queryRaw: jest.fn(),

@@ -28,6 +28,9 @@ const fakeUser = {
   github: null,
   githubId: null,
   socials: null,
+  linkedin: null,
+  malt: null,
+  website: null,
   roleTitle: null,
   status: null,
   createdAt: new Date(),
@@ -110,6 +113,60 @@ describe('AuthService', () => {
 
       expect(mockedArgon2.verify).not.toHaveBeenCalled();
       expect(prisma.session.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('updates the contact/social fields via Prisma', async () => {
+      prisma.user.update.mockResolvedValue({
+        ...fakeUser,
+        roleTitle: 'Full-stack developer',
+        phone: '0600000000',
+        github: 'jc',
+        linkedin: 'in/jc',
+        malt: 'malt.fr/jc',
+        website: 'jc.dev',
+      });
+
+      const result = await service.updateProfile('user-1', {
+        roleTitle: 'Full-stack developer',
+        phone: '0600000000',
+        github: 'jc',
+        linkedin: 'in/jc',
+        malt: 'malt.fr/jc',
+        website: 'jc.dev',
+      });
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: {
+          roleTitle: 'Full-stack developer',
+          phone: '0600000000',
+          github: 'jc',
+          linkedin: 'in/jc',
+          malt: 'malt.fr/jc',
+          website: 'jc.dev',
+        },
+      });
+      expect(result.roleTitle).toBe('Full-stack developer');
+    });
+
+    it('never touches firstName, lastName, or email', async () => {
+      prisma.user.update.mockResolvedValue(fakeUser);
+
+      await service.updateProfile('user-1', { phone: '0600000000' });
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: {
+          roleTitle: undefined,
+          phone: '0600000000',
+          github: undefined,
+          linkedin: undefined,
+          malt: undefined,
+          website: undefined,
+        },
+      });
     });
   });
 

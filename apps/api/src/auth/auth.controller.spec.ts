@@ -24,6 +24,9 @@ const fakeUser: User = {
   github: null,
   githubId: null,
   socials: null,
+  linkedin: null,
+  malt: null,
+  website: null,
   roleTitle: null,
   status: null,
   createdAt: new Date(),
@@ -42,7 +45,10 @@ function createResponseMock(): jest.Mocked<
 
 describe('AuthController', () => {
   let authService: jest.Mocked<
-    Pick<AuthService, 'login' | 'logout' | 'findOrCreateFromGitHub'>
+    Pick<
+      AuthService,
+      'login' | 'logout' | 'findOrCreateFromGitHub' | 'updateProfile'
+    >
   >;
   let githubOauthClient: jest.Mocked<
     Pick<
@@ -60,6 +66,7 @@ describe('AuthController', () => {
       login: jest.fn(),
       logout: jest.fn(),
       findOrCreateFromGitHub: jest.fn(),
+      updateProfile: jest.fn(),
     };
     githubOauthClient = {
       buildAuthorizeUrl: jest.fn(),
@@ -123,6 +130,29 @@ describe('AuthController', () => {
 
     expect(result).not.toHaveProperty('passwordHash');
     expect(result).toMatchObject({ id: 'user-1', email: 'jc@example.com' });
+  });
+
+  it('updateMe delegates to the service with the current user and dto, and returns the result without the password hash', async () => {
+    authService.updateProfile.mockResolvedValue({
+      ...fakeUser,
+      roleTitle: 'Full-stack developer',
+      linkedin: 'in/jc',
+    });
+
+    const result = await controller.updateMe(fakeUser, {
+      roleTitle: 'Full-stack developer',
+      linkedin: 'in/jc',
+    });
+
+    expect(authService.updateProfile).toHaveBeenCalledWith('user-1', {
+      roleTitle: 'Full-stack developer',
+      linkedin: 'in/jc',
+    });
+    expect(result).not.toHaveProperty('passwordHash');
+    expect(result).toMatchObject({
+      roleTitle: 'Full-stack developer',
+      linkedin: 'in/jc',
+    });
   });
 
   describe('githubStart', () => {
@@ -307,7 +337,7 @@ describe('AuthController', () => {
         } as unknown as Request;
       }
 
-      it('on success sets the board_oauth_token cookie and redirects to the project with connectBoard=1', async () => {
+      it('on success sets the board_oauth_token cookie and redirects to the project page with connectBoard=1', async () => {
         const req = reqWithBoardFlowCookie('matching-state', 'fr');
         const res = createResponseMock();
         githubOauthClient.exchangeCodeForToken.mockResolvedValue(
@@ -333,7 +363,7 @@ describe('AuthController', () => {
         );
       });
 
-      it('redirects to the project with an error when the exchange fails, and sets no board_oauth_token cookie', async () => {
+      it('redirects to the project page with an error when the exchange fails, and sets no board_oauth_token cookie', async () => {
         const req = reqWithBoardFlowCookie('matching-state', 'en');
         const res = createResponseMock();
         githubOauthClient.exchangeCodeForToken.mockRejectedValue(

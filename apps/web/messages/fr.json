@@ -117,7 +117,8 @@
     "emptyTitle": "Aucun projet pour le moment",
     "emptyDescription": "Créez votre premier projet pour commencer à suivre son avancement.",
     "emptyCta": "Créer un projet",
-    "editProfile": "Modifier le profil"
+    "editProfile": "Modifier le profil",
+    "joinMeeting": "Rejoindre la réunion"
   },
   "Projects": {
     "CreateProjectDialog": {
@@ -130,27 +131,26 @@
     },
     "ProjectPage": {
       "inviteClient": "Inviter un client",
-      "team": "Équipe",
-      "active": "Actifs",
-      "pending": "En attente",
-      "documentation": "Documentation",
-      "comingSoon": "Bientôt disponible",
-      "overview": "Aperçu du projet",
-      "discoveryAudit": "Retours d'audit et de découverte",
-      "discoveryAuditHint": "Les conclusions de la phase de découverte, dès qu'elles seront disponibles.",
-      "roadmap": "Roadmap",
-      "roadmapHint": "Ce qui est prévu ensuite, dès que ce sera prêt à partager.",
-      "clientDocumentation": "Documentation",
-      "clientDocumentationHint": "Guides et documents de votre projet, dès leur publication.",
-      "meetings": "Réunions",
-      "meetingsHint": "Réunions à venir et passées, dès qu'elles seront planifiées.",
       "loadErrorTitle": "Impossible de charger ce projet",
-      "loadErrorRetry": "Réessayer"
+      "loadErrorRetry": "Réessayer",
+      "tools": "Outils",
+      "preferences": "Préférences",
+      "joinMeeting": "Rejoindre la réunion"
     },
-    "DeveloperCard": {
-      "title": "Votre développeur",
-      "roleFallback": "Développeur",
-      "empty": "Aucun développeur assigné pour le moment"
+    "TeamSummaryCard": {
+      "title": "Équipe",
+      "empty": "Aucun membre pour le moment",
+      "manage": "Gérer",
+      "view": "Voir",
+      "moreMembers": "+{count} de plus"
+    },
+    "TeamPage": {
+      "title": "Équipe",
+      "backToProject": "Retour au projet",
+      "loadErrorTitle": "Impossible de charger l'équipe de ce projet",
+      "loadErrorRetry": "Réessayer",
+      "active": "Actifs",
+      "pending": "En attente"
     },
     "InviteClientForm": {
       "email": "Email",
@@ -174,7 +174,51 @@
       "admin": "Admin",
       "remove": "Retirer",
       "removing": "Retrait…",
-      "lastAdminHint": "Un projet doit toujours garder au moins un admin"
+      "lastAdminHint": "Un projet doit toujours garder au moins un admin",
+      "removeConfirmTitle": "Retirer {name} de ce projet ?",
+      "removeConfirmDescription": "Cette personne perdra immédiatement l'accès à ce projet.",
+      "removeConfirmCancel": "Annuler",
+      "removeConfirmAction": "Retirer"
+    },
+    "ResourcesList": {
+      "title": "Ressources",
+      "add": "Ajouter une ressource",
+      "empty": "Aucune ressource pour le moment",
+      "statusProcessing": "Traitement en cours…",
+      "statusReadyForReview": "En attente de validation",
+      "statusFailed": "Échec",
+      "uncategorized": "Autres"
+    },
+    "AddResourceDialog": {
+      "title": "Ajouter une ressource",
+      "uploadTab": "Envoyer un fichier",
+      "notionTab": "Connecter Notion",
+      "fileLabel": "Fichier",
+      "fileHint": "PDF, Word (.docx), PNG ou JPEG — 25 Mo maximum.",
+      "uploadSubmit": "Envoyer",
+      "uploadPending": "Envoi…",
+      "notionPageUrlLabel": "URL de la page Notion",
+      "notionConnectSubmit": "Connecter",
+      "notionConnectPending": "Connexion…",
+      "notionNotConnectedMessage": "Connectez une intégration Notion pour ce projet avant d'ajouter une page comme ressource.",
+      "notionGoToSettings": "Aller aux paramètres"
+    },
+    "ResourceDetailPage": {
+      "processing": "Traitement en cours — revenez dans quelques minutes.",
+      "failed": "Une erreur est survenue lors du traitement de cette ressource.",
+      "publish": "Publier",
+      "publishPending": "Publication…",
+      "delete": "Supprimer",
+      "deletePending": "Suppression…",
+      "downloadOriginal": "Télécharger le document original",
+      "viewOnNotion": "Voir la page Notion originale",
+      "backToProject": "Retour au projet",
+      "loadErrorTitle": "Impossible de charger cette ressource",
+      "loadErrorRetry": "Réessayer",
+      "categoryApprove": "Valider",
+      "categoryReject": "Rejeter",
+      "categoryApproved": "Validée",
+      "categoryRejected": "Rejetée"
     },
     "BoardConnectionCard": {
       "title": "Board",
@@ -185,7 +229,11 @@
       "disconnect": "Déconnecter",
       "disconnecting": "Déconnexion…",
       "needsReconnect": "Votre autorisation GitHub a été révoquée — reconnectez-vous pour garder ce board synchronisé.",
-      "reconnect": "Reconnecter"
+      "reconnect": "Reconnecter",
+      "disconnectConfirmTitle": "Déconnecter ce board ?",
+      "disconnectConfirmDescription": "Le client ne verra plus l'avancement des tâches de ce board tant qu'il n'est pas reconnecté.",
+      "disconnectConfirmCancel": "Annuler",
+      "disconnectConfirmAction": "Déconnecter"
     },
     "ConnectBoardDialog": {
       "title": "Connecter un board GitHub Projects",
@@ -197,6 +245,39 @@
       "estimateUnitLabel": "Quand une tâche a un nombre \"Estimate\" mais pas de \"Target date\", l'interpréter en :",
       "estimateUnitDays": "Jours",
       "estimateUnitHours": "Heures"
+    },
+    "NotionConnectionCard": {
+      "title": "Notion",
+      "notConnected": "Aucune intégration Notion connectée pour le moment",
+      "connected": "Connectée",
+      "connectedTo": "Connectée à {name}",
+      "connect": "Connecter",
+      "reconnect": "Reconnecter",
+      "disconnect": "Déconnecter",
+      "disconnecting": "Déconnexion…",
+      "disconnectConfirmTitle": "Déconnecter cette intégration Notion ?",
+      "disconnectConfirmDescription": "Il ne sera plus possible d'ajouter de nouvelles ressources Notion tant qu'elle n'est pas reconnectée. Les ressources déjà ajoutées depuis Notion ne sont pas affectées.",
+      "disconnectConfirmCancel": "Annuler",
+      "disconnectConfirmAction": "Déconnecter"
+    },
+    "ConnectNotionDialog": {
+      "title": "Connecter une intégration Notion",
+      "tokenLabel": "Jeton d'intégration Notion",
+      "tokenHint": "Créez-en un et copiez son secret sur",
+      "connectSubmit": "Connecter",
+      "connectPending": "Connexion…"
+    },
+    "MeetingLinkCard": {
+      "title": "Réunions",
+      "notSet": "Aucun lien de réunion pour le moment",
+      "viewLink": "Voir le lien de réunion",
+      "edit": "Modifier"
+    },
+    "EditMeetingLinkDialog": {
+      "title": "Définir le lien de réunion",
+      "urlLabel": "Lien de réunion",
+      "save": "Enregistrer",
+      "savePending": "Enregistrement…"
     },
     "CurrentTaskCard": {
       "title": "Tâche en cours",
@@ -210,6 +291,45 @@
         "medium": "Confiance moyenne",
         "low": "Confiance faible"
       }
+    },
+    "TeamPanel": {
+      "developer": "Développeur",
+      "developerEmpty": "Aucun développeur assigné pour le moment",
+      "team": "Équipe",
+      "teamEmpty": "Aucun membre pour le moment",
+      "manage": "Gérer",
+      "view": "Voir",
+      "moreMembers": "+{count} de plus",
+      "roleFallback": "Développeur"
+    },
+    "ClientMainTabs": {
+      "tabsLabel": "Contenu du projet",
+      "uncategorized": "Autres"
+    },
+    "ProjectPreferences": {
+      "timezone": "Fuseau horaire",
+      "timezoneHint": "Utilisé pour les réunions et échéances de ce client",
+      "timezonePlaceholder": "Choisir un fuseau horaire",
+      "dateFormat": "Format de date",
+      "dateFormatHint": "Comment les dates s'affichent pour ce client",
+      "dateFormatPlaceholder": "Choisir un format",
+      "dateFormatOption": {
+        "mdy": "Mois/Jour/Année (08/09/2026)",
+        "dmy": "Jour/Mois/Année (09/08/2026)",
+        "ymd": "Année/Mois/Jour (2026-08-09)"
+      },
+      "language": "Langue",
+      "languageHint": "La langue dans laquelle ce client voit le contenu du projet",
+      "languagePlaceholder": "Choisir une langue",
+      "languageOption": {
+        "en": "Anglais",
+        "fr": "Français"
+      }
+    },
+    "MeetingCard": {
+      "title": "Réunions",
+      "hint": "Réunions à venir et passées, dès qu'elles seront planifiées.",
+      "join": "Rejoindre la réunion"
     }
   },
   "Invite": {
@@ -233,6 +353,18 @@
   },
   "Toasts": {
     "loggedOut": "Déconnecté",
-    "genericError": "Une erreur est survenue"
+    "genericError": "Une erreur est survenue",
+    "profileSaved": "Profil enregistré"
+  },
+  "Profile": {
+    "back": "Retour",
+    "roleTitle": "Intitulé de poste",
+    "phone": "Téléphone",
+    "github": "GitHub",
+    "linkedin": "LinkedIn",
+    "malt": "Malt",
+    "website": "Site web",
+    "save": "Enregistrer",
+    "cancel": "Annuler"
   }
 }

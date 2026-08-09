@@ -13,15 +13,19 @@ vi.mock("@/features/projects/hooks", () => ({
   useProject: vi.fn(),
 }));
 
-vi.mock("@/features/invitations/components/invite-button", () => ({
-  InviteButton: ({ projectId }: { projectId: string }) => (
-    <div>invite-button:{projectId}</div>
+vi.mock("@/features/projects/components/team-summary-card", () => ({
+  TeamSummaryCard: ({ projectId }: { projectId: string }) => (
+    <div>team-summary-card:{projectId}</div>
   ),
 }));
 
-vi.mock("@/features/invitations/components/invitations-list", () => ({
-  InvitationsList: ({ projectId }: { projectId: string }) => (
-    <div>invitations-list:{projectId}</div>
+vi.mock("@/features/projects/components/team-panel", () => ({
+  TeamPanel: ({ projectId }: { projectId: string }) => <div>team-panel:{projectId}</div>,
+}));
+
+vi.mock("@/features/resources/components/resources-list", () => ({
+  ResourcesList: ({ projectId }: { projectId: string }) => (
+    <div>resources-list:{projectId}</div>
   ),
 }));
 
@@ -31,29 +35,31 @@ vi.mock("@/features/board-connections/components/board-connection-card", () => (
   ),
 }));
 
-vi.mock("@/features/current-task/components/current-task-card", () => ({
-  CurrentTaskCard: ({ projectId }: { projectId: string }) => (
-    <div>current-task-card:{projectId}</div>
+vi.mock("@/features/notion-connection/components/notion-connection-card", () => ({
+  NotionConnectionCard: ({ projectId }: { projectId: string }) => (
+    <div>notion-connection-card:{projectId}</div>
   ),
 }));
 
-vi.mock("@/features/projects/components/project-members-list", () => ({
-  ProjectMembersList: ({
-    projectId,
-    canManageMembers,
-  }: {
-    projectId: string;
-    canManageMembers: boolean;
-  }) => (
-    <div>
-      project-members-list:{projectId}:{String(canManageMembers)}
-    </div>
+vi.mock("@/features/projects/components/meeting-link-card", () => ({
+  MeetingLinkCard: ({ projectId }: { projectId: string }) => (
+    <div>meeting-link-card:{projectId}</div>
   ),
 }));
 
-vi.mock("@/features/projects/components/developer-card", () => ({
-  DeveloperCard: ({ projectId }: { projectId: string }) => (
-    <div>developer-card:{projectId}</div>
+vi.mock("@/features/projects/components/meeting-card", () => ({
+  MeetingCard: ({ projectId }: { projectId: string }) => <div>meeting-card:{projectId}</div>,
+}));
+
+vi.mock("@/features/projects/components/project-preferences", () => ({
+  ProjectPreferences: ({ projectId }: { projectId: string }) => (
+    <div>project-preferences:{projectId}</div>
+  ),
+}));
+
+vi.mock("./client-main-tabs", () => ({
+  ClientMainTabs: ({ projectId }: { projectId: string }) => (
+    <div>client-main-tabs:{projectId}</div>
   ),
 }));
 
@@ -73,31 +79,101 @@ function mockProject(role: "contributor" | "client", isAdmin: boolean) {
 }
 
 describe("ProjectPage", () => {
-  it("shows full management view to a contributor admin", () => {
+  it("shows a classic settings-style page (Team, Resources, Board, Notion, Meeting link) to a contributor admin", () => {
     mockProject("contributor", true);
 
     renderPage();
 
     expect(screen.getByText("Site vitrine client X")).toBeInTheDocument();
-    expect(screen.getByText("project-members-list:project-1:true")).toBeInTheDocument();
-    expect(screen.getByText("invite-button:project-1")).toBeInTheDocument();
-    expect(screen.getByText("invitations-list:project-1")).toBeInTheDocument();
+    expect(screen.getByText("team-summary-card:project-1")).toBeInTheDocument();
+    expect(screen.getByText("resources-list:project-1")).toBeInTheDocument();
     expect(screen.getByText("board-connection-card:project-1")).toBeInTheDocument();
-    expect(screen.getByText("documentation")).toBeInTheDocument();
-    expect(screen.queryByText("overview")).not.toBeInTheDocument();
-    expect(screen.queryByText("current-task-card:project-1")).not.toBeInTheDocument();
+    expect(screen.getByText("notion-connection-card:project-1")).toBeInTheDocument();
+    expect(screen.getByText("meeting-link-card:project-1")).toBeInTheDocument();
+    expect(screen.getByText("project-preferences:project-1")).toBeInTheDocument();
+    expect(screen.queryByText("client-main-tabs:project-1")).not.toBeInTheDocument();
   });
 
-  it("hides invitations but keeps dev-tooling placeholders for a non-admin contributor", () => {
+  it("shows no join-meeting shortcut when the project has no meeting link", () => {
+    mockProject("contributor", true);
+
+    renderPage();
+
+    expect(screen.queryByRole("link", { name: "joinMeeting" })).not.toBeInTheDocument();
+  });
+
+  it("shows a join-meeting shortcut next to the title when a meeting link is set, for a contributor", () => {
+    mockedUseProject.mockReturnValue({
+      data: {
+        id: "project-1",
+        title: "Site vitrine client X",
+        role: "contributor",
+        isAdmin: true,
+        meetingUrl: "https://meet.google.com/abc-defg-hij",
+      },
+      isPending: false,
+    } as unknown as ReturnType<typeof useProject>);
+
+    renderPage();
+
+    expect(screen.getByRole("link", { name: "joinMeeting" })).toHaveAttribute(
+      "href",
+      "https://meet.google.com/abc-defg-hij",
+    );
+  });
+
+  it("hides the header join-meeting shortcut for a client — MeetingCard already shows one prominently in the sidebar", () => {
+    mockedUseProject.mockReturnValue({
+      data: {
+        id: "project-1",
+        title: "Site vitrine client X",
+        role: "client",
+        isAdmin: false,
+        meetingUrl: "https://meet.google.com/abc-defg-hij",
+      },
+      isPending: false,
+    } as unknown as ReturnType<typeof useProject>);
+
+    renderPage();
+
+    expect(screen.queryByRole("link", { name: "joinMeeting" })).not.toBeInTheDocument();
+  });
+
+  it("shows the same full set of sections for a non-admin contributor", () => {
     mockProject("contributor", false);
 
     renderPage();
 
-    expect(screen.getByText("project-members-list:project-1:false")).toBeInTheDocument();
-    expect(screen.queryByText("invite-button:project-1")).not.toBeInTheDocument();
-    expect(screen.queryByText("invitations-list:project-1")).not.toBeInTheDocument();
+    expect(screen.getByText("team-summary-card:project-1")).toBeInTheDocument();
+    expect(screen.getByText("resources-list:project-1")).toBeInTheDocument();
     expect(screen.getByText("board-connection-card:project-1")).toBeInTheDocument();
-    expect(screen.getByText("documentation")).toBeInTheDocument();
+    expect(screen.getByText("notion-connection-card:project-1")).toBeInTheDocument();
+    expect(screen.getByText("meeting-link-card:project-1")).toBeInTheDocument();
+    expect(screen.getByText("project-preferences:project-1")).toBeInTheDocument();
+  });
+
+  it("orders contributor sections by usage frequency, with Board and Notion grouped under a Tools heading and Timezone/Date format/Language under Preferences", () => {
+    mockProject("contributor", true);
+
+    renderPage();
+
+    const labels = [
+      "resources-list:project-1",
+      "team-summary-card:project-1",
+      "tools",
+      "board-connection-card:project-1",
+      "notion-connection-card:project-1",
+      "meeting-link-card:project-1",
+      "preferences",
+      "project-preferences:project-1",
+    ];
+    for (let i = 0; i < labels.length - 1; i++) {
+      const current = screen.getByText(labels[i]);
+      const next = screen.getByText(labels[i + 1]);
+      expect(
+        current.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
   });
 
   it("shows only the read-only client view for a non-admin client", () => {
@@ -105,34 +181,26 @@ describe("ProjectPage", () => {
 
     renderPage();
 
-    expect(screen.getByText("project-members-list:project-1:false")).toBeInTheDocument();
-    expect(screen.queryByText("invite-button:project-1")).not.toBeInTheDocument();
-    expect(screen.queryByText("invitations-list:project-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("team-summary-card:project-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("resources-list:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("board-connection-card:project-1")).not.toBeInTheDocument();
-    expect(screen.queryByText("documentation")).not.toBeInTheDocument();
+    expect(screen.queryByText("notion-connection-card:project-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("meeting-link-card:project-1")).not.toBeInTheDocument();
 
-    expect(screen.getByText("developer-card:project-1")).toBeInTheDocument();
-    expect(screen.getByText("overview")).toBeInTheDocument();
-    expect(screen.getByText("discoveryAudit")).toBeInTheDocument();
-    expect(screen.getByText("roadmap")).toBeInTheDocument();
-    expect(screen.getByText("clientDocumentation")).toBeInTheDocument();
-    expect(screen.getByText("meetings")).toBeInTheDocument();
-    expect(screen.getByText("current-task-card:project-1")).toBeInTheDocument();
+    expect(screen.getByText("team-panel:project-1")).toBeInTheDocument();
+    expect(screen.getByText("meeting-card:project-1")).toBeInTheDocument();
+    expect(screen.getByText("client-main-tabs:project-1")).toBeInTheDocument();
   });
 
-  it("gives an admin client invitation management but not the dev-tooling placeholders", () => {
+  it("gives an admin client the same read-only project view as any client", () => {
     mockProject("client", true);
 
     renderPage();
 
-    expect(screen.getByText("project-members-list:project-1:true")).toBeInTheDocument();
-    expect(screen.getByText("invite-button:project-1")).toBeInTheDocument();
-    expect(screen.getByText("invitations-list:project-1")).toBeInTheDocument();
-    expect(screen.queryByText("board-connection-card:project-1")).not.toBeInTheDocument();
-    expect(screen.queryByText("documentation")).not.toBeInTheDocument();
-    expect(screen.getByText("developer-card:project-1")).toBeInTheDocument();
-    expect(screen.getByText("overview")).toBeInTheDocument();
-    expect(screen.getByText("current-task-card:project-1")).toBeInTheDocument();
+    expect(screen.queryByText("team-summary-card:project-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("resources-list:project-1")).not.toBeInTheDocument();
+    expect(screen.getByText("team-panel:project-1")).toBeInTheDocument();
+    expect(screen.getByText("client-main-tabs:project-1")).toBeInTheDocument();
   });
 
   it("shows no form control anywhere among the client placeholders", () => {

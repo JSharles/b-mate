@@ -2,7 +2,7 @@
 
 import { Calendar, CircleDot, Clock, Flag } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
 import { useCurrentTask } from "../hooks";
@@ -185,20 +185,16 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
     <div className="relative h-full min-h-0 overflow-hidden rounded-xl">
       <IridescentGlow />
       <Card className="relative h-full min-h-0 border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
-        <CardHeader>
-          <CardTitle>
-            <h2 className="text-sm font-bold tracking-wide text-foreground uppercase">
-              {t("title")}
-            </h2>
-          </CardTitle>
-        </CardHeader>
-          {/* justify-start, not justify-center: with the progress bar/start
-              date additions, real content can now be taller than the card's
-              allocated height. A centered flex column anchors its overflow
-              scroll position mid-content, cutting off the title at the top
-              with no visual cue to scroll — justify-start guarantees the
-              title is always the first thing visible, scrolling down for
-              the rest. */}
+          {/* No CardHeader/title here — the tab trigger that hosts this
+              panel (ClientMainTabs, page-level) already says "Tâche en
+              cours"; a second identical label directly below it would be
+              redundant. justify-start, not justify-center: with the
+              progress bar/start date additions, real content can now be
+              taller than the card's allocated height. A centered flex
+              column anchors its overflow scroll position mid-content,
+              cutting off the title at the top with no visual cue to scroll
+              — justify-start guarantees the title is always the first
+              thing visible, scrolling down for the rest. */}
         <CardContent className="flex flex-1 flex-col justify-start gap-3 overflow-y-auto py-1">
           {isPending ? (
             <Skeleton className="h-10 w-full" />

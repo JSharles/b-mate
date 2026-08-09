@@ -1,12 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { UpdateProjectRequest } from "schemas";
 import {
   createProject,
   getProject,
   listProjectMembers,
   listProjects,
   removeProjectMember,
+  updateProject,
 } from "./api";
 
 export const projectsKey = ["projects"] as const;
@@ -35,11 +37,15 @@ export function useProjectMembers(projectId: string) {
   });
 }
 
+// Error is surfaced inline in the remove confirmation dialog (see
+// ProjectMembersList), not as a generic toast — skipGlobalErrorToast opts
+// this out of that default.
 export function useRemoveMember(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (userId: string) => removeProjectMember(projectId, userId),
+    meta: { skipGlobalErrorToast: true },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectMembersKey(projectId) });
     },
@@ -58,6 +64,20 @@ export function useCreateProject() {
     meta: { skipGlobalErrorToast: true },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectsKey });
+    },
+  });
+}
+
+// Error is surfaced inline in the form (see MeetingLinkCard), not as a
+// generic toast — skipGlobalErrorToast opts this out of that default.
+export function useUpdateProject(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UpdateProjectRequest) => updateProject(projectId, data),
+    meta: { skipGlobalErrorToast: true },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKey(projectId) });
     },
   });
 }

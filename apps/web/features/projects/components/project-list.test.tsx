@@ -92,6 +92,47 @@ describe("ProjectList", () => {
     );
   });
 
+  it("shows a join-meeting shortcut only on cards with a meeting link set, and it doesn't navigate to the project", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    mockedUseProjects.mockReturnValue({
+      data: [
+        {
+          id: "1",
+          title: "Site vitrine client X",
+          status: null,
+          progressPercentage: null,
+          createdAt: "2026-01-15T00:00:00.000Z",
+          meetingUrl: "https://meet.google.com/abc-defg-hij",
+        },
+        {
+          id: "2",
+          title: "App mobile client Y",
+          status: null,
+          progressPercentage: null,
+          createdAt: "2026-02-01T00:00:00.000Z",
+          meetingUrl: null,
+        },
+      ],
+      isPending: false,
+    } as unknown as ReturnType<typeof useProjects>);
+    const user = userEvent.setup();
+
+    render(<ProjectList />);
+
+    const joinButtons = screen.getAllByRole("button", { name: "joinMeeting" });
+    expect(joinButtons).toHaveLength(1);
+
+    await user.click(joinButtons[0]);
+
+    expect(openSpy).toHaveBeenCalledWith(
+      "https://meet.google.com/abc-defg-hij",
+      "_blank",
+      "noopener,noreferrer",
+    );
+
+    openSpy.mockRestore();
+  });
+
   it("shows the creation date, and the status/progress only when present", () => {
     mockedUseProjects.mockReturnValue({
       data: [

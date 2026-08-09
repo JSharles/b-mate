@@ -1,4 +1,10 @@
-import type { CreateProjectRequest, Project, ProjectDetail, ProjectMember } from "schemas";
+import type {
+  CreateProjectRequest,
+  Project,
+  ProjectDetail,
+  ProjectMember,
+  UpdateProjectRequest,
+} from "schemas";
 import { apiFetch } from "@/shared/lib/api-client";
 
 export function listProjects() {
@@ -11,6 +17,10 @@ export function createProject(data: CreateProjectRequest) {
 
 export function getProject(id: string) {
   return apiFetch<ProjectDetail>(`/projects/${id}`);
+}
+
+export function updateProject(id: string, data: UpdateProjectRequest) {
+  return apiFetch<Project>(`/projects/${id}`, { method: "PATCH", body: data });
 }
 
 export function listProjectMembers(projectId: string) {

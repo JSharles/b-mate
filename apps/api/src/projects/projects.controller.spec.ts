@@ -17,6 +17,9 @@ const fakeUser: User = {
   github: null,
   githubId: null,
   socials: null,
+  linkedin: null,
+  malt: null,
+  website: null,
   roleTitle: null,
   status: null,
   createdAt: new Date(),
@@ -28,6 +31,10 @@ const fakeProject = {
   title: 'My project',
   status: null,
   progressPercentage: null,
+  meetingUrl: null,
+  timezone: null,
+  dateFormat: null,
+  language: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -130,6 +137,9 @@ describe('ProjectsController', () => {
         roleTitle: null,
         phone: null,
         github: null,
+        linkedin: null,
+        malt: null,
+        website: null,
       },
     ];
     projectsService.findMembersForProject.mockResolvedValue(members);
