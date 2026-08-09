@@ -40,62 +40,41 @@ export class ResourceBatchSweepService {
 
       if (result.status === 'succeeded') {
         await this.prisma.$transaction(async (tx) => {
-          for (const v of result.vulgarizations) {
-            await tx.resourceVulgarization.upsert({
+          // specs/014-category-sections: upserted on (resourceId,
+          // categoryKey) so a re-poll of the same batch — which happens
+          // whenever a sweep is interrupted after the API call but before the
+          // transaction commits — updates rather than duplicating.
+          //
+          // `position` is the order the analysis returned the sections in,
+          // which is what breaks ties when several of a resource's sections
+          // land in the same client tab (FR-022).
+          for (const [position, section] of result.sections.entries()) {
+            await tx.resourceSection.upsert({
               where: {
-                resourceId_locale: {
+                resourceId_categoryKey: {
                   resourceId: resource.id,
-                  locale: v.locale,
+                  categoryKey: section.categoryKey,
                 },
               },
               create: {
                 resourceId: resource.id,
-                locale: v.locale,
-                title: v.title,
-                content: v.content,
+                categoryKey: section.categoryKey,
+                position,
+                titleEn: section.titleEn,
+                contentEn: section.contentEn,
+                titleFr: section.titleFr,
+                contentFr: section.contentFr,
               },
-              update: { title: v.title, content: v.content },
-            });
-          }
-          // specs/013-ai-resource-categorization: a proposed category is
-          // best-effort by design (the client already degrades a failed/
-          // malformed category result to an empty array — see
-          // DocumentVulgarizationClient.pollBatch) — this loop simply has
-          // nothing to do when there are none, never blocking the
-          // vulgarization content above from reaching ready_for_review.
-          for (const proposal of result.categories) {
-            const category = await tx.resourceCategory.upsert({
-              where: {
-                projectId_key: {
-                  projectId: resource.projectId,
-                  key: proposal.key,
-                },
+              // Deliberately does not reset `status`: re-persisting content a
+              // contributor has already approved or rejected must not quietly
+              // return it to the review queue.
+              update: {
+                position,
+                titleEn: section.titleEn,
+                contentEn: section.contentEn,
+                titleFr: section.titleFr,
+                contentFr: section.contentFr,
               },
-              create: {
-                projectId: resource.projectId,
-                key: proposal.key,
-                labelEn: proposal.labelEn,
-                labelFr: proposal.labelFr,
-              },
-              // Existing labels win — reusing a key (research.md Decision 2)
-              // is about matching the type of information, not letting a
-              // later resource silently rename an already-established
-              // category out from under earlier ones.
-              update: {},
-            });
-            await tx.resourceCategoryAssignment.upsert({
-              where: {
-                resourceId_categoryId: {
-                  resourceId: resource.id,
-                  categoryId: category.id,
-                },
-              },
-              create: {
-                resourceId: resource.id,
-                categoryId: category.id,
-                status: 'proposed',
-              },
-              update: {},
             });
           }
           await tx.resource.update({

@@ -3,17 +3,17 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
-  approveResourceCategory,
+  approveResourceSection,
   getResource,
   getResources,
-  rejectResourceCategory,
+  rejectResourceSection,
   uploadResource,
 } from "./api";
 import {
   resourceKey,
   resourcesKey,
-  useApproveResourceCategory,
-  useRejectResourceCategory,
+  useApproveResourceSection,
+  useRejectResourceSection,
   useResource,
   useResources,
   useUploadResource,
@@ -23,15 +23,15 @@ vi.mock("./api", () => ({
   getResources: vi.fn(),
   getResource: vi.fn(),
   uploadResource: vi.fn(),
-  approveResourceCategory: vi.fn(),
-  rejectResourceCategory: vi.fn(),
+  approveResourceSection: vi.fn(),
+  rejectResourceSection: vi.fn(),
 }));
 
 const mockedGetResources = vi.mocked(getResources);
 const mockedGetResource = vi.mocked(getResource);
 const mockedUploadResource = vi.mocked(uploadResource);
-const mockedApproveResourceCategory = vi.mocked(approveResourceCategory);
-const mockedRejectResourceCategory = vi.mocked(rejectResourceCategory);
+const mockedApproveResourceSection = vi.mocked(approveResourceSection);
+const mockedRejectResourceSection = vi.mocked(rejectResourceSection);
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -55,12 +55,10 @@ const fakeResource = {
   originalFileName: "a.pdf",
   originalFileMimeType: "application/pdf",
   notionPageUrl: null,
-  vulgarizedTitle: null,
-  vulgarizedContent: null,
   failureReason: null,
   publishedAt: null,
   createdAt: "2026-08-08T00:00:00.000Z",
-  categories: [],
+  sections: [],
 };
 
 describe("useResources", () => {
@@ -109,27 +107,27 @@ describe("useUploadResource", () => {
   });
 });
 
-describe("useApproveResourceCategory", () => {
+describe("useApproveResourceSection", () => {
   it("approves the assignment and invalidates both the list and the resource's own query", async () => {
-    mockedApproveResourceCategory.mockResolvedValue(undefined);
+    mockedApproveResourceSection.mockResolvedValue(undefined);
     const { Wrapper, queryClient } = createWrapper();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
-    const { result } = renderHook(() => useApproveResourceCategory("project-1"), {
+    const { result } = renderHook(() => useApproveResourceSection("project-1"), {
       wrapper: Wrapper,
     });
 
     await act(async () => {
       await result.current.mutateAsync({
         resourceId: "resource-1",
-        categoryAssignmentId: "assignment-1",
+        sectionId: "section-1",
       });
     });
 
-    expect(mockedApproveResourceCategory).toHaveBeenCalledWith(
+    expect(mockedApproveResourceSection).toHaveBeenCalledWith(
       "project-1",
       "resource-1",
-      "assignment-1",
+      "section-1",
     );
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: resourcesKey("project-1", "fr"),
@@ -140,27 +138,27 @@ describe("useApproveResourceCategory", () => {
   });
 });
 
-describe("useRejectResourceCategory", () => {
+describe("useRejectResourceSection", () => {
   it("rejects the assignment and invalidates both the list and the resource's own query", async () => {
-    mockedRejectResourceCategory.mockResolvedValue(undefined);
+    mockedRejectResourceSection.mockResolvedValue(undefined);
     const { Wrapper, queryClient } = createWrapper();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
-    const { result } = renderHook(() => useRejectResourceCategory("project-1"), {
+    const { result } = renderHook(() => useRejectResourceSection("project-1"), {
       wrapper: Wrapper,
     });
 
     await act(async () => {
       await result.current.mutateAsync({
         resourceId: "resource-1",
-        categoryAssignmentId: "assignment-1",
+        sectionId: "section-1",
       });
     });
 
-    expect(mockedRejectResourceCategory).toHaveBeenCalledWith(
+    expect(mockedRejectResourceSection).toHaveBeenCalledWith(
       "project-1",
       "resource-1",
-      "assignment-1",
+      "section-1",
     );
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: resourcesKey("project-1", "fr"),

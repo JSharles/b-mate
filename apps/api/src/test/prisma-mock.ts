@@ -56,19 +56,13 @@ export type PrismaMock = {
     update: jest.Mock;
     delete: jest.Mock;
   };
-  resourceVulgarization: {
+  resourceSection: {
     upsert: jest.Mock;
     findUnique: jest.Mock;
-  };
-  resourceCategory: {
-    upsert: jest.Mock;
-    findMany: jest.Mock;
-  };
-  resourceCategoryAssignment: {
-    upsert: jest.Mock;
-    findUnique: jest.Mock;
+    findFirst: jest.Mock;
     findMany: jest.Mock;
     update: jest.Mock;
+    count: jest.Mock;
   };
   notionConnection: {
     findUnique: jest.Mock;
@@ -137,19 +131,13 @@ export function createPrismaMock(): PrismaMock {
       update: jest.fn(),
       delete: jest.fn(),
     },
-    resourceVulgarization: {
+    resourceSection: {
       upsert: jest.fn(),
       findUnique: jest.fn(),
-    },
-    resourceCategory: {
-      upsert: jest.fn(),
-      findMany: jest.fn(),
-    },
-    resourceCategoryAssignment: {
-      upsert: jest.fn(),
-      findUnique: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      count: jest.fn(),
     },
     notionConnection: {
       findUnique: jest.fn(),

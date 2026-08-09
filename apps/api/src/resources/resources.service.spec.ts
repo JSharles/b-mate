@@ -14,6 +14,7 @@ import {
   PrismaMock,
 } from '../test/prisma-mock';
 import { DocumentVulgarizationClient } from './document-vulgarization.client';
+import { ImageNormalizationError, ImageNormalizer } from './image-normalizer';
 import { ResourceStorageClient } from './resource-storage.client';
 import { ResourcesService } from './resources.service';
 
@@ -41,6 +42,13 @@ const pdfFile = {
   size: 1024,
 } as Express.Multer.File;
 
+const pngFile = {
+  buffer: Buffer.from('fake oversized png bytes'),
+  originalname: 'MDW_SPORTS-ARCHITECTURE-2.png',
+  mimetype: 'image/png',
+  size: 732_514,
+} as Express.Multer.File;
+
 describe('ResourcesService', () => {
   let prisma: PrismaMock;
   let storageClient: jest.Mocked<
@@ -52,6 +60,7 @@ describe('ResourcesService', () => {
   let documentVulgarizationClient: jest.Mocked<
     Pick<DocumentVulgarizationClient, 'submitBatch'>
   >;
+  let imageNormalizer: jest.Mocked<Pick<ImageNormalizer, 'normalize'>>;
   let notionClient: jest.Mocked<Pick<NotionClient, 'fetchPage'>>;
   let notionConnectionService: jest.Mocked<
     Pick<NotionConnectionService, 'getDecryptedToken'>
@@ -68,14 +77,18 @@ describe('ResourcesService', () => {
       deleteFile: jest.fn(),
     };
     documentVulgarizationClient = { submitBatch: jest.fn() };
+    imageNormalizer = { normalize: jest.fn() };
     notionClient = { fetchPage: jest.fn() };
     notionConnectionService = { getDecryptedToken: jest.fn() };
-    prisma.resourceCategory.findMany.mockResolvedValue([]);
-    prisma.resourceCategoryAssignment.findMany.mockResolvedValue([]);
+    prisma.resourceSection.findMany.mockResolvedValue([]);
+    // Publishing requires at least one approved section (research.md
+    // Decision 4); the dedicated test below overrides this.
+    prisma.resourceSection.count.mockResolvedValue(1);
     service = new ResourcesService(
       asPrismaService(prisma),
       storageClient as unknown as ResourceStorageClient,
       documentVulgarizationClient as unknown as DocumentVulgarizationClient,
+      imageNormalizer as unknown as ImageNormalizer,
       notionClient as unknown as NotionClient,
       notionConnectionService as unknown as NotionConnectionService,
     );
@@ -111,7 +124,6 @@ describe('ResourcesService', () => {
       expect(documentVulgarizationClient.submitBatch).toHaveBeenCalledWith(
         { kind: 'pdf', fileBuffer: pdfFile.buffer },
         'Architecture overview',
-        [],
       );
       expect(prisma.resource.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -174,17 +186,70 @@ describe('ResourcesService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it("passes the project's existing categories into submitBatch, key/labelEn only", async () => {
+    // specs/014-category-sections FR-023/FR-024. The real defect this covers:
+    // an 8929 x 7392 px diagram was forwarded untouched and rejected by the
+    // provider at batch-execution time, minutes after the upload appeared to
+    // succeed.
+    it('normalizes an image before analysis while storing the original untouched', async () => {
+      const normalizedBuffer = Buffer.from('resized png bytes');
       prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
-      prisma.resourceCategory.findMany.mockResolvedValue([
-        {
-          id: 'category-1',
-          projectId: 'project-1',
-          key: 'architecture-stack',
-          labelEn: 'Architecture & stack',
-          labelFr: 'Architecture et stack',
-        },
-      ]);
+      imageNormalizer.normalize.mockResolvedValue({
+        buffer: normalizedBuffer,
+        mimeType: 'image/png',
+      });
+      documentVulgarizationClient.submitBatch.mockResolvedValue('batch_123');
+      prisma.resource.create.mockResolvedValue({
+        id: 'resource-1',
+        projectId: 'project-1',
+        source: 'upload',
+        status: 'processing',
+        title: 'MDW_SPORTS-ARCHITECTURE-2',
+      });
+
+      await service.createFromUpload('user-1', 'project-1', pngFile);
+
+      expect(imageNormalizer.normalize).toHaveBeenCalledWith(
+        pngFile.buffer,
+        'image/png',
+      );
+      // Analysis gets the normalized copy...
+      expect(documentVulgarizationClient.submitBatch).toHaveBeenCalledWith(
+        { kind: 'image', fileBuffer: normalizedBuffer, mimeType: 'image/png' },
+        'MDW_SPORTS-ARCHITECTURE-2',
+      );
+      // ...while what a reader downloads later is still the original.
+      expect(storageClient.uploadFile).toHaveBeenCalledWith(
+        expect.any(String),
+        pngFile.buffer,
+        'image/png',
+      );
+    });
+
+    it('carries a format change through to the analysis source', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
+      imageNormalizer.normalize.mockResolvedValue({
+        buffer: Buffer.from('recompressed'),
+        mimeType: 'image/jpeg',
+      });
+      documentVulgarizationClient.submitBatch.mockResolvedValue('batch_123');
+      prisma.resource.create.mockResolvedValue({
+        id: 'resource-1',
+        projectId: 'project-1',
+        source: 'upload',
+        status: 'processing',
+        title: 'MDW_SPORTS-ARCHITECTURE-2',
+      });
+
+      await service.createFromUpload('user-1', 'project-1', pngFile);
+
+      expect(documentVulgarizationClient.submitBatch).toHaveBeenCalledWith(
+        expect.objectContaining({ mimeType: 'image/jpeg' }),
+        expect.any(String),
+      );
+    });
+
+    it('never normalizes a non-image format', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
       documentVulgarizationClient.submitBatch.mockResolvedValue('batch_123');
       prisma.resource.create.mockResolvedValue({
         id: 'resource-1',
@@ -196,14 +261,22 @@ describe('ResourcesService', () => {
 
       await service.createFromUpload('user-1', 'project-1', pdfFile);
 
-      expect(prisma.resourceCategory.findMany).toHaveBeenCalledWith({
-        where: { projectId: 'project-1' },
-      });
-      expect(documentVulgarizationClient.submitBatch).toHaveBeenCalledWith(
-        { kind: 'pdf', fileBuffer: pdfFile.buffer },
-        'Architecture overview',
-        [{ key: 'architecture-stack', labelEn: 'Architecture & stack' }],
+      expect(imageNormalizer.normalize).not.toHaveBeenCalled();
+    });
+
+    // FR-025: told at upload time, rather than becoming a resource that fails
+    // silently minutes later.
+    it('rejects an unreadable image with a 400 and creates no resource', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
+      imageNormalizer.normalize.mockRejectedValue(
+        new ImageNormalizationError('Unreadable image: truncated'),
       );
+
+      await expect(
+        service.createFromUpload('user-1', 'project-1', pngFile),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(documentVulgarizationClient.submitBatch).not.toHaveBeenCalled();
+      expect(prisma.resource.create).not.toHaveBeenCalled();
     });
   });
 
@@ -245,7 +318,6 @@ describe('ResourcesService', () => {
       expect(documentVulgarizationClient.submitBatch).toHaveBeenCalledWith(
         { kind: 'text', text: 'This system does X.' },
         'Architecture overview',
-        [],
       );
       expect(prisma.resource.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -386,13 +458,23 @@ describe('ResourcesService', () => {
       createdAt: new Date('2026-08-08T00:00:00.000Z'),
     };
 
-    it('resolves vulgarizedTitle/vulgarizedContent from the matching locale row', async () => {
+    // Q1: the whole-document rewrite is gone; a resource's readable content
+    // is its sections, resolved to the caller's locale.
+    it('resolves each section title/content from the caller locale', async () => {
       prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
       prisma.resource.findUnique.mockResolvedValue(uploadResource);
-      prisma.resourceVulgarization.findUnique.mockResolvedValue({
-        title: 'Titre FR',
-        content: 'Contenu FR',
-      });
+      prisma.resourceSection.findMany.mockResolvedValue([
+        {
+          id: 'section-1',
+          categoryKey: 'overview',
+          status: 'approved',
+          position: 0,
+          titleEn: 'The project',
+          contentEn: 'Content EN',
+          titleFr: 'Le projet',
+          contentFr: 'Contenu FR',
+        },
+      ]);
       storageClient.getPresignedDownloadUrl.mockResolvedValue(
         'https://r2.example.com/signed',
       );
@@ -404,19 +486,20 @@ describe('ResourcesService', () => {
         'fr',
       );
 
-      expect(prisma.resourceVulgarization.findUnique).toHaveBeenCalledWith({
-        where: {
-          resourceId_locale: { resourceId: 'resource-1', locale: 'fr' },
+      expect(result.sections).toEqual([
+        {
+          id: 'section-1',
+          categoryKey: 'overview',
+          status: 'approved',
+          title: 'Le projet',
+          content: 'Contenu FR',
         },
-      });
-      expect(result.vulgarizedTitle).toBe('Titre FR');
-      expect(result.vulgarizedContent).toBe('Contenu FR');
+      ]);
     });
 
     it('attaches a presigned originalFileUrl for a published, upload-sourced resource', async () => {
       prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
       prisma.resource.findUnique.mockResolvedValue(uploadResource);
-      prisma.resourceVulgarization.findUnique.mockResolvedValue(null);
       storageClient.getPresignedDownloadUrl.mockResolvedValue(
         'https://r2.example.com/signed',
       );
@@ -443,7 +526,6 @@ describe('ResourcesService', () => {
         originalFileKey: null,
         notionPageUrl: 'https://notion.so/page',
       });
-      prisma.resourceVulgarization.findUnique.mockResolvedValue(null);
 
       const result = await service.findOne(
         'user-1',
@@ -457,12 +539,12 @@ describe('ResourcesService', () => {
       expect(result.originalFileUrl).toBeNull();
     });
 
-    it('throws not found for a client requesting a non-published resource', async () => {
+    // Q2: the detail endpoint is now the contributor's review screen. A
+    // client is refused whatever the resource's status — including a
+    // published one they can perfectly well read inline from the list.
+    it('throws not found for a client, even for a published resource', async () => {
       prisma.projectMember.findUnique.mockResolvedValue(clientMembership);
-      prisma.resource.findUnique.mockResolvedValue({
-        ...uploadResource,
-        status: 'processing',
-      });
+      prisma.resource.findUnique.mockResolvedValue(uploadResource);
 
       await expect(
         service.findOne('user-1', 'project-1', 'resource-1', 'en'),
@@ -515,6 +597,24 @@ describe('ResourcesService', () => {
           publishedAt: expect.any(Date) as unknown,
         }) as unknown,
       });
+    });
+
+    // research.md Decision 4: a published resource with nothing approved
+    // contributes to no tab (FR-018) — published yet invisible, which reads
+    // as a bug to both roles.
+    it('refuses to publish when no section has been approved', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
+      prisma.resource.findUnique.mockResolvedValue({
+        id: 'resource-1',
+        projectId: 'project-1',
+        status: 'ready_for_review',
+      });
+      prisma.resourceSection.count.mockResolvedValue(0);
+
+      await expect(
+        service.publish('user-1', 'project-1', 'resource-1'),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.resource.update).not.toHaveBeenCalled();
     });
 
     it('rejects publishing a resource that is not ready_for_review', async () => {
@@ -626,197 +726,288 @@ describe('ResourcesService', () => {
     });
   });
 
-  describe('categories in resource responses', () => {
-    const uploadResource = {
+  describe('sections in resource responses', () => {
+    const publishedResource = {
       id: 'resource-1',
       projectId: 'project-1',
-      source: 'upload',
-      status: 'published',
+      source: 'upload' as const,
+      status: 'published' as const,
       title: 'Architecture overview',
-      originalFileKey: null,
-      originalFileName: null,
-      originalFileMimeType: null,
+      originalFileKey: 'resources/project-1/a.pdf',
+      originalFileName: 'a.pdf',
+      originalFileMimeType: 'application/pdf',
       notionPageUrl: null,
       failureReason: null,
       publishedAt: new Date('2026-08-08T00:00:00.000Z'),
       createdAt: new Date('2026-08-08T00:00:00.000Z'),
     };
 
-    const assignment = {
-      id: 'assignment-1',
-      resourceId: 'resource-1',
-      categoryId: 'category-1',
+    const storedSection = {
+      id: 'section-1',
+      categoryKey: 'overview',
       status: 'approved',
-      category: {
-        id: 'category-1',
-        key: 'architecture-stack',
-        labelEn: 'Architecture & stack',
-        labelFr: 'Architecture et stack',
-      },
+      position: 0,
+      titleEn: 'The project',
+      contentEn: 'Content EN',
+      titleFr: 'Le projet',
+      contentFr: 'Contenu FR',
     };
 
-    it('includes categories on the list endpoint, resolved to the caller locale', async () => {
+    // FR-019: this is the change that makes reading-without-navigating
+    // possible. The old list returned titles only, which is precisely why a
+    // client had to click into a document to read anything.
+    it('includes sections with their full content on the list endpoint', async () => {
       prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
-      prisma.resource.findMany.mockResolvedValue([uploadResource]);
-      prisma.resourceCategoryAssignment.findMany.mockResolvedValue([
-        assignment,
-      ]);
+      prisma.resource.findMany.mockResolvedValue([publishedResource]);
+      prisma.resourceSection.findMany.mockResolvedValue([storedSection]);
+      storageClient.getPresignedDownloadUrl.mockResolvedValue(
+        'https://r2.example.com/signed',
+      );
 
-      const result = await service.findAllForProject(
+      const [resource] = await service.findAllForProject(
         'user-1',
         'project-1',
         'fr',
       );
 
-      expect(result[0].categories).toEqual([
+      expect(resource.sections).toEqual([
         {
-          id: 'assignment-1',
-          categoryId: 'category-1',
-          key: 'architecture-stack',
-          label: 'Architecture et stack',
+          id: 'section-1',
+          categoryKey: 'overview',
           status: 'approved',
+          title: 'Le projet',
+          content: 'Contenu FR',
         },
       ]);
     });
 
-    it('only queries approved assignments for a client, all statuses for a contributor', async () => {
+    // FR-020: an accordion block offers the source document, so the list has
+    // to carry the presigned URL too — not just the detail endpoint.
+    it('presigns the original file URL on the list endpoint', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
+      prisma.resource.findMany.mockResolvedValue([publishedResource]);
+      storageClient.getPresignedDownloadUrl.mockResolvedValue(
+        'https://r2.example.com/signed',
+      );
+
+      const [resource] = await service.findAllForProject(
+        'user-1',
+        'project-1',
+        'en',
+      );
+
+      expect(resource.originalFileUrl).toBe('https://r2.example.com/signed');
+    });
+
+    // FR-016: a client must not be able to observe that a rejected section
+    // ever existed. Enforced in the query, not by filtering afterwards.
+    it('queries only approved sections for a client, every status for a contributor', async () => {
       prisma.projectMember.findUnique.mockResolvedValue(clientMembership);
-      prisma.resource.findMany.mockResolvedValue([uploadResource]);
+      prisma.resource.findMany.mockResolvedValue([publishedResource]);
 
       await service.findAllForProject('user-1', 'project-1', 'en');
 
-      expect(prisma.resourceCategoryAssignment.findMany).toHaveBeenCalledWith({
+      expect(prisma.resourceSection.findMany).toHaveBeenCalledWith({
         where: { resourceId: 'resource-1', status: 'approved' },
-        include: { category: true },
+        orderBy: { position: 'asc' },
+      });
+
+      prisma.resourceSection.findMany.mockClear();
+      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
+
+      await service.findAllForProject('user-1', 'project-1', 'en');
+
+      expect(prisma.resourceSection.findMany).toHaveBeenCalledWith({
+        where: { resourceId: 'resource-1' },
+        orderBy: { position: 'asc' },
       });
     });
   });
 
-  describe('approveCategory / rejectCategory', () => {
-    const proposedAssignment = {
-      id: 'assignment-1',
+  describe('approveSection / rejectSection / moveSection', () => {
+    const proposedSection = {
+      id: 'section-1',
       resourceId: 'resource-1',
-      categoryId: 'category-1',
+      categoryKey: 'overview',
       status: 'proposed',
+      position: 0,
     };
 
-    it('approves a proposed assignment', async () => {
+    function arrangeContributorWithSection(section = proposedSection) {
       prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
-      prisma.resourceCategoryAssignment.findUnique.mockResolvedValue(
-        proposedAssignment,
-      );
+      prisma.resourceSection.findUnique.mockResolvedValue(section);
       prisma.resource.findUnique.mockResolvedValue({
         id: 'resource-1',
         projectId: 'project-1',
       });
+    }
 
-      await service.approveCategory(
+    it('approves a proposed section without touching the resource', async () => {
+      arrangeContributorWithSection();
+
+      await service.approveSection(
         'user-1',
         'project-1',
         'resource-1',
-        'assignment-1',
+        'section-1',
       );
 
-      expect(prisma.resourceCategoryAssignment.update).toHaveBeenCalledWith({
-        where: { id: 'assignment-1' },
+      expect(prisma.resourceSection.update).toHaveBeenCalledWith({
+        where: { id: 'section-1' },
         data: { status: 'approved' },
       });
+      expect(prisma.resource.update).not.toHaveBeenCalled();
     });
 
-    it('rejects a proposed assignment without touching the resource', async () => {
-      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
-      prisma.resourceCategoryAssignment.findUnique.mockResolvedValue(
-        proposedAssignment,
-      );
-      prisma.resource.findUnique.mockResolvedValue({
-        id: 'resource-1',
-        projectId: 'project-1',
-      });
+    it('rejects a proposed section without touching the resource', async () => {
+      arrangeContributorWithSection();
 
-      await service.rejectCategory(
+      await service.rejectSection(
         'user-1',
         'project-1',
         'resource-1',
-        'assignment-1',
+        'section-1',
       );
 
-      expect(prisma.resourceCategoryAssignment.update).toHaveBeenCalledWith({
-        where: { id: 'assignment-1' },
+      expect(prisma.resourceSection.update).toHaveBeenCalledWith({
+        where: { id: 'section-1' },
         data: { status: 'rejected' },
       });
       expect(prisma.resource.update).not.toHaveBeenCalled();
     });
 
-    it('rejects re-deciding an assignment that is already approved/rejected', async () => {
-      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
-      prisma.resourceCategoryAssignment.findUnique.mockResolvedValue({
-        ...proposedAssignment,
-        status: 'approved',
-      });
-      prisma.resource.findUnique.mockResolvedValue({
-        id: 'resource-1',
-        projectId: 'project-1',
-      });
+    // FR-015: re-filing changes the category and nothing else.
+    it('moves a section to a free category, preserving its content', async () => {
+      arrangeContributorWithSection();
+      prisma.resourceSection.findUnique
+        .mockResolvedValueOnce(proposedSection)
+        .mockResolvedValueOnce(null);
 
-      await expect(
-        service.approveCategory(
-          'user-1',
-          'project-1',
-          'resource-1',
-          'assignment-1',
-        ),
-      ).rejects.toThrow(ConflictException);
-      expect(prisma.resourceCategoryAssignment.update).not.toHaveBeenCalled();
+      await service.moveSection(
+        'user-1',
+        'project-1',
+        'resource-1',
+        'section-1',
+        'planning',
+      );
+
+      expect(prisma.resourceSection.update).toHaveBeenCalledWith({
+        where: { id: 'section-1' },
+        data: { categoryKey: 'planning' },
+      });
     });
 
-    it('throws not found when the assignment does not belong to the given resource', async () => {
-      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
-      prisma.resourceCategoryAssignment.findUnique.mockResolvedValue({
-        ...proposedAssignment,
-        resourceId: 'some-other-resource',
-      });
+    it('is a no-op when the section is already in the target category', async () => {
+      arrangeContributorWithSection();
+
+      await service.moveSection(
+        'user-1',
+        'project-1',
+        'resource-1',
+        'section-1',
+        'overview',
+      );
+
+      expect(prisma.resourceSection.update).not.toHaveBeenCalled();
+    });
+
+    // Merging two independently written rewrites produces incoherent prose
+    // (spec.md Assumptions) — the contributor rejects one and moves the other.
+    it('refuses a move into a category this document already occupies', async () => {
+      arrangeContributorWithSection();
+      prisma.resourceSection.findUnique
+        .mockResolvedValueOnce(proposedSection)
+        .mockResolvedValueOnce({ id: 'section-2', categoryKey: 'planning' });
 
       await expect(
-        service.approveCategory(
+        service.moveSection(
           'user-1',
           'project-1',
           'resource-1',
-          'assignment-1',
+          'section-1',
+          'planning',
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.resourceSection.update).not.toHaveBeenCalled();
+    });
+
+    // research.md Decision 4: moving after approval would silently pull a
+    // section out of a tab a client is already reading.
+    it('refuses to move a section that is no longer proposed', async () => {
+      arrangeContributorWithSection({ ...proposedSection, status: 'approved' });
+
+      await expect(
+        service.moveSection(
+          'user-1',
+          'project-1',
+          'resource-1',
+          'section-1',
+          'planning',
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('refuses to re-decide a section that is already approved or rejected', async () => {
+      arrangeContributorWithSection({ ...proposedSection, status: 'rejected' });
+
+      await expect(
+        service.approveSection(
+          'user-1',
+          'project-1',
+          'resource-1',
+          'section-1',
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    // Constitution V: "not found", "belongs to another resource", "belongs to
+    // another project" and "not a contributor" are one indistinguishable
+    // response.
+    it('throws not found when the section belongs to a different resource', async () => {
+      prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
+      prisma.resourceSection.findUnique.mockResolvedValue({
+        ...proposedSection,
+        resourceId: 'resource-other',
+      });
+
+      await expect(
+        service.approveSection(
+          'user-1',
+          'project-1',
+          'resource-1',
+          'section-1',
         ),
       ).rejects.toThrow(NotFoundException);
-      expect(prisma.resourceCategoryAssignment.update).not.toHaveBeenCalled();
     });
 
     it('throws not found when the resource belongs to a different project', async () => {
       prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
-      prisma.resourceCategoryAssignment.findUnique.mockResolvedValue(
-        proposedAssignment,
-      );
+      prisma.resourceSection.findUnique.mockResolvedValue(proposedSection);
       prisma.resource.findUnique.mockResolvedValue({
         id: 'resource-1',
-        projectId: 'other-project',
+        projectId: 'project-other',
       });
 
       await expect(
-        service.approveCategory(
+        service.approveSection(
           'user-1',
           'project-1',
           'resource-1',
-          'assignment-1',
+          'section-1',
         ),
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('throws not found when the assignment does not exist', async () => {
+    it('throws not found when the section does not exist', async () => {
       prisma.projectMember.findUnique.mockResolvedValue(contributorMembership);
-      prisma.resourceCategoryAssignment.findUnique.mockResolvedValue(null);
+      prisma.resourceSection.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.approveCategory(
+        service.approveSection(
           'user-1',
           'project-1',
           'resource-1',
-          'assignment-1',
+          'section-1',
         ),
       ).rejects.toThrow(NotFoundException);
     });
@@ -825,16 +1016,14 @@ describe('ResourcesService', () => {
       prisma.projectMember.findUnique.mockResolvedValue(clientMembership);
 
       await expect(
-        service.approveCategory(
+        service.approveSection(
           'user-1',
           'project-1',
           'resource-1',
-          'assignment-1',
+          'section-1',
         ),
       ).rejects.toThrow(NotFoundException);
-      expect(
-        prisma.resourceCategoryAssignment.findUnique,
-      ).not.toHaveBeenCalled();
+      expect(prisma.resourceSection.update).not.toHaveBeenCalled();
     });
   });
 });

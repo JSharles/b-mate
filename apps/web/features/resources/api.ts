@@ -1,4 +1,4 @@
-import type { CreateResourceNotionRequest, Resource } from "schemas";
+import type { CreateResourceNotionRequest, Resource, ResourceCategoryKey } from "schemas";
 import { apiFetch, ApiError } from "@/shared/lib/api-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -25,25 +25,40 @@ export function deleteResource(projectId: string, resourceId: string) {
   });
 }
 
-export function approveResourceCategory(
+// specs/014-category-sections: a contributor reviews what the analysis filed
+// where, section by section — the category list itself is frozen, so there is
+// nothing to approve about a category any more.
+export function approveResourceSection(
   projectId: string,
   resourceId: string,
-  categoryAssignmentId: string,
+  sectionId: string,
 ) {
   return apiFetch<void>(
-    `/projects/${projectId}/resources/${resourceId}/categories/${categoryAssignmentId}/approve`,
+    `/projects/${projectId}/resources/${resourceId}/sections/${sectionId}/approve`,
     { method: "POST" },
   );
 }
 
-export function rejectResourceCategory(
+export function rejectResourceSection(
   projectId: string,
   resourceId: string,
-  categoryAssignmentId: string,
+  sectionId: string,
 ) {
   return apiFetch<void>(
-    `/projects/${projectId}/resources/${resourceId}/categories/${categoryAssignmentId}/reject`,
+    `/projects/${projectId}/resources/${resourceId}/sections/${sectionId}/reject`,
     { method: "POST" },
+  );
+}
+
+export function moveResourceSection(
+  projectId: string,
+  resourceId: string,
+  sectionId: string,
+  categoryKey: ResourceCategoryKey,
+) {
+  return apiFetch<void>(
+    `/projects/${projectId}/resources/${resourceId}/sections/${sectionId}/move`,
+    { method: "POST", body: { categoryKey } },
   );
 }
 

@@ -19,7 +19,10 @@ vi.mock("@/features/resources/hooks", () => ({
   useResource: vi.fn(),
 }));
 
+const mockReplace = vi.fn();
+
 vi.mock("@/i18n/navigation", () => ({
+  useRouter: () => ({ replace: mockReplace }),
   Link: ({
     href,
     children,
@@ -35,14 +38,12 @@ vi.mock("@/features/resources/components/resource-detail-page-content", () => ({
   ResourceDetailPageContent: ({
     projectId,
     resource,
-    canManage,
   }: {
     projectId: string;
     resource: { id: string };
-    canManage: boolean;
   }) => (
     <div>
-      resource-detail-page-content:{projectId}:{resource.id}:{String(canManage)}
+      resource-detail-page-content:{projectId}:{resource.id}
     </div>
   ),
 }));
@@ -77,24 +78,30 @@ function mockLoaded(role: "contributor" | "client") {
 }
 
 describe("ResourceDetailPage", () => {
-  it("passes canManage=true for a contributor", () => {
+  it("renders the review screen for a contributor", () => {
     mockLoaded("contributor");
 
     renderPage();
 
     expect(
-      screen.getByText("resource-detail-page-content:project-1:resource-1:true"),
+      screen.getByText("resource-detail-page-content:project-1:resource-1"),
     ).toBeInTheDocument();
   });
 
-  it("passes canManage=false for a client", () => {
+  // specs/014-category-sections Q2: this page is the contributor's review
+  // screen. A client reads every section inline under the project's category
+  // tabs; the API answers 404 for them, so the redirect is about not
+  // stranding them on an error state.
+  it("redirects a client back to the project instead of rendering", () => {
+    mockReplace.mockReset();
     mockLoaded("client");
 
     renderPage();
 
+    expect(mockReplace).toHaveBeenCalledWith("/projects/project-1");
     expect(
-      screen.getByText("resource-detail-page-content:project-1:resource-1:false"),
-    ).toBeInTheDocument();
+      screen.queryByText(/resource-detail-page-content/),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a back link to the project", () => {

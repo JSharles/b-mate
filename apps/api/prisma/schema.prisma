@@ -171,7 +171,6 @@ model Project {
   taskProgress       TaskProgress[]
   resources          Resource[]
   notionConnection   NotionConnection?
-  resourceCategories ResourceCategory[]
 
   @@map("projects")
 }
@@ -302,10 +301,12 @@ model Resource {
   failureReason String? @map("failure_reason")
 
   // The Claude Batch API request ID this resource's processing was
-  // submitted under (research.md Decision 4) — a single batch holding one
-  // request per supported locale (both submitted together, one poll target
-  // — see ResourceVulgarization below), read by ResourceBatchSweepService.
-  // Cleared once terminal.
+  // submitted under (research.md Decision 4), read by
+  // ResourceBatchSweepService. Cleared once terminal.
+  //
+  // specs/014-category-sections research.md Decision 1: the batch now holds
+  // a single request producing every section in both locales at once, where
+  // 013 submitted three (one per locale, plus category detection).
   anthropicBatchId String? @map("anthropic_batch_id")
 
   addedByUserId String @map("added_by_user_id") @db.Uuid
@@ -318,8 +319,7 @@ model Resource {
   // User for a field nothing joins against today.
   publishedByUserId String?   @map("published_by_user_id") @db.Uuid
 
-  vulgarizations      ResourceVulgarization[]
-  categoryAssignments ResourceCategoryAssignment[]
+  sections ResourceSection[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -327,73 +327,65 @@ model Resource {
   @@map("resources")
 }
 
-// One row per (resource, app locale) — mirrors VulgarizedTask's own shape
-// (specs/007) for the same reason: the app is bilingual (en/fr), so a
-// client reads the vulgarized content in their own interface locale, not
-// whatever language the developer happened to be in when they added the
-// resource. Both locales are submitted as two requests in the same Claude
-// Batch (Resource.anthropicBatchId), so they complete together.
-model ResourceVulgarization {
+// specs/014-category-sections data-model.md. The unit a client reads and a
+// contributor reviews: one row per (document, category) pair the document
+// actually addresses, holding the plain-language rewrite of what that
+// document says about that category.
+//
+// Replaces three 013-era tables at once — ResourceVulgarization (the
+// whole-document rewrite), ResourceCategory (per-project, AI-invented
+// labels) and ResourceCategoryAssignment (the join). 013 attached a *label*
+// to a whole document, so a document appeared identically under each of its
+// tabs; a section carries different content per category, which is what
+// makes the tabs differ.
+model ResourceSection {
   id         String   @id @default(uuid()) @db.Uuid
   resourceId String   @map("resource_id") @db.Uuid
   resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
-  locale  String
-  title   String
-  content String
+  categoryKey ResourceCategoryKey   @map("category_key")
+  status      ResourceSectionStatus @default(proposed)
 
-  createdAt DateTime @default(now()) @map("created_at")
+  // Order the analysis produced this section in. Breaks ties when several
+  // sections of the same resource land in one category tab (FR-022).
+  position Int
 
-  @@unique([resourceId, locale])
-  @@map("resource_vulgarizations")
-}
-
-// specs/013-ai-resource-categorization data-model.md. A project-scoped,
-// canonical "type of information" label (e.g. "Architecture," "Audit
-// findings") — not a technical topic. `key` is a stable, English,
-// kebab-case identity used only for AI reuse-matching (research.md
-// Decision 2), never shown to a user; `labelEn`/`labelFr` are the display
-// text, mirroring ResourceVulgarization's per-locale pattern.
-model ResourceCategory {
-  id        String  @id @default(uuid()) @db.Uuid
-  projectId String  @map("project_id") @db.Uuid
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  key     String
-  labelEn String @map("label_en")
-  labelFr String @map("label_fr")
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  assignments ResourceCategoryAssignment[]
-
-  @@unique([projectId, key])
-  @@map("resource_categories")
-}
-
-// The many-to-many join between Resource and ResourceCategory — a resource
-// can carry several categories at once, each approved/rejected
-// independently of the others and of the resource's own publish action
-// (research.md Decision 3, Decision 4). One row per (resource, category)
-// pair ever proposed; re-processing the same pair upserts rather than
-// duplicates (mirrors ResourceVulgarization's resourceId_locale upsert).
-model ResourceCategoryAssignment {
-  id         String           @id @default(uuid()) @db.Uuid
-  resourceId String           @map("resource_id") @db.Uuid
-  resource   Resource         @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  categoryId String           @map("category_id") @db.Uuid
-  category   ResourceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  status ResourceCategoryAssignmentStatus @default(proposed)
+  // Both locales in one row, produced together in a single analysis pass
+  // (research.md Decision 1) — which is what structurally guarantees the two
+  // languages agree on which categories a document was split into (FR-011).
+  // The read layer resolves one pair per caller locale, exactly as 013's
+  // labelEn/labelFr already did.
+  titleEn   String
+  contentEn String
+  titleFr   String
+  contentFr String
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([resourceId, categoryId])
-  @@map("resource_category_assignments")
+  // FR-010: at most one section per (document, category). Also what makes a
+  // re-poll upsert rather than duplicate, and what a move must respect.
+  @@unique([resourceId, categoryKey])
+  @@map("resource_sections")
 }
 
-enum ResourceCategoryAssignmentStatus {
+// The frozen, product-wide category list (FR-001). Not a table: there is
+// nothing per-project to store, and a table is exactly what let 013's
+// taxonomy drift. Mirrored in packages/schemas/src/resource-category.ts and
+// apps/api/src/resources/resource-categories.ts — change one, change all
+// three. Keys are identifier-safe because Prisma enum members cannot contain
+// hyphens, and a key is never shown to a user.
+enum ResourceCategoryKey {
+  overview
+  how_it_works
+  planning
+  other
+}
+
+// One-way: proposed -> approved | rejected. A contributor reviews what the
+// analysis filed where (FR-013/FR-014); only approved sections of a
+// published resource ever reach a client (FR-016).
+enum ResourceSectionStatus {
   proposed
   approved
   rejected

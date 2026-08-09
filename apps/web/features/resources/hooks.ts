@@ -2,15 +2,16 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale } from "next-intl";
-import type { CreateResourceNotionRequest } from "schemas";
+import type { CreateResourceNotionRequest, ResourceCategoryKey } from "schemas";
 import {
-  approveResourceCategory,
+  approveResourceSection,
   connectNotionResource,
   deleteResource,
   getResource,
   getResources,
+  moveResourceSection,
   publishResource,
-  rejectResourceCategory,
+  rejectResourceSection,
   uploadResource,
 } from "./api";
 
@@ -78,19 +79,20 @@ export function useConnectNotionResource(projectId: string) {
   });
 }
 
-// Mirrors usePublishResource's shape — a category assignment is scoped to
-// one resource, so both the resource's own detail entry and the project's
-// resource list (client-facing tabs group by category there) need
-// invalidating on success.
-export function useApproveResourceCategory(projectId: string) {
+// Mirrors usePublishResource's shape — a section belongs to one resource, so
+// both that resource's own detail entry and the project's resource list (the
+// client's category tabs are built from it) need invalidating on success.
+function useSectionMutation<TVars extends { resourceId: string }>(
+  projectId: string,
+  mutationFn: (vars: TVars) => Promise<void>,
+) {
   const queryClient = useQueryClient();
   const locale = useLocale();
 
   return useMutation({
-    mutationFn: (vars: { resourceId: string; categoryAssignmentId: string }) =>
-      approveResourceCategory(projectId, vars.resourceId, vars.categoryAssignmentId),
+    mutationFn,
     meta: { skipGlobalErrorToast: true },
-    onSuccess: (_data, vars) => {
+    onSuccess: (_data: void, vars: TVars) => {
       queryClient.invalidateQueries({ queryKey: resourcesKey(projectId, locale) });
       queryClient.invalidateQueries({
         queryKey: resourceKey(projectId, vars.resourceId, locale),
@@ -99,21 +101,24 @@ export function useApproveResourceCategory(projectId: string) {
   });
 }
 
-export function useRejectResourceCategory(projectId: string) {
-  const queryClient = useQueryClient();
-  const locale = useLocale();
+export function useApproveResourceSection(projectId: string) {
+  return useSectionMutation(projectId, (vars: { resourceId: string; sectionId: string }) =>
+    approveResourceSection(projectId, vars.resourceId, vars.sectionId),
+  );
+}
 
-  return useMutation({
-    mutationFn: (vars: { resourceId: string; categoryAssignmentId: string }) =>
-      rejectResourceCategory(projectId, vars.resourceId, vars.categoryAssignmentId),
-    meta: { skipGlobalErrorToast: true },
-    onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: resourcesKey(projectId, locale) });
-      queryClient.invalidateQueries({
-        queryKey: resourceKey(projectId, vars.resourceId, locale),
-      });
-    },
-  });
+export function useRejectResourceSection(projectId: string) {
+  return useSectionMutation(projectId, (vars: { resourceId: string; sectionId: string }) =>
+    rejectResourceSection(projectId, vars.resourceId, vars.sectionId),
+  );
+}
+
+export function useMoveResourceSection(projectId: string) {
+  return useSectionMutation(
+    projectId,
+    (vars: { resourceId: string; sectionId: string; categoryKey: ResourceCategoryKey }) =>
+      moveResourceSection(projectId, vars.resourceId, vars.sectionId, vars.categoryKey),
+  );
 }
 
 export function useDeleteResource(projectId: string) {

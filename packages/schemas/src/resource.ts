@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ResourceCategoryKeySchema } from './resource-category';
 
 // specs/011-project-resources. Mirrors apps/api's Resource model, minus
 // anthropicBatchId (internal-only, never returned to the frontend) and
@@ -14,37 +15,56 @@ export const ResourceStatusSchema = z.enum([
 ]);
 export type ResourceStatus = z.infer<typeof ResourceStatusSchema>;
 
-// specs/013-ai-resource-categorization data-model.md. `id` is the
-// ResourceCategoryAssignment's own id (the target for approve/reject calls),
-// not the category's — a resource can carry several of these at once, each
-// tracked independently. `label` is already resolved to the caller's own
-// locale server-side (labelEn/labelFr), matching how vulgarizedTitle/
-// vulgarizedContent are already locale-resolved rather than shipped as a
-// pair. A client-role caller only ever receives 'approved' entries here —
-// enforced API-side, mirroring how only 'published' resources reach them.
-export const ResourceCategoryAssignmentStatusSchema = z.enum([
+// specs/014-category-sections data-model.md. A section is the unit a client
+// reads and a contributor reviews: one per (document, category) pair the
+// document actually addresses, holding the plain-language rewrite of what
+// that document says about that category. It replaces 013's category
+// *assignment*, which carried only a label — which is why every tab used to
+// show the same documents.
+//
+// `id` is the section's own id: the target of approve/reject/move. `title`
+// and `content` are already resolved to the caller's locale server-side from
+// the stored en/fr pair, the same way 013's `label` was. A client-role caller
+// only ever receives 'approved' sections — enforced API-side, mirroring how
+// only 'published' resources reach them.
+export const ResourceSectionStatusSchema = z.enum([
   'proposed',
   'approved',
   'rejected',
 ]);
-export type ResourceCategoryAssignmentStatus = z.infer<
-  typeof ResourceCategoryAssignmentStatusSchema
+export type ResourceSectionStatus = z.infer<typeof ResourceSectionStatusSchema>;
+
+export const ResourceSectionSchema = z.object({
+  id: z.string(),
+  categoryKey: ResourceCategoryKeySchema,
+  status: ResourceSectionStatusSchema,
+  title: z.string(),
+  content: z.string(),
+});
+export type ResourceSection = z.infer<typeof ResourceSectionSchema>;
+
+// Re-files a mis-categorized section (contracts/resource-sections.md). Only
+// the category changes — never the title or content (FR-015).
+export const MoveResourceSectionRequestSchema = z.object({
+  categoryKey: ResourceCategoryKeySchema,
+});
+export type MoveResourceSectionRequest = z.infer<
+  typeof MoveResourceSectionRequestSchema
 >;
 
-export const ResourceCategorySchema = z.object({
-  id: z.string(),
-  categoryId: z.string(),
-  key: z.string(),
-  label: z.string(),
-  status: ResourceCategoryAssignmentStatusSchema,
-});
-export type ResourceCategory = z.infer<typeof ResourceCategorySchema>;
-
-// The response shape for both the list (tile) and detail views — list omits
-// nothing here (the fields are all cheap; a resource without vulgarized
-// content just has those fields null). originalFileUrl is a short-lived
-// presigned URL, generated fresh per request (research.md Decision 6) —
-// never persisted or cached client-side beyond the current page load.
+// One response shape for both the list and the single-resource view — 014
+// dropped the list/detail split. `sections` travels with the list, content
+// included, which is what lets a client read under a category tab without
+// navigating anywhere (FR-019); the old shape carried titles only, which is
+// precisely why reading used to require a click.
+//
+// `vulgarizedTitle`/`vulgarizedContent` are gone: the whole-document rewrite
+// they held is replaced by the sections themselves.
+//
+// originalFileUrl is a short-lived presigned URL, generated fresh per request
+// — never persisted or cached client-side beyond the current page load. It is
+// now populated on the list too, so an accordion block can offer the source
+// document (FR-020); presigning is a local signature, not a call to storage.
 export const ResourceSchema = z.object({
   id: z.string(),
   projectId: z.string(),
@@ -55,12 +75,10 @@ export const ResourceSchema = z.object({
   originalFileName: z.string().nullable(),
   originalFileMimeType: z.string().nullable(),
   notionPageUrl: z.url().nullable(),
-  vulgarizedTitle: z.string().nullable(),
-  vulgarizedContent: z.string().nullable(),
   failureReason: z.string().nullable(),
   publishedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
-  categories: z.array(ResourceCategorySchema),
+  sections: z.array(ResourceSectionSchema),
 });
 export type Resource = z.infer<typeof ResourceSchema>;
 

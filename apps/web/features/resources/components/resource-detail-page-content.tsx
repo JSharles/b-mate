@@ -5,21 +5,14 @@ import { useTranslations } from "next-intl";
 import type { Resource } from "schemas";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
-import { cn } from "@/shared/lib/utils";
-import {
-  useApproveResourceCategory,
-  useDeleteResource,
-  usePublishResource,
-  useRejectResourceCategory,
-} from "../hooks";
+import { useDeleteResource, usePublishResource } from "../hooks";
+import { SectionReviewList } from "./section-review-list";
 
 const PREVIEWABLE_MIME_TYPES = new Set(["application/pdf", "image/png", "image/jpeg"]);
 
-// FR-007/FR-008: the original document stays reachable (preview when the
-// format supports it, download otherwise) for both the developer and,
-// once published, the client — not gated on canManage. Notion-sourced
-// resources have no uploaded file (spec.md Assumptions); a link back to
-// the source page stands in for preview/download there.
+// FR-020: the source document stays reachable — preview when the format
+// supports it, download otherwise. Notion-sourced resources have no uploaded
+// file (spec.md Assumptions); a link back to the source page stands in.
 function OriginalDocument({ resource }: { resource: Resource }) {
   const t = useTranslations("Projects.ResourceDetailPage");
 
@@ -73,98 +66,17 @@ function OriginalDocument({ resource }: { resource: Resource }) {
   );
 }
 
-// specs/013-ai-resource-categorization FR-003/FR-004: every proposed
-// category shown to a contributor, each approved/rejected independently —
-// approving/rejecting one never affects the others or the resource's own
-// publish state. A client only ever receives 'approved' assignments here
-// (API-side filter), so this list is never empty-but-hidden for them; it's
-// simply shorter.
-function CategoryChips({
-  projectId,
-  resource,
-  canManage,
-}: {
-  projectId: string;
-  resource: Resource;
-  canManage: boolean;
-}) {
-  const t = useTranslations("Projects.ResourceDetailPage");
-  const approve = useApproveResourceCategory(projectId);
-  const reject = useRejectResourceCategory(projectId);
-
-  if (resource.categories.length === 0) return null;
-
-  const pending = approve.isPending || reject.isPending;
-
-  return (
-    <ul className="flex flex-wrap items-center gap-2">
-      {resource.categories.map((category) => (
-        <li
-          key={category.id}
-          className="flex items-center gap-1.5 rounded-full border border-border bg-muted py-1 pr-1 pl-2.5 text-xs font-medium text-muted-foreground"
-        >
-          {category.label}
-          {canManage && category.status === "proposed" ? (
-            <span className="flex items-center gap-0.5">
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                disabled={pending}
-                onClick={() =>
-                  approve.mutate({
-                    resourceId: resource.id,
-                    categoryAssignmentId: category.id,
-                  })
-                }
-              >
-                {t("categoryApprove")}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                className="text-destructive hover:text-destructive"
-                disabled={pending}
-                onClick={() =>
-                  reject.mutate({
-                    resourceId: resource.id,
-                    categoryAssignmentId: category.id,
-                  })
-                }
-              >
-                {t("categoryReject")}
-              </Button>
-            </span>
-          ) : (
-            <span
-              className={cn(
-                "pr-1.5 text-xs tracking-wide uppercase",
-                category.status === "rejected" && "line-through",
-              )}
-            >
-              {category.status === "approved" ? t("categoryApproved") : t("categoryRejected")}
-            </span>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// specs/011-project-resources: `canManage` (contributor-only) controls the
-// Publish/Delete actions — a client only ever reaches this component for a
-// published resource (FR-010 already filters what the API returns) and
-// never manages anything (US3's preview/download for the client view lands
-// separately, T039).
+// specs/014-category-sections Q2: this page is the contributor's review
+// screen and nothing else. A client never reaches it — they read every
+// section inline under the project's category tabs — so there is no longer a
+// `canManage` prop and no role branching here. The API enforces the same rule
+// independently (findOne returns 404 for a client).
 export function ResourceDetailPageContent({
   projectId,
   resource,
-  canManage,
 }: {
   projectId: string;
   resource: Resource;
-  canManage: boolean;
 }) {
   const t = useTranslations("Projects.ResourceDetailPage");
   const router = useRouter();
@@ -181,12 +93,22 @@ export function ResourceDetailPageContent({
     });
   }
 
-  // FR-014: delete is allowed from any state; FR-016: publish only from
-  // ready_for_review.
-  const actions = canManage && (
+  // research.md Decision 4: publishing with nothing approved would produce a
+  // resource that is published yet contributes to no tab. The API refuses it;
+  // disabling the button here explains why before the click rather than after.
+  const hasApprovedSection = resource.sections.some(
+    (section) => section.status === "approved",
+  );
+  const canPublish = resource.status === "ready_for_review";
+
+  const actions = (
     <div className="flex shrink-0 gap-2">
-      {resource.status === "ready_for_review" && (
-        <Button type="button" onClick={handlePublish} disabled={publish.isPending}>
+      {canPublish && (
+        <Button
+          type="button"
+          onClick={handlePublish}
+          disabled={publish.isPending || !hasApprovedSection}
+        >
           {publish.isPending ? t("publishPending") : t("publish")}
         </Button>
       )}
@@ -215,24 +137,22 @@ export function ResourceDetailPageContent({
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center">
         <AlertTriangle className="size-8 text-destructive" />
-        <p className="text-sm text-destructive">{t("failed")}</p>
+        <p className="text-sm text-destructive">{resource.failureReason ?? t("failed")}</p>
         {actions}
       </div>
     );
   }
 
   return (
-    <article className="flex flex-col gap-4">
+    <article className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{resource.vulgarizedTitle ?? resource.title}</h1>
+        <h1 className="text-2xl font-semibold">{resource.title}</h1>
         {actions}
       </div>
-      <CategoryChips projectId={projectId} resource={resource} canManage={canManage} />
-      {resource.vulgarizedContent && (
-        <p className="max-w-prose leading-relaxed whitespace-pre-line text-foreground/90">
-          {resource.vulgarizedContent}
-        </p>
+      {canPublish && !hasApprovedSection && (
+        <p className="text-sm text-muted-foreground">{t("publishBlocked")}</p>
       )}
+      <SectionReviewList projectId={projectId} resource={resource} />
       <OriginalDocument resource={resource} />
     </article>
   );
