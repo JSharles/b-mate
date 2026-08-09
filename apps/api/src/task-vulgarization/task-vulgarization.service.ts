@@ -10,6 +10,7 @@ import {
   GithubOwnerType,
   GithubProjectsClient,
   InProgressItem,
+  TaskCounts,
 } from '../board-connections/github-projects.client';
 import { decryptToken } from '../board-connections/token-encryption';
 import { PrismaService } from '../prisma/prisma.service';
@@ -74,9 +75,16 @@ export class TaskVulgarizationService {
 
   private async processConnection(connection: BoardConnection): Promise<void> {
     let items: InProgressItem[];
+    let taskCounts: TaskCounts;
     try {
       const token = decryptToken(connection.encryptedToken);
       items = await this.githubClient.fetchInProgressItems(
+        token,
+        connection.boardOwnerLogin,
+        connection.boardOwnerType as GithubOwnerType,
+        connection.boardNumber,
+      );
+      taskCounts = await this.githubClient.fetchTaskCounts(
         token,
         connection.boardOwnerLogin,
         connection.boardOwnerType as GithubOwnerType,
@@ -101,6 +109,20 @@ export class TaskVulgarizationService {
       );
       return;
     }
+
+    // Dashboard card progress (docs/PRODUCT.md, resolved 2026-08-09): a
+    // board with nothing triaged into its Status workflow yet has no
+    // meaningful percentage — leave it null rather than show a misleading
+    // 0%, same reasoning already applied to the current-task estimate bar.
+    await this.prisma.project.update({
+      where: { id: connection.projectId },
+      data: {
+        progressPercentage:
+          taskCounts.total > 0
+            ? Math.round((taskCounts.done / taskCounts.total) * 100)
+            : null,
+      },
+    });
 
     // An item that is no longer in `items` (moved to Done, Status field
     // removed, etc.) must stop being served — otherwise it would linger in

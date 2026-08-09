@@ -118,7 +118,12 @@
     "emptyDescription": "Create your first project to start tracking its progress.",
     "emptyCta": "Create a project",
     "editProfile": "Edit profile",
-    "joinMeeting": "Join meeting"
+    "joinMeeting": "Join meeting",
+    "status": {
+      "notStarted": "Not started",
+      "inProgress": "In progress",
+      "complete": "Complete"
+    }
   },
   "Projects": {
     "CreateProjectDialog": {

@@ -87,7 +87,7 @@ const taskProgressRow = {
 describe('TaskVulgarizationService', () => {
   let prisma: PrismaMock;
   let githubClient: jest.Mocked<
-    Pick<GithubProjectsClient, 'fetchInProgressItems'>
+    Pick<GithubProjectsClient, 'fetchInProgressItems' | 'fetchTaskCounts'>
   >;
   let anthropicClient: jest.Mocked<
     Pick<AnthropicVulgarizationClient, 'vulgarize' | 'estimateTask'>
@@ -98,7 +98,10 @@ describe('TaskVulgarizationService', () => {
     process.env.BOARD_CONNECTION_ENCRYPTION_KEY =
       '0000000000000000000000000000000000000000000000000000000000000000';
     prisma = createPrismaMock();
-    githubClient = { fetchInProgressItems: jest.fn() };
+    githubClient = {
+      fetchInProgressItems: jest.fn(),
+      fetchTaskCounts: jest.fn(),
+    };
     anthropicClient = { vulgarize: jest.fn(), estimateTask: jest.fn() };
     service = new TaskVulgarizationService(
       asPrismaService(prisma),
@@ -112,6 +115,7 @@ describe('TaskVulgarizationService', () => {
       estimatedDurationDays: 4,
       complexity: 'simple',
     });
+    githubClient.fetchTaskCounts.mockResolvedValue({ total: 0, done: 0 });
   });
 
   afterAll(() => {
@@ -315,6 +319,61 @@ describe('TaskVulgarizationService', () => {
       await service.sweep();
 
       expect(prisma.boardConnection.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // docs/PRODUCT.md "progress_percentage: computed from tasks?" — resolved
+  // 2026-08-09 in favor of the board's own Status column counts, not manual
+  // entry or time estimates (rarely filled in by a solo freelancer).
+  describe('sweep — project progress percentage', () => {
+    it('sets progressPercentage from done/total task counts, rounded to the nearest whole percent', async () => {
+      prisma.boardConnection.findMany.mockResolvedValue([connection]);
+      githubClient.fetchInProgressItems.mockResolvedValue([]);
+      githubClient.fetchTaskCounts.mockResolvedValue({ total: 3, done: 1 });
+
+      await service.sweep();
+
+      expect(prisma.project.update).toHaveBeenCalledWith({
+        where: { id: 'project-1' },
+        data: { progressPercentage: 33 },
+      });
+    });
+
+    it('leaves progressPercentage null when nothing on the board has been triaged into a Status yet', async () => {
+      prisma.boardConnection.findMany.mockResolvedValue([connection]);
+      githubClient.fetchInProgressItems.mockResolvedValue([]);
+      githubClient.fetchTaskCounts.mockResolvedValue({ total: 0, done: 0 });
+
+      await service.sweep();
+
+      expect(prisma.project.update).toHaveBeenCalledWith({
+        where: { id: 'project-1' },
+        data: { progressPercentage: null },
+      });
+    });
+
+    it('reports 100% once every triaged item is done', async () => {
+      prisma.boardConnection.findMany.mockResolvedValue([connection]);
+      githubClient.fetchInProgressItems.mockResolvedValue([]);
+      githubClient.fetchTaskCounts.mockResolvedValue({ total: 5, done: 5 });
+
+      await service.sweep();
+
+      expect(prisma.project.update).toHaveBeenCalledWith({
+        where: { id: 'project-1' },
+        data: { progressPercentage: 100 },
+      });
+    });
+
+    it('does not update progressPercentage for a connection whose fetch fails', async () => {
+      prisma.boardConnection.findMany.mockResolvedValue([connection]);
+      githubClient.fetchInProgressItems.mockRejectedValue(
+        new Error('GitHub is down'),
+      );
+
+      await service.sweep();
+
+      expect(prisma.project.update).not.toHaveBeenCalled();
     });
   });
 
