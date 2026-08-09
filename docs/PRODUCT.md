@@ -276,8 +276,8 @@ Context is useful to avoid "fixing" the schema in the wrong direction.
 **Don't decide alone. Ask before implementing.**
 
 - [ ] **`Tasks.status` values**: TBD
-- [ ] **`Projects.status` values**: TBD
-- [ ] **`progress_percentage`**: entered manually, or computed from tasks?
+- [ ] **`Projects.status` values**: TBD — still free-text/unset in the DB column itself; the status pill now shown on the dashboard project card is a separate, computed label (see below), not this field.
+- [x] **`progress_percentage`**: resolved 2026-08-09 — computed, not manual. A solo freelancer rarely fills in per-task time estimates, so progress is derived from the connected GitHub board's own Status column instead: `done` / `total` triaged items (an item with no Status set yet doesn't count toward `total`), refreshed on the same 5-minute sweep as the current-task feature (`TaskVulgarizationService`). Null (not 0%) when nothing has been triaged. The dashboard card's status pill ("Not started"/"In progress"/"Complete") is a frontend-only label derived from this same percentage, not its own stored field.
 - [ ] **Can a project exist without a client attached** (preparation phase)?
 - [ ] **Can a task have multiple assignees?** (a single `assignee_id` is enough for the MVP; otherwise a join table is needed)
 - [ ] **Email delivery**: which service for invitations?

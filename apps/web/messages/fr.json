@@ -118,7 +118,12 @@
     "emptyDescription": "Créez votre premier projet pour commencer à suivre son avancement.",
     "emptyCta": "Créer un projet",
     "editProfile": "Modifier le profil",
-    "joinMeeting": "Rejoindre la réunion"
+    "joinMeeting": "Rejoindre la réunion",
+    "status": {
+      "notStarted": "Démarrage",
+      "inProgress": "En cours",
+      "complete": "Terminé"
+    }
   },
   "Projects": {
     "CreateProjectDialog": {
@@ -287,15 +292,19 @@
     "CurrentTaskCard": {
       "title": "Tâche en cours",
       "empty": "Votre développeur n'a pas encore commencé de tâche — revenez bientôt.",
-      "startedAt": "Commencée {time}",
-      "updatedAt": "Mis à jour {time}",
+      "inProgress": "En cours",
+      "why": "Pourquoi c'est nécessaire",
+      "impact": "Impact pour vous",
+      "status": "État",
+      "timeline": "Commencée {started}, mise à jour {updated}.",
       "estimatedCompletion": "Fin prévue {time}",
       "runningOver": "Prend plus de temps que prévu",
       "confidence": {
-        "high": "Confiance élevée",
-        "medium": "Confiance moyenne",
-        "low": "Confiance faible"
-      }
+        "high": "Cette estimation est fiable.",
+        "medium": "Cette estimation est une approximation raisonnable.",
+        "low": "Cette estimation est incertaine — la date pourrait changer."
+      },
+      "progressLabel": "Progression de l'estimation"
     },
     "TeamPanel": {
       "developer": "Développeur",

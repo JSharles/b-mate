@@ -113,7 +113,7 @@ export function ConnectBoardDialog({ projectId, open, onOpenChange }: ConnectBoa
             {boards.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t("noBoards")}</p>
             ) : (
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col gap-2" role="radiogroup" aria-label={t("title")}>
                 {boards.map((board) => {
                   const isSelected =
                     selectedBoard?.ownerLogin === board.ownerLogin &&
@@ -123,6 +123,8 @@ export function ConnectBoardDialog({ projectId, open, onOpenChange }: ConnectBoa
                     <li key={`${board.ownerLogin}-${board.number}`}>
                       <Button
                         type="button"
+                        role="radio"
+                        aria-checked={isSelected}
                         variant={isSelected ? "default" : "outline"}
                         className="w-full justify-between"
                         onClick={() => setSelectedBoard(board)}
@@ -138,10 +140,12 @@ export function ConnectBoardDialog({ projectId, open, onOpenChange }: ConnectBoa
               </ul>
             )}
             <div className="flex flex-col gap-1">
-              <Label>{t("estimateUnitLabel")}</Label>
-              <div className="flex gap-2">
+              <Label id="estimate-unit-label">{t("estimateUnitLabel")}</Label>
+              <div className="flex gap-2" role="radiogroup" aria-labelledby="estimate-unit-label">
                 <Button
                   type="button"
+                  role="radio"
+                  aria-checked={estimateUnit === "days"}
                   size="sm"
                   variant={estimateUnit === "days" ? "default" : "outline"}
                   onClick={() => setEstimateUnit("days")}
@@ -150,6 +154,8 @@ export function ConnectBoardDialog({ projectId, open, onOpenChange }: ConnectBoa
                 </Button>
                 <Button
                   type="button"
+                  role="radio"
+                  aria-checked={estimateUnit === "hours"}
                   size="sm"
                   variant={estimateUnit === "hours" ? "default" : "outline"}
                   onClick={() => setEstimateUnit("hours")}

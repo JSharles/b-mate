@@ -143,6 +143,17 @@ function itemsQuery(ownerType: GithubOwnerType): string {
   `;
 }
 
+// Board-wide task counts (docs/PRODUCT.md "progress_percentage: computed
+// from tasks?", resolved 2026-08-09) — `total` only counts items actually
+// triaged into the board's Status workflow (a fresh backlog item with no
+// Status yet would otherwise drag the percentage down for reasons outside
+// the client's view), `done` is the same case-insensitive substring match
+// pattern already used for "in progress", against "done" instead.
+export interface TaskCounts {
+  total: number;
+  done: number;
+}
+
 @Injectable()
 export class GithubProjectsClient {
   async listAccessibleBoards(token: string): Promise<AvailableBoard[]> {
@@ -215,6 +226,42 @@ export class GithubProjectsClient {
     }
 
     return items;
+  }
+
+  // A separate GraphQL call from fetchInProgressItems (same query shape,
+  // same board) rather than a shared fetch the two derive from — this keeps
+  // the well-tested in-progress path untouched (it feeds the live
+  // client-facing current-task card) instead of risking a regression there
+  // for a cheap, infrequent (5-minute sweep) extra request.
+  async fetchTaskCounts(
+    token: string,
+    ownerLogin: string,
+    ownerType: GithubOwnerType,
+    number: number,
+  ): Promise<TaskCounts> {
+    const data = await this.query<FetchItemsResponse>(
+      token,
+      itemsQuery(ownerType),
+      {
+        login: ownerLogin,
+        number,
+      },
+    );
+
+    const owner = ownerType === 'User' ? data.user : data.organization;
+    const nodes = owner?.projectV2?.items.nodes ?? [];
+
+    let total = 0;
+    let done = 0;
+    for (const node of nodes) {
+      if (!node.content) continue;
+      const status = node.status?.name;
+      if (!status) continue;
+      total++;
+      if (status.toLowerCase().includes('done')) done++;
+    }
+
+    return { total, done };
   }
 
   private async query<T>(

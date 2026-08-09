@@ -118,7 +118,12 @@
     "emptyDescription": "Create your first project to start tracking its progress.",
     "emptyCta": "Create a project",
     "editProfile": "Edit profile",
-    "joinMeeting": "Join meeting"
+    "joinMeeting": "Join meeting",
+    "status": {
+      "notStarted": "Not started",
+      "inProgress": "In progress",
+      "complete": "Complete"
+    }
   },
   "Projects": {
     "CreateProjectDialog": {
@@ -287,15 +292,19 @@
     "CurrentTaskCard": {
       "title": "Current task",
       "empty": "Your developer hasn't started a task yet — check back soon.",
-      "startedAt": "Started {time}",
-      "updatedAt": "Updated {time}",
+      "inProgress": "In progress",
+      "why": "Why it's necessary",
+      "impact": "Impact for you",
+      "status": "Status",
+      "timeline": "Started {started}, last updated {updated}.",
       "estimatedCompletion": "Expected to finish {time}",
       "runningOver": "Taking longer than expected",
       "confidence": {
-        "high": "High confidence",
-        "medium": "Medium confidence",
-        "low": "Low confidence"
-      }
+        "high": "This estimate is reliable.",
+        "medium": "This estimate is a reasonable approximation.",
+        "low": "This estimate is uncertain — the date could change."
+      },
+      "progressLabel": "Estimated completion progress"
     },
     "TeamPanel": {
       "developer": "Developer",

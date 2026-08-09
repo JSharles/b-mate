@@ -12,6 +12,18 @@ import { useCurrentUser } from "@/shared/hooks/use-current-user";
 import { CreateProjectDialog } from "./create-project-dialog";
 import { useProjects } from "../hooks";
 
+// docs/PRODUCT.md "progress_percentage: entered manually, or computed from
+// tasks?" — resolved 2026-08-09: computed, from the board's own Status
+// column task counts (apps/api TaskVulgarizationService). The pill's label
+// is derived here from that single number rather than stored as its own
+// free-text field, so it can never drift out of sync with the bar next to
+// it and stays translated for whoever is looking at the card.
+function progressStatusKey(percentage: number): "notStarted" | "inProgress" | "complete" {
+  if (percentage <= 0) return "notStarted";
+  if (percentage >= 100) return "complete";
+  return "inProgress";
+}
+
 function CreatedAt({ createdAt }: { createdAt: string }) {
   const locale = useLocale();
   const t = useTranslations("Home");
@@ -39,9 +51,9 @@ function ProjectCard({ project }: { project: Project }) {
             <div className="flex size-10 items-center justify-center rounded-lg bg-accent">
               <FolderKanban className="size-5 text-foreground" strokeWidth={1.75} />
             </div>
-            {project.status ? (
+            {project.progressPercentage != null ? (
               <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                {project.status}
+                {t(`status.${progressStatusKey(project.progressPercentage)}`)}
               </span>
             ) : null}
           </div>

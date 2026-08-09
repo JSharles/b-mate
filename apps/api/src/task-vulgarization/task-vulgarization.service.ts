@@ -10,6 +10,7 @@ import {
   GithubOwnerType,
   GithubProjectsClient,
   InProgressItem,
+  TaskCounts,
 } from '../board-connections/github-projects.client';
 import { decryptToken } from '../board-connections/token-encryption';
 import { PrismaService } from '../prisma/prisma.service';
@@ -18,10 +19,14 @@ import { Locale, SUPPORTED_LOCALES } from './locale';
 
 // The public shape served to the frontend — no `id` (internal-only, see
 // InProgressItem) and no `url` (dead since specs/006's own feedback round;
-// see packages/schemas/src/current-task.ts).
+// see packages/schemas/src/current-task.ts). why/impact/status: 2026-08-09,
+// replaces the old single `description` blob — see docs/PRODUCT.md
+// "Working notes".
 export interface CurrentTaskItem {
   title: string;
-  description: string | null;
+  why: string | null;
+  impact: string | null;
+  status: string | null;
   updatedAt: string;
   startedAt: string;
   estimatedCompletionAt: string | null;
@@ -70,9 +75,16 @@ export class TaskVulgarizationService {
 
   private async processConnection(connection: BoardConnection): Promise<void> {
     let items: InProgressItem[];
+    let taskCounts: TaskCounts;
     try {
       const token = decryptToken(connection.encryptedToken);
       items = await this.githubClient.fetchInProgressItems(
+        token,
+        connection.boardOwnerLogin,
+        connection.boardOwnerType as GithubOwnerType,
+        connection.boardNumber,
+      );
+      taskCounts = await this.githubClient.fetchTaskCounts(
         token,
         connection.boardOwnerLogin,
         connection.boardOwnerType as GithubOwnerType,
@@ -97,6 +109,20 @@ export class TaskVulgarizationService {
       );
       return;
     }
+
+    // Dashboard card progress (docs/PRODUCT.md, resolved 2026-08-09): a
+    // board with nothing triaged into its Status workflow yet has no
+    // meaningful percentage — leave it null rather than show a misleading
+    // 0%, same reasoning already applied to the current-task estimate bar.
+    await this.prisma.project.update({
+      where: { id: connection.projectId },
+      data: {
+        progressPercentage:
+          taskCounts.total > 0
+            ? Math.round((taskCounts.done / taskCounts.total) * 100)
+            : null,
+      },
+    });
 
     // An item that is no longer in `items` (moved to Done, Status field
     // removed, etc.) must stop being served — otherwise it would linger in
@@ -262,7 +288,9 @@ export class TaskVulgarizationService {
     }
 
     let vulgarizedTitle: string;
-    let vulgarizedDescription: string | null;
+    let vulgarizedWhy: string | null;
+    let vulgarizedImpact: string | null;
+    let vulgarizedStatus: string | null;
     try {
       const project = await this.prisma.project.findUniqueOrThrow({
         where: { id: projectId },
@@ -274,7 +302,9 @@ export class TaskVulgarizationService {
         locale,
       });
       vulgarizedTitle = output.title;
-      vulgarizedDescription = output.description;
+      vulgarizedWhy = output.why;
+      vulgarizedImpact = output.impact;
+      vulgarizedStatus = output.status;
     } catch (error) {
       // research.md Decision 4: leave the row exactly as it was — do not
       // touch original* either, so the next sweep retries against the same
@@ -301,13 +331,17 @@ export class TaskVulgarizationService {
         originalTitle: item.title,
         originalDescription: item.description,
         vulgarizedTitle,
-        vulgarizedDescription,
+        vulgarizedWhy,
+        vulgarizedImpact,
+        vulgarizedStatus,
       },
       update: {
         originalTitle: item.title,
         originalDescription: item.description,
         vulgarizedTitle,
-        vulgarizedDescription,
+        vulgarizedWhy,
+        vulgarizedImpact,
+        vulgarizedStatus,
       },
     });
   }
@@ -337,7 +371,9 @@ export class TaskVulgarizationService {
 
       items.push({
         title: row.vulgarizedTitle as string,
-        description: row.vulgarizedDescription,
+        why: row.vulgarizedWhy,
+        impact: row.vulgarizedImpact,
+        status: row.vulgarizedStatus,
         updatedAt: row.updatedAt.toISOString(),
         // Falls back to the vulgarized row's own updatedAt in the
         // defensive case where a TaskProgress row doesn't exist (never

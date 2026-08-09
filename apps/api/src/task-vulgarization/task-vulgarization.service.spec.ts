@@ -61,7 +61,9 @@ const vulgarizedRow = {
   originalTitle: item.title,
   originalDescription: item.description,
   vulgarizedTitle: 'Securing your logins',
-  vulgarizedDescription: 'We made sign-in safer for everyone.',
+  vulgarizedWhy: 'Some accounts could stay accessible longer than they should.',
+  vulgarizedImpact: 'Nothing changes in how you use the product.',
+  vulgarizedStatus: 'A first version was built and is being reviewed.',
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -85,7 +87,7 @@ const taskProgressRow = {
 describe('TaskVulgarizationService', () => {
   let prisma: PrismaMock;
   let githubClient: jest.Mocked<
-    Pick<GithubProjectsClient, 'fetchInProgressItems'>
+    Pick<GithubProjectsClient, 'fetchInProgressItems' | 'fetchTaskCounts'>
   >;
   let anthropicClient: jest.Mocked<
     Pick<AnthropicVulgarizationClient, 'vulgarize' | 'estimateTask'>
@@ -96,7 +98,10 @@ describe('TaskVulgarizationService', () => {
     process.env.BOARD_CONNECTION_ENCRYPTION_KEY =
       '0000000000000000000000000000000000000000000000000000000000000000';
     prisma = createPrismaMock();
-    githubClient = { fetchInProgressItems: jest.fn() };
+    githubClient = {
+      fetchInProgressItems: jest.fn(),
+      fetchTaskCounts: jest.fn(),
+    };
     anthropicClient = { vulgarize: jest.fn(), estimateTask: jest.fn() };
     service = new TaskVulgarizationService(
       asPrismaService(prisma),
@@ -110,6 +115,7 @@ describe('TaskVulgarizationService', () => {
       estimatedDurationDays: 4,
       complexity: 'simple',
     });
+    githubClient.fetchTaskCounts.mockResolvedValue({ total: 0, done: 0 });
   });
 
   afterAll(() => {
@@ -124,7 +130,9 @@ describe('TaskVulgarizationService', () => {
       prisma.project.findUniqueOrThrow.mockResolvedValue(project);
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins',
-        description: 'We made sign-in safer for everyone.',
+        why: 'Some accounts could stay accessible longer than they should.',
+        impact: 'Nothing changes in how you use the product.',
+        status: 'A first version was built and is being reviewed.',
       });
 
       await service.sweep();
@@ -139,7 +147,11 @@ describe('TaskVulgarizationService', () => {
             originalTitle: item.title,
             originalDescription: item.description,
             vulgarizedTitle: 'Securing your logins',
-            vulgarizedDescription: 'We made sign-in safer for everyone.',
+            vulgarizedWhy:
+              'Some accounts could stay accessible longer than they should.',
+            vulgarizedImpact: 'Nothing changes in how you use the product.',
+            vulgarizedStatus:
+              'A first version was built and is being reviewed.',
           }) as unknown,
         }),
       );
@@ -186,7 +198,9 @@ describe('TaskVulgarizationService', () => {
       prisma.project.findUniqueOrThrow.mockResolvedValue(project);
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins, now with auto-renewal',
-        description: 'We made sign-in safer and more convenient.',
+        why: 'Some accounts could stay accessible longer than they should.',
+        impact: 'Nothing changes in how you use the product.',
+        status: 'A first version was built and is being reviewed.',
       });
 
       await service.sweep();
@@ -206,7 +220,11 @@ describe('TaskVulgarizationService', () => {
             originalTitle: changedItem.title,
             originalDescription: changedItem.description,
             vulgarizedTitle: 'Securing your logins, now with auto-renewal',
-            vulgarizedDescription: 'We made sign-in safer and more convenient.',
+            vulgarizedWhy:
+              'Some accounts could stay accessible longer than they should.',
+            vulgarizedImpact: 'Nothing changes in how you use the product.',
+            vulgarizedStatus:
+              'A first version was built and is being reviewed.',
           }) as unknown,
         }),
       );
@@ -266,7 +284,9 @@ describe('TaskVulgarizationService', () => {
       prisma.project.findUniqueOrThrow.mockResolvedValue(project);
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins',
-        description: null,
+        why: null,
+        impact: null,
+        status: null,
       });
 
       await service.sweep();
@@ -302,6 +322,61 @@ describe('TaskVulgarizationService', () => {
     });
   });
 
+  // docs/PRODUCT.md "progress_percentage: computed from tasks?" — resolved
+  // 2026-08-09 in favor of the board's own Status column counts, not manual
+  // entry or time estimates (rarely filled in by a solo freelancer).
+  describe('sweep — project progress percentage', () => {
+    it('sets progressPercentage from done/total task counts, rounded to the nearest whole percent', async () => {
+      prisma.boardConnection.findMany.mockResolvedValue([connection]);
+      githubClient.fetchInProgressItems.mockResolvedValue([]);
+      githubClient.fetchTaskCounts.mockResolvedValue({ total: 3, done: 1 });
+
+      await service.sweep();
+
+      expect(prisma.project.update).toHaveBeenCalledWith({
+        where: { id: 'project-1' },
+        data: { progressPercentage: 33 },
+      });
+    });
+
+    it('leaves progressPercentage null when nothing on the board has been triaged into a Status yet', async () => {
+      prisma.boardConnection.findMany.mockResolvedValue([connection]);
+      githubClient.fetchInProgressItems.mockResolvedValue([]);
+      githubClient.fetchTaskCounts.mockResolvedValue({ total: 0, done: 0 });
+
+      await service.sweep();
+
+      expect(prisma.project.update).toHaveBeenCalledWith({
+        where: { id: 'project-1' },
+        data: { progressPercentage: null },
+      });
+    });
+
+    it('reports 100% once every triaged item is done', async () => {
+      prisma.boardConnection.findMany.mockResolvedValue([connection]);
+      githubClient.fetchInProgressItems.mockResolvedValue([]);
+      githubClient.fetchTaskCounts.mockResolvedValue({ total: 5, done: 5 });
+
+      await service.sweep();
+
+      expect(prisma.project.update).toHaveBeenCalledWith({
+        where: { id: 'project-1' },
+        data: { progressPercentage: 100 },
+      });
+    });
+
+    it('does not update progressPercentage for a connection whose fetch fails', async () => {
+      prisma.boardConnection.findMany.mockResolvedValue([connection]);
+      githubClient.fetchInProgressItems.mockRejectedValue(
+        new Error('GitHub is down'),
+      );
+
+      await service.sweep();
+
+      expect(prisma.project.update).not.toHaveBeenCalled();
+    });
+  });
+
   // specs/008-current-task-progress User Story 1: start date.
   describe('sweep — task progress (start date)', () => {
     it('creates a TaskProgress row with detectedStartedAt ≈ now for a brand-new item', async () => {
@@ -311,7 +386,9 @@ describe('TaskVulgarizationService', () => {
       prisma.project.findUniqueOrThrow.mockResolvedValue(project);
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins',
-        description: null,
+        why: null,
+        impact: null,
+        status: null,
       });
       const before = Date.now();
 
@@ -351,7 +428,9 @@ describe('TaskVulgarizationService', () => {
       prisma.taskProgress.findUnique.mockResolvedValue(taskProgressRow);
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins v2',
-        description: null,
+        why: null,
+        impact: null,
+        status: null,
       });
 
       await service.sweep();
@@ -493,7 +572,9 @@ describe('TaskVulgarizationService', () => {
       prisma.taskProgress.findUnique.mockResolvedValue(taskProgressRow); // prior success: simple, 4 days
       anthropicClient.vulgarize.mockResolvedValue({
         title: 'Securing your logins v2',
-        description: null,
+        why: null,
+        impact: null,
+        status: null,
       });
       anthropicClient.estimateTask.mockRejectedValue(new Error('LLM timeout'));
 
@@ -626,7 +707,9 @@ describe('TaskVulgarizationService', () => {
       expect(result).toEqual([
         {
           title: 'Securing your logins',
-          description: 'We made sign-in safer for everyone.',
+          why: 'Some accounts could stay accessible longer than they should.',
+          impact: 'Nothing changes in how you use the product.',
+          status: 'A first version was built and is being reviewed.',
           updatedAt: vulgarizedRow.updatedAt.toISOString(),
           startedAt: taskProgressRow.resolvedStartedAt.toISOString(),
           estimatedCompletionAt:
