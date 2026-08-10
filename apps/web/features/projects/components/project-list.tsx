@@ -108,7 +108,11 @@ export function ProjectList() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">{t("title")}</h2>
+        {/* h1, not h2 (impeccable polish pass, 2026-08-10): this is the
+            page's actual subject — WelcomeCard's greeting above it is
+            deliberately not a heading, so there's nothing this needs to
+            nest under. */}
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
         {canCreateProject ? (
           <Button onClick={() => setCreateOpen(true)}>{t("newProject")}</Button>
         ) : null}

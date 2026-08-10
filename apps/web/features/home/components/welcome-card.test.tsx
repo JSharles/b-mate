@@ -33,10 +33,11 @@ describe("WelcomeCard", () => {
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 
-  it("shows just the welcome heading, no card/avatar/edit-profile button", () => {
+  it("shows the welcome text as a plain (non-heading) line, no card/avatar/edit-profile button", () => {
     render(<WelcomeCard user={baseUser} isPending={false} />);
 
-    expect(screen.getByRole("heading", { name: "welcome" })).toBeInTheDocument();
+    expect(screen.getByText("welcome")).toBeInTheDocument();
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
