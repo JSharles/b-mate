@@ -8,7 +8,7 @@ describe("FaqSection", () => {
 
     expect(screen.getByText("eyebrow")).toBeInTheDocument();
 
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 7; i++) {
       expect(screen.getByText(`q${i}`)).toBeInTheDocument();
       expect(screen.getByText(`a${i}`)).toBeInTheDocument();
     }

@@ -8,7 +8,10 @@ vi.mock("@/i18n/navigation", () => ({
     href,
     children,
     ...props
-  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) => (
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & {
+    href: string;
+    children: ReactNode;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>
@@ -16,7 +19,7 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 
 describe("Hero", () => {
-  it("renders the headline and a sign up call to action", () => {
+  it("renders the product promise, primary call to action, and trust signals", () => {
     render(<Hero />);
 
     const heading = screen.getByRole("heading", { level: 1 });
@@ -24,6 +27,15 @@ describe("Hero", () => {
     expect(screen.getByText("titleHighlight")).toBeInTheDocument();
     expect(screen.getByText("eyebrow")).toBeInTheDocument();
     expect(screen.getByText("subhead")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "signUp" })).toHaveAttribute("href", "/signup");
+    expect(screen.getByRole("link", { name: "primaryCta" })).toHaveAttribute(
+      "href",
+      "/signup",
+    );
+    expect(
+      screen.queryByRole("link", { name: "secondaryCta" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("trustSources")).toBeInTheDocument();
+    expect(screen.getByText("trustReadOnly")).toBeInTheDocument();
+    expect(screen.getByText("trustPublishing")).toBeInTheDocument();
   });
 });

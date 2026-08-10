@@ -7,6 +7,7 @@ describe("BenefitsSection", () => {
     render(<BenefitsSection />);
 
     expect(screen.getAllByText("eyebrow")).toHaveLength(2);
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(2);
     expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(6);
     expect(screen.getAllByText("card1Title")).toHaveLength(2);
     expect(screen.getAllByText("card2Title")).toHaveLength(2);

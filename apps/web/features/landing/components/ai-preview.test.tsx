@@ -3,14 +3,16 @@ import { describe, expect, it } from "vitest";
 import { AiPreview } from "./ai-preview";
 
 describe("AiPreview", () => {
-  it("renders the coming soon badge and both board columns", () => {
+  it("renders the source issue and its client-friendly rewrite", () => {
     render(<AiPreview />);
 
     expect(screen.getByText("badge")).toBeInTheDocument();
-    expect(screen.getByText("heading")).toBeInTheDocument();
-    expect(screen.getByText("devBoardLabel")).toBeInTheDocument();
-    expect(screen.getByText("clientViewLabel")).toBeInTheDocument();
-    expect(screen.getByText("ticket1")).toBeInTheDocument();
-    expect(screen.getByText("translated1")).toBeInTheDocument();
+    expect(screen.getByText("sourceLabel")).toBeInTheDocument();
+    expect(screen.getByText("sourceTitle")).toBeInTheDocument();
+    expect(screen.getByText("clientLabel")).toBeInTheDocument();
+    expect(screen.getByText("clientTitle")).toBeInTheDocument();
+    expect(screen.getByText("why")).toBeInTheDocument();
+    expect(screen.getByText("impact")).toBeInTheDocument();
+    expect(screen.getByText("state")).toBeInTheDocument();
   });
 });
