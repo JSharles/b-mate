@@ -304,7 +304,13 @@
         "medium": "Cette estimation est une approximation raisonnable.",
         "low": "Cette estimation est incertaine — la date pourrait changer."
       },
-      "progressLabel": "Progression de l'estimation"
+      "progressLabel": "Progression de l'estimation",
+      "taskCounter": "Tâche {current} sur {total}",
+      "previousTask": "Tâche précédente",
+      "nextTask": "Tâche suivante",
+      "selectTask": "Voir « {title} »",
+      "readMore": "Voir plus",
+      "notProvided": "Non renseigné pour cette tâche."
     },
     "TeamPanel": {
       "developer": "Développeur",

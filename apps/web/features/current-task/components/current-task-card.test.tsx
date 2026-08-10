@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { useCurrentTask } from "../hooks";
 import { CurrentTaskCard } from "./current-task-card";
@@ -43,7 +44,7 @@ describe("CurrentTaskCard", () => {
     expect(screen.getByText("empty")).toBeInTheDocument();
   });
 
-  it("shows each item's title and every present section (why/impact/status), with no link to GitHub (clients never go there)", () => {
+  it("shows the title and why directly on the card, with no link to GitHub (clients never go there)", () => {
     mockedUseCurrentTask.mockReturnValue({
       data: [
         {
@@ -63,17 +64,11 @@ describe("CurrentTaskCard", () => {
     expect(
       screen.getByText("Two people editing the same thing could silently lose one change."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Nothing changes in how you use the product.")).toBeInTheDocument();
-    expect(
-      screen.getByText("A first version was built and is being reviewed."),
-    ).toBeInTheDocument();
     expect(screen.getByText("why")).toBeInTheDocument();
-    expect(screen.getByText("impact")).toBeInTheDocument();
-    expect(screen.getByText("status")).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("shows the title with no sections when the item has why/impact/status all null (e.g. a draft issue)", () => {
+  it("shows the title with no why section when the item has why null (e.g. a draft issue)", () => {
     mockedUseCurrentTask.mockReturnValue({
       data: [{ ...baseItem, title: "Draft: sketch the new flow" }],
       isPending: false,
@@ -83,23 +78,89 @@ describe("CurrentTaskCard", () => {
 
     expect(screen.getByText("Draft: sketch the new flow")).toBeInTheDocument();
     expect(screen.queryByText("why")).not.toBeInTheDocument();
-    expect(screen.queryByText("impact")).not.toBeInTheDocument();
-    expect(screen.queryByText("status")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("shows only the sections that are actually present, not every one unconditionally", () => {
-    mockedUseCurrentTask.mockReturnValue({
-      data: [{ ...baseItem, title: "Task A", why: "Because reasons." }],
-      isPending: false,
-    } as unknown as ReturnType<typeof useCurrentTask>);
+  // 2026-08-10: impact/état never render on the card itself (only "read
+  // more" reveals them) — only why (short by the vulgarization prompt's
+  // own design) stays directly on the card. The panel always shows the
+  // same three sections (why repeated, impact, état) and the button
+  // always renders, regardless of which fields the AI actually filled in
+  // for that task — a client shouldn't find a differently-shaped panel
+  // from one task to the next. A field the model genuinely left null
+  // still gets its own section, with a "not provided" placeholder instead
+  // of being omitted.
+  describe("detail panel (why/impact/état, always shown)", () => {
+    it("always shows the 'read more' link, even when why/impact/état are all null", () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [{ ...baseItem, title: "Task A" }],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
 
-    render(<CurrentTaskCard projectId="project-1" />);
+      render(<CurrentTaskCard projectId="project-1" />);
 
-    expect(screen.getByText("why")).toBeInTheDocument();
-    expect(screen.getByText("Because reasons.")).toBeInTheDocument();
-    expect(screen.queryByText("impact")).not.toBeInTheDocument();
-    expect(screen.queryByText("status")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "readMore" })).toBeInTheDocument();
+    });
+
+    it("never shows impact directly on the card, only behind 'read more'", () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [{ ...baseItem, title: "Task A", impact: "Nothing changes day to day." }],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+
+      render(<CurrentTaskCard projectId="project-1" />);
+
+      expect(screen.queryByText("Nothing changes day to day.")).not.toBeInTheDocument();
+    });
+
+    it("opens a Sheet with all three sections (why/impact/état) when 'read more' is clicked", async () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [
+          {
+            ...baseItem,
+            title: "Task A",
+            why: "Some accounts could stay accessible longer than they should.",
+            impact: "Nothing changes day to day.",
+            status: "A first version was built and is being reviewed.",
+          },
+        ],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+      const user = userEvent.setup();
+
+      render(<CurrentTaskCard projectId="project-1" />);
+      await user.click(screen.getByRole("button", { name: "readMore" }));
+
+      // Radix marks everything outside the open Sheet aria-hidden (correct
+      // focus-trap behavior), so a role query only reaches the Sheet's own
+      // copy of the title while it's open.
+      expect(screen.getByRole("heading", { name: "Task A" })).toBeInTheDocument();
+      expect(screen.getByText("Nothing changes day to day.")).toBeInTheDocument();
+      expect(
+        screen.getByText("A first version was built and is being reviewed."),
+      ).toBeInTheDocument();
+      expect(screen.getByText("impact")).toBeInTheDocument();
+      expect(screen.getByText("status")).toBeInTheDocument();
+      // why is duplicated (card + Sheet) once the Sheet is open.
+      expect(
+        screen.getAllByText("Some accounts could stay accessible longer than they should."),
+      ).toHaveLength(2);
+    });
+
+    it("shows a 'not provided' placeholder for whichever fields the AI left null, instead of omitting them", async () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [{ ...baseItem, title: "Task A" }],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+      const user = userEvent.setup();
+
+      render(<CurrentTaskCard projectId="project-1" />);
+      await user.click(screen.getByRole("button", { name: "readMore" }));
+
+      expect(screen.getByText("impact")).toBeInTheDocument();
+      expect(screen.getByText("status")).toBeInTheDocument();
+      expect(screen.getAllByText("notProvided")).toHaveLength(3);
+    });
   });
 
   it("shows more than one item when multiple are in progress", () => {
@@ -115,6 +176,84 @@ describe("CurrentTaskCard", () => {
 
     expect(screen.getByText("Task A")).toBeInTheDocument();
     expect(screen.getByText("Task B")).toBeInTheDocument();
+  });
+
+  // 2026-08-10: multiple in-progress items used to stack vertically in one
+  // long scroll — a carousel now pages through them one at a time instead.
+  describe("carousel (2+ in-progress items)", () => {
+    it("shows no carousel navigation at all when there's only a single task", () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [{ ...baseItem, title: "Task A" }],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+
+      render(<CurrentTaskCard projectId="project-1" />);
+
+      expect(screen.queryByRole("button", { name: "previousTask" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "nextTask" })).not.toBeInTheDocument();
+      expect(screen.queryByText(/taskCounter/)).not.toBeInTheDocument();
+    });
+
+    it("shows a task counter and both nav buttons for 3 in-progress items", () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [
+          { ...baseItem, title: "Task A" },
+          { ...baseItem, title: "Task B" },
+          { ...baseItem, title: "Task C" },
+        ],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+
+      render(<CurrentTaskCard projectId="project-1" />);
+
+      expect(screen.getByText(/taskCounter/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "previousTask" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "nextTask" })).toBeInTheDocument();
+    });
+
+    // jsdom has no real layout engine, so embla-carousel's own scroll-bound
+    // math (canScrollPrev/canScrollNext) can't be meaningfully asserted
+    // here — this only verifies the click handler is wired up and doesn't
+    // throw, not the resulting scroll position.
+    it("does not throw when the next/previous buttons are clicked", async () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [
+          { ...baseItem, title: "Task A" },
+          { ...baseItem, title: "Task B" },
+        ],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+      const user = userEvent.setup();
+
+      render(<CurrentTaskCard projectId="project-1" />);
+      await user.click(screen.getByRole("button", { name: "nextTask" }));
+      await user.click(screen.getByRole("button", { name: "previousTask" }));
+
+      expect(screen.getByText("Task A")).toBeInTheDocument();
+      expect(screen.getByText("Task B")).toBeInTheDocument();
+    });
+
+    // 2026-08-10: rebuilt so the whole card slides and a peeking neighbor
+    // is visible (not just its content) — that peeking card is itself
+    // clickable, a full-cover overlay button only present while it isn't
+    // the selected one (removed once it becomes active, so the real card
+    // content underneath is never blocked from interaction). Only one of
+    // the three cards is selected at a time, so exactly items.length - 1
+    // overlay buttons should exist.
+    it("exposes a click target on every peeking (non-selected) card, but not the selected one", () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [
+          { ...baseItem, title: "Task A" },
+          { ...baseItem, title: "Task B" },
+          { ...baseItem, title: "Task C" },
+        ],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+
+      render(<CurrentTaskCard projectId="project-1" />);
+
+      expect(screen.getAllByRole("button", { name: "selectTask" })).toHaveLength(2);
+    });
   });
 
   it("shows a combined timeline sentence with the start date and the updated-at time", () => {

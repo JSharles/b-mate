@@ -34,6 +34,35 @@ if (typeof Element !== "undefined") {
   }
 }
 
+// jsdom doesn't implement IntersectionObserver — needed by embla-carousel
+// (first used by CurrentTaskCard's multi-task carousel) to track which
+// slides are in view.
+if (typeof window !== "undefined" && !window.IntersectionObserver) {
+  class MockIntersectionObserver implements IntersectionObserver {
+    readonly root: Element | Document | null = null;
+    readonly rootMargin: string = "";
+    readonly thresholds: ReadonlyArray<number> = [];
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+  }
+  window.IntersectionObserver = MockIntersectionObserver;
+}
+
+// jsdom doesn't implement ResizeObserver either — embla-carousel also uses
+// it to recompute slide sizes on container resize.
+if (typeof window !== "undefined" && !window.ResizeObserver) {
+  class MockResizeObserver implements ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  window.ResizeObserver = MockResizeObserver;
+}
+
 // Global next-intl mock: translations resolve to their raw key rather than
 // real copy. Keeps component tests decoupled from actual wording (a
 // translation edit shouldn't break assertions) — tests assert against keys,

@@ -1,9 +1,25 @@
 "use client";
 
-import { CircleDot } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleDot } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import type { CurrentTaskItem } from "schemas";
+import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/shared/components/ui/carousel";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/shared/components/ui/sheet";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
 import { useCurrentTask } from "../hooks";
@@ -184,113 +200,327 @@ function IridescentGlow() {
   );
 }
 
+// 2026-08-10: only the title, why, timeline, and estimate render directly
+// on the card — impact/état never render inline, only in the "read more"
+// panel. Why (the reassurance a non-technical client actually reads
+// first) stays exactly where they land, without a click; the rest is one
+// tap away.
+//
+// The panel itself always shows all three sections (why repeated, impact,
+// état) and the button always renders, regardless of what the AI actually
+// filled in — a client landing on two different tasks should find the
+// same panel shape every time, not a structure that silently varies with
+// how much the source ticket happened to support. A field the model
+// genuinely left null (Constitution II, "never fabricate" — a locked
+// product principle, not something this component works around) still
+// shows its own section, with an explicit "not provided" placeholder
+// instead of inventing something plausible.
+function TaskCardBody({
+  item,
+  locale,
+  t,
+}: {
+  item: CurrentTaskItem;
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 max-w-prose flex-col gap-5">
+      <Section label={t("inProgress")}>
+        <div className="flex items-center gap-3">
+          <LiveIndicator active />
+          {/* h2, not a bare span: the task's own title is genuinely the
+              most important string on the card and belongs in the heading
+              outline, not skipped by a screen reader navigating by
+              heading. h2, not h3 — nothing in the client view sits between
+              this card and the page's own h1, same level as
+              TeamPanel/MeetingCard's own section headings. */}
+          <h2 className="text-xl leading-snug font-bold text-balance">{item.title}</h2>
+        </div>
+      </Section>
+
+      {item.why && (
+        <Section label={t("why")}>
+          <p className="text-sm leading-relaxed text-foreground">{item.why}</p>
+        </Section>
+      )}
+
+      <Sheet>
+        <SheetTrigger asChild>
+          <button
+            type="button"
+            className="focus-visible:ring-ring/50 w-fit text-sm font-medium text-primary hover:underline focus-visible:rounded-sm focus-visible:ring-[3px] focus-visible:outline-none"
+          >
+            {t("readMore")}
+          </button>
+        </SheetTrigger>
+        <SheetContent side="right" className="gap-0 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{item.title}</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-5 px-4 pb-4">
+            <Section label={t("why")}>
+              <p
+                className={cn(
+                  "text-sm leading-relaxed",
+                  item.why ? "text-foreground" : "text-muted-foreground italic",
+                )}
+              >
+                {item.why ?? t("notProvided")}
+              </p>
+            </Section>
+            <Section label={t("impact")}>
+              <p
+                className={cn(
+                  "text-sm leading-relaxed",
+                  item.impact ? "text-foreground" : "text-muted-foreground italic",
+                )}
+              >
+                {item.impact ?? t("notProvided")}
+              </p>
+            </Section>
+            <Section label={t("status")}>
+              <p
+                className={cn(
+                  "text-sm leading-relaxed",
+                  item.status ? "text-foreground" : "text-muted-foreground italic",
+                )}
+              >
+                {item.status ?? t("notProvided")}
+              </p>
+            </Section>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Time/estimate/confidence: one vertical reading order, not a
+          separate bordered sidebar (that read as a dashboard stat panel
+          bolted onto a paragraph) — a plain sentence rather than an
+          icon-led label, consistent with the why/impact/status sections
+          above it, closing out the card instead of racing it side by
+          side. mt-auto (2026-08-10): with every card now stretched to the
+          row's tallest (see TaskCardCarousel), a short task's why/impact/
+          status content left this floating right under the title instead
+          of anchored to the card's own bottom edge like its longer
+          neighbors' — auto margin absorbs whatever space the middle
+          content didn't use, every card's timeline/estimate ends up flush
+          against the bottom regardless of how little sits above it. */}
+      <p className="mt-auto border-t border-white/15 pt-3 text-sm text-muted-foreground">
+        {t("timeline", {
+          started: formatRelativeTime(item.startedAt, locale),
+          updated: formatRelativeTime(item.updatedAt, locale),
+        })}
+      </p>
+      {item.estimatedCompletionAt && (
+        <ProgressIndicator
+          startedAt={item.startedAt}
+          estimatedCompletionAt={item.estimatedCompletionAt}
+          confidence={item.estimateConfidence}
+          locale={locale}
+          t={t}
+        />
+      )}
+    </div>
+  );
+}
+
+// The full frosted-glass Signature Card for one task — glow, border, blur,
+// all of it — not just its inner content. 2026-08-10: rebuilt from a
+// content-only carousel (one shared card frame, its text sliding inside)
+// after the "which task is this" cue turned out too subtle — the whole
+// card itself now pages, so a peeking neighbor (see TaskCardCarousel)
+// visibly reads as "another card," not a scrollbar-less content swap.
+// `active`: dims/shrinks a peeking, not-currently-selected card — full
+// strength (the default) everywhere this renders outside a carousel.
+function TaskCard({
+  item,
+  locale,
+  t,
+  active = true,
+}: {
+  item: CurrentTaskItem;
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+  active?: boolean;
+}) {
+  return (
+    // max-h (2026-08-10): equal-height (h-full, stretched to the row's
+    // tallest sibling) was previously unbounded — one verbose task would
+    // balloon every card in the row to match it. A fixed ceiling plus
+    // TaskCardBody's own internal clipping (see useIsOverflowing) means a
+    // long task's card stops growing and instead offers "read more"
+    // rather than dragging its neighbors up with it.
+    //
+    // flex flex-col here (not just a plain block box) is load-bearing:
+    // Card below needs to size against *this* element's actual rendered
+    // height, which is auto-but-capped whenever there's no carousel (the
+    // single-task case has no ancestor with a definite height at all). A
+    // plain `height:100%` child can't resolve against an auto+max-height
+    // parent — CSS only treats that as definite for percentage purposes
+    // when height was itself an explicit/resolved value, not "auto,
+    // clamped." flex-basis sizing doesn't have that restriction: a flex
+    // item sizes against its container's *actual* box regardless of how
+    // that box's own height was determined. Same reasoning repeats one
+    // level down at Card/CardContent/TaskCardBody (flex-1 + min-h-0
+    // instead of h-full) — this is the one spot the chain needs to start.
+    <div
+      className={cn(
+        "relative flex h-full max-h-[30rem] flex-col overflow-hidden rounded-xl transition-all duration-300",
+        !active && "scale-[0.94] opacity-50",
+      )}
+    >
+      <IridescentGlow />
+      <Card className="relative min-h-0 flex-1 border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-3 py-6">
+          <TaskCardBody item={item} locale={locale} t={t} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Same frosted-glass frame as TaskCard, without needing an actual item —
+// reused for the loading skeleton and the empty state so every state of
+// this card reads as the same surface, not a plain box that upgrades to
+// the Signature Card only once real data exists.
+function CardShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      <IridescentGlow />
+      <Card className="relative border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
+        <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+          {children}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Mounted once there are 2+ in-progress items. The cards themselves slide
+// (each a full TaskCard, not shared content inside one frame), and the
+// next/previous card peeks in at each edge — align: "center" plus each
+// slide sized under 100% width is what produces the peek, entirely inside
+// the carousel's own clipped viewport (no page-level overflow risk). A
+// peeking card is clickable (a full-cover button appears over it only
+// while it isn't the selected one) so "browse by clicking a neighbor" and
+// "browse via the prev/next buttons" both work. The counter stays visible
+// before any interaction, same reasoning as before: a carousel that only
+// reveals how many tasks exist after paging through works against this
+// product's "total transparency" premise (docs/PRODUCT.md tagline) — here
+// the peeking cards themselves already do that job, the counter is the
+// exact-count backup for someone who can't judge it from a sliver.
+function TaskCardCarousel({
+  items,
+  locale,
+  t,
+}: {
+  items: CurrentTaskItem[];
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+    // No synchronous setCurrent() here: the initial snap is always index 0
+    // (no startIndex configured), matching current's own initial state —
+    // this effect only needs to subscribe to *changes* from here on.
+    const onSelect = () => setCurrent(api.selectedScrollSnap());
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api]);
+
+  return (
+    <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 flex flex-col gap-4 motion-safe:duration-300">
+      <Carousel setApi={setApi} opts={{ align: "center", loop: false }}>
+        {/* No items-start override here (unlike a plain content carousel)
+            — cards of unequal height should still read as one consistent
+            row, not a ragged one where a short task's card visibly stops
+            short next to a long one's. Default flex stretch handles it,
+            provided every layer between here and TaskCard's own Card
+            propagates h-full instead of collapsing to its own content. */}
+        <CarouselContent>
+          {items.map((item, index) => (
+            <CarouselItem key={item.title} className="basis-[85%]">
+              <div className="relative h-full">
+                <TaskCard item={item} locale={locale} t={t} active={index === current} />
+                {index !== current && (
+                  <button
+                    type="button"
+                    className="absolute inset-0 cursor-pointer rounded-xl"
+                    aria-label={t("selectTask", { title: item.title })}
+                    onClick={() => api?.scrollTo(index)}
+                  />
+                )}
+              </div>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+      <div className="flex items-center justify-center gap-4">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t("previousTask")}
+          disabled={!api?.canScrollPrev()}
+          onClick={() => api?.scrollPrev()}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {t("taskCounter", { current: current + 1, total: items.length })}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t("nextTask")}
+          disabled={!api?.canScrollNext()}
+          onClick={() => api?.scrollNext()}
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function CurrentTaskCard({ projectId }: { projectId: string }) {
   const { data: items, isPending } = useCurrentTask(projectId);
   const t = useTranslations("Projects.CurrentTaskCard");
   const locale = useLocale();
 
-  return (
-    <div className="relative h-full min-h-0 overflow-hidden rounded-xl">
-      <IridescentGlow />
-      <Card className="relative h-full min-h-0 border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
-          {/* No CardHeader/title here — the tab trigger that hosts this
-              panel (ClientMainTabs, page-level) already says "Tâche en
-              cours"; a second identical label directly below it would be
-              redundant. justify-start, not justify-center: with the
-              progress bar/start date additions, real content can now be
-              taller than the card's allocated height. A centered flex
-              column anchors its overflow scroll position mid-content,
-              cutting off the title at the top with no visual cue to scroll
-              — justify-start guarantees the title is always the first
-              thing visible, scrolling down for the rest. */}
-        <CardContent className="flex flex-1 flex-col justify-start gap-3 overflow-y-auto py-6">
-          {isPending ? (
-            <Skeleton className="h-10 w-full" />
-          ) : !items || items.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-4 text-center">
-              <LiveIndicator active={false} />
-              <p className="text-sm text-muted-foreground">{t("empty")}</p>
-            </div>
-          ) : (
-            <ul className="flex flex-col gap-6">
-              {items.map((item) => (
-                // key is the item's own (vulgarized) title, so a real
-                // content change (the task moved on, or its wording was
-                // refreshed) unmounts the old entry and remounts this one —
-                // the one authored motion moment below plays exactly when
-                // something genuinely changed, never on an unrelated
-                // re-render.
-                <li
-                  key={item.title}
-                  className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 flex max-w-prose flex-col gap-5 motion-safe:duration-300"
-                >
-                  <Section label={t("inProgress")}>
-                    <div className="flex items-center gap-3">
-                      <LiveIndicator active />
-                      {/* h2, not a bare span: the task's own title is
-                          genuinely the most important string on the card
-                          and belongs in the heading outline, not skipped
-                          by a screen reader navigating by heading. h2, not
-                          h3 — nothing in the client view sits between this
-                          card and the page's own h1, same level as
-                          TeamPanel/MeetingCard's own section headings. */}
-                      <h2 className="text-xl leading-snug font-bold text-balance">
-                        {item.title}
-                      </h2>
-                    </div>
-                  </Section>
+  if (isPending) {
+    return (
+      <CardShell>
+        <Skeleton className="h-10 w-full" />
+      </CardShell>
+    );
+  }
 
-                  {/* 2026-08-09: why/impact/status replace the old single
-                      description blob (docs/PRODUCT.md "Working notes") —
-                      a client scans named sections far faster than one
-                      blob of text. Any can be absent: the vulgarization
-                      prompt is instructed to leave a section out rather
-                      than invent content the source doesn't support
-                      (Constitution II, "Never fabricate"). */}
-                  {item.why && (
-                    <Section label={t("why")}>
-                      <p className="text-sm leading-relaxed text-foreground">{item.why}</p>
-                    </Section>
-                  )}
-                  {item.impact && (
-                    <Section label={t("impact")}>
-                      <p className="text-sm leading-relaxed text-foreground">{item.impact}</p>
-                    </Section>
-                  )}
-                  {item.status && (
-                    <Section label={t("status")}>
-                      <p className="text-sm leading-relaxed text-foreground">{item.status}</p>
-                    </Section>
-                  )}
+  if (!items || items.length === 0) {
+    return (
+      <CardShell>
+        <LiveIndicator active={false} />
+        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+      </CardShell>
+    );
+  }
 
-                  {/* Time/estimate/confidence: one vertical reading order,
-                      not a separate bordered sidebar (that read as a
-                      dashboard stat panel bolted onto a paragraph) — a
-                      plain sentence rather than an icon-led label,
-                      consistent with the why/impact/status sections above
-                      it, closing out the card instead of racing it
-                      side by side. */}
-                  <p className="border-t border-white/15 pt-3 text-sm text-muted-foreground">
-                    {t("timeline", {
-                      started: formatRelativeTime(item.startedAt, locale),
-                      updated: formatRelativeTime(item.updatedAt, locale),
-                    })}
-                  </p>
-                  {item.estimatedCompletionAt && (
-                    <ProgressIndicator
-                      startedAt={item.startedAt}
-                      estimatedCompletionAt={item.estimatedCompletionAt}
-                      confidence={item.estimateConfidence}
-                      locale={locale}
-                      t={t}
-                    />
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+  if (items.length === 1) {
+    // Single task: no carousel chrome (prev/next buttons that would
+    // always be disabled, a peek that has nothing to peek at) — same
+    // authored entrance motion as the carousel case below.
+    return (
+      <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
+        <TaskCard item={items[0]} locale={locale} t={t} />
+      </div>
+    );
+  }
+
+  return <TaskCardCarousel items={items} locale={locale} t={t} />;
 }
