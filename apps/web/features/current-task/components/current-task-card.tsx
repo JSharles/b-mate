@@ -181,14 +181,21 @@ function Section({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+// Purely decorative texture behind the frosted panel — never anything text
+// sits directly on top of.
+function IridescentGlow() {
+  return (
+    <div className="pointer-events-none absolute inset-0" aria-hidden>
+      <span className="bg-iris-pink absolute -top-16 -left-16 size-72 rounded-full opacity-50 blur-3xl" />
+      <span className="bg-iris-blue absolute top-1/4 -right-16 size-72 rounded-full opacity-50 blur-3xl" />
+      <span className="bg-iris-yellow absolute -bottom-20 left-1/3 size-80 rounded-full opacity-40 blur-3xl" />
+    </div>
+  );
+}
+
 // The full detail for one in-progress task — En cours/Pourquoi/Impact/État,
-// then the timeline sentence and progress bar. Extracted out of the
-// map/carousel loop so the exact same markup renders identically whether
-// there's one task (no carousel chrome at all) or several (one per
-// CarouselItem, 2026-08-10: multiple in-progress items used to stack
-// vertically here, which read as intimidating with more than one — see
-// the carousel wiring below).
-function TaskSlide({
+// then the timeline sentence and progress bar.
+function TaskCardBody({
   item,
   locale,
   t,
@@ -259,14 +266,73 @@ function TaskSlide({
   );
 }
 
-// Only mounted once there are 2+ in-progress items — a single task never
-// gets carousel chrome (prev/next buttons that would always be disabled,
-// a "1 of 1" counter that says nothing useful). The counter text stays
-// visible without touching the buttons, so the client always sees how
-// many tasks are actually in flight — a carousel that only revealed that
-// count after paging through would work against this product's whole
-// "total transparency" premise (docs/PRODUCT.md tagline).
-function MultiTaskCarousel({
+// The full frosted-glass Signature Card for one task — glow, border, blur,
+// all of it — not just its inner content. 2026-08-10: rebuilt from a
+// content-only carousel (one shared card frame, its text sliding inside)
+// after the "which task is this" cue turned out too subtle — the whole
+// card itself now pages, so a peeking neighbor (see TaskCardCarousel)
+// visibly reads as "another card," not a scrollbar-less content swap.
+// `active`: dims/shrinks a peeking, not-currently-selected card — full
+// strength (the default) everywhere this renders outside a carousel.
+function TaskCard({
+  item,
+  locale,
+  t,
+  active = true,
+}: {
+  item: CurrentTaskItem;
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+  active?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-xl transition-all duration-300",
+        !active && "scale-[0.94] opacity-50",
+      )}
+    >
+      <IridescentGlow />
+      <Card className="relative border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
+        <CardContent className="flex flex-col gap-3 py-6">
+          <TaskCardBody item={item} locale={locale} t={t} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Same frosted-glass frame as TaskCard, without needing an actual item —
+// reused for the loading skeleton and the empty state so every state of
+// this card reads as the same surface, not a plain box that upgrades to
+// the Signature Card only once real data exists.
+function CardShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      <IridescentGlow />
+      <Card className="relative border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
+        <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+          {children}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Mounted once there are 2+ in-progress items. The cards themselves slide
+// (each a full TaskCard, not shared content inside one frame), and the
+// next/previous card peeks in at each edge — align: "center" plus each
+// slide sized under 100% width is what produces the peek, entirely inside
+// the carousel's own clipped viewport (no page-level overflow risk). A
+// peeking card is clickable (a full-cover button appears over it only
+// while it isn't the selected one) so "browse by clicking a neighbor" and
+// "browse via the prev/next buttons" both work. The counter stays visible
+// before any interaction, same reasoning as before: a carousel that only
+// reveals how many tasks exist after paging through works against this
+// product's "total transparency" premise (docs/PRODUCT.md tagline) — here
+// the peeking cards themselves already do that job, the counter is the
+// exact-count backup for someone who can't judge it from a sliver.
+function TaskCardCarousel({
   items,
   locale,
   t,
@@ -291,17 +357,27 @@ function MultiTaskCarousel({
   }, [api]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <Carousel setApi={setApi} opts={{ align: "start" }}>
-        <CarouselContent>
-          {items.map((item) => (
-            <CarouselItem key={item.title}>
-              <TaskSlide item={item} locale={locale} t={t} />
+    <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 flex flex-col gap-4 motion-safe:duration-300">
+      <Carousel setApi={setApi} opts={{ align: "center", loop: false }}>
+        <CarouselContent className="items-start">
+          {items.map((item, index) => (
+            <CarouselItem key={item.title} className="basis-[85%]">
+              <div className="relative">
+                <TaskCard item={item} locale={locale} t={t} active={index === current} />
+                {index !== current && (
+                  <button
+                    type="button"
+                    className="absolute inset-0 cursor-pointer rounded-xl"
+                    aria-label={t("selectTask", { title: item.title })}
+                    onClick={() => api?.scrollTo(index)}
+                  />
+                )}
+              </div>
             </CarouselItem>
           ))}
         </CarouselContent>
       </Carousel>
-      <div className="flex items-center justify-between border-t border-white/15 pt-3">
+      <div className="flex items-center justify-center gap-4">
         <Button
           type="button"
           variant="ghost"
@@ -330,57 +406,38 @@ function MultiTaskCarousel({
   );
 }
 
-// Purely decorative texture behind the frosted panel — never anything text
-// sits directly on top of.
-function IridescentGlow() {
-  return (
-    <div className="pointer-events-none absolute inset-0" aria-hidden>
-      <span className="bg-iris-pink absolute -top-16 -left-16 size-72 rounded-full opacity-50 blur-3xl" />
-      <span className="bg-iris-blue absolute top-1/4 -right-16 size-72 rounded-full opacity-50 blur-3xl" />
-      <span className="bg-iris-yellow absolute -bottom-20 left-1/3 size-80 rounded-full opacity-40 blur-3xl" />
-    </div>
-  );
-}
-
 export function CurrentTaskCard({ projectId }: { projectId: string }) {
   const { data: items, isPending } = useCurrentTask(projectId);
   const t = useTranslations("Projects.CurrentTaskCard");
   const locale = useLocale();
 
-  return (
-    <div className="relative h-full min-h-0 overflow-hidden rounded-xl">
-      <IridescentGlow />
-      <Card className="relative h-full min-h-0 border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
-          {/* No CardHeader/title here — the tab trigger that hosts this
-              panel (ClientMainTabs, page-level) already says "Tâche en
-              cours"; a second identical label directly below it would be
-              redundant. justify-start, not justify-center: with the
-              progress bar/start date additions, real content can now be
-              taller than the card's allocated height. A centered flex
-              column anchors its overflow scroll position mid-content,
-              cutting off the title at the top with no visual cue to scroll
-              — justify-start guarantees the title is always the first
-              thing visible, scrolling down for the rest. */}
-        <CardContent className="flex flex-1 flex-col justify-start gap-3 overflow-y-auto py-6">
-          {isPending ? (
-            <Skeleton className="h-10 w-full" />
-          ) : !items || items.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-4 text-center">
-              <LiveIndicator active={false} />
-              <p className="text-sm text-muted-foreground">{t("empty")}</p>
-            </div>
-          ) : items.length === 1 ? (
-            // Single task: no carousel chrome (prev/next buttons that
-            // would always be disabled, a "1 of 1" counter saying nothing
-            // useful) — same authored entrance motion as before.
-            <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
-              <TaskSlide item={items[0]} locale={locale} t={t} />
-            </div>
-          ) : (
-            <MultiTaskCarousel items={items} locale={locale} t={t} />
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+  if (isPending) {
+    return (
+      <CardShell>
+        <Skeleton className="h-10 w-full" />
+      </CardShell>
+    );
+  }
+
+  if (!items || items.length === 0) {
+    return (
+      <CardShell>
+        <LiveIndicator active={false} />
+        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+      </CardShell>
+    );
+  }
+
+  if (items.length === 1) {
+    // Single task: no carousel chrome (prev/next buttons that would
+    // always be disabled, a peek that has nothing to peek at) — same
+    // authored entrance motion as the carousel case below.
+    return (
+      <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
+        <TaskCard item={items[0]} locale={locale} t={t} />
+      </div>
+    );
+  }
+
+  return <TaskCardCarousel items={items} locale={locale} t={t} />;
 }

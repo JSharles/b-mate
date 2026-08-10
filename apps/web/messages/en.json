@@ -302,7 +302,8 @@
       "progressLabel": "Estimated completion progress",
       "taskCounter": "Task {current} of {total}",
       "previousTask": "Previous task",
-      "nextTask": "Next task"
+      "nextTask": "Next task",
+      "selectTask": "View \"{title}\""
     },
     "TeamPanel": {
       "developer": "Developer",

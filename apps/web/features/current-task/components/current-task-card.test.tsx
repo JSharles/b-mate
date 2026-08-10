@@ -172,6 +172,28 @@ describe("CurrentTaskCard", () => {
       expect(screen.getByText("Task A")).toBeInTheDocument();
       expect(screen.getByText("Task B")).toBeInTheDocument();
     });
+
+    // 2026-08-10: rebuilt so the whole card slides and a peeking neighbor
+    // is visible (not just its content) — that peeking card is itself
+    // clickable, a full-cover overlay button only present while it isn't
+    // the selected one (removed once it becomes active, so the real card
+    // content underneath is never blocked from interaction). Only one of
+    // the three cards is selected at a time, so exactly items.length - 1
+    // overlay buttons should exist.
+    it("exposes a click target on every peeking (non-selected) card, but not the selected one", () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [
+          { ...baseItem, title: "Task A" },
+          { ...baseItem, title: "Task B" },
+          { ...baseItem, title: "Task C" },
+        ],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+
+      render(<CurrentTaskCard projectId="project-1" />);
+
+      expect(screen.getAllByRole("button", { name: "selectTask" })).toHaveLength(2);
+    });
   });
 
   it("shows a combined timeline sentence with the start date and the updated-at time", () => {

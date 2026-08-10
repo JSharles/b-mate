@@ -302,7 +302,8 @@
       "progressLabel": "Progression de l'estimation",
       "taskCounter": "Tâche {current} sur {total}",
       "previousTask": "Tâche précédente",
-      "nextTask": "Tâche suivante"
+      "nextTask": "Tâche suivante",
+      "selectTask": "Voir « {title} »"
     },
     "TeamPanel": {
       "developer": "Développeur",
