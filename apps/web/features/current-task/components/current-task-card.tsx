@@ -205,7 +205,7 @@ function TaskCardBody({
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
-    <div className="flex max-w-prose flex-col gap-5">
+    <div className="flex h-full max-w-prose flex-col gap-5">
       <Section label={t("inProgress")}>
         <div className="flex items-center gap-3">
           <LiveIndicator active />
@@ -246,8 +246,14 @@ function TaskCardBody({
           bolted onto a paragraph) — a plain sentence rather than an
           icon-led label, consistent with the why/impact/status sections
           above it, closing out the card instead of racing it side by
-          side. */}
-      <p className="border-t border-white/15 pt-3 text-sm text-muted-foreground">
+          side. mt-auto (2026-08-10): with every card now stretched to the
+          row's tallest (see TaskCardCarousel), a short task's why/impact/
+          status content left this floating right under the title instead
+          of anchored to the card's own bottom edge like its longer
+          neighbors' — auto margin absorbs whatever space the middle
+          content didn't use, every card's timeline/estimate ends up flush
+          against the bottom regardless of how little sits above it. */}
+      <p className="mt-auto border-t border-white/15 pt-3 text-sm text-muted-foreground">
         {t("timeline", {
           started: formatRelativeTime(item.startedAt, locale),
           updated: formatRelativeTime(item.updatedAt, locale),
@@ -294,7 +300,7 @@ function TaskCard({
     >
       <IridescentGlow />
       <Card className="relative h-full border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
-        <CardContent className="flex flex-col gap-3 py-6">
+        <CardContent className="flex h-full flex-col gap-3 py-6">
           <TaskCardBody item={item} locale={locale} t={t} />
         </CardContent>
       </Card>
