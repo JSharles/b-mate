@@ -1,19 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import type { AnchorHTMLAttributes, ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { WelcomeCard } from "./welcome-card";
-
-vi.mock("@/i18n/navigation", () => ({
-  Link: ({
-    href,
-    children,
-    ...props
-  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}));
 
 const baseUser = {
   id: "1",
@@ -46,29 +33,12 @@ describe("WelcomeCard", () => {
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 
-  it("shows the welcome heading and an edit-profile link to /profile", () => {
+  it("shows the welcome text as a plain (non-heading) line, no card/avatar/edit-profile button", () => {
     render(<WelcomeCard user={baseUser} isPending={false} />);
 
-    expect(screen.getByRole("heading", { name: "welcome" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "editProfile" })).toHaveAttribute("href", "/profile");
-  });
-
-  it("shows initials when there is no profile image", () => {
-    render(<WelcomeCard user={baseUser} isPending={false} />);
-
-    expect(screen.getByText("JC")).toBeInTheDocument();
-  });
-
-  it("shows the role title and company only when present", () => {
-    const { rerender } = render(<WelcomeCard user={baseUser} isPending={false} />);
-    expect(screen.queryByText(/·/)).not.toBeInTheDocument();
-
-    rerender(
-      <WelcomeCard
-        user={{ ...baseUser, roleTitle: "Lead developer", company: "Acme" }}
-        isPending={false}
-      />,
-    );
-    expect(screen.getByText("Lead developer · Acme")).toBeInTheDocument();
+    expect(screen.getByText("welcome")).toBeInTheDocument();
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 });
