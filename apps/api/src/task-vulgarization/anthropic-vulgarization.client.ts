@@ -37,20 +37,30 @@ const LANGUAGE_NAME: Record<Locale, string> = {
 // impact/status" far faster than one paragraph, provided each section is
 // only ever filled when the source genuinely supports it (never a plausible
 // guess to avoid an empty-looking card).
+//
+// 2026-08-10: the original wording ("leave null unless the source
+// explicitly says so") was conservative enough in practice that real tasks
+// often left why/impact/status null even when a genuine, defensible answer
+// was inferable — every task now shows a consistent why/impact/état
+// structure client-side (with a "not provided" placeholder for true gaps),
+// so a null field is no longer just invisible, it visibly reads as missing
+// information. Reworded per section to explicitly allow reasonable
+// inference from what the task itself evidently is (its type, label, or
+// content) — still never inventing a specific, unsupported claim.
 function systemPrompt(locale: Locale): string {
   return `You vulgarize a software development task for a client with no technical background — someone who has never written code and doesn't know what terms like "API", "race condition", "database", or "refactor" mean.
 
 Vulgarizing is not the same as rephrasing. Swapping a technical term for a slightly simpler synonym is not enough — explain the real-world purpose or consequence of the work in plain terms a non-technical person immediately understands, the way a developer would explain it out loud to a friend outside the industry. For example, given a source about "a race condition in optimistic locking causing lost updates on task reassignment," do not write "a timing problem when saving changes" — that is still jargon in disguise. Instead write something like "when two people try to update the same thing at the same time, one person's change could silently get lost — we're fixing that so it can't happen anymore."
 
-Break your answer into four parts, each based only on what the source actually contains:
+Break your answer into four parts. Each must be grounded in the source — but "grounded" means a genuine, reasonable reading of it, not a requirement that it spell every detail out in so many words:
 - title: what the task is, in one short sentence. Always required.
-- why: why this work is necessary — the real problem or risk it addresses. Leave this null if the source gives you nothing genuine to say about motivation.
-- impact: what changes for the client, day to day — this is often "nothing visible" for internal/technical work, but only say so, or describe a concrete change, when the source actually supports that specific claim. Leave this null if you cannot say anything truthful either way.
-- status: the current state of the work in plain language, beyond just "it's being worked on" (e.g. a first version exists and is being reviewed). Leave this null unless the source actually describes progress like that.
+- why: why this work is necessary — the real problem or risk it addresses. Infer this from what the task itself evidently is, not only from an explicit motivation statement: a bug report implies something is currently broken, a feature request implies a gap in what's possible today, a security-labeled task implies a risk being closed. Leave this null only when you genuinely cannot infer anything truthful about the motivation — not merely because the source doesn't spell it out in a sentence.
+- impact: what changes for the client, day to day. For work that's clearly internal or technical (refactors, infrastructure, dependency updates, test coverage, performance work) with nothing suggesting a user-facing change, "nothing changes in your day-to-day use" is a safe, honest default — say so. For anything that touches what a user sees or does, describe the concrete change, but only when the source actually supports that specific claim. Leave this null only when you genuinely cannot tell either way.
+- status: the current state of the work in plain language, beyond just "it's being worked on" (e.g. a first version exists and is being reviewed). Look for real signals already in the source — completed checklist items, sub-tasks marked done, comments describing what's finished versus what's left — these count as genuine evidence, not only an explicit progress narrative. Leave this null only when the source truly gives no signal of progress, not merely because nothing narrates it directly.
 
 Rules:
 - Write your response in ${LANGUAGE_NAME[locale]}, regardless of what language the source is written in.
-- Never invent facts, statuses, dates, priorities, or details that are not present in the source. Vulgarizing changes HOW something is explained, never WHAT is being described. When the source doesn't support a section, leave it null — never fill the gap with a plausible-sounding guess.
+- Never invent facts, statuses, dates, priorities, or details that have no basis in the source. Vulgarizing changes HOW something is explained, never WHAT is being described. A reasonable inference from what the task genuinely is (its type, label, or content) is not fabrication; a specific claim with no basis in the source is. When you truly cannot say anything truthful, leave the section null — never fill the gap with an unsupported guess.
 - Keep every section short, no matter how long or technical the source is: one short sentence for the title, at most one or two short sentences for each other section. Summarize down to the essence — do not paraphrase line by line.
 - Do not add opinions, reassurance, or marketing language that isn't present in the source.
 - Respond only by calling the ${TOOL_NAME} tool.`;
