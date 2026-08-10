@@ -220,10 +220,15 @@
       "backToProject": "Retour au projet",
       "loadErrorTitle": "Impossible de charger cette ressource",
       "loadErrorRetry": "Réessayer",
-      "categoryApprove": "Valider",
-      "categoryReject": "Rejeter",
-      "categoryApproved": "Validée",
-      "categoryRejected": "Rejetée"
+      "reviewTitle": "Vérifiez la répartition",
+      "reviewIntro": "Relisez ce que l'IA a rangé dans chaque catégorie. Seules les sections validées seront visibles par votre client.",
+      "reviewEmpty": "Aucune section n'a été produite pour ce document.",
+      "sectionApprove": "Valider",
+      "sectionReject": "Rejeter",
+      "sectionApproved": "Validée",
+      "sectionRejected": "Rejetée",
+      "sectionMoveLabel": "Déplacer vers",
+      "publishBlocked": "Validez au moins une section avant de publier."
     },
     "BoardConnectionCard": {
       "title": "Board",
@@ -312,8 +317,7 @@
       "roleFallback": "Développeur"
     },
     "ClientMainTabs": {
-      "tabsLabel": "Contenu du projet",
-      "uncategorized": "Autres"
+      "tabsLabel": "Contenu du projet"
     },
     "ProjectPreferences": {
       "timezone": "Fuseau horaire",

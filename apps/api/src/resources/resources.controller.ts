@@ -18,6 +18,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionGuard } from '../auth/session.guard';
 import { parseLocale } from '../task-vulgarization/locale';
 import { CreateResourceNotionDto } from './dto/create-resource-notion.dto';
+import { MoveResourceSectionDto } from './dto/move-resource-section.dto';
 import { ResourcesService } from './resources.service';
 
 // 25 MB (spec.md FR-013) — an early, HTTP-layer rejection so an oversized
@@ -93,35 +94,56 @@ export class ResourcesController {
     return this.resourcesService.publish(user.id, projectId, resourceId);
   }
 
-  @Post(':resourceId/categories/:categoryId/approve')
+  // specs/014-category-sections contracts/resource-sections.md. Replaces
+  // 013's category approve/reject: with the list frozen there is nothing to
+  // approve about a *category*, only about what the analysis filed where.
+  @Post(':resourceId/sections/:sectionId/approve')
   @HttpCode(HttpStatus.NO_CONTENT)
-  approveCategory(
+  approveSection(
     @CurrentUser() user: User,
     @Param('projectId') projectId: string,
     @Param('resourceId') resourceId: string,
-    @Param('categoryId') categoryId: string,
+    @Param('sectionId') sectionId: string,
   ) {
-    return this.resourcesService.approveCategory(
+    return this.resourcesService.approveSection(
       user.id,
       projectId,
       resourceId,
-      categoryId,
+      sectionId,
     );
   }
 
-  @Post(':resourceId/categories/:categoryId/reject')
+  @Post(':resourceId/sections/:sectionId/reject')
   @HttpCode(HttpStatus.NO_CONTENT)
-  rejectCategory(
+  rejectSection(
     @CurrentUser() user: User,
     @Param('projectId') projectId: string,
     @Param('resourceId') resourceId: string,
-    @Param('categoryId') categoryId: string,
+    @Param('sectionId') sectionId: string,
   ) {
-    return this.resourcesService.rejectCategory(
+    return this.resourcesService.rejectSection(
       user.id,
       projectId,
       resourceId,
-      categoryId,
+      sectionId,
+    );
+  }
+
+  @Post(':resourceId/sections/:sectionId/move')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  moveSection(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Param('resourceId') resourceId: string,
+    @Param('sectionId') sectionId: string,
+    @Body() body: MoveResourceSectionDto,
+  ) {
+    return this.resourcesService.moveSection(
+      user.id,
+      projectId,
+      resourceId,
+      sectionId,
+      body.categoryKey,
     );
   }
 

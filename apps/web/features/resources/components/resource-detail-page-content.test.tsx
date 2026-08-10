@@ -1,12 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  useApproveResourceCategory,
-  useDeleteResource,
-  usePublishResource,
-  useRejectResourceCategory,
-} from "../hooks";
+import { useDeleteResource, usePublishResource } from "../hooks";
 import { ResourceDetailPageContent } from "./resource-detail-page-content";
 
 const mockPush = vi.fn();
@@ -18,14 +13,17 @@ vi.mock("@/i18n/navigation", () => ({
 vi.mock("../hooks", () => ({
   usePublishResource: vi.fn(),
   useDeleteResource: vi.fn(),
-  useApproveResourceCategory: vi.fn(),
-  useRejectResourceCategory: vi.fn(),
+}));
+
+// The section review surface has its own spec (section-review-list.test.tsx);
+// stubbing it here keeps this file about the page shell — states, actions and
+// the original-document access.
+vi.mock("./section-review-list", () => ({
+  SectionReviewList: () => <div data-testid="section-review-list" />,
 }));
 
 const mockedUsePublishResource = vi.mocked(usePublishResource);
 const mockedUseDeleteResource = vi.mocked(useDeleteResource);
-const mockedUseApproveResourceCategory = vi.mocked(useApproveResourceCategory);
-const mockedUseRejectResourceCategory = vi.mocked(useRejectResourceCategory);
 
 function baseMutation<T extends (...args: never[]) => { mutate: unknown }>() {
   return {
@@ -44,90 +42,54 @@ const baseResource = {
   originalFileName: "a.pdf",
   originalFileMimeType: "application/pdf",
   notionPageUrl: null,
-  vulgarizedTitle: null,
-  vulgarizedContent: null,
   failureReason: null,
   publishedAt: null,
   createdAt: "2026-08-08T00:00:00.000Z",
-  categories: [],
+  sections: [
+    {
+      id: "section-1",
+      categoryKey: "overview" as const,
+      status: "approved" as const,
+      title: "What this delivers",
+      content: "The overview slice.",
+    },
+  ],
 };
 
 describe("ResourceDetailPageContent", () => {
   beforeEach(() => {
     mockedUsePublishResource.mockReturnValue(baseMutation<typeof usePublishResource>());
     mockedUseDeleteResource.mockReturnValue(baseMutation<typeof useDeleteResource>());
-    mockedUseApproveResourceCategory.mockReturnValue(
-      baseMutation<typeof useApproveResourceCategory>(),
-    );
-    mockedUseRejectResourceCategory.mockReturnValue(
-      baseMutation<typeof useRejectResourceCategory>(),
-    );
     mockPush.mockReset();
   });
 
   it("shows a processing state when the resource isn't done yet", () => {
     render(
-      <ResourceDetailPageContent projectId="project-1" resource={baseResource} canManage={true} />,
+      <ResourceDetailPageContent projectId="project-1" resource={baseResource} />,
     );
 
     expect(screen.getByText("processing")).toBeInTheDocument();
   });
 
-  it("shows a failed state with no vulgarized content", () => {
+  it("falls back to a generic message when a failed resource recorded no reason", () => {
     render(
       <ResourceDetailPageContent
         projectId="project-1"
-        resource={{ ...baseResource, status: "failed", failureReason: "Extraction failed" }}
-        canManage={true}
+        resource={{ ...baseResource, status: "failed", failureReason: null }}
       />,
     );
 
     expect(screen.getByText("failed")).toBeInTheDocument();
   });
 
-  it("shows the vulgarized title and content once ready for review", () => {
-    render(
-      <ResourceDetailPageContent
-        projectId="project-1"
-        resource={{
-          ...baseResource,
-          status: "ready_for_review",
-          vulgarizedTitle: "Plain-language title",
-          vulgarizedContent: "Plain-language content.",
-        }}
-        canManage={true}
-      />,
-    );
 
-    expect(screen.getByRole("heading", { name: "Plain-language title" })).toBeInTheDocument();
-    expect(screen.getByText("Plain-language content.")).toBeInTheDocument();
-  });
 
-  it("shows the vulgarized content once published", () => {
-    render(
-      <ResourceDetailPageContent
-        projectId="project-1"
-        resource={{
-          ...baseResource,
-          status: "published",
-          vulgarizedTitle: "Plain-language title",
-          vulgarizedContent: "Plain-language content.",
-          publishedAt: "2026-08-08T00:00:00.000Z",
-        }}
-        canManage={true}
-      />,
-    );
-
-    expect(screen.getByRole("heading", { name: "Plain-language title" })).toBeInTheDocument();
-  });
-
-  describe("developer actions (canManage)", () => {
+  describe("developer actions", () => {
     it("shows Publish and Delete when ready for review", () => {
       render(
         <ResourceDetailPageContent
           projectId="project-1"
           resource={{ ...baseResource, status: "ready_for_review" }}
-          canManage={true}
         />,
       );
 
@@ -140,7 +102,6 @@ describe("ResourceDetailPageContent", () => {
         <ResourceDetailPageContent
           projectId="project-1"
           resource={{ ...baseResource, status: "published" }}
-          canManage={true}
         />,
       );
 
@@ -150,25 +111,13 @@ describe("ResourceDetailPageContent", () => {
 
     it("shows only Delete when processing or failed (no Publish button)", () => {
       render(
-        <ResourceDetailPageContent projectId="project-1" resource={baseResource} canManage={true} />,
+        <ResourceDetailPageContent projectId="project-1" resource={baseResource} />,
       );
 
       expect(screen.queryByRole("button", { name: "publish" })).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "delete" })).toBeInTheDocument();
     });
 
-    it("shows no action buttons when canManage is false", () => {
-      render(
-        <ResourceDetailPageContent
-          projectId="project-1"
-          resource={{ ...baseResource, status: "ready_for_review" }}
-          canManage={false}
-        />,
-      );
-
-      expect(screen.queryByRole("button", { name: "publish" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "delete" })).not.toBeInTheDocument();
-    });
 
     it("calls the publish mutation when Publish is clicked", async () => {
       const publish = baseMutation<typeof usePublishResource>();
@@ -179,7 +128,6 @@ describe("ResourceDetailPageContent", () => {
         <ResourceDetailPageContent
           projectId="project-1"
           resource={{ ...baseResource, status: "ready_for_review" }}
-          canManage={true}
         />,
       );
       await user.click(screen.getByRole("button", { name: "publish" }));
@@ -199,7 +147,6 @@ describe("ResourceDetailPageContent", () => {
         <ResourceDetailPageContent
           projectId="project-1"
           resource={{ ...baseResource, status: "ready_for_review" }}
-          canManage={true}
         />,
       );
       await user.click(screen.getByRole("button", { name: "delete" }));
@@ -223,7 +170,6 @@ describe("ResourceDetailPageContent", () => {
             originalFileUrl: "https://r2.example.com/a.pdf?sig=abc",
             originalFileMimeType: "application/pdf",
           }}
-          canManage={false}
         />,
       );
 
@@ -247,7 +193,6 @@ describe("ResourceDetailPageContent", () => {
             originalFileUrl: "https://r2.example.com/diagram.png?sig=abc",
             originalFileMimeType: "image/png",
           }}
-          canManage={false}
         />,
       );
 
@@ -269,7 +214,6 @@ describe("ResourceDetailPageContent", () => {
             originalFileMimeType:
               "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           }}
-          canManage={false}
         />,
       );
 
@@ -294,7 +238,6 @@ describe("ResourceDetailPageContent", () => {
             originalFileMimeType: null,
             notionPageUrl: "https://notion.so/some-page",
           }}
-          canManage={false}
         />,
       );
 
@@ -306,113 +249,77 @@ describe("ResourceDetailPageContent", () => {
     });
   });
 
-  describe("category chips", () => {
-    const categorizedResource = {
-      ...baseResource,
-      status: "ready_for_review" as const,
-      categories: [
-        {
-          id: "assignment-1",
-          categoryId: "category-1",
-          key: "architecture-stack",
-          label: "Architecture & stack",
-          status: "proposed" as const,
-        },
-        {
-          id: "assignment-2",
-          categoryId: "category-2",
-          key: "audit-findings",
-          label: "Audit findings",
-          status: "approved" as const,
-        },
-      ],
-    };
-
-    it("shows nothing when the resource has no categories", () => {
-      const { container } = render(
+  describe("section review", () => {
+    it("renders the resource title and hands content to the section review list", () => {
+      render(
         <ResourceDetailPageContent
           projectId="project-1"
           resource={{ ...baseResource, status: "ready_for_review" }}
-          canManage={true}
         />,
       );
 
-      expect(container.querySelector("ul")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Architecture overview" }),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("section-review-list")).toBeInTheDocument();
     });
 
-    it("shows approve/reject controls for a proposed category when canManage, but not for an already-approved one", () => {
+    // research.md Decision 4: publishing with nothing approved yields a
+    // resource that is published yet contributes to no tab. The API refuses
+    // it; disabling the button explains why before the click.
+    it("disables Publish and explains why when no section is approved", () => {
       render(
         <ResourceDetailPageContent
           projectId="project-1"
-          resource={categorizedResource}
-          canManage={true}
+          resource={{
+            ...baseResource,
+            status: "ready_for_review",
+            sections: [
+              {
+                id: "section-1",
+                categoryKey: "overview",
+                status: "proposed",
+                title: "What this delivers",
+                content: "The overview slice.",
+              },
+            ],
+          }}
         />,
       );
 
-      expect(screen.getByText("Architecture & stack")).toBeInTheDocument();
-      expect(screen.getByText("Audit findings")).toBeInTheDocument();
-      expect(screen.getAllByRole("button", { name: "categoryApprove" })).toHaveLength(1);
-      expect(screen.getAllByRole("button", { name: "categoryReject" })).toHaveLength(1);
-      expect(screen.getByText("categoryApproved")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "publish" })).toBeDisabled();
+      expect(screen.getByText("publishBlocked")).toBeInTheDocument();
     });
 
-    it("hides approve/reject controls entirely for a client (canManage=false), even on a proposed category", () => {
+    it("enables Publish as soon as one section is approved", () => {
       render(
         <ResourceDetailPageContent
           projectId="project-1"
-          resource={categorizedResource}
-          canManage={false}
+          resource={{ ...baseResource, status: "ready_for_review" }}
         />,
       );
 
-      expect(screen.queryByRole("button", { name: "categoryApprove" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "categoryReject" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "publish" })).toBeEnabled();
+      expect(screen.queryByText("publishBlocked")).not.toBeInTheDocument();
     });
 
-    it("approves the proposed category assignment when Approve is clicked", async () => {
-      const mutate = vi.fn();
-      mockedUseApproveResourceCategory.mockReturnValue({
-        mutate,
-        isPending: false,
-      } as unknown as ReturnType<typeof useApproveResourceCategory>);
-      const user = userEvent.setup();
-
+    // A failed resource is where the contributor learns what went wrong — the
+    // recorded reason is far more actionable than a generic message.
+    it("surfaces the recorded failure reason on a failed resource", () => {
       render(
         <ResourceDetailPageContent
           projectId="project-1"
-          resource={categorizedResource}
-          canManage={true}
+          resource={{
+            ...baseResource,
+            status: "failed",
+            failureReason: "invalid_request_error: image dimensions exceed 8000 pixels",
+          }}
         />,
       );
-      await user.click(screen.getByRole("button", { name: "categoryApprove" }));
 
-      expect(mutate).toHaveBeenCalledWith({
-        resourceId: "resource-1",
-        categoryAssignmentId: "assignment-1",
-      });
-    });
-
-    it("rejects the proposed category assignment when Reject is clicked", async () => {
-      const mutate = vi.fn();
-      mockedUseRejectResourceCategory.mockReturnValue({
-        mutate,
-        isPending: false,
-      } as unknown as ReturnType<typeof useRejectResourceCategory>);
-      const user = userEvent.setup();
-
-      render(
-        <ResourceDetailPageContent
-          projectId="project-1"
-          resource={categorizedResource}
-          canManage={true}
-        />,
-      );
-      await user.click(screen.getByRole("button", { name: "categoryReject" }));
-
-      expect(mutate).toHaveBeenCalledWith({
-        resourceId: "resource-1",
-        categoryAssignmentId: "assignment-1",
-      });
+      expect(
+        screen.getByText("invalid_request_error: image dimensions exceed 8000 pixels"),
+      ).toBeInTheDocument();
     });
   });
 });

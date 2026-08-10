@@ -63,8 +63,9 @@ describe('ResourcesController', () => {
       | 'findOne'
       | 'publish'
       | 'delete'
-      | 'approveCategory'
-      | 'rejectCategory'
+      | 'approveSection'
+      | 'rejectSection'
+      | 'moveSection'
     >
   >;
   let controller: ResourcesController;
@@ -77,8 +78,9 @@ describe('ResourcesController', () => {
       findOne: jest.fn(),
       publish: jest.fn(),
       delete: jest.fn(),
-      approveCategory: jest.fn(),
-      rejectCategory: jest.fn(),
+      approveSection: jest.fn(),
+      rejectSection: jest.fn(),
+      moveSection: jest.fn(),
     };
     controller = new ResourcesController(
       resourcesService as unknown as ResourcesService,
@@ -220,58 +222,100 @@ describe('ResourcesController', () => {
     });
   });
 
-  describe('approveCategory', () => {
-    it('delegates to the service with the current user, project id, resource id, and category assignment id', async () => {
-      resourcesService.approveCategory.mockResolvedValue(undefined);
+  describe('approveSection', () => {
+    it('delegates to the service with the current user, project id, resource id, and section id', async () => {
+      resourcesService.approveSection.mockResolvedValue(undefined);
 
-      await controller.approveCategory(
+      await controller.approveSection(
         fakeUser,
         'project-1',
         'resource-1',
-        'assignment-1',
+        'section-1',
       );
 
-      expect(resourcesService.approveCategory).toHaveBeenCalledWith(
+      expect(resourcesService.approveSection).toHaveBeenCalledWith(
         'user-1',
         'project-1',
         'resource-1',
-        'assignment-1',
+        'section-1',
       );
     });
 
-    it('propagates a rejection when the assignment is not currently proposed', async () => {
-      resourcesService.approveCategory.mockRejectedValue(
-        new Error('This category has already been approved or rejected'),
+    it('propagates a rejection when the section is not currently proposed', async () => {
+      resourcesService.approveSection.mockRejectedValue(
+        new Error('This section has already been approved or rejected'),
       );
 
       await expect(
-        controller.approveCategory(
+        controller.approveSection(
           fakeUser,
           'project-1',
           'resource-1',
-          'assignment-1',
+          'section-1',
         ),
-      ).rejects.toThrow('This category has already been approved or rejected');
+      ).rejects.toThrow('This section has already been approved or rejected');
     });
   });
 
-  describe('rejectCategory', () => {
-    it('delegates to the service with the current user, project id, resource id, and category assignment id', async () => {
-      resourcesService.rejectCategory.mockResolvedValue(undefined);
+  describe('rejectSection', () => {
+    it('delegates to the service with the current user, project id, resource id, and section id', async () => {
+      resourcesService.rejectSection.mockResolvedValue(undefined);
 
-      await controller.rejectCategory(
+      await controller.rejectSection(
         fakeUser,
         'project-1',
         'resource-1',
-        'assignment-1',
+        'section-1',
       );
 
-      expect(resourcesService.rejectCategory).toHaveBeenCalledWith(
+      expect(resourcesService.rejectSection).toHaveBeenCalledWith(
         'user-1',
         'project-1',
         'resource-1',
-        'assignment-1',
+        'section-1',
       );
+    });
+  });
+
+  describe('moveSection', () => {
+    it('unwraps the target category from the body and delegates to the service', async () => {
+      resourcesService.moveSection.mockResolvedValue(undefined);
+
+      await controller.moveSection(
+        fakeUser,
+        'project-1',
+        'resource-1',
+        'section-1',
+        {
+          categoryKey: 'planning',
+        },
+      );
+
+      expect(resourcesService.moveSection).toHaveBeenCalledWith(
+        'user-1',
+        'project-1',
+        'resource-1',
+        'section-1',
+        'planning',
+      );
+    });
+
+    it('propagates a rejection when the target category is already occupied', async () => {
+      resourcesService.moveSection.mockRejectedValue(
+        new Error('This document already has a section in that category'),
+      );
+
+      await expect(
+        controller.moveSection(
+          fakeUser,
+          'project-1',
+          'resource-1',
+          'section-1',
+          {
+            categoryKey: 'planning',
+          },
+        ),
+      ).rejects.toThrow('This document already has a section in that category');
     });
   });
 

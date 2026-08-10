@@ -2,11 +2,11 @@
 
 import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { use } from "react";
+import { use, useEffect } from "react";
 import { useProject } from "@/features/projects/hooks";
 import { ResourceDetailPageContent } from "@/features/resources/components/resource-detail-page-content";
 import { useResource } from "@/features/resources/hooks";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 
@@ -24,8 +24,20 @@ export default function ResourceDetailPage({
     refetch,
   } = useResource(id, resourceId);
   const t = useTranslations("Projects.ResourceDetailPage");
+  const router = useRouter();
 
-  if (isProjectPending || isResourcePending) {
+  // specs/014-category-sections Q2: this page is the contributor's review
+  // screen. A client reads every section inline under the project's category
+  // tabs and has no business here — the API already answers 404 for them, so
+  // this redirect is about not stranding them on an error state.
+  const isClient = project?.role === "client";
+  useEffect(() => {
+    if (isClient) {
+      router.replace(`/projects/${id}`);
+    }
+  }, [isClient, id, router]);
+
+  if (isProjectPending || isResourcePending || isClient) {
     return <Skeleton className="h-8 w-64" />;
   }
 
@@ -52,11 +64,7 @@ export default function ResourceDetailPage({
       >
         {t("backToProject")}
       </Link>
-      <ResourceDetailPageContent
-        projectId={id}
-        resource={resource}
-        canManage={project.role === "contributor"}
-      />
+      <ResourceDetailPageContent projectId={id} resource={resource} />
     </div>
   );
 }

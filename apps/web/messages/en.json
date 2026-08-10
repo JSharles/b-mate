@@ -220,10 +220,15 @@
       "backToProject": "Back to project",
       "loadErrorTitle": "Couldn't load this resource",
       "loadErrorRetry": "Retry",
-      "categoryApprove": "Approve",
-      "categoryReject": "Reject",
-      "categoryApproved": "Approved",
-      "categoryRejected": "Rejected"
+      "reviewTitle": "Check the distribution",
+      "reviewIntro": "Review what the AI filed into each category. Only approved sections will be visible to your client.",
+      "reviewEmpty": "No section was produced for this document.",
+      "sectionApprove": "Approve",
+      "sectionReject": "Reject",
+      "sectionApproved": "Approved",
+      "sectionRejected": "Rejected",
+      "sectionMoveLabel": "Move to",
+      "publishBlocked": "Approve at least one section before publishing."
     },
     "BoardConnectionCard": {
       "title": "Board",
@@ -312,8 +317,7 @@
       "roleFallback": "Developer"
     },
     "ClientMainTabs": {
-      "tabsLabel": "Project content",
-      "uncategorized": "Other"
+      "tabsLabel": "Project content"
     },
     "ProjectPreferences": {
       "timezone": "Timezone",

@@ -36,28 +36,50 @@ function firstCallArg<T>(mock: jest.Mock): T {
   return (mock.mock.calls[0] as unknown[])[0] as T;
 }
 
-function toolUseMessage(title: string, content: string) {
+interface BatchCreateCall {
+  requests: Array<{
+    custom_id: string;
+    params: {
+      model: string;
+      max_tokens: number;
+      system: string;
+      tool_choice: { type: string; name: string };
+      messages: Array<{ content: Array<{ type: string; text?: string }> }>;
+    };
+  }>;
+}
+
+function section(categoryKey: string, suffix: string) {
+  return {
+    categoryKey,
+    titleEn: `Title EN ${suffix}`,
+    contentEn: `Content EN ${suffix}`,
+    titleFr: `Titre FR ${suffix}`,
+    contentFr: `Contenu FR ${suffix}`,
+  };
+}
+
+function sectionsToolUseMessage(sections: unknown[]) {
   return {
     content: [
       {
         type: 'tool_use',
-        input: { title, content },
+        input: { sections },
       },
     ],
   };
 }
 
-function categoriesToolUseMessage(
-  categories: Array<{ key: string; labelEn: string; labelFr: string }>,
-) {
-  return {
-    content: [
-      {
-        type: 'tool_use',
-        input: { categories },
-      },
-    ],
-  };
+// The SDK returns an async iterable from batches.results(); every test that
+// exercises pollBatch needs the same shape. Synchronous generator delegated
+// to by the async iterator — there is nothing to await over an in-memory
+// array, and an `async *` with no await trips require-await.
+function resultsIterable(items: unknown[]) {
+  return Promise.resolve({
+    [Symbol.asyncIterator]: function* () {
+      yield* items;
+    },
+  });
 }
 
 describe('DocumentVulgarizationClient', () => {
@@ -74,7 +96,11 @@ describe('DocumentVulgarizationClient', () => {
   });
 
   describe('submitBatch', () => {
-    it('sends a PDF as a native document content block, one request per supported locale plus one for categories', async () => {
+    // specs/014-category-sections research.md Decision 1 and SC-008. 013 sent
+    // three requests per document (one per locale, plus category detection);
+    // sending one is both the cost saving and what structurally guarantees
+    // the two languages agree on the split (FR-011).
+    it('sends exactly one request, carrying both locales', async () => {
       mockBatchesCreate.mockResolvedValue({ id: 'batch_123' });
 
       const batchId = await client.submitBatch(
@@ -83,63 +109,17 @@ describe('DocumentVulgarizationClient', () => {
       );
 
       expect(batchId).toBe('batch_123');
-      const call = firstCallArg<{
-        requests: Array<{ custom_id: string; params: { model: string } }>;
-      }>(mockBatchesCreate);
-      expect(call.requests.map((r) => r.custom_id).sort()).toEqual([
-        'categories',
-        'en',
-        'fr',
-      ]);
+      const call = firstCallArg<BatchCreateCall>(mockBatchesCreate);
+      expect(call.requests).toHaveLength(1);
+      expect(call.requests[0].custom_id).toBe('sections');
       expect(call.requests[0].params.model).toBe('claude-sonnet-5');
-      const content = (
-        call.requests[0].params as unknown as {
-          messages: Array<{ content: Array<{ type: string }> }>;
-        }
-      ).messages[0].content;
-      expect(content.some((block) => block.type === 'document')).toBe(true);
+      expect(call.requests[0].params.tool_choice).toEqual({
+        type: 'tool',
+        name: 'submit_document_sections',
+      });
     });
 
-    it('includes the project existing categories in the category-detection request system prompt', async () => {
-      mockBatchesCreate.mockResolvedValue({ id: 'batch_cat' });
-
-      await client.submitBatch(
-        { kind: 'pdf', fileBuffer: Buffer.from('%PDF') },
-        'Doc',
-        [{ key: 'architecture-stack', labelEn: 'Architecture & stack' }],
-      );
-
-      const call = firstCallArg<{
-        requests: Array<{
-          custom_id: string;
-          params: { system: string; tool_choice: { name: string } };
-        }>;
-      }>(mockBatchesCreate);
-      const categoryRequest = call.requests.find(
-        (r) => r.custom_id === 'categories',
-      );
-      expect(categoryRequest?.params.system).toContain('architecture-stack');
-      expect(categoryRequest?.params.system).toContain('Architecture & stack');
-      expect(categoryRequest?.params.tool_choice.name).toBe(
-        'submit_categories',
-      );
-    });
-
-    it('tells the category-detection prompt there are no existing categories yet when the project has none', async () => {
-      mockBatchesCreate.mockResolvedValue({ id: 'batch_cat_empty' });
-
-      await client.submitBatch({ kind: 'text', text: 'content' }, 'Doc', []);
-
-      const call = firstCallArg<{
-        requests: Array<{ custom_id: string; params: { system: string } }>;
-      }>(mockBatchesCreate);
-      const categoryRequest = call.requests.find(
-        (r) => r.custom_id === 'categories',
-      );
-      expect(categoryRequest?.params.system).toContain('none yet');
-    });
-
-    it('requests enough max_tokens for a proportionally thorough rewrite of a long document', async () => {
+    it('sends a PDF as a native document content block', async () => {
       mockBatchesCreate.mockResolvedValue({ id: 'batch_123' });
 
       await client.submitBatch(
@@ -147,10 +127,61 @@ describe('DocumentVulgarizationClient', () => {
         'Architecture overview',
       );
 
-      const call = firstCallArg<{
-        requests: Array<{ params: { max_tokens: number } }>;
-      }>(mockBatchesCreate);
-      expect(call.requests[0].params.max_tokens).toBe(8192);
+      const call = firstCallArg<BatchCreateCall>(mockBatchesCreate);
+      const content = call.requests[0].params.messages[0].content;
+      expect(content.some((block) => block.type === 'document')).toBe(true);
+    });
+
+    // FR-001/FR-004: the prompt names the frozen list, and nothing else. 013's
+    // prompt was handed the project's accumulated categories to reuse, which
+    // is the feedback loop that made every tab identical.
+    it('names the four fixed categories in the prompt and takes no category input', async () => {
+      mockBatchesCreate.mockResolvedValue({ id: 'batch_cat' });
+
+      await client.submitBatch(
+        { kind: 'pdf', fileBuffer: Buffer.from('%PDF') },
+        'Doc',
+      );
+
+      const { system } =
+        firstCallArg<BatchCreateCall>(mockBatchesCreate).requests[0].params;
+      expect(system).toContain('overview:');
+      expect(system).toContain('how_it_works:');
+      expect(system).toContain('planning:');
+      expect(system).toContain('other:');
+    });
+
+    // FR-007 is the requirement most at risk from an extraction-shaped
+    // prompt: asking for per-category extracts invites summarizing.
+    it('keeps the no-summarizing and lose-nothing guarantees in the prompt', async () => {
+      mockBatchesCreate.mockResolvedValue({ id: 'batch_cat' });
+
+      await client.submitBatch(
+        { kind: 'pdf', fileBuffer: Buffer.from('%PDF') },
+        'Doc',
+      );
+
+      const { system } =
+        firstCallArg<BatchCreateCall>(mockBatchesCreate).requests[0].params;
+      expect(system).toContain('it is not the same as summarizing');
+      expect(system).toContain('exactly one section');
+      expect(system).toContain('never skip or silently ignore visual content');
+      expect(system).toContain('Never invent facts');
+    });
+
+    // The union of a document's sections is about as long as a whole rewrite,
+    // and both languages now arrive in one response — 013's 8192 would
+    // truncate mid-section.
+    it('requests enough max_tokens for both locales of every section', async () => {
+      mockBatchesCreate.mockResolvedValue({ id: 'batch_123' });
+
+      await client.submitBatch(
+        { kind: 'pdf', fileBuffer: Buffer.from('%PDF-1.4 fake') },
+        'Architecture overview',
+      );
+
+      const call = firstCallArg<BatchCreateCall>(mockBatchesCreate);
+      expect(call.requests[0].params.max_tokens).toBe(32000);
     });
 
     it('uses the RESOURCE_VULGARIZATION_MODEL env var when set', async () => {
@@ -162,9 +193,7 @@ describe('DocumentVulgarizationClient', () => {
         'Doc',
       );
 
-      const call = firstCallArg<{
-        requests: Array<{ params: { model: string } }>;
-      }>(mockBatchesCreate);
+      const call = firstCallArg<BatchCreateCall>(mockBatchesCreate);
       expect(call.requests[0].params.model).toBe('claude-haiku-4-5');
     });
 
@@ -180,11 +209,7 @@ describe('DocumentVulgarizationClient', () => {
         'Schema',
       );
 
-      const call = firstCallArg<{
-        requests: Array<{
-          params: { messages: Array<{ content: Array<{ type: string }> }> };
-        }>;
-      }>(mockBatchesCreate);
+      const call = firstCallArg<BatchCreateCall>(mockBatchesCreate);
       const content = call.requests[0].params.messages[0].content;
       expect(content.some((block) => block.type === 'image')).toBe(true);
     });
@@ -218,15 +243,7 @@ describe('DocumentVulgarizationClient', () => {
         'Report',
       );
 
-      const call = firstCallArg<{
-        requests: Array<{
-          params: {
-            messages: Array<{
-              content: Array<{ type: string; text?: string }>;
-            }>;
-          };
-        }>;
-      }>(mockBatchesCreate);
+      const call = firstCallArg<BatchCreateCall>(mockBatchesCreate);
       const content = call.requests[0].params.messages[0].content;
       expect(
         content.some(
@@ -246,15 +263,7 @@ describe('DocumentVulgarizationClient', () => {
         'Notion page',
       );
 
-      const call = firstCallArg<{
-        requests: Array<{
-          params: {
-            messages: Array<{
-              content: Array<{ type: string; text?: string }>;
-            }>;
-          };
-        }>;
-      }>(mockBatchesCreate);
+      const call = firstCallArg<BatchCreateCall>(mockBatchesCreate);
       const content = call.requests[0].params.messages[0].content;
       expect(content).toEqual([{ type: 'text', text: 'Page content here.' }]);
     });
@@ -266,202 +275,213 @@ describe('DocumentVulgarizationClient', () => {
         processing_status: 'in_progress',
       });
 
-      const result = await client.pollBatch('batch_123');
-
-      expect(result).toEqual({ status: 'pending' });
+      await expect(client.pollBatch('batch_1')).resolves.toEqual({
+        status: 'pending',
+      });
       expect(mockBatchesResults).not.toHaveBeenCalled();
     });
 
-    it('returns succeeded with both locales and the proposed categories parsed once the batch has ended successfully', async () => {
+    it('returns every section, with both locales, once the batch has ended successfully', async () => {
       mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
-      mockBatchesResults.mockResolvedValue([
-        {
-          custom_id: 'en',
-          result: {
-            type: 'succeeded',
-            message: toolUseMessage('Title EN', 'Content EN'),
+      mockBatchesResults.mockReturnValue(
+        resultsIterable([
+          {
+            custom_id: 'sections',
+            result: {
+              type: 'succeeded',
+              message: sectionsToolUseMessage([
+                section('overview', 'A'),
+                section('planning', 'B'),
+              ]),
+            },
           },
-        },
-        {
-          custom_id: 'fr',
-          result: {
-            type: 'succeeded',
-            message: toolUseMessage('Titre FR', 'Contenu FR'),
-          },
-        },
-        {
-          custom_id: 'categories',
-          result: {
-            type: 'succeeded',
-            message: categoriesToolUseMessage([
-              {
-                key: 'architecture-stack',
-                labelEn: 'Architecture & stack',
-                labelFr: 'Architecture et stack',
-              },
-            ]),
-          },
-        },
-      ]);
+        ]),
+      );
 
-      const result = await client.pollBatch('batch_123');
+      const result = await client.pollBatch('batch_1');
 
       expect(result).toEqual({
         status: 'succeeded',
-        vulgarizations: expect.arrayContaining([
-          { locale: 'en', title: 'Title EN', content: 'Content EN' },
-          { locale: 'fr', title: 'Titre FR', content: 'Contenu FR' },
-        ]) as unknown,
-        categories: [
+        sections: [section('overview', 'A'), section('planning', 'B')],
+      });
+    });
+
+    // FR-010 allows one section per (resource, category) and the database
+    // enforces it — a model that splits one category across two entries is a
+    // formatting quirk, not a reason to fail a whole document.
+    it('merges duplicate categories instead of emitting two sections for one key', async () => {
+      mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
+      mockBatchesResults.mockReturnValue(
+        resultsIterable([
           {
-            key: 'architecture-stack',
-            labelEn: 'Architecture & stack',
-            labelFr: 'Architecture et stack',
+            custom_id: 'sections',
+            result: {
+              type: 'succeeded',
+              message: sectionsToolUseMessage([
+                section('overview', 'first'),
+                section('overview', 'second'),
+              ]),
+            },
+          },
+        ]),
+      );
+
+      const result = await client.pollBatch('batch_1');
+
+      expect(result).toEqual({
+        status: 'succeeded',
+        sections: [
+          {
+            categoryKey: 'overview',
+            titleEn: 'Title EN first',
+            contentEn: 'Content EN first\n\nContent EN second',
+            titleFr: 'Titre FR first',
+            contentFr: 'Contenu FR first\n\nContenu FR second',
           },
         ],
       });
     });
 
-    it('returns succeeded with an empty categories array when the batch has no category result at all', async () => {
+    // Unlike 013, there is no best-effort path: sections *are* the content, so
+    // a document that yields none is a failure the contributor must see —
+    // not a resource that reaches ready_for_review holding nothing.
+    it('fails the resource when the analysis returns no sections', async () => {
       mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
-      mockBatchesResults.mockResolvedValue([
-        {
-          custom_id: 'en',
-          result: {
-            type: 'succeeded',
-            message: toolUseMessage('Title EN', 'Content EN'),
-          },
-        },
-        {
-          custom_id: 'fr',
-          result: {
-            type: 'succeeded',
-            message: toolUseMessage('Titre FR', 'Contenu FR'),
-          },
-        },
-      ]);
-
-      const result = await client.pollBatch('batch_123');
-
-      expect(result).toMatchObject({ status: 'succeeded', categories: [] });
-    });
-
-    it('degrades to an empty categories array instead of failing the whole batch when the category result errored', async () => {
-      mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
-      mockBatchesResults.mockResolvedValue([
-        {
-          custom_id: 'en',
-          result: {
-            type: 'succeeded',
-            message: toolUseMessage('Title EN', 'Content EN'),
-          },
-        },
-        {
-          custom_id: 'fr',
-          result: {
-            type: 'succeeded',
-            message: toolUseMessage('Titre FR', 'Contenu FR'),
-          },
-        },
-        {
-          custom_id: 'categories',
-          result: {
-            type: 'errored',
-            error: { error: { type: 'overloaded_error', message: 'busy' } },
-          },
-        },
-      ]);
-
-      const result = await client.pollBatch('batch_123');
-
-      expect(result).toMatchObject({ status: 'succeeded', categories: [] });
-    });
-
-    it('degrades to an empty categories array instead of failing the whole batch when the category tool call is malformed', async () => {
-      mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
-      mockBatchesResults.mockResolvedValue([
-        {
-          custom_id: 'en',
-          result: {
-            type: 'succeeded',
-            message: toolUseMessage('Title EN', 'Content EN'),
-          },
-        },
-        {
-          custom_id: 'fr',
-          result: {
-            type: 'succeeded',
-            message: toolUseMessage('Titre FR', 'Contenu FR'),
-          },
-        },
-        {
-          custom_id: 'categories',
-          result: {
-            type: 'succeeded',
-            message: { content: [{ type: 'text', text: 'no tool call' }] },
-          },
-        },
-      ]);
-
-      const result = await client.pollBatch('batch_123');
-
-      expect(result).toMatchObject({ status: 'succeeded', categories: [] });
-    });
-
-    it('returns failed with the underlying Anthropic error message when a locale errored', async () => {
-      mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
-      mockBatchesResults.mockResolvedValue([
-        {
-          custom_id: 'en',
-          result: {
-            type: 'succeeded',
-            message: toolUseMessage('Title EN', 'Content EN'),
-          },
-        },
-        {
-          custom_id: 'fr',
-          result: {
-            type: 'errored',
-            error: {
-              error: { type: 'invalid_request_error', message: 'boom' },
+      mockBatchesResults.mockReturnValue(
+        resultsIterable([
+          {
+            custom_id: 'sections',
+            result: {
+              type: 'succeeded',
+              message: sectionsToolUseMessage([]),
             },
           },
-        },
-      ]);
+        ]),
+      );
 
-      const result = await client.pollBatch('batch_123');
-
-      expect(result).toEqual({
+      await expect(client.pollBatch('batch_1')).resolves.toEqual({
         status: 'failed',
-        reason: 'fr: invalid_request_error: boom',
+        reason: 'The analysis produced no readable content for this document.',
       });
     });
 
-    it('returns failed instead of throwing when a succeeded result has a malformed/incomplete tool call', async () => {
+    // This is the path that would have named the 8000 px rejection
+    // immediately, instead of leaving it to be found by querying the provider
+    // by hand (research.md Decision 6).
+    it('returns failed with the underlying provider error message', async () => {
       mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
-      mockBatchesResults.mockResolvedValue([
-        {
-          custom_id: 'en',
-          result: {
-            type: 'succeeded',
-            // No tool_use block at all — e.g. the response was cut off by
-            // max_tokens before the tool call was written.
-            message: { content: [{ type: 'text', text: 'truncated...' }] },
+      mockBatchesResults.mockReturnValue(
+        resultsIterable([
+          {
+            custom_id: 'sections',
+            result: {
+              type: 'errored',
+              error: {
+                error: {
+                  type: 'invalid_request_error',
+                  message:
+                    'At least one of the image dimensions exceed max allowed size: 8000 pixels',
+                },
+              },
+            },
           },
-        },
-        {
-          custom_id: 'fr',
-          result: {
-            type: 'succeeded',
-            message: toolUseMessage('Titre FR', 'Contenu FR'),
-          },
-        },
-      ]);
+        ]),
+      );
 
-      const result = await client.pollBatch('batch_123');
+      await expect(client.pollBatch('batch_1')).resolves.toEqual({
+        status: 'failed',
+        reason:
+          'invalid_request_error: At least one of the image dimensions exceed max allowed size: 8000 pixels',
+      });
+    });
+
+    it('returns failed for a canceled or expired result', async () => {
+      mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
+      mockBatchesResults.mockReturnValue(
+        resultsIterable([
+          { custom_id: 'sections', result: { type: 'expired' } },
+        ]),
+      );
+
+      await expect(client.pollBatch('batch_1')).resolves.toEqual({
+        status: 'failed',
+        reason: 'expired',
+      });
+    });
+
+    // A response truncated by max_tokens loses a trailing field. Throwing here
+    // would be caught by the sweep's log-and-retry, leaving the resource stuck
+    // in `processing` forever, re-polling an already-ended batch every sweep.
+    it('returns failed instead of throwing when the tool call is malformed or truncated', async () => {
+      mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
+      mockBatchesResults.mockReturnValue(
+        resultsIterable([
+          {
+            custom_id: 'sections',
+            result: {
+              type: 'succeeded',
+              message: sectionsToolUseMessage([
+                { categoryKey: 'overview', titleEn: 'Only a title' },
+              ]),
+            },
+          },
+        ]),
+      );
+
+      const result = await client.pollBatch('batch_1');
 
       expect(result.status).toBe('failed');
-      expect((result as { reason: string }).reason).toContain('en:');
+    });
+
+    it('returns failed when the response carries no tool_use block at all', async () => {
+      mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
+      mockBatchesResults.mockReturnValue(
+        resultsIterable([
+          {
+            custom_id: 'sections',
+            result: {
+              type: 'succeeded',
+              message: { content: [{ type: 'text', text: 'no tool call' }] },
+            },
+          },
+        ]),
+      );
+
+      await expect(client.pollBatch('batch_1')).resolves.toEqual({
+        status: 'failed',
+        reason: 'Anthropic response did not include a tool_use block',
+      });
+    });
+
+    it('rejects a category key outside the frozen list', async () => {
+      mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
+      mockBatchesResults.mockReturnValue(
+        resultsIterable([
+          {
+            custom_id: 'sections',
+            result: {
+              type: 'succeeded',
+              message: sectionsToolUseMessage([
+                section('architecture-stack', 'invented'),
+              ]),
+            },
+          },
+        ]),
+      );
+
+      const result = await client.pollBatch('batch_1');
+
+      expect(result.status).toBe('failed');
+    });
+
+    it('returns failed when an ended batch yields no results at all', async () => {
+      mockBatchesRetrieve.mockResolvedValue({ processing_status: 'ended' });
+      mockBatchesResults.mockReturnValue(resultsIterable([]));
+
+      await expect(client.pollBatch('batch_1')).resolves.toEqual({
+        status: 'failed',
+        reason: 'incomplete batch results',
+      });
     });
   });
 });

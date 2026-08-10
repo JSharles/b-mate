@@ -17,6 +17,12 @@ import {
   DocumentVulgarizationClient,
   DocumentVulgarizationSource,
 } from './document-vulgarization.client';
+import {
+  ImageNormalizationError,
+  ImageNormalizer,
+  NormalizableImageMimeType,
+} from './image-normalizer';
+import { ResourceCategoryKey } from './resource-categories';
 import { ResourceStorageClient } from './resource-storage.client';
 
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -25,12 +31,12 @@ const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 // beyond the current response (research.md Decision 6).
 const PRESIGNED_URL_TTL_SECONDS = 15 * 60;
 
-export interface ResourceCategoryResponse {
+export interface ResourceSectionResponse {
   id: string;
-  categoryId: string;
-  key: string;
-  label: string;
+  categoryKey: ResourceCategoryKey;
   status: 'proposed' | 'approved' | 'rejected';
+  title: string;
+  content: string;
 }
 
 export interface ResourceResponse {
@@ -43,12 +49,10 @@ export interface ResourceResponse {
   originalFileName: string | null;
   originalFileMimeType: string | null;
   notionPageUrl: string | null;
-  vulgarizedTitle: string | null;
-  vulgarizedContent: string | null;
   failureReason: string | null;
   publishedAt: string | null;
   createdAt: string;
-  categories: ResourceCategoryResponse[];
+  sections: ResourceSectionResponse[];
 }
 
 const ACCEPTED_MIME_TYPES: Record<
@@ -68,6 +72,7 @@ export class ResourcesService {
     private readonly prisma: PrismaService,
     private readonly storageClient: ResourceStorageClient,
     private readonly documentVulgarizationClient: DocumentVulgarizationClient,
+    private readonly imageNormalizer: ImageNormalizer,
     private readonly notionClient: NotionClient,
     private readonly notionConnectionService: NotionConnectionService,
   ) {}
@@ -96,14 +101,14 @@ export class ResourcesService {
     const title = stripExtension(file.originalname);
     const fileKey = `resources/${projectId}/${randomUUID()}-${file.originalname}`;
 
+    // The *original* is what gets stored and what a reader downloads later —
+    // normalization below only ever shapes the copy handed to analysis.
     await this.storageClient.uploadFile(fileKey, file.buffer, file.mimetype);
 
-    const source = toVulgarizationSource(kind, file.buffer);
-    const existingCategories = await this.findExistingCategories(projectId);
+    const source = await this.buildVulgarizationSource(kind, file.buffer);
     const anthropicBatchId = await this.documentVulgarizationClient.submitBatch(
       source,
       title,
-      existingCategories,
     );
 
     return this.prisma.resource.create({
@@ -162,11 +167,9 @@ export class ResourcesService {
       throw error;
     }
 
-    const existingCategories = await this.findExistingCategories(projectId);
     const anthropicBatchId = await this.documentVulgarizationClient.submitBatch(
       { kind: 'text', text: page.content },
       page.title,
-      existingCategories,
     );
 
     return this.prisma.resource.create({
@@ -184,9 +187,12 @@ export class ResourcesService {
 
   // FR-005/FR-010: a contributor sees every resource (including
   // processing/ready_for_review/failed, so they can manage them); a client
-  // sees only published ones. List items never carry vulgarized
-  // content/file URLs (title alone is enough for a tile) — findOne() below
-  // populates those for a resource's own detail page.
+  // sees only published ones.
+  //
+  // specs/014-category-sections FR-019: list items now carry their sections
+  // in full, content included. The old list/detail split — where the list
+  // returned titles only — is exactly what forced a client to click into a
+  // document to read anything.
   async findAllForProject(
     userId: string,
     projectId: string,
@@ -204,21 +210,23 @@ export class ResourcesService {
 
     return Promise.all(
       resources.map((resource) =>
-        this.toResponse(resource, locale, false, membership.role),
+        this.toResponse(resource, locale, membership.role),
       ),
     );
   }
 
-  // FR-010, spec.md Edge Cases: a client requesting a non-published
-  // resource gets the exact same 404 as a resource that never existed —
-  // never a distinct "exists but not published yet."
+  // specs/014-category-sections Q2: this endpoint now backs the contributor's
+  // review screen and nothing else — a client reads everything inline under
+  // the category tabs, from the list endpoint. A client-role member therefore
+  // gets the same 404 a non-member gets, whatever the resource's status, and
+  // never a distinguishable "exists but forbidden" (Constitution V).
   async findOne(
     userId: string,
     projectId: string,
     resourceId: string,
     locale: Locale,
   ): Promise<ResourceResponse> {
-    const membership = await this.assertIsMember(userId, projectId);
+    const membership = await this.assertIsContributor(userId, projectId);
 
     const resource = await this.prisma.resource.findUnique({
       where: { id: resourceId },
@@ -227,11 +235,8 @@ export class ResourcesService {
     if (!resource || resource.projectId !== projectId) {
       throw new NotFoundException('Resource not found');
     }
-    if (membership.role === 'client' && resource.status !== 'published') {
-      throw new NotFoundException('Resource not found');
-    }
 
-    return this.toResponse(resource, locale, true, membership.role);
+    return this.toResponse(resource, locale, membership.role);
   }
 
   // FR-016: a distinct, explicit developer action — never automatic on
@@ -256,6 +261,20 @@ export class ResourcesService {
       );
     }
 
+    // specs/014-category-sections research.md Decision 4. Publishing a
+    // resource whose sections are all still proposed or rejected would give
+    // the client nothing — FR-018 hides categories with no approved section,
+    // so it would be `published` yet contribute to no tab at all. That state
+    // is indistinguishable from a bug for both roles.
+    const approvedCount = await this.prisma.resourceSection.count({
+      where: { resourceId, status: 'approved' },
+    });
+    if (approvedCount === 0) {
+      throw new BadRequestException(
+        'Approve at least one section before publishing — otherwise the client sees nothing.',
+      );
+    }
+
     return this.prisma.resource.update({
       where: { id: resourceId },
       data: {
@@ -266,90 +285,163 @@ export class ResourcesService {
     });
   }
 
-  // specs/013-ai-resource-categorization FR-004: each proposed category is
-  // approved/rejected individually, independent of the resource's own
-  // publish() — approving/rejecting one assignment never touches the
-  // resource's other assignments or its own status.
-  async approveCategory(
+  // specs/014-category-sections FR-013/FR-014. What a contributor now reviews
+  // is not a *label* — the category list is fixed, so there is nothing to
+  // approve about it — but what the analysis actually filed where. Each
+  // section is decided on its own, and none of these actions touches the
+  // resource's own status.
+  async approveSection(
     userId: string,
     projectId: string,
     resourceId: string,
-    assignmentId: string,
+    sectionId: string,
   ): Promise<void> {
-    await this.setCategoryAssignmentStatus(
+    const section = await this.findProposedSection(
       userId,
       projectId,
       resourceId,
-      assignmentId,
-      'approved',
+      sectionId,
     );
+    await this.prisma.resourceSection.update({
+      where: { id: section.id },
+      data: { status: 'approved' },
+    });
   }
 
-  async rejectCategory(
+  async rejectSection(
     userId: string,
     projectId: string,
     resourceId: string,
-    assignmentId: string,
+    sectionId: string,
   ): Promise<void> {
-    await this.setCategoryAssignmentStatus(
+    const section = await this.findProposedSection(
       userId,
       projectId,
       resourceId,
-      assignmentId,
-      'rejected',
+      sectionId,
     );
+    await this.prisma.resourceSection.update({
+      where: { id: section.id },
+      data: { status: 'rejected' },
+    });
   }
 
-  private async setCategoryAssignmentStatus(
+  // FR-015: re-filing a mis-categorized section changes its category and
+  // nothing else. Restricted to a still-proposed section (research.md
+  // Decision 4) — moving one after approval would silently pull it out of a
+  // tab a client is already reading.
+  async moveSection(
     userId: string,
     projectId: string,
     resourceId: string,
-    assignmentId: string,
-    status: 'approved' | 'rejected',
+    sectionId: string,
+    categoryKey: ResourceCategoryKey,
   ): Promise<void> {
+    const section = await this.findProposedSection(
+      userId,
+      projectId,
+      resourceId,
+      sectionId,
+    );
+
+    if (section.categoryKey === categoryKey) {
+      return;
+    }
+
+    // The unique (resourceId, categoryKey) pair means the target may already
+    // be taken. Refused rather than merged: concatenating two independently
+    // written rewrites produces incoherent prose (spec.md Assumptions), and
+    // the contributor can reject one and move the other.
+    const occupant = await this.prisma.resourceSection.findUnique({
+      where: {
+        resourceId_categoryKey: { resourceId, categoryKey },
+      },
+    });
+    if (occupant) {
+      throw new ConflictException(
+        'This document already has a section in that category',
+      );
+    }
+
+    await this.prisma.resourceSection.update({
+      where: { id: section.id },
+      data: { categoryKey },
+    });
+  }
+
+  // Collapses "no such section", "section belongs to another resource",
+  // "resource belongs to another project" and "caller is not a contributor"
+  // into one indistinguishable response — never confirms existence to someone
+  // who shouldn't know (Constitution V).
+  private async findProposedSection(
+    userId: string,
+    projectId: string,
+    resourceId: string,
+    sectionId: string,
+  ) {
     await this.assertIsContributor(userId, projectId);
 
-    const assignment = await this.prisma.resourceCategoryAssignment.findUnique({
-      where: { id: assignmentId },
+    const section = await this.prisma.resourceSection.findUnique({
+      where: { id: sectionId },
     });
-    // Never confirms whether the assignment exists at all if it doesn't
-    // belong to this resource/project — same "not found" shape regardless
-    // of which check actually failed (Constitution V).
     if (
-      !assignment ||
-      assignment.resourceId !== resourceId ||
+      !section ||
+      section.resourceId !== resourceId ||
       (
         await this.prisma.resource.findUnique({
           where: { id: resourceId },
         })
       )?.projectId !== projectId
     ) {
-      throw new NotFoundException('Category assignment not found');
+      throw new NotFoundException('Section not found');
     }
-    // One-way: proposed -> approved | rejected only (data-model.md). An
-    // already-decided assignment can't be re-decided in this iteration.
-    if (assignment.status !== 'proposed') {
+    // One-way: proposed -> approved | rejected (data-model.md). An
+    // already-decided section can't be re-decided in this iteration.
+    if (section.status !== 'proposed') {
       throw new ConflictException(
-        'This category has already been approved or rejected',
+        'This section has already been approved or rejected',
       );
     }
 
-    await this.prisma.resourceCategoryAssignment.update({
-      where: { id: assignmentId },
-      data: { status },
-    });
+    return section;
   }
 
-  // research.md Decision 2: read before submitting a new resource's batch,
-  // so the category-detection prompt can reuse an existing key instead of
-  // minting a near-duplicate.
-  private async findExistingCategories(
-    projectId: string,
-  ): Promise<{ key: string; labelEn: string }[]> {
-    const categories = await this.prisma.resourceCategory.findMany({
-      where: { projectId },
-    });
-    return categories.map((c) => ({ key: c.key, labelEn: c.labelEn }));
+  // specs/014-category-sections research.md Decision 6: an image goes through
+  // normalization before analysis, because the provider rejects anything over
+  // 8000 px on its long edge — and does so per-request at execution time, so
+  // an un-normalized oversized image produces a resource that is created
+  // successfully and only fails minutes later, with an opaque batch error.
+  // pdf/docx/text have no such ceiling and pass straight through.
+  private async buildVulgarizationSource(
+    kind: 'pdf' | 'docx' | 'image/png' | 'image/jpeg',
+    fileBuffer: Buffer,
+  ): Promise<DocumentVulgarizationSource> {
+    if (kind === 'pdf') {
+      return { kind: 'pdf', fileBuffer };
+    }
+    if (kind === 'docx') {
+      return { kind: 'docx', fileBuffer };
+    }
+
+    let normalized: { buffer: Buffer; mimeType: NormalizableImageMimeType };
+    try {
+      normalized = await this.imageNormalizer.normalize(fileBuffer, kind);
+    } catch (error) {
+      // FR-025: a file we can't process is refused at upload time, in plain
+      // language, rather than becoming a resource that fails minutes later.
+      if (error instanceof ImageNormalizationError) {
+        throw new BadRequestException(
+          'This image could not be read. It may be corrupt or incomplete.',
+        );
+      }
+      throw error;
+    }
+
+    return {
+      kind: 'image',
+      fileBuffer: normalized.buffer,
+      mimeType: normalized.mimeType,
+    };
   }
 
   // FR-014: allowed from any state — deleting a published resource
@@ -380,27 +472,20 @@ export class ResourcesService {
   private async toResponse(
     resource: Resource,
     locale: Locale,
-    includeDetails: boolean,
     role: ProjectMember['role'],
   ): Promise<ResourceResponse> {
-    let vulgarizedTitle: string | null = null;
-    let vulgarizedContent: string | null = null;
-    let originalFileUrl: string | null = null;
-
-    if (includeDetails) {
-      const vulgarization = await this.prisma.resourceVulgarization.findUnique({
-        where: { resourceId_locale: { resourceId: resource.id, locale } },
-      });
-      vulgarizedTitle = vulgarization?.title ?? null;
-      vulgarizedContent = vulgarization?.content ?? null;
-
-      if (resource.source === 'upload' && resource.originalFileKey) {
-        originalFileUrl = await this.storageClient.getPresignedDownloadUrl(
-          resource.originalFileKey,
-          PRESIGNED_URL_TTL_SECONDS,
-        );
-      }
-    }
+    // No more list/detail split: one shape, every field populated, whichever
+    // endpoint asked. Presigning is a local signature over the request, not a
+    // round trip to storage, so doing it per row in a list costs nothing
+    // measurable — and it is what lets an accordion block offer the source
+    // document without a second call (FR-020).
+    const originalFileUrl =
+      resource.source === 'upload' && resource.originalFileKey
+        ? await this.storageClient.getPresignedDownloadUrl(
+            resource.originalFileKey,
+            PRESIGNED_URL_TTL_SECONDS,
+          )
+        : null;
 
     return {
       id: resource.id,
@@ -412,43 +497,39 @@ export class ResourcesService {
       originalFileName: resource.originalFileName,
       originalFileMimeType: resource.originalFileMimeType,
       notionPageUrl: resource.notionPageUrl,
-      vulgarizedTitle,
-      vulgarizedContent,
       failureReason: resource.failureReason,
       publishedAt: resource.publishedAt?.toISOString() ?? null,
       createdAt: resource.createdAt.toISOString(),
-      categories: await this.categoriesFor(resource.id, locale, role),
+      sections: await this.sectionsFor(resource.id, locale, role),
     };
   }
 
-  // Fetched for both the list and detail views (unlike vulgarizedTitle/
-  // Content, which stay detail-only) — the client-facing tabbed grouping
-  // (specs/013-ai-resource-categorization FR-005) is built from the list
-  // endpoint, so it needs every resource's categories there too. A client
-  // only ever receives 'approved' assignments — mirrors how findAllForProject
-  // already restricts which resources reach them at all (FR-002).
-  private async categoriesFor(
+  // Resolves one locale's pair out of the stored en/fr columns, the same way
+  // 013 resolved labelEn/labelFr. A client only ever receives 'approved'
+  // sections (FR-016) — mirrors the status filter findAllForProject already
+  // applies to the resources themselves.
+  //
+  // Ordered by `position` so several sections of one document keep the order
+  // the analysis produced them in (FR-022).
+  private async sectionsFor(
     resourceId: string,
     locale: Locale,
     role: ProjectMember['role'],
-  ): Promise<ResourceCategoryResponse[]> {
-    const assignments = await this.prisma.resourceCategoryAssignment.findMany({
+  ): Promise<ResourceSectionResponse[]> {
+    const sections = await this.prisma.resourceSection.findMany({
       where: {
         resourceId,
         ...(role === 'client' ? { status: 'approved' } : {}),
       },
-      include: { category: true },
+      orderBy: { position: 'asc' },
     });
 
-    return assignments.map((assignment) => ({
-      id: assignment.id,
-      categoryId: assignment.categoryId,
-      key: assignment.category.key,
-      label:
-        locale === 'fr'
-          ? assignment.category.labelFr
-          : assignment.category.labelEn,
-      status: assignment.status,
+    return sections.map((section) => ({
+      id: section.id,
+      categoryKey: section.categoryKey,
+      status: section.status,
+      title: locale === 'fr' ? section.titleFr : section.titleEn,
+      content: locale === 'fr' ? section.contentFr : section.contentEn,
     }));
   }
 
@@ -519,20 +600,4 @@ function parseNotionPageId(pageUrl: string): string | null {
     idPortion.slice(16, 20),
     idPortion.slice(20, 32),
   ].join('-');
-}
-
-function toVulgarizationSource(
-  kind: 'pdf' | 'docx' | 'image/png' | 'image/jpeg',
-  fileBuffer: Buffer,
-): DocumentVulgarizationSource {
-  switch (kind) {
-    case 'pdf':
-      return { kind: 'pdf', fileBuffer };
-    case 'docx':
-      return { kind: 'docx', fileBuffer };
-    case 'image/png':
-      return { kind: 'image', fileBuffer, mimeType: 'image/png' };
-    case 'image/jpeg':
-      return { kind: 'image', fileBuffer, mimeType: 'image/jpeg' };
-  }
 }

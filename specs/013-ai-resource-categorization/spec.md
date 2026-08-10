@@ -4,7 +4,17 @@
 
 **Created**: 2026-08-09
 
-**Status**: Draft
+**Status**: Superseded by [specs/014-category-sections](../014-category-sections/spec.md) (2026-08-09)
+
+> **Superseded.** Shipped, then replaced within the day. Three of this spec's
+> premises turned out to be wrong in use: letting the AI invent the taxonomy
+> produced an unstable one; reusing a project's existing categories became a
+> feedback loop that converged on a few generic labels; and labelling *whole
+> documents* meant a document appeared identically under each of its tabs, so
+> every client tab showed the same documents. 014 replaces the model rather
+> than tuning it — a fixed product-wide category list, and AI that extracts
+> per-category content instead of labelling documents. Kept for the record;
+> nothing here reflects current behaviour.
 
 **Input**: User description: "Ajouter la catégorisation automatique des ressources par IA : au lieu d'une liste plate de ressources, l'IA détecte les thématiques présentes dans les ressources d'un projet et crée elle-même les catégories pertinentes (au lieu d'une taxonomie fixe imposée à l'avance)... Côté client, les ressources publiées sont regroupées et affichées sous forme d'onglets (tabs) par catégorie, plutôt qu'en liste plate."
 

@@ -41,12 +41,10 @@ function fakeResource(overrides: Partial<Resource> = {}): Resource {
     originalFileName: "a.pdf",
     originalFileMimeType: "application/pdf",
     notionPageUrl: null,
-    vulgarizedTitle: null,
-    vulgarizedContent: null,
     failureReason: null,
     publishedAt: "2026-08-08T00:00:00.000Z",
     createdAt: "2026-08-08T00:00:00.000Z",
-    categories: [],
+    sections: [],
     ...overrides,
   };
 }
