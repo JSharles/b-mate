@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { useCurrentTask } from "../hooks";
 import { CurrentTaskCard } from "./current-task-card";
@@ -115,6 +116,62 @@ describe("CurrentTaskCard", () => {
 
     expect(screen.getByText("Task A")).toBeInTheDocument();
     expect(screen.getByText("Task B")).toBeInTheDocument();
+  });
+
+  // 2026-08-10: multiple in-progress items used to stack vertically in one
+  // long scroll — a carousel now pages through them one at a time instead.
+  describe("carousel (2+ in-progress items)", () => {
+    it("shows no carousel navigation at all when there's only a single task", () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [{ ...baseItem, title: "Task A" }],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+
+      render(<CurrentTaskCard projectId="project-1" />);
+
+      expect(screen.queryByRole("button", { name: "previousTask" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "nextTask" })).not.toBeInTheDocument();
+      expect(screen.queryByText(/taskCounter/)).not.toBeInTheDocument();
+    });
+
+    it("shows a task counter and both nav buttons for 3 in-progress items", () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [
+          { ...baseItem, title: "Task A" },
+          { ...baseItem, title: "Task B" },
+          { ...baseItem, title: "Task C" },
+        ],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+
+      render(<CurrentTaskCard projectId="project-1" />);
+
+      expect(screen.getByText(/taskCounter/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "previousTask" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "nextTask" })).toBeInTheDocument();
+    });
+
+    // jsdom has no real layout engine, so embla-carousel's own scroll-bound
+    // math (canScrollPrev/canScrollNext) can't be meaningfully asserted
+    // here — this only verifies the click handler is wired up and doesn't
+    // throw, not the resulting scroll position.
+    it("does not throw when the next/previous buttons are clicked", async () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [
+          { ...baseItem, title: "Task A" },
+          { ...baseItem, title: "Task B" },
+        ],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+      const user = userEvent.setup();
+
+      render(<CurrentTaskCard projectId="project-1" />);
+      await user.click(screen.getByRole("button", { name: "nextTask" }));
+      await user.click(screen.getByRole("button", { name: "previousTask" }));
+
+      expect(screen.getByText("Task A")).toBeInTheDocument();
+      expect(screen.getByText("Task B")).toBeInTheDocument();
+    });
   });
 
   it("shows a combined timeline sentence with the start date and the updated-at time", () => {

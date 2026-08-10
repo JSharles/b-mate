@@ -299,7 +299,10 @@
         "medium": "This estimate is a reasonable approximation.",
         "low": "This estimate is uncertain — the date could change."
       },
-      "progressLabel": "Estimated completion progress"
+      "progressLabel": "Estimated completion progress",
+      "taskCounter": "Task {current} of {total}",
+      "previousTask": "Previous task",
+      "nextTask": "Next task"
     },
     "TeamPanel": {
       "developer": "Developer",

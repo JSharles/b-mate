@@ -1,9 +1,18 @@
 "use client";
 
-import { CircleDot } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleDot } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import type { CurrentTaskItem } from "schemas";
+import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/shared/components/ui/carousel";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
 import { useCurrentTask } from "../hooks";
@@ -172,6 +181,155 @@ function Section({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+// The full detail for one in-progress task — En cours/Pourquoi/Impact/État,
+// then the timeline sentence and progress bar. Extracted out of the
+// map/carousel loop so the exact same markup renders identically whether
+// there's one task (no carousel chrome at all) or several (one per
+// CarouselItem, 2026-08-10: multiple in-progress items used to stack
+// vertically here, which read as intimidating with more than one — see
+// the carousel wiring below).
+function TaskSlide({
+  item,
+  locale,
+  t,
+}: {
+  item: CurrentTaskItem;
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  return (
+    <div className="flex max-w-prose flex-col gap-5">
+      <Section label={t("inProgress")}>
+        <div className="flex items-center gap-3">
+          <LiveIndicator active />
+          {/* h2, not a bare span: the task's own title is genuinely the
+              most important string on the card and belongs in the heading
+              outline, not skipped by a screen reader navigating by
+              heading. h2, not h3 — nothing in the client view sits between
+              this card and the page's own h1, same level as
+              TeamPanel/MeetingCard's own section headings. */}
+          <h2 className="text-xl leading-snug font-bold text-balance">{item.title}</h2>
+        </div>
+      </Section>
+
+      {/* 2026-08-09: why/impact/status replace the old single description
+          blob (docs/PRODUCT.md "Working notes") — a client scans named
+          sections far faster than one blob of text. Any can be absent:
+          the vulgarization prompt is instructed to leave a section out
+          rather than invent content the source doesn't support
+          (Constitution II, "Never fabricate"). */}
+      {item.why && (
+        <Section label={t("why")}>
+          <p className="text-sm leading-relaxed text-foreground">{item.why}</p>
+        </Section>
+      )}
+      {item.impact && (
+        <Section label={t("impact")}>
+          <p className="text-sm leading-relaxed text-foreground">{item.impact}</p>
+        </Section>
+      )}
+      {item.status && (
+        <Section label={t("status")}>
+          <p className="text-sm leading-relaxed text-foreground">{item.status}</p>
+        </Section>
+      )}
+
+      {/* Time/estimate/confidence: one vertical reading order, not a
+          separate bordered sidebar (that read as a dashboard stat panel
+          bolted onto a paragraph) — a plain sentence rather than an
+          icon-led label, consistent with the why/impact/status sections
+          above it, closing out the card instead of racing it side by
+          side. */}
+      <p className="border-t border-white/15 pt-3 text-sm text-muted-foreground">
+        {t("timeline", {
+          started: formatRelativeTime(item.startedAt, locale),
+          updated: formatRelativeTime(item.updatedAt, locale),
+        })}
+      </p>
+      {item.estimatedCompletionAt && (
+        <ProgressIndicator
+          startedAt={item.startedAt}
+          estimatedCompletionAt={item.estimatedCompletionAt}
+          confidence={item.estimateConfidence}
+          locale={locale}
+          t={t}
+        />
+      )}
+    </div>
+  );
+}
+
+// Only mounted once there are 2+ in-progress items — a single task never
+// gets carousel chrome (prev/next buttons that would always be disabled,
+// a "1 of 1" counter that says nothing useful). The counter text stays
+// visible without touching the buttons, so the client always sees how
+// many tasks are actually in flight — a carousel that only revealed that
+// count after paging through would work against this product's whole
+// "total transparency" premise (docs/PRODUCT.md tagline).
+function MultiTaskCarousel({
+  items,
+  locale,
+  t,
+}: {
+  items: CurrentTaskItem[];
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+    // No synchronous setCurrent() here: the initial snap is always index 0
+    // (no startIndex configured), matching current's own initial state —
+    // this effect only needs to subscribe to *changes* from here on.
+    const onSelect = () => setCurrent(api.selectedScrollSnap());
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Carousel setApi={setApi} opts={{ align: "start" }}>
+        <CarouselContent>
+          {items.map((item) => (
+            <CarouselItem key={item.title}>
+              <TaskSlide item={item} locale={locale} t={t} />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      </Carousel>
+      <div className="flex items-center justify-between border-t border-white/15 pt-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t("previousTask")}
+          disabled={!api?.canScrollPrev()}
+          onClick={() => api?.scrollPrev()}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {t("taskCounter", { current: current + 1, total: items.length })}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t("nextTask")}
+          disabled={!api?.canScrollNext()}
+          onClick={() => api?.scrollNext()}
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // Purely decorative texture behind the frosted panel — never anything text
 // sits directly on top of.
 function IridescentGlow() {
@@ -211,83 +369,15 @@ export function CurrentTaskCard({ projectId }: { projectId: string }) {
               <LiveIndicator active={false} />
               <p className="text-sm text-muted-foreground">{t("empty")}</p>
             </div>
+          ) : items.length === 1 ? (
+            // Single task: no carousel chrome (prev/next buttons that
+            // would always be disabled, a "1 of 1" counter saying nothing
+            // useful) — same authored entrance motion as before.
+            <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
+              <TaskSlide item={items[0]} locale={locale} t={t} />
+            </div>
           ) : (
-            <ul className="flex flex-col gap-6">
-              {items.map((item) => (
-                // key is the item's own (vulgarized) title, so a real
-                // content change (the task moved on, or its wording was
-                // refreshed) unmounts the old entry and remounts this one —
-                // the one authored motion moment below plays exactly when
-                // something genuinely changed, never on an unrelated
-                // re-render.
-                <li
-                  key={item.title}
-                  className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 flex max-w-prose flex-col gap-5 motion-safe:duration-300"
-                >
-                  <Section label={t("inProgress")}>
-                    <div className="flex items-center gap-3">
-                      <LiveIndicator active />
-                      {/* h2, not a bare span: the task's own title is
-                          genuinely the most important string on the card
-                          and belongs in the heading outline, not skipped
-                          by a screen reader navigating by heading. h2, not
-                          h3 — nothing in the client view sits between this
-                          card and the page's own h1, same level as
-                          TeamPanel/MeetingCard's own section headings. */}
-                      <h2 className="text-xl leading-snug font-bold text-balance">
-                        {item.title}
-                      </h2>
-                    </div>
-                  </Section>
-
-                  {/* 2026-08-09: why/impact/status replace the old single
-                      description blob (docs/PRODUCT.md "Working notes") —
-                      a client scans named sections far faster than one
-                      blob of text. Any can be absent: the vulgarization
-                      prompt is instructed to leave a section out rather
-                      than invent content the source doesn't support
-                      (Constitution II, "Never fabricate"). */}
-                  {item.why && (
-                    <Section label={t("why")}>
-                      <p className="text-sm leading-relaxed text-foreground">{item.why}</p>
-                    </Section>
-                  )}
-                  {item.impact && (
-                    <Section label={t("impact")}>
-                      <p className="text-sm leading-relaxed text-foreground">{item.impact}</p>
-                    </Section>
-                  )}
-                  {item.status && (
-                    <Section label={t("status")}>
-                      <p className="text-sm leading-relaxed text-foreground">{item.status}</p>
-                    </Section>
-                  )}
-
-                  {/* Time/estimate/confidence: one vertical reading order,
-                      not a separate bordered sidebar (that read as a
-                      dashboard stat panel bolted onto a paragraph) — a
-                      plain sentence rather than an icon-led label,
-                      consistent with the why/impact/status sections above
-                      it, closing out the card instead of racing it
-                      side by side. */}
-                  <p className="border-t border-white/15 pt-3 text-sm text-muted-foreground">
-                    {t("timeline", {
-                      started: formatRelativeTime(item.startedAt, locale),
-                      updated: formatRelativeTime(item.updatedAt, locale),
-                    })}
-                  </p>
-                  {item.estimatedCompletionAt && (
-                    <ProgressIndicator
-                      startedAt={item.startedAt}
-                      estimatedCompletionAt={item.estimatedCompletionAt}
-                      confidence={item.estimateConfidence}
-                      locale={locale}
-                      t={t}
-                    />
-                  )}
-                </li>
-              ))}
-            </ul>
+            <MultiTaskCarousel items={items} locale={locale} t={t} />
           )}
         </CardContent>
       </Card>
