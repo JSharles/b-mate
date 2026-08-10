@@ -292,27 +292,47 @@ function TaskCardBody({
           title/timeline blocks around it don't use. */}
       {hasMiddleContent && (
         <div ref={middleRef} className="relative min-h-0 flex-1 overflow-hidden">
-          <div className="flex flex-col gap-5">
+          {/* mask-image, not an overlay div (tried first, looked like a
+              flat rectangle glued on top — this card's actual surface is
+              translucent glass over blurred, colorful glow blobs, not a
+              flat color a gradient overlay could ever match). A mask
+              fades the TEXT itself to transparent, so whatever's actually
+              behind it — glass, blur, glow — just shows through naturally
+              regardless of its color. Same WebkitMaskImage pairing as
+              LiveIndicator's conic-gradient mask above, for Safari. */}
+          <div
+            className="flex flex-col gap-5"
+            style={
+              isOverflowing
+                ? {
+                    WebkitMaskImage:
+                      "linear-gradient(to bottom, black calc(100% - 2.5rem), transparent)",
+                    maskImage: "linear-gradient(to bottom, black calc(100% - 2.5rem), transparent)",
+                  }
+                : undefined
+            }
+          >
             <MiddleSections item={item} t={t} />
           </div>
           {isOverflowing && (
             <Sheet>
               {/* Scrolling this region directly was ruled out — a nested
                   scroll area inside a swipeable carousel is a two-finger-
-                  gesture trap on touch. A fade + explicit "read more"
-                  action into a side Sheet stays in context (the card is
-                  still visible behind it) without that risk, and only
-                  ever appears when content actually needs it. */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-14 items-end justify-end bg-gradient-to-t from-black/70 to-transparent pr-0.5 pb-0.5">
-                <SheetTrigger asChild>
-                  <button
-                    type="button"
-                    className="pointer-events-auto rounded-sm text-xs font-medium text-primary hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-                  >
-                    {t("readMore")}
-                  </button>
-                </SheetTrigger>
-              </div>
+                  gesture trap on touch. An explicit "read more" action into
+                  a side Sheet stays in context (the card is still visible
+                  behind it) without that risk, and only ever appears when
+                  content actually needs it. Its own small frosted chip
+                  (not just plain text) keeps it legible regardless of
+                  what's blurred behind it at that exact spot, and reads as
+                  a real button rather than a stray link floating in space. */}
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  className="bg-card/80 text-primary shadow-sm backdrop-blur-sm focus-visible:ring-ring/50 absolute right-0 bottom-0 rounded-full px-2.5 py-1 text-xs font-medium hover:underline focus-visible:ring-[3px] focus-visible:outline-none"
+                >
+                  {t("readMore")}
+                </button>
+              </SheetTrigger>
               <SheetContent side="right" className="gap-0 overflow-y-auto">
                 <SheetHeader>
                   <SheetTitle>{item.title}</SheetTitle>
