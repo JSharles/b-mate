@@ -3,16 +3,15 @@ import { useTranslations } from "next-intl";
 import type { Resource } from "schemas";
 import { Link } from "@/i18n/navigation";
 
+// No badge for `absorbed` — that is the expected resting state of a document
+// whose material now lives in the reference layer.
 const STATUS_LABEL_KEY: Partial<Record<Resource["status"], string>> = {
-  processing: "statusProcessing",
-  ready_for_review: "statusReadyForReview",
+  pending: "statusPending",
   failed: "statusFailed",
 };
 
-// No badge for "published" — that's the default/expected state once a
-// resource is visible at all (a client only ever sees published resources,
-// so this only ever shows on the developer's own view, for the states that
-// need calling out).
+// Contributor-only: a client never sees this list at all since specs/015 moved
+// the reading surface to the category tabs.
 export function ResourceTile({ projectId, resource }: { projectId: string; resource: Resource }) {
   const t = useTranslations("Projects.ResourcesList");
   const statusKey = STATUS_LABEL_KEY[resource.status];

@@ -5,5 +5,6 @@ export * from './invitation';
 export * from './board-connection';
 export * from './current-task';
 export * from './resource-category';
+export * from './category-content';
 export * from './resource';
 export * from './notion-connection';

@@ -10,7 +10,9 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "test:cov": "turbo run test:cov"
+    "test:cov": "turbo run test:cov",
+    "knip": "knip",
+    "i18n:orphans": "node scripts/check-i18n-orphans.mjs"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +26,7 @@
   },
   "type": "module",
   "devDependencies": {
+    "knip": "^6.32.0",
     "turbo": "^2.10.5"
   }
 }

@@ -10,6 +10,7 @@ import { MeetingLinkCard } from "@/features/projects/components/meeting-link-car
 import { ProjectPreferences } from "@/features/projects/components/project-preferences";
 import { TeamPanel } from "@/features/projects/components/team-panel";
 import { TeamSummaryCard } from "@/features/projects/components/team-summary-card";
+import { ReferenceDraftQueue } from "@/features/resources/components/reference-draft-queue";
 import { ResourcesList } from "@/features/resources/components/resources-list";
 import { useProject } from "@/features/projects/hooks";
 import { Button } from "@/shared/components/ui/button";
@@ -85,6 +86,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         // extra gap between them would just double up the spacing.
         <div className="flex flex-col">
           <ResourcesList projectId={id} />
+          <ReferenceDraftQueue projectId={id} />
           <TeamSummaryCard projectId={id} isAdmin={project.isAdmin} />
 
           <SettingsSectionHeading>{t("tools")}</SettingsSectionHeading>

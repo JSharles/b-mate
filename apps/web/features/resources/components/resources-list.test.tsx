@@ -35,16 +35,14 @@ function fakeResource(overrides: Partial<Resource> = {}): Resource {
     id: "resource-1",
     projectId: "project-1",
     source: "upload",
-    status: "published",
+    status: "absorbed",
     title: "Architecture overview",
     originalFileUrl: null,
     originalFileName: "a.pdf",
     originalFileMimeType: "application/pdf",
     notionPageUrl: null,
     failureReason: null,
-    publishedAt: "2026-08-08T00:00:00.000Z",
     createdAt: "2026-08-08T00:00:00.000Z",
-    sections: [],
     ...overrides,
   };
 }
@@ -74,12 +72,15 @@ describe("ResourcesList", () => {
     expect(screen.getByText("empty")).toBeInTheDocument();
   });
 
-  it("renders a tile with a status badge for a resource still processing or in review", () => {
+  // `absorbed` is the resting state of a document whose material now lives in
+  // the reference layer — it needs no badge. Only the two states a contributor
+  // has to act on, or wait for, are called out.
+  it("badges only the documents that are still pending or have failed", () => {
     mockedUseResources.mockReturnValue({
       data: [
-        fakeResource({ id: "r1", status: "processing", title: "Doc A" }),
-        fakeResource({ id: "r2", status: "ready_for_review", title: "Doc B" }),
-        fakeResource({ id: "r3", status: "published", title: "Doc C" }),
+        fakeResource({ id: "r1", status: "pending", title: "Doc A" }),
+        fakeResource({ id: "r2", status: "failed", title: "Doc B" }),
+        fakeResource({ id: "r3", status: "absorbed", title: "Doc C" }),
       ],
       isPending: false,
     } as unknown as ReturnType<typeof useResources>);
@@ -87,11 +88,11 @@ describe("ResourcesList", () => {
     render(<ResourcesList projectId="project-1" />);
 
     expect(screen.getByText("Doc A")).toBeInTheDocument();
-    expect(screen.getByText("statusProcessing")).toBeInTheDocument();
+    expect(screen.getByText("statusPending")).toBeInTheDocument();
     expect(screen.getByText("Doc B")).toBeInTheDocument();
-    expect(screen.getByText("statusReadyForReview")).toBeInTheDocument();
+    expect(screen.getByText("statusFailed")).toBeInTheDocument();
     expect(screen.getByText("Doc C")).toBeInTheDocument();
-    expect(screen.queryByText("statusPublished")).not.toBeInTheDocument();
+    expect(screen.queryByText("statusAbsorbed")).not.toBeInTheDocument();
   });
 
   it("shows the Add button and dialog", () => {

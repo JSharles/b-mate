@@ -4,7 +4,19 @@
 
 **Created**: 2026-08-09
 
-**Status**: Approved — Q1/Q2/Q3 resolved 2026-08-09 (see Resolved Decisions)
+**Status**: **Superseded by [specs/015-document-reference-layer](../015-document-reference-layer/spec.md) (2026-08-11).** Shipped 2026-08-09, then broke on the second document — see "What Superseded This" below. Its fixed four-category list, its single-analysis-pass ingestion and its image normalization survive in 015; its per-document sections, its move-a-section action and its per-document publish flow do not.
+
+## What Superseded This
+
+The taxonomy was right and is kept. The **unit** was wrong.
+
+014 made the unit a section per (document, category). In real use, a second document completing a subject the first already covered was appended as its own block rather than merged into what existed — so a category tab showed the client several passages about the same thing and left them to reconcile it. "One document = one section" adds cognitive load for the reader and does not correspond to anything they care about.
+
+015 makes the **category** the unit, at project scale, and splits the pipeline into a developer-validated reference layer and a client layer derived from it. Sections, the `/move` action, and per-document publication were removed entirely rather than left dormant.
+
+---
+
+**Original status**: Approved — Q1/Q2/Q3 resolved 2026-08-09 (see Resolved Decisions)
 
 **Input**: User description: "Refonte du traitement documentaire et de la répartition par catégorie (remplace specs/013-ai-resource-categorization). Le document n'est plus l'unité de contenu : les catégories sont fixes au niveau produit, et pour chaque catégorie l'IA pioche dans le document ce qui la concerne et en produit une section vulgarisée dédiée. Côté client, chaque onglet de catégorie affiche directement le contenu en accordéon. Le développeur valide section par section ce que l'IA a réparti."
 

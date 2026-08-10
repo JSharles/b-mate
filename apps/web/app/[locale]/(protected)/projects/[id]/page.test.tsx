@@ -29,6 +29,12 @@ vi.mock("@/features/resources/components/resources-list", () => ({
   ),
 }));
 
+vi.mock("@/features/resources/components/reference-draft-queue", () => ({
+  ReferenceDraftQueue: ({ projectId }: { projectId: string }) => (
+    <div>reference-draft-queue:{projectId}</div>
+  ),
+}));
+
 vi.mock("@/features/board-connections/components/board-connection-card", () => ({
   BoardConnectionCard: ({ projectId }: { projectId: string }) => (
     <div>board-connection-card:{projectId}</div>
@@ -87,6 +93,7 @@ describe("ProjectPage", () => {
     expect(screen.getByText("Site vitrine client X")).toBeInTheDocument();
     expect(screen.getByText("team-summary-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("resources-list:project-1")).toBeInTheDocument();
+    expect(screen.getByText("reference-draft-queue:project-1")).toBeInTheDocument();
     expect(screen.getByText("board-connection-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("notion-connection-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("meeting-link-card:project-1")).toBeInTheDocument();
@@ -159,6 +166,10 @@ describe("ProjectPage", () => {
 
     const labels = [
       "resources-list:project-1",
+      // specs/015: the review queue sits directly under the document list —
+      // adding a document is what fills it, so the cause and its consequence
+      // read as one block.
+      "reference-draft-queue:project-1",
       "team-summary-card:project-1",
       "tools",
       "board-connection-card:project-1",
@@ -183,6 +194,9 @@ describe("ProjectPage", () => {
 
     expect(screen.queryByText("team-summary-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("resources-list:project-1")).not.toBeInTheDocument();
+    // A client never sees unvalidated content — the review queue is the one
+    // place it exists, and it is contributor-only.
+    expect(screen.queryByText("reference-draft-queue:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("board-connection-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("notion-connection-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("meeting-link-card:project-1")).not.toBeInTheDocument();

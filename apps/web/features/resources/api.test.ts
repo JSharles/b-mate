@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/shared/lib/api-client";
-import { getResource, getResources, uploadResource } from "./api";
+import {
+  acceptDraft,
+  discardDraft,
+  getCategoryContent,
+  getReferenceDrafts,
+  getResource,
+  getResources,
+  regenerateDraft,
+  uploadResource,
+} from "./api";
 
 vi.mock("@/shared/lib/api-client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/shared/lib/api-client")>();
@@ -13,7 +22,7 @@ const fakeResource = {
   id: "resource-1",
   projectId: "project-1",
   source: "upload" as const,
-  status: "processing" as const,
+  status: "pending" as const,
   title: "Architecture overview",
 };
 
@@ -22,24 +31,77 @@ describe("features/resources/api", () => {
     mockedApiFetch.mockReset();
   });
 
-  it("getResources gets /projects/:id/resources with the locale query param", async () => {
+  // A document is an input now, not something the client reads — nothing on it
+  // is locale-dependent, so the locale query param went away with the content.
+  it("getResources gets /projects/:id/resources with no locale", async () => {
     mockedApiFetch.mockResolvedValue([fakeResource]);
 
-    const result = await getResources("project-1", "fr");
+    const result = await getResources("project-1");
 
-    expect(mockedApiFetch).toHaveBeenCalledWith("/projects/project-1/resources?locale=fr");
+    expect(mockedApiFetch).toHaveBeenCalledWith("/projects/project-1/resources");
     expect(result).toEqual([fakeResource]);
   });
 
-  it("getResource gets /projects/:id/resources/:resourceId with the locale query param", async () => {
+  it("getResource gets /projects/:id/resources/:resourceId", async () => {
     mockedApiFetch.mockResolvedValue(fakeResource);
 
-    const result = await getResource("project-1", "resource-1", "en");
+    const result = await getResource("project-1", "resource-1");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith("/projects/project-1/resources/resource-1");
+    expect(result).toEqual(fakeResource);
+  });
+
+  it("getReferenceDrafts gets the project's review queue", async () => {
+    mockedApiFetch.mockResolvedValue([]);
+
+    await getReferenceDrafts("project-1");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith("/projects/project-1/categories/drafts");
+  });
+
+  // The client layer is the one place the locale still matters: it is resolved
+  // server-side, so it travels as a query param rather than an Accept-Language.
+  it("getCategoryContent gets the client-facing content for a locale", async () => {
+    mockedApiFetch.mockResolvedValue([]);
+
+    await getCategoryContent("project-1", "en");
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
-      "/projects/project-1/resources/resource-1?locale=en",
+      "/projects/project-1/categories/content?locale=en",
     );
-    expect(result).toEqual(fakeResource);
+  });
+
+  it("acceptDraft posts to the category's accept action", async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+
+    await acceptDraft("project-1", "overview");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/categories/overview/draft/accept",
+      { method: "POST" },
+    );
+  });
+
+  it("discardDraft posts to the category's discard action", async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+
+    await discardDraft("project-1", "planning");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/categories/planning/draft/discard",
+      { method: "POST" },
+    );
+  });
+
+  it("regenerateDraft sends the contributor's instruction in the body", async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+
+    await regenerateDraft("project-1", "planning", "The migration is March.");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/categories/planning/draft/regenerate",
+      { method: "POST", body: { instruction: "The migration is March." } },
+    );
   });
 
   describe("uploadResource", () => {

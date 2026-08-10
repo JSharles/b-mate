@@ -244,10 +244,8 @@
       "title": "Ressources",
       "add": "Ajouter une ressource",
       "empty": "Aucune ressource pour le moment",
-      "statusProcessing": "Traitement en cours…",
-      "statusReadyForReview": "En attente de validation",
-      "statusFailed": "Échec",
-      "uncategorized": "Autres"
+      "statusPending": "Analyse en cours",
+      "statusFailed": "Échec"
     },
     "AddResourceDialog": {
       "title": "Ajouter une ressource",
@@ -266,31 +264,19 @@
     "ResourceDetailPage": {
       "processing": "Traitement en cours — revenez dans quelques minutes.",
       "failed": "Une erreur est survenue lors du traitement de cette ressource.",
-      "publish": "Publier",
-      "publishPending": "Publication…",
       "delete": "Supprimer",
       "deletePending": "Suppression…",
       "downloadOriginal": "Télécharger le document original",
       "viewOnNotion": "Voir la page Notion originale",
       "backToProject": "Retour au projet",
       "loadErrorTitle": "Impossible de charger cette ressource",
-      "loadErrorRetry": "Réessayer",
-      "reviewTitle": "Vérifiez la répartition",
-      "reviewIntro": "Relisez ce que l'IA a rangé dans chaque catégorie. Seules les sections validées seront visibles par votre client.",
-      "reviewEmpty": "Aucune section n'a été produite pour ce document.",
-      "sectionApprove": "Valider",
-      "sectionReject": "Rejeter",
-      "sectionApproved": "Validée",
-      "sectionRejected": "Rejetée",
-      "sectionMoveLabel": "Déplacer vers",
-      "publishBlocked": "Validez au moins une section avant de publier."
+      "loadErrorRetry": "Réessayer"
     },
     "BoardConnectionCard": {
       "title": "Board",
       "notConnected": "Aucun board connecté pour le moment",
       "connect": "Connecter un board",
       "connectedTo": "Connecté à {title}",
-      "viewOnGithub": "Voir sur GitHub",
       "disconnect": "Déconnecter",
       "disconnecting": "Déconnexion…",
       "needsReconnect": "Votre autorisation GitHub a été révoquée — reconnectez-vous pour garder ce board synchronisé.",
@@ -404,6 +390,32 @@
       "title": "Réunions",
       "hint": "Réunions à venir et passées, dès qu'elles seront planifiées.",
       "join": "Rejoindre la réunion"
+    },
+    "ReferenceDraftQueue": {
+      "title": "À vérifier",
+      "intro": "L'IA a mis à jour votre documentation de référence. Rien n'est visible par votre client tant que vous n'avez pas validé.",
+      "empty": "Rien à vérifier pour le moment.",
+      "generating": "Régénération en cours…",
+      "triggerDocumentAdded": "Après l’ajout de « {document} »",
+      "triggerDocumentRemoved": "Après la suppression d’un document",
+      "triggerRegeneration": "Après votre demande de correction",
+      "attempt": "Tentative {attempt} sur 3",
+      "accept": "Valider",
+      "refuse": "Refuser",
+      "questionsIntro": "Quelques points changeraient ce que votre client va lire. Répondez à ce que vous pouvez — ce que vous laissez reste signalé comme point à clarifier dans le texte.",
+      "answerPlaceholder": "Votre réponse",
+      "answer": "Envoyer les réponses",
+      "answerPending": "Envoi…"
+    },
+    "RegenerateDraftDialog": {
+      "title": "Que faut-il corriger ?",
+      "description": "Décrivez la correction dans vos mots. Ou jetez ce brouillon : la version précédente reste en place.",
+      "instructionLabel": "Votre consigne",
+      "instructionPlaceholder": "Ex. : la migration est prévue en mars, pas en février.",
+      "regenerate": "Régénérer",
+      "regeneratePending": "Envoi…",
+      "discard": "Jeter ce brouillon",
+      "capReached": "Trois tentatives ont déjà eu lieu sans converger. Validez en l’état, ou jetez ce brouillon."
     }
   },
   "Invite": {

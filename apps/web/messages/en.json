@@ -244,10 +244,8 @@
       "title": "Resources",
       "add": "Add a resource",
       "empty": "No resources yet",
-      "statusProcessing": "Processing…",
-      "statusReadyForReview": "Ready for review",
-      "statusFailed": "Failed",
-      "uncategorized": "Other"
+      "statusPending": "Analysing",
+      "statusFailed": "Failed"
     },
     "AddResourceDialog": {
       "title": "Add a resource",
@@ -266,31 +264,19 @@
     "ResourceDetailPage": {
       "processing": "Still processing — check back in a few minutes.",
       "failed": "Something went wrong processing this resource.",
-      "publish": "Publish",
-      "publishPending": "Publishing…",
       "delete": "Delete",
       "deletePending": "Deleting…",
       "downloadOriginal": "Download the original document",
       "viewOnNotion": "View the original Notion page",
       "backToProject": "Back to project",
       "loadErrorTitle": "Couldn't load this resource",
-      "loadErrorRetry": "Retry",
-      "reviewTitle": "Check the distribution",
-      "reviewIntro": "Review what the AI filed into each category. Only approved sections will be visible to your client.",
-      "reviewEmpty": "No section was produced for this document.",
-      "sectionApprove": "Approve",
-      "sectionReject": "Reject",
-      "sectionApproved": "Approved",
-      "sectionRejected": "Rejected",
-      "sectionMoveLabel": "Move to",
-      "publishBlocked": "Approve at least one section before publishing."
+      "loadErrorRetry": "Retry"
     },
     "BoardConnectionCard": {
       "title": "Board",
       "notConnected": "No board connected yet",
       "connect": "Connect a board",
       "connectedTo": "Connected to {title}",
-      "viewOnGithub": "View on GitHub",
       "disconnect": "Disconnect",
       "disconnecting": "Disconnecting…",
       "needsReconnect": "Your GitHub authorization was revoked — reconnect to keep this board in sync.",
@@ -404,6 +390,32 @@
       "title": "Meetings",
       "hint": "Upcoming and past meetings, once scheduled.",
       "join": "Join meeting"
+    },
+    "ReferenceDraftQueue": {
+      "title": "To review",
+      "intro": "The AI updated your reference documentation. Nothing reaches your client until you approve it.",
+      "empty": "Nothing to review right now.",
+      "generating": "Regenerating…",
+      "triggerDocumentAdded": "After adding “{document}”",
+      "triggerDocumentRemoved": "After a document was removed",
+      "triggerRegeneration": "After your correction request",
+      "attempt": "Attempt {attempt} of 3",
+      "accept": "Approve",
+      "refuse": "Refuse",
+      "questionsIntro": "A few points would change what your client is told. Answer what you can — anything you leave is kept marked as an open point in the text.",
+      "answerPlaceholder": "Your answer",
+      "answer": "Send answers",
+      "answerPending": "Sending…"
+    },
+    "RegenerateDraftDialog": {
+      "title": "What needs fixing?",
+      "description": "Describe the correction in your own words. Or discard this draft: the previous version stays live.",
+      "instructionLabel": "Your instruction",
+      "instructionPlaceholder": "e.g. the migration is March, not February.",
+      "regenerate": "Regenerate",
+      "regeneratePending": "Sending…",
+      "discard": "Discard this draft",
+      "capReached": "Three attempts have already been made without converging. Approve it as it stands, or discard it."
     }
   },
   "Invite": {
