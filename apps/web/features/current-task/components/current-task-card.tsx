@@ -2,8 +2,8 @@
 
 import { ChevronLeft, ChevronRight, CircleDot } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import type { ReactNode, RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CurrentTaskItem } from "schemas";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -13,9 +13,42 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/shared/components/ui/carousel";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/shared/components/ui/sheet";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
 import { useCurrentTask } from "../hooks";
+
+// A carousel disqualifies the obvious fix (let the card scroll internally
+// — a scrollable region nested inside a swipeable carousel is a two-finger-
+// gesture trap on touch, and a mismatched inner/outer scroll affordance on
+// desktop). Detects when the clipped middle content (why/impact/status)
+// genuinely overflows its allotted space, so the "read more" affordance
+// below only ever appears when there's actually more to read — not as a
+// permanent fixture on every card regardless of length.
+function useIsOverflowing<T extends HTMLElement>(): [RefObject<T | null>, boolean] {
+  const ref = useRef<T>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const check = () => setIsOverflowing(el.scrollHeight > el.clientHeight + 1);
+    check();
+
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return [ref, isOverflowing];
+}
 
 // Signature Card treatment (DESIGN.md "Signature Card" exception) — reserved
 // for this card because it's the core value proposition, not a pattern to
@@ -193,38 +226,16 @@ function IridescentGlow() {
   );
 }
 
-// The full detail for one in-progress task — En cours/Pourquoi/Impact/État,
-// then the timeline sentence and progress bar.
-function TaskCardBody({
-  item,
-  locale,
-  t,
-}: {
-  item: CurrentTaskItem;
-  locale: string;
-  t: ReturnType<typeof useTranslations>;
-}) {
+// 2026-08-09: why/impact/status replace the old single description blob
+// (docs/PRODUCT.md "Working notes") — a client scans named sections far
+// faster than one blob of text. Any can be absent: the vulgarization
+// prompt is instructed to leave a section out rather than invent content
+// the source doesn't support (Constitution II, "Never fabricate").
+// Extracted so the exact same content renders both clipped (on the card)
+// and in full (inside the "read more" Sheet) without duplicating markup.
+function MiddleSections({ item, t }: { item: CurrentTaskItem; t: ReturnType<typeof useTranslations> }) {
   return (
-    <div className="flex h-full max-w-prose flex-col gap-5">
-      <Section label={t("inProgress")}>
-        <div className="flex items-center gap-3">
-          <LiveIndicator active />
-          {/* h2, not a bare span: the task's own title is genuinely the
-              most important string on the card and belongs in the heading
-              outline, not skipped by a screen reader navigating by
-              heading. h2, not h3 — nothing in the client view sits between
-              this card and the page's own h1, same level as
-              TeamPanel/MeetingCard's own section headings. */}
-          <h2 className="text-xl leading-snug font-bold text-balance">{item.title}</h2>
-        </div>
-      </Section>
-
-      {/* 2026-08-09: why/impact/status replace the old single description
-          blob (docs/PRODUCT.md "Working notes") — a client scans named
-          sections far faster than one blob of text. Any can be absent:
-          the vulgarization prompt is instructed to leave a section out
-          rather than invent content the source doesn't support
-          (Constitution II, "Never fabricate"). */}
+    <>
       {item.why && (
         <Section label={t("why")}>
           <p className="text-sm leading-relaxed text-foreground">{item.why}</p>
@@ -239,6 +250,80 @@ function TaskCardBody({
         <Section label={t("status")}>
           <p className="text-sm leading-relaxed text-foreground">{item.status}</p>
         </Section>
+      )}
+    </>
+  );
+}
+
+// The full detail for one in-progress task — En cours/Pourquoi/Impact/État,
+// then the timeline sentence and progress bar.
+function TaskCardBody({
+  item,
+  locale,
+  t,
+}: {
+  item: CurrentTaskItem;
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const [middleRef, isOverflowing] = useIsOverflowing<HTMLDivElement>();
+  const hasMiddleContent = item.why != null || item.impact != null || item.status != null;
+
+  return (
+    <div className="flex min-h-0 flex-1 max-w-prose flex-col gap-5">
+      <Section label={t("inProgress")}>
+        <div className="flex items-center gap-3">
+          <LiveIndicator active />
+          {/* h2, not a bare span: the task's own title is genuinely the
+              most important string on the card and belongs in the heading
+              outline, not skipped by a screen reader navigating by
+              heading. h2, not h3 — nothing in the client view sits between
+              this card and the page's own h1, same level as
+              TeamPanel/MeetingCard's own section headings. */}
+          <h2 className="text-xl leading-snug font-bold text-balance">{item.title}</h2>
+        </div>
+      </Section>
+
+      {/* min-h-0 is load-bearing: without it, a flex child's default
+          min-height:auto refuses to shrink below its content's natural
+          size, defeating overflow-hidden entirely — the card would just
+          grow past its own max-height instead of clipping. flex-1 lets
+          this be the one section that absorbs whatever space the fixed
+          title/timeline blocks around it don't use. */}
+      {hasMiddleContent && (
+        <div ref={middleRef} className="relative min-h-0 flex-1 overflow-hidden">
+          <div className="flex flex-col gap-5">
+            <MiddleSections item={item} t={t} />
+          </div>
+          {isOverflowing && (
+            <Sheet>
+              {/* Scrolling this region directly was ruled out — a nested
+                  scroll area inside a swipeable carousel is a two-finger-
+                  gesture trap on touch. A fade + explicit "read more"
+                  action into a side Sheet stays in context (the card is
+                  still visible behind it) without that risk, and only
+                  ever appears when content actually needs it. */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-14 items-end justify-end bg-gradient-to-t from-black/70 to-transparent pr-0.5 pb-0.5">
+                <SheetTrigger asChild>
+                  <button
+                    type="button"
+                    className="pointer-events-auto rounded-sm text-xs font-medium text-primary hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                  >
+                    {t("readMore")}
+                  </button>
+                </SheetTrigger>
+              </div>
+              <SheetContent side="right" className="gap-0 overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>{item.title}</SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-5 px-4 pb-4">
+                  <MiddleSections item={item} t={t} />
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
+        </div>
       )}
 
       {/* Time/estimate/confidence: one vertical reading order, not a
@@ -292,15 +377,34 @@ function TaskCard({
   active?: boolean;
 }) {
   return (
+    // max-h (2026-08-10): equal-height (h-full, stretched to the row's
+    // tallest sibling) was previously unbounded — one verbose task would
+    // balloon every card in the row to match it. A fixed ceiling plus
+    // TaskCardBody's own internal clipping (see useIsOverflowing) means a
+    // long task's card stops growing and instead offers "read more"
+    // rather than dragging its neighbors up with it.
+    //
+    // flex flex-col here (not just a plain block box) is load-bearing:
+    // Card below needs to size against *this* element's actual rendered
+    // height, which is auto-but-capped whenever there's no carousel (the
+    // single-task case has no ancestor with a definite height at all). A
+    // plain `height:100%` child can't resolve against an auto+max-height
+    // parent — CSS only treats that as definite for percentage purposes
+    // when height was itself an explicit/resolved value, not "auto,
+    // clamped." flex-basis sizing doesn't have that restriction: a flex
+    // item sizes against its container's *actual* box regardless of how
+    // that box's own height was determined. Same reasoning repeats one
+    // level down at Card/CardContent/TaskCardBody (flex-1 + min-h-0
+    // instead of h-full) — this is the one spot the chain needs to start.
     <div
       className={cn(
-        "relative h-full overflow-hidden rounded-xl transition-all duration-300",
+        "relative flex h-full max-h-[30rem] flex-col overflow-hidden rounded-xl transition-all duration-300",
         !active && "scale-[0.94] opacity-50",
       )}
     >
       <IridescentGlow />
-      <Card className="relative h-full border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
-        <CardContent className="flex h-full flex-col gap-3 py-6">
+      <Card className="relative min-h-0 flex-1 border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-3 py-6">
           <TaskCardBody item={item} locale={locale} t={t} />
         </CardContent>
       </Card>

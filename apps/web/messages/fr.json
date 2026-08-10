@@ -303,7 +303,8 @@
       "taskCounter": "Tâche {current} sur {total}",
       "previousTask": "Tâche précédente",
       "nextTask": "Tâche suivante",
-      "selectTask": "Voir « {title} »"
+      "selectTask": "Voir « {title} »",
+      "readMore": "Voir plus"
     },
     "TeamPanel": {
       "developer": "Développeur",

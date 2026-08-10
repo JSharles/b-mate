@@ -103,6 +103,58 @@ describe("CurrentTaskCard", () => {
     expect(screen.queryByText("status")).not.toBeInTheDocument();
   });
 
+  // 2026-08-10: a scrollable region nested inside a swipeable carousel was
+  // ruled out as a gesture trap — long why/impact/status content clips
+  // instead, with a "read more" link into a Sheet, shown only when the
+  // content actually overflows its allotted space.
+  describe("overflowing middle content", () => {
+    it("shows no 'read more' link when the content fits (jsdom's default scrollHeight === clientHeight)", () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [{ ...baseItem, title: "Task A", why: "A short reason." }],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+
+      render(<CurrentTaskCard projectId="project-1" />);
+
+      expect(screen.queryByRole("button", { name: "readMore" })).not.toBeInTheDocument();
+    });
+
+    it("shows a 'read more' link that opens a Sheet with the full content when the middle section overflows", async () => {
+      const scrollHeightSpy = vi
+        .spyOn(HTMLElement.prototype, "scrollHeight", "get")
+        .mockReturnValue(500);
+      const clientHeightSpy = vi
+        .spyOn(HTMLElement.prototype, "clientHeight", "get")
+        .mockReturnValue(200);
+      mockedUseCurrentTask.mockReturnValue({
+        data: [
+          {
+            ...baseItem,
+            title: "Task A",
+            why: "A reason long enough to overflow its allotted space.",
+          },
+        ],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+      const user = userEvent.setup();
+
+      render(<CurrentTaskCard projectId="project-1" />);
+      await user.click(screen.getByRole("button", { name: "readMore" }));
+
+      // Radix marks everything outside the open Sheet aria-hidden (correct
+      // focus-trap behavior), so a role query only reaches the Sheet's own
+      // copy of the title while it's open — but getByText isn't filtered
+      // by that, so the why text is still findable twice (card + Sheet).
+      expect(screen.getByRole("heading", { name: "Task A" })).toBeInTheDocument();
+      expect(
+        screen.getAllByText("A reason long enough to overflow its allotted space."),
+      ).toHaveLength(2);
+
+      scrollHeightSpy.mockRestore();
+      clientHeightSpy.mockRestore();
+    });
+  });
+
   it("shows more than one item when multiple are in progress", () => {
     mockedUseCurrentTask.mockReturnValue({
       data: [
