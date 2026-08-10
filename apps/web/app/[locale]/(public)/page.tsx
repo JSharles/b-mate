@@ -7,6 +7,8 @@ import { BenefitsSection } from "@/features/landing/components/benefits-section"
 import { FeaturesSection } from "@/features/landing/components/features-section";
 import { FaqSection } from "@/features/landing/components/faq-section";
 import { ClosingBand } from "@/features/landing/components/closing-band";
+import { HowItWorksSection } from "@/features/landing/components/how-it-works-section";
+import { LandingFooter } from "@/features/landing/components/landing-footer";
 
 export async function generateMetadata({
   params,
@@ -41,10 +43,12 @@ export default async function LandingPage({
     <main className="text-foreground">
       <NavBar />
       <Hero />
-      <BenefitsSection />
       <FeaturesSection />
+      <HowItWorksSection />
+      <BenefitsSection />
       <FaqSection />
       <ClosingBand />
+      <LandingFooter />
     </main>
   );
 }

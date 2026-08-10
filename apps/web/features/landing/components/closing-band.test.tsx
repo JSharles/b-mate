@@ -8,7 +8,10 @@ vi.mock("@/i18n/navigation", () => ({
     href,
     children,
     ...props
-  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) => (
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & {
+    href: string;
+    children: ReactNode;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>
@@ -19,7 +22,12 @@ describe("ClosingBand", () => {
   it("renders the closing title and a call to action link", () => {
     render(<ClosingBand />);
 
+    expect(screen.getByText("eyebrow")).toBeInTheDocument();
     expect(screen.getByText("title")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "cta" })).toHaveAttribute("href", "/signup");
+    expect(screen.getByText("subhead")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "cta" })).toHaveAttribute(
+      "href",
+      "/signup",
+    );
   });
 });

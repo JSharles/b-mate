@@ -27,34 +27,45 @@ export function NavBar() {
             priority
             className="size-10"
           />
-          <span className="text-xl font-black tracking-tight text-primary">Diaphane</span>
+          <span className="text-xl font-black tracking-tight text-primary">
+            Diaphane
+          </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-xs font-medium text-muted-foreground sm:flex">
-          <a href="#clients" className="transition-colors hover:text-foreground">
-            {t("clients.eyebrow")}
+        <nav className="hidden items-center gap-6 text-xs font-medium text-muted-foreground md:flex">
+          <a
+            href="#product"
+            className="transition-colors hover:text-foreground"
+          >
+            {t("nav.product")}
           </a>
-          <a href="#developers" className="transition-colors hover:text-foreground">
-            {t("developers.eyebrow")}
+          <a
+            href="#how-it-works"
+            className="transition-colors hover:text-foreground"
+          >
+            {t("nav.howItWorks")}
           </a>
-          <a href="#features" className="transition-colors hover:text-foreground">
-            {t("features.eyebrow")}
+          <a
+            href="#benefits"
+            className="transition-colors hover:text-foreground"
+          >
+            {t("nav.benefits")}
           </a>
           <a href="#faq" className="transition-colors hover:text-foreground">
             {t("faq.navLabel")}
           </a>
         </nav>
 
-        <div className="flex items-center gap-4 sm:pl-4 sm:before:mr-4 sm:before:h-4 sm:before:w-px sm:before:bg-border sm:before:content-['']">
+        <div className="flex items-center gap-4 md:pl-4 md:before:mr-4 md:before:h-4 md:before:w-px md:before:bg-border md:before:content-['']">
           <Link
             href="/login"
-            className="hidden text-sm font-semibold text-foreground transition-colors hover:text-foreground/70 sm:inline"
+            className="hidden text-sm font-semibold text-foreground transition-colors hover:text-foreground/70 md:inline"
           >
             {t("logIn")}
           </Link>
           <Link
             href="/signup"
-            className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            className="hidden rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 md:inline-flex"
           >
             {t("signUp")}
           </Link>
@@ -62,7 +73,7 @@ export function NavBar() {
           <Sheet>
             <SheetTrigger
               aria-label={t("openMenu")}
-              className="rounded-md p-3 text-foreground transition-colors hover:bg-accent sm:hidden"
+              className="rounded-md p-3 text-foreground transition-colors hover:bg-accent md:hidden"
             >
               <Menu className="size-5" />
             </SheetTrigger>
@@ -73,26 +84,26 @@ export function NavBar() {
               <nav className="flex flex-col gap-1 px-4 text-sm font-medium text-muted-foreground">
                 <SheetClose asChild>
                   <a
-                    href="#clients"
+                    href="#product"
                     className="rounded-md px-2 py-2 transition-colors hover:bg-accent hover:text-foreground"
                   >
-                    {t("clients.eyebrow")}
+                    {t("nav.product")}
                   </a>
                 </SheetClose>
                 <SheetClose asChild>
                   <a
-                    href="#developers"
+                    href="#how-it-works"
                     className="rounded-md px-2 py-2 transition-colors hover:bg-accent hover:text-foreground"
                   >
-                    {t("developers.eyebrow")}
+                    {t("nav.howItWorks")}
                   </a>
                 </SheetClose>
                 <SheetClose asChild>
                   <a
-                    href="#features"
+                    href="#benefits"
                     className="rounded-md px-2 py-2 transition-colors hover:bg-accent hover:text-foreground"
                   >
-                    {t("features.eyebrow")}
+                    {t("nav.benefits")}
                   </a>
                 </SheetClose>
                 <SheetClose asChild>

@@ -8,7 +8,10 @@ vi.mock("@/i18n/navigation", () => ({
     href,
     children,
     ...props
-  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) => (
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & {
+    href: string;
+    children: ReactNode;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>
@@ -20,25 +23,42 @@ describe("LandingPage", () => {
     const ui = await LandingPage({ params: Promise.resolve({ locale: "fr" }) });
     render(ui);
 
-    expect(screen.getAllByRole("link", { name: "signUp" })).toHaveLength(2);
-    expect(screen.getByRole("link", { name: "logIn" })).toHaveAttribute("href", "/login");
-    expect(screen.getAllByText("eyebrow")).toHaveLength(5);
-    expect(screen.getByRole("link", { name: "clients.eyebrow" })).toHaveAttribute("href", "#clients");
-    expect(screen.getByRole("link", { name: "developers.eyebrow" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "signUp" })).toHaveAttribute("href", "/signup");
+    expect(screen.getByRole("link", { name: "logIn" })).toHaveAttribute(
       "href",
-      "#developers",
+      "/login",
     );
-    expect(screen.getByRole("link", { name: "features.eyebrow" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "nav.product" })).toHaveAttribute(
       "href",
-      "#features",
+      "#product",
     );
-    expect(screen.getByRole("link", { name: "faq.navLabel" })).toHaveAttribute("href", "#faq");
+    expect(
+      screen.getByRole("link", { name: "nav.howItWorks" }),
+    ).toHaveAttribute("href", "#how-it-works");
+    expect(screen.getByRole("link", { name: "nav.benefits" })).toHaveAttribute(
+      "href",
+      "#benefits",
+    );
+    expect(screen.getByRole("link", { name: "faq.navLabel" })).toHaveAttribute(
+      "href",
+      "#faq",
+    );
     expect(screen.getByText("q1")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "cta" })).toHaveAttribute("href", "/signup");
+    expect(screen.getByRole("link", { name: "primaryCta" })).toHaveAttribute(
+      "href",
+      "/signup",
+    );
+    expect(screen.getByRole("link", { name: "cta" })).toHaveAttribute(
+      "href",
+      "/signup",
+    );
+    expect(screen.getByText("statement")).toBeInTheDocument();
   });
 
   it("sets hreflang alternates and a canonical URL for the current locale", async () => {
-    const metadata = await generateMetadata({ params: Promise.resolve({ locale: "en" }) });
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ locale: "en" }),
+    });
 
     expect(metadata.title).toBe("title");
     expect(metadata.description).toBe("description");

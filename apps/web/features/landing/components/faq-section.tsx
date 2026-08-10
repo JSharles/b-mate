@@ -2,15 +2,18 @@ import { useTranslations } from "next-intl";
 import { ChevronDown } from "lucide-react";
 
 const GROUPS = [
-  { labelKey: "groupHowItWorks", questionNumbers: [1, 2, 5] },
-  { labelKey: "groupTrustPricing", questionNumbers: [3, 4] },
+  { labelKey: "groupHowItWorks", questionNumbers: [1, 2, 3, 4] },
+  { labelKey: "groupTrustPricing", questionNumbers: [5, 6, 7] },
 ] as const;
 
 export function FaqSection() {
   const t = useTranslations("Landing.faq");
 
   return (
-    <section id="faq" className="mx-auto flex max-w-3xl scroll-mt-24 flex-col gap-10 px-6 py-20">
+    <section
+      id="faq"
+      className="mx-auto flex max-w-3xl scroll-mt-24 flex-col gap-10 px-6 py-20"
+    >
       <h2 className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">
         {t("eyebrow")}
       </h2>
@@ -30,7 +33,9 @@ export function FaqSection() {
                     {t(questionKey)}
                     <ChevronDown className="size-5 shrink-0 text-primary transition-transform group-open:rotate-180" />
                   </summary>
-                  <p className="pt-3 text-sm leading-relaxed text-muted-foreground">{t(answerKey)}</p>
+                  <p className="pt-3 text-sm leading-relaxed text-muted-foreground">
+                    {t(answerKey)}
+                  </p>
                 </details>
               );
             })}

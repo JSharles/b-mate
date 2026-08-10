@@ -8,7 +8,10 @@ vi.mock("@/i18n/navigation", () => ({
     href,
     children,
     ...props
-  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; children: ReactNode }) => (
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & {
+    href: string;
+    children: ReactNode;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>
@@ -19,17 +22,28 @@ describe("NavBar", () => {
   it("renders the section anchors and the auth links", () => {
     render(<NavBar />);
 
-    expect(screen.getByRole("link", { name: "clients.eyebrow" })).toHaveAttribute("href", "#clients");
-    expect(screen.getByRole("link", { name: "developers.eyebrow" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "nav.product" })).toHaveAttribute(
       "href",
-      "#developers",
+      "#product",
     );
-    expect(screen.getByRole("link", { name: "features.eyebrow" })).toHaveAttribute(
+    expect(
+      screen.getByRole("link", { name: "nav.howItWorks" }),
+    ).toHaveAttribute("href", "#how-it-works");
+    expect(screen.getByRole("link", { name: "nav.benefits" })).toHaveAttribute(
       "href",
-      "#features",
+      "#benefits",
     );
-    expect(screen.getByRole("link", { name: "faq.navLabel" })).toHaveAttribute("href", "#faq");
-    expect(screen.getByRole("link", { name: "logIn" })).toHaveAttribute("href", "/login");
-    expect(screen.getByRole("link", { name: "signUp" })).toHaveAttribute("href", "/signup");
+    expect(screen.getByRole("link", { name: "faq.navLabel" })).toHaveAttribute(
+      "href",
+      "#faq",
+    );
+    expect(screen.getByRole("link", { name: "logIn" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+    expect(screen.getByRole("link", { name: "signUp" })).toHaveAttribute(
+      "href",
+      "/signup",
+    );
   });
 });
