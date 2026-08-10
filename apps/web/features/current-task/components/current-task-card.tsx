@@ -31,23 +31,39 @@ import { useCurrentTask } from "../hooks";
 // genuinely overflows its allotted space, so the "read more" affordance
 // below only ever appears when there's actually more to read — not as a
 // permanent fixture on every card regardless of length.
-function useIsOverflowing<T extends HTMLElement>(): [RefObject<T | null>, boolean] {
-  const ref = useRef<T>(null);
+//
+// Two refs, not one: `outerRef` is the clipped box (flex-1/min-h-0, its own
+// size set by the flex layout, never by its content) and `innerRef` is the
+// actual text stack inside it (natural, unclipped size). Observing outerRef
+// alone missed real overflow — its own box never resizes just because
+// content inside it changed height (e.g. once a web font finishes loading
+// and text reflows to a taller natural size after the very first
+// measurement already ran), so a page caught mid-font-swap could measure
+// "fits" once and never re-check. Observing innerRef instead means the
+// check re-runs whenever the content's own natural height actually changes.
+function useIsOverflowing<TClip extends HTMLElement, TContent extends HTMLElement>(): {
+  clipRef: RefObject<TClip | null>;
+  contentRef: RefObject<TContent | null>;
+  isOverflowing: boolean;
+} {
+  const clipRef = useRef<TClip>(null);
+  const contentRef = useRef<TContent>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const clip = clipRef.current;
+    const content = contentRef.current;
+    if (!clip || !content) return;
 
-    const check = () => setIsOverflowing(el.scrollHeight > el.clientHeight + 1);
+    const check = () => setIsOverflowing(clip.scrollHeight > clip.clientHeight + 1);
     check();
 
     const observer = new ResizeObserver(check);
-    observer.observe(el);
+    observer.observe(content);
     return () => observer.disconnect();
   }, []);
 
-  return [ref, isOverflowing];
+  return { clipRef, contentRef, isOverflowing };
 }
 
 // Signature Card treatment (DESIGN.md "Signature Card" exception) — reserved
@@ -266,7 +282,7 @@ function TaskCardBody({
   locale: string;
   t: ReturnType<typeof useTranslations>;
 }) {
-  const [middleRef, isOverflowing] = useIsOverflowing<HTMLDivElement>();
+  const { clipRef, contentRef, isOverflowing } = useIsOverflowing<HTMLDivElement, HTMLDivElement>();
   const hasMiddleContent = item.why != null || item.impact != null || item.status != null;
 
   return (
@@ -291,7 +307,22 @@ function TaskCardBody({
           this be the one section that absorbs whatever space the fixed
           title/timeline blocks around it don't use. */}
       {hasMiddleContent && (
-        <div ref={middleRef} className="relative min-h-0 flex-1 overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          {/* The text's own clip box gives up a fixed 2rem strip below it
+              (the plain shrink-0 spacer, not a percentage/calc height on
+              clipRef itself) — a gutter reserved for the "read more" chip,
+              so it can never overlap the last visible line the way a chip
+              merely positioned bottom-right over the full-height text did.
+              flex-1 + min-h-0 here, not height:calc(100% - 2rem): a
+              percentage height stacked on top of *this* element's own
+              already-percentage/flex-derived height resolved against the
+              wrong reference in practice (measured — not a hypothetical
+              concern) — flex-item sizing (flex-basis/flex-grow, resolved
+              directly by the flex algorithm) doesn't have that failure
+              mode, same reasoning as the outer h-full chain fix above.
+              The gap costs nothing when nothing overflows (there's already
+              slack in this flex-1 area from mt-auto pushing the timeline
+              down). */}
           {/* mask-image, not an overlay div (tried first, looked like a
               flat rectangle glued on top — this card's actual surface is
               translucent glass over blurred, colorful glow blobs, not a
@@ -299,21 +330,32 @@ function TaskCardBody({
               fades the TEXT itself to transparent, so whatever's actually
               behind it — glass, blur, glow — just shows through naturally
               regardless of its color. Same WebkitMaskImage pairing as
-              LiveIndicator's conic-gradient mask above, for Safari. */}
+              LiveIndicator's conic-gradient mask above, for Safari.
+              Applied to this clip box, not the (unmasked, ref'd-only-for-
+              resize-detection) content div below it: the mask's own
+              percentage stops are relative to *this* element's own box,
+              which correctly matches what's visible — masking the content
+              div directly would size the fade against its full natural
+              height (often much taller, mostly clipped away already),
+              placing it way below the visible area. */}
           <div
-            className="flex flex-col gap-5"
+            ref={clipRef}
+            className="min-h-0 flex-1 overflow-hidden"
             style={
               isOverflowing
                 ? {
                     WebkitMaskImage:
-                      "linear-gradient(to bottom, black calc(100% - 2.5rem), transparent)",
-                    maskImage: "linear-gradient(to bottom, black calc(100% - 2.5rem), transparent)",
+                      "linear-gradient(to bottom, black calc(100% - 1.5rem), transparent)",
+                    maskImage: "linear-gradient(to bottom, black calc(100% - 1.5rem), transparent)",
                   }
                 : undefined
             }
           >
-            <MiddleSections item={item} t={t} />
+            <div ref={contentRef} className="flex flex-col gap-5">
+              <MiddleSections item={item} t={t} />
+            </div>
           </div>
+          <div className="h-8 shrink-0" aria-hidden />
           {isOverflowing && (
             <Sheet>
               {/* Scrolling this region directly was ruled out — a nested
@@ -324,7 +366,9 @@ function TaskCardBody({
                   content actually needs it. Its own small frosted chip
                   (not just plain text) keeps it legible regardless of
                   what's blurred behind it at that exact spot, and reads as
-                  a real button rather than a stray link floating in space. */}
+                  a real button rather than a stray link floating in space —
+                  and now sits in the reserved gutter above, never over the
+                  text itself. */}
               <SheetTrigger asChild>
                 <button
                   type="button"
