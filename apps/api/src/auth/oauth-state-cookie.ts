@@ -15,8 +15,6 @@ export const OAUTH_FLOW_TTL_MS = 10 * 60 * 1000; // 10 minutes
 // having their own route. A discriminated union (rather than an optional
 // `projectId`) lets callers narrow on `flow` and get `projectId` typed as
 // a real `string`, not `string | undefined`, in the board-connection case.
-export type OAuthFlowKind = 'login' | 'board-connection';
-
 export type OAuthFlowCookiePayload =
   | { state: string; locale: string; flow: 'login' }
   | {

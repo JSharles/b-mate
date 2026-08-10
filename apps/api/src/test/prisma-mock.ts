@@ -56,13 +56,42 @@ export type PrismaMock = {
     update: jest.Mock;
     delete: jest.Mock;
   };
-  resourceSection: {
+  categoryExtract: {
+    create: jest.Mock;
     upsert: jest.Mock;
-    findUnique: jest.Mock;
     findFirst: jest.Mock;
     findMany: jest.Mock;
+    deleteMany: jest.Mock;
+  };
+  categoryReference: {
+    findUnique: jest.Mock;
+    findMany: jest.Mock;
+    upsert: jest.Mock;
     update: jest.Mock;
-    count: jest.Mock;
+    delete: jest.Mock;
+    deleteMany: jest.Mock;
+  };
+  categoryReferenceDraft: {
+    create: jest.Mock;
+    upsert: jest.Mock;
+    findUnique: jest.Mock;
+    findMany: jest.Mock;
+    update: jest.Mock;
+    delete: jest.Mock;
+    deleteMany: jest.Mock;
+  };
+  categoryContent: {
+    findMany: jest.Mock;
+    upsert: jest.Mock;
+    delete: jest.Mock;
+    deleteMany: jest.Mock;
+  };
+  referenceQuestion: {
+    createMany: jest.Mock;
+    findMany: jest.Mock;
+    update: jest.Mock;
+    updateMany: jest.Mock;
+    deleteMany: jest.Mock;
   };
   notionConnection: {
     findUnique: jest.Mock;
@@ -131,13 +160,42 @@ export function createPrismaMock(): PrismaMock {
       update: jest.fn(),
       delete: jest.fn(),
     },
-    resourceSection: {
+    categoryExtract: {
+      create: jest.fn(),
       upsert: jest.fn(),
-      findUnique: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    categoryReference: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      upsert: jest.fn(),
       update: jest.fn(),
-      count: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    categoryReferenceDraft: {
+      create: jest.fn(),
+      upsert: jest.fn(),
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    categoryContent: {
+      findMany: jest.fn(),
+      upsert: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    referenceQuestion: {
+      createMany: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      deleteMany: jest.fn(),
     },
     notionConnection: {
       findUnique: jest.fn(),

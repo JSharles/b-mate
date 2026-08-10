@@ -54,16 +54,12 @@ enum ResourceSource {
   notion
 }
 
-// processing: just created, AI processing not done yet (FR-015).
-// ready_for_review: AI processing succeeded, awaiting the developer's
-// explicit publish action (FR-016) — never client-visible.
-// published: visible to clients (FR-010).
-// failed: AI processing could not complete (FR-011) — the only action left
-// is delete, never publishable.
+// specs/015: `ready_for_review` and `published` served a per-document
+// publication step that no longer exists — validating a category's reference
+// content is now the only act that makes anything client-visible (Q3).
 enum ResourceStatus {
-  processing
-  ready_for_review
-  published
+  pending
+  absorbed
   failed
 }
 
@@ -171,6 +167,9 @@ model Project {
   taskProgress       TaskProgress[]
   resources          Resource[]
   notionConnection   NotionConnection?
+  categoryReferences CategoryReference[]
+  categoryDrafts     CategoryReferenceDraft[]
+  categoryContents   CategoryContent[]
 
   @@map("projects")
 }
@@ -280,7 +279,7 @@ model Resource {
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   source ResourceSource
-  status ResourceStatus @default(processing)
+  status ResourceStatus @default(pending)
 
   // Uploaded filename (minus extension) or the Notion page's title — shown
   // on the tile immediately, before/regardless of processing completing.
@@ -312,14 +311,7 @@ model Resource {
   addedByUserId String @map("added_by_user_id") @db.Uuid
   addedByUser   User   @relation(fields: [addedByUserId], references: [id])
 
-  publishedAt       DateTime? @map("published_at")
-  // Informational only (who published it), not an access-control field —
-  // FR-009 already restricts publishing to contributors generally. Left as
-  // a plain id, not a formal relation, to avoid a second named relation to
-  // User for a field nothing joins against today.
-  publishedByUserId String?   @map("published_by_user_id") @db.Uuid
-
-  sections ResourceSection[]
+  extracts CategoryExtract[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -327,46 +319,164 @@ model Resource {
   @@map("resources")
 }
 
-// specs/014-category-sections data-model.md. The unit a client reads and a
-// contributor reviews: one row per (document, category) pair the document
-// actually addresses, holding the plain-language rewrite of what that
-// document says about that category.
+// specs/015-document-reference-layer data-model.md. What one document
+// contributes to one category, in reference register. Never shown to anyone:
+// it exists so a category can be rebuilt from the documents that remain when
+// one is deleted (research.md Decision 1).
 //
-// Replaces three 013-era tables at once — ResourceVulgarization (the
-// whole-document rewrite), ResourceCategory (per-project, AI-invented
-// labels) and ResourceCategoryAssignment (the join). 013 attached a *label*
-// to a whole document, so a document appeared identically under each of its
-// tabs; a section carries different content per category, which is what
-// makes the tabs differ.
-model ResourceSection {
+// Without it, honouring "delete a document as if it had never been added"
+// would mean either re-reading every remaining original from storage on each
+// deletion, or asking a model to subtract one document's contribution from
+// merged prose — which it cannot do, having no idea which sentence came from
+// where.
+model CategoryExtract {
   id         String   @id @default(uuid()) @db.Uuid
   resourceId String   @map("resource_id") @db.Uuid
   resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
-  categoryKey ResourceCategoryKey   @map("category_key")
-  status      ResourceSectionStatus @default(proposed)
+  categoryKey ResourceCategoryKey @map("category_key")
 
-  // Order the analysis produced this section in. Breaks ties when several
-  // sections of the same resource land in one category tab (FR-022).
-  position Int
+  // Written once at ingestion and never rewritten — merging happens
+  // downstream, into CategoryReference.
+  content String
 
-  // Both locales in one row, produced together in a single analysis pass
-  // (research.md Decision 1) — which is what structurally guarantees the two
-  // languages agree on which categories a document was split into (FR-011).
-  // The read layer resolves one pair per caller locale, exactly as 013's
-  // labelEn/labelFr already did.
-  titleEn   String
-  contentEn String
-  titleFr   String
-  contentFr String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([resourceId, categoryKey])
+  @@map("category_extracts")
+}
+
+// The contributor's own documentation: organised, structured, exhaustive,
+// in ordinary professional language. Explicitly NOT vulgarized — the client
+// layer below is derived from it.
+//
+// Single-language on purpose (spec Assumptions): it is a working document
+// only its author reads, and CategoryContent already produces both locales.
+//
+// No status column — existing means live. A category with no validated
+// version simply has no row.
+model CategoryReference {
+  id        String  @id @default(uuid()) @db.Uuid
+  projectId String  @map("project_id") @db.Uuid
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  categoryKey ResourceCategoryKey @map("category_key")
+
+  content String
+
+  // Set while the client-facing version is being derived from this content,
+  // cleared when it lands. Until then the client keeps reading the previous
+  // CategoryContent — which is why derivation writes to its own row rather
+  // than rendering this one directly.
+  derivationBatchId String? @map("derivation_batch_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // FR-010: at most one section per (document, category). Also what makes a
-  // re-poll upsert rather than duplicate, and what a move must respect.
-  @@unique([resourceId, categoryKey])
-  @@map("resource_sections")
+  @@unique([projectId, categoryKey])
+  @@map("category_references")
+}
+
+// A regeneration awaiting the contributor's validation, kept apart from the
+// live row so a client keeps reading the validated version throughout
+// (FR-017) — structural rather than a filter every read has to remember.
+//
+// The unique constraint does a second job: it serialises two documents
+// ingested at once. The second cannot open a competing draft for the same
+// category, so its material waits instead of racing.
+model CategoryReferenceDraft {
+  id        String  @id @default(uuid()) @db.Uuid
+  projectId String  @map("project_id") @db.Uuid
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  categoryKey ResourceCategoryKey  @map("category_key")
+  status      ReferenceDraftStatus @default(pending_review)
+
+  content String
+
+  // Why this draft exists, surfaced in the review queue so a contributor
+  // knows what they are looking at before opening it.
+  trigger           DraftTrigger
+  triggerResourceId String?      @map("trigger_resource_id") @db.Uuid
+
+  // The review loop (research.md Decision 4). Counting per draft rather than
+  // per category is what makes "three attempts at THIS correction" mean
+  // something; accepting or discarding deletes the row and resets it.
+  attempt         Int     @default(1)
+  lastInstruction String? @map("last_instruction")
+
+  // Set while a rebuild is in flight, cleared when it lands. Regeneration
+  // rides the same durable batch + sweep path as ingestion rather than a
+  // fire-and-forget promise, which would not survive a restart.
+  anthropicBatchId String? @map("anthropic_batch_id")
+
+  questions ReferenceQuestion[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, categoryKey])
+  @@map("category_reference_drafts")
+}
+
+enum ReferenceDraftStatus {
+  // A rebuild is in flight. The contributor sees the draft marked as such;
+  // the client is unaffected either way, since drafts never reach them.
+  generating
+  pending_review
+  awaiting_answers
+}
+
+enum DraftTrigger {
+  document_added
+  document_removed
+  regeneration_requested
+}
+
+// What a client reads: one continuous plain-language text per category,
+// derived from validated reference content and NEVER from a previous version
+// of itself (FR-010) — which is what stops detail eroding across successive
+// ingestions.
+//
+// Both locales in one row: they are produced together in a single request,
+// which is what guarantees they say the same thing. No review state —
+// validating the reference above is the only gate (FR-014), so existing here
+// means visible.
+model CategoryContent {
+  id        String  @id @default(uuid()) @db.Uuid
+  projectId String  @map("project_id") @db.Uuid
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  categoryKey ResourceCategoryKey @map("category_key")
+
+  contentEn String @map("content_en")
+  contentFr String @map("content_fr")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, categoryKey])
+  @@map("category_contents")
+}
+
+// specs/015 US5. Raised against a pending draft when two documents contradict
+// each other, or when a gap would change what the client is told. Answerable
+// or skippable — an unanswered question never blocks validation, it becomes a
+// point explicitly marked in the reference content (FR-023).
+model ReferenceQuestion {
+  id      String                 @id @default(uuid()) @db.Uuid
+  draftId String                 @map("draft_id") @db.Uuid
+  draft   CategoryReferenceDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  question String
+  answer   String?
+  // Lower is more consequential — FR-022 orders by how much the answer
+  // changes what the client will read.
+  rank Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("reference_questions")
 }
 
 // The frozen, product-wide category list (FR-001). Not a table: there is
@@ -380,15 +490,6 @@ enum ResourceCategoryKey {
   how_it_works
   planning
   other
-}
-
-// One-way: proposed -> approved | rejected. A contributor reviews what the
-// analysis filed where (FR-013/FR-014); only approved sections of a
-// published resource ever reach a client (FR-016).
-enum ResourceSectionStatus {
-  proposed
-  approved
-  rejected
 }
 
 // Per-resource, 1:1, present only when Resource.source == notion. Kept as

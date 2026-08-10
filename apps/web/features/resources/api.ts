@@ -1,22 +1,23 @@
-import type { CreateResourceNotionRequest, Resource, ResourceCategoryKey } from "schemas";
+import type {
+  CategoryContent,
+  CreateResourceNotionRequest,
+  ReferenceDraft,
+  Resource,
+  ResourceCategoryKey,
+} from "schemas";
 import { apiFetch, ApiError } from "@/shared/lib/api-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
-export function getResources(projectId: string, locale: string) {
-  return apiFetch<Resource[]>(`/projects/${projectId}/resources?locale=${locale}`);
+// Documents carry no content of their own any more — they are inputs, and the
+// list is contributor-only. No locale: there is nothing locale-dependent left
+// on a resource.
+export function getResources(projectId: string) {
+  return apiFetch<Resource[]>(`/projects/${projectId}/resources`);
 }
 
-export function getResource(projectId: string, resourceId: string, locale: string) {
-  return apiFetch<Resource>(
-    `/projects/${projectId}/resources/${resourceId}?locale=${locale}`,
-  );
-}
-
-export function publishResource(projectId: string, resourceId: string) {
-  return apiFetch<Resource>(`/projects/${projectId}/resources/${resourceId}/publish`, {
-    method: "POST",
-  });
+export function getResource(projectId: string, resourceId: string) {
+  return apiFetch<Resource>(`/projects/${projectId}/resources/${resourceId}`);
 }
 
 export function deleteResource(projectId: string, resourceId: string) {
@@ -25,40 +26,56 @@ export function deleteResource(projectId: string, resourceId: string) {
   });
 }
 
-// specs/014-category-sections: a contributor reviews what the analysis filed
-// where, section by section — the category list itself is frozen, so there is
-// nothing to approve about a category any more.
-export function approveResourceSection(
-  projectId: string,
-  resourceId: string,
-  sectionId: string,
-) {
+// specs/015 contracts/reference-review.md. What a contributor reviews is a
+// queue of independent per-category drafts — not sections of a document.
+export function getReferenceDrafts(projectId: string) {
+  return apiFetch<ReferenceDraft[]>(`/projects/${projectId}/categories/drafts`);
+}
+
+export function acceptDraft(projectId: string, categoryKey: ResourceCategoryKey) {
   return apiFetch<void>(
-    `/projects/${projectId}/resources/${resourceId}/sections/${sectionId}/approve`,
+    `/projects/${projectId}/categories/${categoryKey}/draft/accept`,
     { method: "POST" },
   );
 }
 
-export function rejectResourceSection(
-  projectId: string,
-  resourceId: string,
-  sectionId: string,
-) {
+export function discardDraft(projectId: string, categoryKey: ResourceCategoryKey) {
   return apiFetch<void>(
-    `/projects/${projectId}/resources/${resourceId}/sections/${sectionId}/reject`,
+    `/projects/${projectId}/categories/${categoryKey}/draft/discard`,
     { method: "POST" },
   );
 }
 
-export function moveResourceSection(
+export function regenerateDraft(
   projectId: string,
-  resourceId: string,
-  sectionId: string,
   categoryKey: ResourceCategoryKey,
+  instruction: string,
 ) {
   return apiFetch<void>(
-    `/projects/${projectId}/resources/${resourceId}/sections/${sectionId}/move`,
-    { method: "POST", body: { categoryKey } },
+    `/projects/${projectId}/categories/${categoryKey}/draft/regenerate`,
+    { method: "POST", body: { instruction } },
+  );
+}
+
+// specs/015 FR-023. Only what the contributor actually answered is sent — the
+// rest stay open, and their points stay marked in the reference text. There is
+// no "skip" call: accepting the draft is the skip.
+export function answerDraftQuestions(
+  projectId: string,
+  categoryKey: ResourceCategoryKey,
+  answers: { questionId: string; answer: string }[],
+) {
+  return apiFetch<void>(
+    `/projects/${projectId}/categories/${categoryKey}/draft/answer`,
+    { method: "POST", body: { answers } },
+  );
+}
+
+// What a client reads. Locale-resolved server-side; a category with no content
+// is absent from the array, which is what produces "no empty tab".
+export function getCategoryContent(projectId: string, locale: string) {
+  return apiFetch<CategoryContent[]>(
+    `/projects/${projectId}/categories/content?locale=${locale}`,
   );
 }
 

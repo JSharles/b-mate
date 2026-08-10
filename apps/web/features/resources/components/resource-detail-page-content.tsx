@@ -5,8 +5,7 @@ import { useTranslations } from "next-intl";
 import type { Resource } from "schemas";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
-import { useDeleteResource, usePublishResource } from "../hooks";
-import { SectionReviewList } from "./section-review-list";
+import { useDeleteResource } from "../hooks";
 
 const PREVIEWABLE_MIME_TYPES = new Set(["application/pdf", "image/png", "image/jpeg"]);
 
@@ -66,11 +65,14 @@ function OriginalDocument({ resource }: { resource: Resource }) {
   );
 }
 
-// specs/014-category-sections Q2: this page is the contributor's review
-// screen and nothing else. A client never reaches it — they read every
-// section inline under the project's category tabs — so there is no longer a
-// `canManage` prop and no role branching here. The API enforces the same rule
-// independently (findOne returns 404 for a client).
+// specs/015: review moved to the project-level draft queue, and per-document
+// publication is gone (Q3). What remains here is the document itself — its
+// original, previewable or downloadable, and the ability to delete it. That is
+// why the route survives: the original has nowhere else to live, and folding a
+// preview into the list would make the list heavy rather than lighter.
+//
+// Contributor-only. A client never reaches it, and the API enforces the same
+// rule independently.
 export function ResourceDetailPageContent({
   projectId,
   resource,
@@ -80,12 +82,7 @@ export function ResourceDetailPageContent({
 }) {
   const t = useTranslations("Projects.ResourceDetailPage");
   const router = useRouter();
-  const publish = usePublishResource(projectId);
   const deleteResource = useDeleteResource(projectId);
-
-  function handlePublish() {
-    publish.mutate(resource.id);
-  }
 
   function handleDelete() {
     deleteResource.mutate(resource.id, {
@@ -93,25 +90,8 @@ export function ResourceDetailPageContent({
     });
   }
 
-  // research.md Decision 4: publishing with nothing approved would produce a
-  // resource that is published yet contributes to no tab. The API refuses it;
-  // disabling the button here explains why before the click rather than after.
-  const hasApprovedSection = resource.sections.some(
-    (section) => section.status === "approved",
-  );
-  const canPublish = resource.status === "ready_for_review";
-
   const actions = (
     <div className="flex shrink-0 gap-2">
-      {canPublish && (
-        <Button
-          type="button"
-          onClick={handlePublish}
-          disabled={publish.isPending || !hasApprovedSection}
-        >
-          {publish.isPending ? t("publishPending") : t("publish")}
-        </Button>
-      )}
       <Button
         type="button"
         variant="outline"
@@ -123,7 +103,7 @@ export function ResourceDetailPageContent({
     </div>
   );
 
-  if (resource.status === "processing") {
+  if (resource.status === "pending") {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center">
         <Clock className="size-8 text-muted-foreground" />
@@ -149,10 +129,6 @@ export function ResourceDetailPageContent({
         <h1 className="text-2xl font-semibold">{resource.title}</h1>
         {actions}
       </div>
-      {canPublish && !hasApprovedSection && (
-        <p className="text-sm text-muted-foreground">{t("publishBlocked")}</p>
-      )}
-      <SectionReviewList projectId={projectId} resource={resource} />
       <OriginalDocument resource={resource} />
     </article>
   );

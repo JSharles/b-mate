@@ -37,7 +37,7 @@ const fakeResource: Resource = {
   id: 'resource-1',
   projectId: 'project-1',
   source: 'upload',
-  status: 'processing',
+  status: 'pending',
   title: 'Architecture overview',
   originalFileKey: 'resources/project-1/a.pdf',
   originalFileName: 'Architecture overview.pdf',
@@ -47,8 +47,6 @@ const fakeResource: Resource = {
   failureReason: null,
   anthropicBatchId: 'batch_123',
   addedByUserId: 'user-1',
-  publishedAt: null,
-  publishedByUserId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -61,11 +59,7 @@ describe('ResourcesController', () => {
       | 'createFromNotion'
       | 'findAllForProject'
       | 'findOne'
-      | 'publish'
       | 'delete'
-      | 'approveSection'
-      | 'rejectSection'
-      | 'moveSection'
     >
   >;
   let controller: ResourcesController;
@@ -76,11 +70,7 @@ describe('ResourcesController', () => {
       createFromNotion: jest.fn(),
       findAllForProject: jest.fn(),
       findOne: jest.fn(),
-      publish: jest.fn(),
       delete: jest.fn(),
-      approveSection: jest.fn(),
-      rejectSection: jest.fn(),
-      moveSection: jest.fn(),
     };
     controller = new ResourcesController(
       resourcesService as unknown as ResourcesService,
@@ -146,176 +136,33 @@ describe('ResourcesController', () => {
   });
 
   describe('findAll', () => {
-    it('delegates to the service with the current user, project id, and locale', async () => {
+    it('delegates to the service with the current user and project id', async () => {
       resourcesService.findAllForProject.mockResolvedValue([]);
 
-      await controller.findAll(fakeUser, 'project-1', 'fr');
+      await controller.findAll(fakeUser, 'project-1');
 
       expect(resourcesService.findAllForProject).toHaveBeenCalledWith(
         'user-1',
         'project-1',
-        'fr',
-      );
-    });
-
-    it('defaults to the app default locale when none is given', async () => {
-      resourcesService.findAllForProject.mockResolvedValue([]);
-
-      await controller.findAll(fakeUser, 'project-1', undefined);
-
-      expect(resourcesService.findAllForProject).toHaveBeenCalledWith(
-        'user-1',
-        'project-1',
-        'fr',
       );
     });
   });
 
   describe('findOne', () => {
-    it('delegates to the service with the current user, project id, resource id, and locale', async () => {
+    it('delegates to the service with the current user, project id and resource id', async () => {
       resourcesService.findOne.mockResolvedValue(
         undefined as unknown as Awaited<
           ReturnType<ResourcesService['findOne']>
         >,
       );
 
-      await controller.findOne(fakeUser, 'project-1', 'resource-1', 'en');
+      await controller.findOne(fakeUser, 'project-1', 'resource-1');
 
       expect(resourcesService.findOne).toHaveBeenCalledWith(
         'user-1',
         'project-1',
         'resource-1',
-        'en',
       );
-    });
-  });
-
-  describe('publish', () => {
-    it('delegates to the service with the current user, project id, and resource id', async () => {
-      resourcesService.publish.mockResolvedValue({
-        ...fakeResource,
-        status: 'published',
-      });
-
-      const result = await controller.publish(
-        fakeUser,
-        'project-1',
-        'resource-1',
-      );
-
-      expect(resourcesService.publish).toHaveBeenCalledWith(
-        'user-1',
-        'project-1',
-        'resource-1',
-      );
-      expect(result.status).toBe('published');
-    });
-
-    it('propagates a rejection when the resource is not ready for review', async () => {
-      resourcesService.publish.mockRejectedValue(
-        new Error('Only a resource ready for review can be published'),
-      );
-
-      await expect(
-        controller.publish(fakeUser, 'project-1', 'resource-1'),
-      ).rejects.toThrow('Only a resource ready for review can be published');
-    });
-  });
-
-  describe('approveSection', () => {
-    it('delegates to the service with the current user, project id, resource id, and section id', async () => {
-      resourcesService.approveSection.mockResolvedValue(undefined);
-
-      await controller.approveSection(
-        fakeUser,
-        'project-1',
-        'resource-1',
-        'section-1',
-      );
-
-      expect(resourcesService.approveSection).toHaveBeenCalledWith(
-        'user-1',
-        'project-1',
-        'resource-1',
-        'section-1',
-      );
-    });
-
-    it('propagates a rejection when the section is not currently proposed', async () => {
-      resourcesService.approveSection.mockRejectedValue(
-        new Error('This section has already been approved or rejected'),
-      );
-
-      await expect(
-        controller.approveSection(
-          fakeUser,
-          'project-1',
-          'resource-1',
-          'section-1',
-        ),
-      ).rejects.toThrow('This section has already been approved or rejected');
-    });
-  });
-
-  describe('rejectSection', () => {
-    it('delegates to the service with the current user, project id, resource id, and section id', async () => {
-      resourcesService.rejectSection.mockResolvedValue(undefined);
-
-      await controller.rejectSection(
-        fakeUser,
-        'project-1',
-        'resource-1',
-        'section-1',
-      );
-
-      expect(resourcesService.rejectSection).toHaveBeenCalledWith(
-        'user-1',
-        'project-1',
-        'resource-1',
-        'section-1',
-      );
-    });
-  });
-
-  describe('moveSection', () => {
-    it('unwraps the target category from the body and delegates to the service', async () => {
-      resourcesService.moveSection.mockResolvedValue(undefined);
-
-      await controller.moveSection(
-        fakeUser,
-        'project-1',
-        'resource-1',
-        'section-1',
-        {
-          categoryKey: 'planning',
-        },
-      );
-
-      expect(resourcesService.moveSection).toHaveBeenCalledWith(
-        'user-1',
-        'project-1',
-        'resource-1',
-        'section-1',
-        'planning',
-      );
-    });
-
-    it('propagates a rejection when the target category is already occupied', async () => {
-      resourcesService.moveSection.mockRejectedValue(
-        new Error('This document already has a section in that category'),
-      );
-
-      await expect(
-        controller.moveSection(
-          fakeUser,
-          'project-1',
-          'resource-1',
-          'section-1',
-          {
-            categoryKey: 'planning',
-          },
-        ),
-      ).rejects.toThrow('This document already has a section in that category');
     });
   });
 

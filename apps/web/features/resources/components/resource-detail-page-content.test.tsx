@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { Resource } from "schemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useDeleteResource, usePublishResource } from "../hooks";
+import { useDeleteResource } from "../hooks";
 import { ResourceDetailPageContent } from "./resource-detail-page-content";
 
 const mockPush = vi.fn();
@@ -11,67 +12,45 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 
 vi.mock("../hooks", () => ({
-  usePublishResource: vi.fn(),
   useDeleteResource: vi.fn(),
 }));
 
-// The section review surface has its own spec (section-review-list.test.tsx);
-// stubbing it here keeps this file about the page shell — states, actions and
-// the original-document access.
-vi.mock("./section-review-list", () => ({
-  SectionReviewList: () => <div data-testid="section-review-list" />,
-}));
-
-const mockedUsePublishResource = vi.mocked(usePublishResource);
 const mockedUseDeleteResource = vi.mocked(useDeleteResource);
 
-function baseMutation<T extends (...args: never[]) => { mutate: unknown }>() {
+function deleteMutation() {
   return {
     mutate: vi.fn(),
     isPending: false,
-  } as unknown as ReturnType<T>;
+  } as unknown as ReturnType<typeof useDeleteResource>;
 }
 
-const baseResource = {
+const baseResource: Resource = {
   id: "resource-1",
   projectId: "project-1",
-  source: "upload" as const,
-  status: "processing" as const,
+  source: "upload",
+  status: "pending",
   title: "Architecture overview",
   originalFileUrl: null,
   originalFileName: "a.pdf",
   originalFileMimeType: "application/pdf",
   notionPageUrl: null,
   failureReason: null,
-  publishedAt: null,
   createdAt: "2026-08-08T00:00:00.000Z",
-  sections: [
-    {
-      id: "section-1",
-      categoryKey: "overview" as const,
-      status: "approved" as const,
-      title: "What this delivers",
-      content: "The overview slice.",
-    },
-  ],
 };
 
 describe("ResourceDetailPageContent", () => {
   beforeEach(() => {
-    mockedUsePublishResource.mockReturnValue(baseMutation<typeof usePublishResource>());
-    mockedUseDeleteResource.mockReturnValue(baseMutation<typeof useDeleteResource>());
+    mockedUseDeleteResource.mockReturnValue(deleteMutation());
     mockPush.mockReset();
   });
 
-  it("shows a processing state when the resource isn't done yet", () => {
-    render(
-      <ResourceDetailPageContent projectId="project-1" resource={baseResource} />,
-    );
+  it("shows a processing state while the document is still pending", () => {
+    render(<ResourceDetailPageContent projectId="project-1" resource={baseResource} />);
 
     expect(screen.getByText("processing")).toBeInTheDocument();
   });
 
-  it("falls back to a generic message when a failed resource recorded no reason", () => {
+  it("falls back to a generic message when a failed document recorded no reason", () => {
     render(
       <ResourceDetailPageContent
         projectId="project-1"
@@ -82,62 +61,49 @@ describe("ResourceDetailPageContent", () => {
     expect(screen.getByText("failed")).toBeInTheDocument();
   });
 
+  // A failed document is where the contributor learns what went wrong — the
+  // recorded reason is far more actionable than a generic message.
+  it("surfaces the recorded failure reason on a failed document", () => {
+    render(
+      <ResourceDetailPageContent
+        projectId="project-1"
+        resource={{
+          ...baseResource,
+          status: "failed",
+          failureReason: "invalid_request_error: image dimensions exceed 8000 pixels",
+        }}
+      />,
+    );
 
+    expect(
+      screen.getByText("invalid_request_error: image dimensions exceed 8000 pixels"),
+    ).toBeInTheDocument();
+  });
 
-  describe("developer actions", () => {
-    it("shows Publish and Delete when ready for review", () => {
-      render(
-        <ResourceDetailPageContent
-          projectId="project-1"
-          resource={{ ...baseResource, status: "ready_for_review" }}
-        />,
-      );
-
-      expect(screen.getByRole("button", { name: "publish" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "delete" })).toBeInTheDocument();
-    });
-
-    it("shows only Delete when published (no Publish button)", () => {
-      render(
-        <ResourceDetailPageContent
-          projectId="project-1"
-          resource={{ ...baseResource, status: "published" }}
-        />,
-      );
-
-      expect(screen.queryByRole("button", { name: "publish" })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "delete" })).toBeInTheDocument();
-    });
-
-    it("shows only Delete when processing or failed (no Publish button)", () => {
-      render(
+  describe("contributor actions", () => {
+    // specs/015 Q3: per-document publication is gone. A document is an input;
+    // what gets published is the category content, and that decision is taken
+    // in the draft queue. Delete is the only action left here.
+    it("offers Delete and no publish action, in every state", () => {
+      const { rerender } = render(
         <ResourceDetailPageContent projectId="project-1" resource={baseResource} />,
       );
-
-      expect(screen.queryByRole("button", { name: "publish" })).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "delete" })).toBeInTheDocument();
-    });
+      expect(screen.queryByRole("button", { name: "publish" })).not.toBeInTheDocument();
 
-
-    it("calls the publish mutation when Publish is clicked", async () => {
-      const publish = baseMutation<typeof usePublishResource>();
-      mockedUsePublishResource.mockReturnValue(publish);
-      const user = userEvent.setup();
-
-      render(
+      rerender(
         <ResourceDetailPageContent
           projectId="project-1"
-          resource={{ ...baseResource, status: "ready_for_review" }}
+          resource={{ ...baseResource, status: "absorbed" }}
         />,
       );
-      await user.click(screen.getByRole("button", { name: "publish" }));
-
-      expect(publish.mutate).toHaveBeenCalledWith("resource-1");
+      expect(screen.getByRole("button", { name: "delete" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "publish" })).not.toBeInTheDocument();
     });
 
-    it("calls the delete mutation and navigates back to the project on success", async () => {
-      const del = baseMutation<typeof useDeleteResource>();
-      (del.mutate as ReturnType<typeof vi.fn>).mockImplementation(
+    it("deletes the document and navigates back to the project on success", async () => {
+      const del = deleteMutation();
+      (del.mutate as unknown as ReturnType<typeof vi.fn>).mockImplementation(
         (_id: string, options: { onSuccess: () => void }) => options.onSuccess(),
       );
       mockedUseDeleteResource.mockReturnValue(del);
@@ -146,7 +112,7 @@ describe("ResourceDetailPageContent", () => {
       render(
         <ResourceDetailPageContent
           projectId="project-1"
-          resource={{ ...baseResource, status: "ready_for_review" }}
+          resource={{ ...baseResource, status: "absorbed" }}
         />,
       );
       await user.click(screen.getByRole("button", { name: "delete" }));
@@ -159,14 +125,28 @@ describe("ResourceDetailPageContent", () => {
     });
   });
 
+  // The reason this route survived the 015 demolition at all: the original
+  // document has nowhere else to live, and folding a preview into the list
+  // would make the list heavier rather than lighter.
   describe("original document (preview/download/Notion link)", () => {
+    it("renders the document title alongside the original", () => {
+      render(
+        <ResourceDetailPageContent
+          projectId="project-1"
+          resource={{ ...baseResource, status: "absorbed" }}
+        />,
+      );
+
+      expect(screen.getByRole("heading", { name: "Architecture overview" })).toBeInTheDocument();
+    });
+
     it("renders a PDF preview and a download link for an upload-sourced PDF", () => {
       render(
         <ResourceDetailPageContent
           projectId="project-1"
           resource={{
             ...baseResource,
-            status: "published",
+            status: "absorbed",
             originalFileUrl: "https://r2.example.com/a.pdf?sig=abc",
             originalFileMimeType: "application/pdf",
           }}
@@ -188,7 +168,7 @@ describe("ResourceDetailPageContent", () => {
           projectId="project-1"
           resource={{
             ...baseResource,
-            status: "published",
+            status: "absorbed",
             originalFileName: "diagram.png",
             originalFileUrl: "https://r2.example.com/diagram.png?sig=abc",
             originalFileMimeType: "image/png",
@@ -208,7 +188,7 @@ describe("ResourceDetailPageContent", () => {
           projectId="project-1"
           resource={{
             ...baseResource,
-            status: "published",
+            status: "absorbed",
             originalFileName: "spec.docx",
             originalFileUrl: "https://r2.example.com/spec.docx?sig=abc",
             originalFileMimeType:
@@ -225,13 +205,13 @@ describe("ResourceDetailPageContent", () => {
       );
     });
 
-    it("shows a link back to the Notion page for a notion-sourced resource, no preview/download", () => {
+    it("shows a link back to the Notion page for a notion-sourced document", () => {
       render(
         <ResourceDetailPageContent
           projectId="project-1"
           resource={{
             ...baseResource,
-            status: "published",
+            status: "absorbed",
             source: "notion",
             originalFileUrl: null,
             originalFileName: null,
@@ -246,80 +226,6 @@ describe("ResourceDetailPageContent", () => {
         "https://notion.so/some-page",
       );
       expect(screen.queryByRole("link", { name: "downloadOriginal" })).not.toBeInTheDocument();
-    });
-  });
-
-  describe("section review", () => {
-    it("renders the resource title and hands content to the section review list", () => {
-      render(
-        <ResourceDetailPageContent
-          projectId="project-1"
-          resource={{ ...baseResource, status: "ready_for_review" }}
-        />,
-      );
-
-      expect(
-        screen.getByRole("heading", { name: "Architecture overview" }),
-      ).toBeInTheDocument();
-      expect(screen.getByTestId("section-review-list")).toBeInTheDocument();
-    });
-
-    // research.md Decision 4: publishing with nothing approved yields a
-    // resource that is published yet contributes to no tab. The API refuses
-    // it; disabling the button explains why before the click.
-    it("disables Publish and explains why when no section is approved", () => {
-      render(
-        <ResourceDetailPageContent
-          projectId="project-1"
-          resource={{
-            ...baseResource,
-            status: "ready_for_review",
-            sections: [
-              {
-                id: "section-1",
-                categoryKey: "overview",
-                status: "proposed",
-                title: "What this delivers",
-                content: "The overview slice.",
-              },
-            ],
-          }}
-        />,
-      );
-
-      expect(screen.getByRole("button", { name: "publish" })).toBeDisabled();
-      expect(screen.getByText("publishBlocked")).toBeInTheDocument();
-    });
-
-    it("enables Publish as soon as one section is approved", () => {
-      render(
-        <ResourceDetailPageContent
-          projectId="project-1"
-          resource={{ ...baseResource, status: "ready_for_review" }}
-        />,
-      );
-
-      expect(screen.getByRole("button", { name: "publish" })).toBeEnabled();
-      expect(screen.queryByText("publishBlocked")).not.toBeInTheDocument();
-    });
-
-    // A failed resource is where the contributor learns what went wrong — the
-    // recorded reason is far more actionable than a generic message.
-    it("surfaces the recorded failure reason on a failed resource", () => {
-      render(
-        <ResourceDetailPageContent
-          projectId="project-1"
-          resource={{
-            ...baseResource,
-            status: "failed",
-            failureReason: "invalid_request_error: image dimensions exceed 8000 pixels",
-          }}
-        />,
-      );
-
-      expect(
-        screen.getByText("invalid_request_error: image dimensions exceed 8000 pixels"),
-      ).toBeInTheDocument();
     });
   });
 });

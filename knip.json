@@ -1,0 +1,48 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "apps/api": {
+      "entry": [
+        "src/main.ts",
+        "src/**/*.spec.ts",
+        "test/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "pg",
+        "@types/pg",
+        "@types/multer",
+        "express",
+        "dotenv"
+      ]
+    },
+    "apps/web": {
+      "entry": [
+        "app/**/{page,layout,route,error,loading,not-found,template,default}.tsx",
+        "**/*.test.{ts,tsx}",
+        "i18n/**/*.ts"
+      ],
+      "project": [
+        "**/*.{ts,tsx}"
+      ],
+      "ignore": [
+        "shared/components/ui/**"
+      ],
+      "ignoreDependencies": [
+        "tailwindcss",
+        "tw-animate-css"
+      ]
+    },
+    "packages/schemas": {
+      "project": [
+        "src/**/*.ts"
+      ]
+    }
+  },
+  "ignoreWorkspaces": [
+    "."
+  ],
+  "ignoreExportsUsedInFile": true
+}

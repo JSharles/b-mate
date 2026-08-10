@@ -2,72 +2,39 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { RESOURCE_CATEGORIES, resourceCategoryLabel } from "schemas";
-import type { Resource } from "schemas";
+import type { CategoryContent } from "schemas";
 import { CurrentTaskCard } from "@/features/current-task/components/current-task-card";
-import {
-  CategorySectionAccordion,
-  type CategorySectionEntry,
-} from "@/features/resources/components/category-section-accordion";
-import { useResources } from "@/features/resources/hooks";
+import { useCategoryContent } from "@/features/resources/hooks";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { cn } from "@/shared/lib/utils";
 
 const CURRENT_TASK_TAB_KEY = "__current-task__";
 
-interface CategoryGroup {
-  key: string;
-  label: string;
-  entries: CategorySectionEntry[];
-}
-
-// specs/014-category-sections FR-018/FR-022. Groups *sections*, not resources
-// — which is the whole fix. 013 grouped whole documents by the categories
-// they had been labelled with, so a document appeared identically under each
-// of its tabs and every tab ended up showing the same thing. A section is a
-// different rewrite per category, so two tabs drawing from the same source
-// document now show genuinely different text (SC-001).
+// specs/015 US3. A category tab holds one continuous text — not a stack of
+// blocks the reader has to reconcile. That is the whole point of moving the
+// unit from the document to the category: 014 showed a client several
+// overlapping bodies about the same subject and left them to sort it out.
 //
 // Tab order follows the frozen category list rather than arrival order, so
-// tabs never reshuffle as content accumulates, and `other` is always last. A
-// category with no section produces no tab at all (SC-007) — there is no
-// "uncategorized" tab any more, because `other` is a real category the
-// analysis files into deliberately.
-function groupSectionsByCategory(resources: Resource[], locale: string): CategoryGroup[] {
-  const entriesByCategory = new Map<string, CategorySectionEntry[]>();
-
-  for (const resource of resources) {
-    for (const section of resource.sections) {
-      const existing = entriesByCategory.get(section.categoryKey);
-      if (existing) {
-        existing.push({ section, resource });
-      } else {
-        entriesByCategory.set(section.categoryKey, [{ section, resource }]);
-      }
-    }
-  }
+// tabs never reshuffle as content accumulates, and `other` is always last.
+// A category with no content is simply absent from the response, which is
+// what produces "no empty tab" (FR-012).
+function orderByFrozenList(content: CategoryContent[]): CategoryContent[] {
+  const byKey = new Map(content.map((entry) => [entry.categoryKey, entry]));
 
   return RESOURCE_CATEGORIES.flatMap((category) => {
-    const entries = entriesByCategory.get(category.key);
-    if (!entries || entries.length === 0) {
-      return [];
-    }
-    return [
-      {
-        key: category.key,
-        label: resourceCategoryLabel(category.key, locale),
-        entries,
-      },
-    ];
+    const entry = byKey.get(category.key);
+    return entry ? [entry] : [];
   });
 }
 
 // The client-facing "what's happening on this project" area: one containerless
 // Tabs surface, Current Task first and open by default, then one tab per
-// category that actually has content. No overarching title — the tabs are
-// self-labeling, and a generic label like "Documents" would misdescribe a
-// non-document tab like Current Task. Composes features/current-task and
-// features/resources, so per Constitution III (feature isolation) it can't
-// live inside either feature folder — colocated with the page instead.
+// category that has something to say. No overarching title — the tabs are
+// self-labeling, and a generic label like "Documents" would misdescribe both a
+// non-document tab like Current Task and content that is no longer organised
+// by document at all. Composes features/current-task and features/resources,
+// so per Constitution III it cannot live inside either feature folder.
 export function ClientMainTabs({
   projectId,
   className,
@@ -75,12 +42,12 @@ export function ClientMainTabs({
   projectId: string;
   className?: string;
 }) {
-  const { data: resources } = useResources(projectId);
+  const { data: content } = useCategoryContent(projectId);
   const locale = useLocale();
   const t = useTranslations("Projects.ClientMainTabs");
   const currentTaskLabel = useTranslations("Projects.CurrentTaskCard")("title");
 
-  const categoryGroups = resources ? groupSectionsByCategory(resources, locale) : [];
+  const categories = content ? orderByFrozenList(content) : [];
 
   return (
     <Tabs
@@ -90,18 +57,24 @@ export function ClientMainTabs({
     >
       <TabsList className="w-fit shrink-0">
         <TabsTrigger value={CURRENT_TASK_TAB_KEY}>{currentTaskLabel}</TabsTrigger>
-        {categoryGroups.map((group) => (
-          <TabsTrigger key={group.key} value={group.key}>
-            {group.label}
+        {categories.map((category) => (
+          <TabsTrigger key={category.categoryKey} value={category.categoryKey}>
+            {resourceCategoryLabel(category.categoryKey, locale)}
           </TabsTrigger>
         ))}
       </TabsList>
       <TabsContent value={CURRENT_TASK_TAB_KEY} className="min-h-0">
         <CurrentTaskCard projectId={projectId} />
       </TabsContent>
-      {categoryGroups.map((group) => (
-        <TabsContent key={group.key} value={group.key} className="min-h-0 overflow-y-auto">
-          <CategorySectionAccordion entries={group.entries} />
+      {categories.map((category) => (
+        <TabsContent
+          key={category.categoryKey}
+          value={category.categoryKey}
+          className="min-h-0 overflow-y-auto"
+        >
+          <p className="max-w-prose leading-relaxed whitespace-pre-line text-foreground/90">
+            {category.content}
+          </p>
         </TabsContent>
       ))}
     </Tabs>

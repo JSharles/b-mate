@@ -59,12 +59,3 @@ export const RESOURCE_CATEGORIES: readonly ResourceCategoryDefinition[] = [
       'Anything of substance that genuinely belongs to none of the categories above. This category exists so that no information is ever dropped.',
   },
 ];
-
-export function isResourceCategoryKey(
-  value: unknown,
-): value is ResourceCategoryKey {
-  return (
-    typeof value === 'string' &&
-    (RESOURCE_CATEGORY_KEYS as readonly string[]).includes(value)
-  );
-}
