@@ -44,7 +44,7 @@ describe("CurrentTaskCard", () => {
     expect(screen.getByText("empty")).toBeInTheDocument();
   });
 
-  it("shows each item's title and every present section (why/impact/status), with no link to GitHub (clients never go there)", () => {
+  it("shows the title and why directly on the card, with no link to GitHub (clients never go there)", () => {
     mockedUseCurrentTask.mockReturnValue({
       data: [
         {
@@ -64,17 +64,11 @@ describe("CurrentTaskCard", () => {
     expect(
       screen.getByText("Two people editing the same thing could silently lose one change."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Nothing changes in how you use the product.")).toBeInTheDocument();
-    expect(
-      screen.getByText("A first version was built and is being reviewed."),
-    ).toBeInTheDocument();
     expect(screen.getByText("why")).toBeInTheDocument();
-    expect(screen.getByText("impact")).toBeInTheDocument();
-    expect(screen.getByText("status")).toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("shows the title with no sections when the item has why/impact/status all null (e.g. a draft issue)", () => {
+  it("shows the title with no why section when the item has why null (e.g. a draft issue)", () => {
     mockedUseCurrentTask.mockReturnValue({
       data: [{ ...baseItem, title: "Draft: sketch the new flow" }],
       isPending: false,
@@ -84,54 +78,48 @@ describe("CurrentTaskCard", () => {
 
     expect(screen.getByText("Draft: sketch the new flow")).toBeInTheDocument();
     expect(screen.queryByText("why")).not.toBeInTheDocument();
-    expect(screen.queryByText("impact")).not.toBeInTheDocument();
-    expect(screen.queryByText("status")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("shows only the sections that are actually present, not every one unconditionally", () => {
-    mockedUseCurrentTask.mockReturnValue({
-      data: [{ ...baseItem, title: "Task A", why: "Because reasons." }],
-      isPending: false,
-    } as unknown as ReturnType<typeof useCurrentTask>);
-
-    render(<CurrentTaskCard projectId="project-1" />);
-
-    expect(screen.getByText("why")).toBeInTheDocument();
-    expect(screen.getByText("Because reasons.")).toBeInTheDocument();
-    expect(screen.queryByText("impact")).not.toBeInTheDocument();
-    expect(screen.queryByText("status")).not.toBeInTheDocument();
-  });
-
-  // 2026-08-10: a scrollable region nested inside a swipeable carousel was
-  // ruled out as a gesture trap — long why/impact/status content clips
-  // instead, with a "read more" link into a Sheet, shown only when the
-  // content actually overflows its allotted space.
-  describe("overflowing middle content", () => {
-    it("shows no 'read more' link when the content fits (jsdom's default scrollHeight === clientHeight)", () => {
+  // 2026-08-10: impact/état moved off the card entirely (never shown
+  // inline regardless of length) and into a "read more" side panel — only
+  // why (short by the vulgarization prompt's own design) stays directly on
+  // the card, so it reads as a scannable status widget rather than a wall
+  // of text, while impact/état stay one tap away instead of vanishing.
+  describe("impact/état detail panel", () => {
+    it("shows no 'read more' link when impact and état are both absent", () => {
       mockedUseCurrentTask.mockReturnValue({
-        data: [{ ...baseItem, title: "Task A", why: "A short reason." }],
+        data: [{ ...baseItem, title: "Task A", why: "Because reasons." }],
         isPending: false,
       } as unknown as ReturnType<typeof useCurrentTask>);
 
       render(<CurrentTaskCard projectId="project-1" />);
 
       expect(screen.queryByRole("button", { name: "readMore" })).not.toBeInTheDocument();
+      expect(screen.queryByText("impact")).not.toBeInTheDocument();
+      expect(screen.queryByText("status")).not.toBeInTheDocument();
     });
 
-    it("shows a 'read more' link that opens a Sheet with the full content when the middle section overflows", async () => {
-      const scrollHeightSpy = vi
-        .spyOn(HTMLElement.prototype, "scrollHeight", "get")
-        .mockReturnValue(500);
-      const clientHeightSpy = vi
-        .spyOn(HTMLElement.prototype, "clientHeight", "get")
-        .mockReturnValue(200);
+    it("shows a 'read more' link when only impact is present, never impact itself directly on the card", () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [{ ...baseItem, title: "Task A", impact: "Nothing changes day to day." }],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+
+      render(<CurrentTaskCard projectId="project-1" />);
+
+      expect(screen.getByRole("button", { name: "readMore" })).toBeInTheDocument();
+      expect(screen.queryByText("Nothing changes day to day.")).not.toBeInTheDocument();
+    });
+
+    it("opens a Sheet with the full impact/état detail when 'read more' is clicked", async () => {
       mockedUseCurrentTask.mockReturnValue({
         data: [
           {
             ...baseItem,
             title: "Task A",
-            why: "A reason long enough to overflow its allotted space.",
+            impact: "Nothing changes day to day.",
+            status: "A first version was built and is being reviewed.",
           },
         ],
         isPending: false,
@@ -143,15 +131,14 @@ describe("CurrentTaskCard", () => {
 
       // Radix marks everything outside the open Sheet aria-hidden (correct
       // focus-trap behavior), so a role query only reaches the Sheet's own
-      // copy of the title while it's open — but getByText isn't filtered
-      // by that, so the why text is still findable twice (card + Sheet).
+      // copy of the title while it's open.
       expect(screen.getByRole("heading", { name: "Task A" })).toBeInTheDocument();
+      expect(screen.getByText("Nothing changes day to day.")).toBeInTheDocument();
       expect(
-        screen.getAllByText("A reason long enough to overflow its allotted space."),
-      ).toHaveLength(2);
-
-      scrollHeightSpy.mockRestore();
-      clientHeightSpy.mockRestore();
+        screen.getByText("A first version was built and is being reviewed."),
+      ).toBeInTheDocument();
+      expect(screen.getByText("impact")).toBeInTheDocument();
+      expect(screen.getByText("status")).toBeInTheDocument();
     });
   });
 

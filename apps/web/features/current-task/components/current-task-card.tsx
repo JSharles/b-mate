@@ -2,8 +2,8 @@
 
 import { ChevronLeft, ChevronRight, CircleDot } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import type { ReactNode, RefObject } from "react";
-import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import type { CurrentTaskItem } from "schemas";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -23,48 +23,6 @@ import {
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
 import { useCurrentTask } from "../hooks";
-
-// A carousel disqualifies the obvious fix (let the card scroll internally
-// — a scrollable region nested inside a swipeable carousel is a two-finger-
-// gesture trap on touch, and a mismatched inner/outer scroll affordance on
-// desktop). Detects when the clipped middle content (why/impact/status)
-// genuinely overflows its allotted space, so the "read more" affordance
-// below only ever appears when there's actually more to read — not as a
-// permanent fixture on every card regardless of length.
-//
-// Two refs, not one: `outerRef` is the clipped box (flex-1/min-h-0, its own
-// size set by the flex layout, never by its content) and `innerRef` is the
-// actual text stack inside it (natural, unclipped size). Observing outerRef
-// alone missed real overflow — its own box never resizes just because
-// content inside it changed height (e.g. once a web font finishes loading
-// and text reflows to a taller natural size after the very first
-// measurement already ran), so a page caught mid-font-swap could measure
-// "fits" once and never re-check. Observing innerRef instead means the
-// check re-runs whenever the content's own natural height actually changes.
-function useIsOverflowing<TClip extends HTMLElement, TContent extends HTMLElement>(): {
-  clipRef: RefObject<TClip | null>;
-  contentRef: RefObject<TContent | null>;
-  isOverflowing: boolean;
-} {
-  const clipRef = useRef<TClip>(null);
-  const contentRef = useRef<TContent>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-
-  useEffect(() => {
-    const clip = clipRef.current;
-    const content = contentRef.current;
-    if (!clip || !content) return;
-
-    const check = () => setIsOverflowing(clip.scrollHeight > clip.clientHeight + 1);
-    check();
-
-    const observer = new ResizeObserver(check);
-    observer.observe(content);
-    return () => observer.disconnect();
-  }, []);
-
-  return { clipRef, contentRef, isOverflowing };
-}
 
 // Signature Card treatment (DESIGN.md "Signature Card" exception) — reserved
 // for this card because it's the core value proposition, not a pattern to
@@ -242,37 +200,18 @@ function IridescentGlow() {
   );
 }
 
-// 2026-08-09: why/impact/status replace the old single description blob
-// (docs/PRODUCT.md "Working notes") — a client scans named sections far
-// faster than one blob of text. Any can be absent: the vulgarization
-// prompt is instructed to leave a section out rather than invent content
-// the source doesn't support (Constitution II, "Never fabricate").
-// Extracted so the exact same content renders both clipped (on the card)
-// and in full (inside the "read more" Sheet) without duplicating markup.
-function MiddleSections({ item, t }: { item: CurrentTaskItem; t: ReturnType<typeof useTranslations> }) {
-  return (
-    <>
-      {item.why && (
-        <Section label={t("why")}>
-          <p className="text-sm leading-relaxed text-foreground">{item.why}</p>
-        </Section>
-      )}
-      {item.impact && (
-        <Section label={t("impact")}>
-          <p className="text-sm leading-relaxed text-foreground">{item.impact}</p>
-        </Section>
-      )}
-      {item.status && (
-        <Section label={t("status")}>
-          <p className="text-sm leading-relaxed text-foreground">{item.status}</p>
-        </Section>
-      )}
-    </>
-  );
-}
-
-// The full detail for one in-progress task — En cours/Pourquoi/Impact/État,
-// then the timeline sentence and progress bar.
+// 2026-08-10: only the title, why, timeline, and estimate render directly
+// on the card now — impact/état move entirely into the "read more" panel,
+// never shown inline regardless of length. Trading a little of "total
+// transparency" (docs/PRODUCT.md tagline) for a genuinely scannable,
+// game-like card was a deliberate call, not an oversight: why (the
+// reassurance a non-technical client actually reads first) stays exactly
+// where they land, without a click; the rest is one tap away, not hidden
+// behind a length-dependent affordance that could vanish or reappear.
+// This also removes the whole clip/mask/overflow-detection machinery the
+// previous design needed — why alone, bounded by the vulgarization
+// prompt's own "one or two short sentences" limit, essentially never
+// needs it.
 function TaskCardBody({
   item,
   locale,
@@ -282,8 +221,7 @@ function TaskCardBody({
   locale: string;
   t: ReturnType<typeof useTranslations>;
 }) {
-  const { clipRef, contentRef, isOverflowing } = useIsOverflowing<HTMLDivElement, HTMLDivElement>();
-  const hasMiddleContent = item.why != null || item.impact != null || item.status != null;
+  const hasDetail = item.impact != null || item.status != null;
 
   return (
     <div className="flex min-h-0 flex-1 max-w-prose flex-col gap-5">
@@ -300,94 +238,40 @@ function TaskCardBody({
         </div>
       </Section>
 
-      {/* min-h-0 is load-bearing: without it, a flex child's default
-          min-height:auto refuses to shrink below its content's natural
-          size, defeating overflow-hidden entirely — the card would just
-          grow past its own max-height instead of clipping. flex-1 lets
-          this be the one section that absorbs whatever space the fixed
-          title/timeline blocks around it don't use. */}
-      {hasMiddleContent && (
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          {/* The text's own clip box gives up a fixed 2rem strip below it
-              (the plain shrink-0 spacer, not a percentage/calc height on
-              clipRef itself) — a gutter reserved for the "read more" chip,
-              so it can never overlap the last visible line the way a chip
-              merely positioned bottom-right over the full-height text did.
-              flex-1 + min-h-0 here, not height:calc(100% - 2rem): a
-              percentage height stacked on top of *this* element's own
-              already-percentage/flex-derived height resolved against the
-              wrong reference in practice (measured — not a hypothetical
-              concern) — flex-item sizing (flex-basis/flex-grow, resolved
-              directly by the flex algorithm) doesn't have that failure
-              mode, same reasoning as the outer h-full chain fix above.
-              The gap costs nothing when nothing overflows (there's already
-              slack in this flex-1 area from mt-auto pushing the timeline
-              down). */}
-          {/* mask-image, not an overlay div (tried first, looked like a
-              flat rectangle glued on top — this card's actual surface is
-              translucent glass over blurred, colorful glow blobs, not a
-              flat color a gradient overlay could ever match). A mask
-              fades the TEXT itself to transparent, so whatever's actually
-              behind it — glass, blur, glow — just shows through naturally
-              regardless of its color. Same WebkitMaskImage pairing as
-              LiveIndicator's conic-gradient mask above, for Safari.
-              Applied to this clip box, not the (unmasked, ref'd-only-for-
-              resize-detection) content div below it: the mask's own
-              percentage stops are relative to *this* element's own box,
-              which correctly matches what's visible — masking the content
-              div directly would size the fade against its full natural
-              height (often much taller, mostly clipped away already),
-              placing it way below the visible area. */}
-          <div
-            ref={clipRef}
-            className="min-h-0 flex-1 overflow-hidden"
-            style={
-              isOverflowing
-                ? {
-                    WebkitMaskImage:
-                      "linear-gradient(to bottom, black calc(100% - 1.5rem), transparent)",
-                    maskImage: "linear-gradient(to bottom, black calc(100% - 1.5rem), transparent)",
-                  }
-                : undefined
-            }
-          >
-            <div ref={contentRef} className="flex flex-col gap-5">
-              <MiddleSections item={item} t={t} />
+      {item.why && (
+        <Section label={t("why")}>
+          <p className="text-sm leading-relaxed text-foreground">{item.why}</p>
+        </Section>
+      )}
+
+      {hasDetail && (
+        <Sheet>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              className="focus-visible:ring-ring/50 w-fit text-sm font-medium text-primary hover:underline focus-visible:rounded-sm focus-visible:ring-[3px] focus-visible:outline-none"
+            >
+              {t("readMore")}
+            </button>
+          </SheetTrigger>
+          <SheetContent side="right" className="gap-0 overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>{item.title}</SheetTitle>
+            </SheetHeader>
+            <div className="flex flex-col gap-5 px-4 pb-4">
+              {item.impact && (
+                <Section label={t("impact")}>
+                  <p className="text-sm leading-relaxed text-foreground">{item.impact}</p>
+                </Section>
+              )}
+              {item.status && (
+                <Section label={t("status")}>
+                  <p className="text-sm leading-relaxed text-foreground">{item.status}</p>
+                </Section>
+              )}
             </div>
-          </div>
-          <div className="h-8 shrink-0" aria-hidden />
-          {isOverflowing && (
-            <Sheet>
-              {/* Scrolling this region directly was ruled out — a nested
-                  scroll area inside a swipeable carousel is a two-finger-
-                  gesture trap on touch. An explicit "read more" action into
-                  a side Sheet stays in context (the card is still visible
-                  behind it) without that risk, and only ever appears when
-                  content actually needs it. Its own small frosted chip
-                  (not just plain text) keeps it legible regardless of
-                  what's blurred behind it at that exact spot, and reads as
-                  a real button rather than a stray link floating in space —
-                  and now sits in the reserved gutter above, never over the
-                  text itself. */}
-              <SheetTrigger asChild>
-                <button
-                  type="button"
-                  className="bg-card/80 text-primary shadow-sm backdrop-blur-sm focus-visible:ring-ring/50 absolute right-0 bottom-0 rounded-full px-2.5 py-1 text-xs font-medium hover:underline focus-visible:ring-[3px] focus-visible:outline-none"
-                >
-                  {t("readMore")}
-                </button>
-              </SheetTrigger>
-              <SheetContent side="right" className="gap-0 overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>{item.title}</SheetTitle>
-                </SheetHeader>
-                <div className="flex flex-col gap-5 px-4 pb-4">
-                  <MiddleSections item={item} t={t} />
-                </div>
-              </SheetContent>
-            </Sheet>
-          )}
-        </div>
+          </SheetContent>
+        </Sheet>
       )}
 
       {/* Time/estimate/confidence: one vertical reading order, not a
