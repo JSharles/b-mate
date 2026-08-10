@@ -81,26 +81,28 @@ describe("CurrentTaskCard", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  // 2026-08-10: impact/état moved off the card entirely (never shown
-  // inline regardless of length) and into a "read more" side panel — only
-  // why (short by the vulgarization prompt's own design) stays directly on
-  // the card, so it reads as a scannable status widget rather than a wall
-  // of text, while impact/état stay one tap away instead of vanishing.
-  describe("impact/état detail panel", () => {
-    it("shows no 'read more' link when impact and état are both absent", () => {
+  // 2026-08-10: impact/état never render on the card itself (only "read
+  // more" reveals them) — only why (short by the vulgarization prompt's
+  // own design) stays directly on the card. The panel always shows the
+  // same three sections (why repeated, impact, état) and the button
+  // always renders, regardless of which fields the AI actually filled in
+  // for that task — a client shouldn't find a differently-shaped panel
+  // from one task to the next. A field the model genuinely left null
+  // still gets its own section, with a "not provided" placeholder instead
+  // of being omitted.
+  describe("detail panel (why/impact/état, always shown)", () => {
+    it("always shows the 'read more' link, even when why/impact/état are all null", () => {
       mockedUseCurrentTask.mockReturnValue({
-        data: [{ ...baseItem, title: "Task A", why: "Because reasons." }],
+        data: [{ ...baseItem, title: "Task A" }],
         isPending: false,
       } as unknown as ReturnType<typeof useCurrentTask>);
 
       render(<CurrentTaskCard projectId="project-1" />);
 
-      expect(screen.queryByRole("button", { name: "readMore" })).not.toBeInTheDocument();
-      expect(screen.queryByText("impact")).not.toBeInTheDocument();
-      expect(screen.queryByText("status")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "readMore" })).toBeInTheDocument();
     });
 
-    it("shows a 'read more' link when only impact is present, never impact itself directly on the card", () => {
+    it("never shows impact directly on the card, only behind 'read more'", () => {
       mockedUseCurrentTask.mockReturnValue({
         data: [{ ...baseItem, title: "Task A", impact: "Nothing changes day to day." }],
         isPending: false,
@@ -108,16 +110,16 @@ describe("CurrentTaskCard", () => {
 
       render(<CurrentTaskCard projectId="project-1" />);
 
-      expect(screen.getByRole("button", { name: "readMore" })).toBeInTheDocument();
       expect(screen.queryByText("Nothing changes day to day.")).not.toBeInTheDocument();
     });
 
-    it("opens a Sheet with the full impact/état detail when 'read more' is clicked", async () => {
+    it("opens a Sheet with all three sections (why/impact/état) when 'read more' is clicked", async () => {
       mockedUseCurrentTask.mockReturnValue({
         data: [
           {
             ...baseItem,
             title: "Task A",
+            why: "Some accounts could stay accessible longer than they should.",
             impact: "Nothing changes day to day.",
             status: "A first version was built and is being reviewed.",
           },
@@ -139,6 +141,25 @@ describe("CurrentTaskCard", () => {
       ).toBeInTheDocument();
       expect(screen.getByText("impact")).toBeInTheDocument();
       expect(screen.getByText("status")).toBeInTheDocument();
+      // why is duplicated (card + Sheet) once the Sheet is open.
+      expect(
+        screen.getAllByText("Some accounts could stay accessible longer than they should."),
+      ).toHaveLength(2);
+    });
+
+    it("shows a 'not provided' placeholder for whichever fields the AI left null, instead of omitting them", async () => {
+      mockedUseCurrentTask.mockReturnValue({
+        data: [{ ...baseItem, title: "Task A" }],
+        isPending: false,
+      } as unknown as ReturnType<typeof useCurrentTask>);
+      const user = userEvent.setup();
+
+      render(<CurrentTaskCard projectId="project-1" />);
+      await user.click(screen.getByRole("button", { name: "readMore" }));
+
+      expect(screen.getByText("impact")).toBeInTheDocument();
+      expect(screen.getByText("status")).toBeInTheDocument();
+      expect(screen.getAllByText("notProvided")).toHaveLength(3);
     });
   });
 

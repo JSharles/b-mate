@@ -304,7 +304,8 @@
       "previousTask": "Previous task",
       "nextTask": "Next task",
       "selectTask": "View \"{title}\"",
-      "readMore": "Read more"
+      "readMore": "Read more",
+      "notProvided": "Not provided for this task."
     },
     "TeamPanel": {
       "developer": "Developer",

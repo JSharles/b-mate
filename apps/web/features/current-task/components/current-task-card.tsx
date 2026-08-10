@@ -201,17 +201,20 @@ function IridescentGlow() {
 }
 
 // 2026-08-10: only the title, why, timeline, and estimate render directly
-// on the card now — impact/état move entirely into the "read more" panel,
-// never shown inline regardless of length. Trading a little of "total
-// transparency" (docs/PRODUCT.md tagline) for a genuinely scannable,
-// game-like card was a deliberate call, not an oversight: why (the
-// reassurance a non-technical client actually reads first) stays exactly
-// where they land, without a click; the rest is one tap away, not hidden
-// behind a length-dependent affordance that could vanish or reappear.
-// This also removes the whole clip/mask/overflow-detection machinery the
-// previous design needed — why alone, bounded by the vulgarization
-// prompt's own "one or two short sentences" limit, essentially never
-// needs it.
+// on the card — impact/état never render inline, only in the "read more"
+// panel. Why (the reassurance a non-technical client actually reads
+// first) stays exactly where they land, without a click; the rest is one
+// tap away.
+//
+// The panel itself always shows all three sections (why repeated, impact,
+// état) and the button always renders, regardless of what the AI actually
+// filled in — a client landing on two different tasks should find the
+// same panel shape every time, not a structure that silently varies with
+// how much the source ticket happened to support. A field the model
+// genuinely left null (Constitution II, "never fabricate" — a locked
+// product principle, not something this component works around) still
+// shows its own section, with an explicit "not provided" placeholder
+// instead of inventing something plausible.
 function TaskCardBody({
   item,
   locale,
@@ -221,8 +224,6 @@ function TaskCardBody({
   locale: string;
   t: ReturnType<typeof useTranslations>;
 }) {
-  const hasDetail = item.impact != null || item.status != null;
-
   return (
     <div className="flex min-h-0 flex-1 max-w-prose flex-col gap-5">
       <Section label={t("inProgress")}>
@@ -244,35 +245,53 @@ function TaskCardBody({
         </Section>
       )}
 
-      {hasDetail && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <button
-              type="button"
-              className="focus-visible:ring-ring/50 w-fit text-sm font-medium text-primary hover:underline focus-visible:rounded-sm focus-visible:ring-[3px] focus-visible:outline-none"
-            >
-              {t("readMore")}
-            </button>
-          </SheetTrigger>
-          <SheetContent side="right" className="gap-0 overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>{item.title}</SheetTitle>
-            </SheetHeader>
-            <div className="flex flex-col gap-5 px-4 pb-4">
-              {item.impact && (
-                <Section label={t("impact")}>
-                  <p className="text-sm leading-relaxed text-foreground">{item.impact}</p>
-                </Section>
-              )}
-              {item.status && (
-                <Section label={t("status")}>
-                  <p className="text-sm leading-relaxed text-foreground">{item.status}</p>
-                </Section>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <Sheet>
+        <SheetTrigger asChild>
+          <button
+            type="button"
+            className="focus-visible:ring-ring/50 w-fit text-sm font-medium text-primary hover:underline focus-visible:rounded-sm focus-visible:ring-[3px] focus-visible:outline-none"
+          >
+            {t("readMore")}
+          </button>
+        </SheetTrigger>
+        <SheetContent side="right" className="gap-0 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{item.title}</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-5 px-4 pb-4">
+            <Section label={t("why")}>
+              <p
+                className={cn(
+                  "text-sm leading-relaxed",
+                  item.why ? "text-foreground" : "text-muted-foreground italic",
+                )}
+              >
+                {item.why ?? t("notProvided")}
+              </p>
+            </Section>
+            <Section label={t("impact")}>
+              <p
+                className={cn(
+                  "text-sm leading-relaxed",
+                  item.impact ? "text-foreground" : "text-muted-foreground italic",
+                )}
+              >
+                {item.impact ?? t("notProvided")}
+              </p>
+            </Section>
+            <Section label={t("status")}>
+              <p
+                className={cn(
+                  "text-sm leading-relaxed",
+                  item.status ? "text-foreground" : "text-muted-foreground italic",
+                )}
+              >
+                {item.status ?? t("notProvided")}
+              </p>
+            </Section>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Time/estimate/confidence: one vertical reading order, not a
           separate bordered sidebar (that read as a dashboard stat panel
