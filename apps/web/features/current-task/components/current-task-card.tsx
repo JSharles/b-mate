@@ -288,12 +288,12 @@ function TaskCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl transition-all duration-300",
+        "relative h-full overflow-hidden rounded-xl transition-all duration-300",
         !active && "scale-[0.94] opacity-50",
       )}
     >
       <IridescentGlow />
-      <Card className="relative border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
+      <Card className="relative h-full border-2 border-white/15 bg-white/[0.06] shadow-xl backdrop-blur-2xl">
         <CardContent className="flex flex-col gap-3 py-6">
           <TaskCardBody item={item} locale={locale} t={t} />
         </CardContent>
@@ -359,10 +359,16 @@ function TaskCardCarousel({
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 flex flex-col gap-4 motion-safe:duration-300">
       <Carousel setApi={setApi} opts={{ align: "center", loop: false }}>
-        <CarouselContent className="items-start">
+        {/* No items-start override here (unlike a plain content carousel)
+            — cards of unequal height should still read as one consistent
+            row, not a ragged one where a short task's card visibly stops
+            short next to a long one's. Default flex stretch handles it,
+            provided every layer between here and TaskCard's own Card
+            propagates h-full instead of collapsing to its own content. */}
+        <CarouselContent>
           {items.map((item, index) => (
             <CarouselItem key={item.title} className="basis-[85%]">
-              <div className="relative">
+              <div className="relative h-full">
                 <TaskCard item={item} locale={locale} t={t} active={index === current} />
                 {index !== current && (
                   <button
