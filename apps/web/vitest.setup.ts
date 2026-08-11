@@ -77,6 +77,7 @@ vi.mock("next-intl", async (importOriginal) => {
     // Same contract as useTranslations: formatted output is deterministic and
     // decoupled from real copy, so a component can render an elapsed time
     // without a test needing an Intl provider or a frozen clock.
+    useNow: () => new Date("2026-08-11T12:00:00.000Z"),
     useFormatter: () => ({
       relativeTime: () => "relativeTime",
       dateTime: () => "dateTime",

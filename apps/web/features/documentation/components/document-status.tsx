@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, CircleDashed, Trash2 } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useNow, useTranslations } from "next-intl";
 import type { SourceDocument } from "schemas";
 import { cn } from "@/shared/lib/utils";
 
@@ -24,6 +24,12 @@ export function DocumentStatus({
 }) {
   const t = useTranslations("Projects.Documentation.Documents");
   const format = useFormatter();
+  // `relativeTime` needs an explicit reference point. Without one next-intl
+  // falls back to "now" at render time and logs ENVIRONMENT_FALLBACK, and the
+  // server and client can disagree about what "now" was. `useNow` also makes
+  // the elapsed time actually advance, which is the whole reason it is here:
+  // a document sits in the queue for minutes to hours.
+  const now = useNow({ updateInterval: 60_000 });
 
   const muted = cn(
     "inline-flex items-center gap-1.5 text-xs text-muted-foreground",
@@ -35,7 +41,7 @@ export function DocumentStatus({
   // is a promise of imminence, and holding one that long is what drives a
   // contributor to re-upload the same document. Elapsed time turns "is this
   // stuck?" into a question the row answers by itself.
-  const since = createdAt ? format.relativeTime(new Date(createdAt)) : null;
+  const since = createdAt ? format.relativeTime(new Date(createdAt), now) : null;
 
   if (PROCESSING_STATUSES.has(status)) {
     return (
