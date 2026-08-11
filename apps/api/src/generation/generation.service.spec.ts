@@ -415,4 +415,52 @@ describe('GenerationService', () => {
     ).resolves.toEqual({ applied: false, reason: 'stale' });
     expect(handlers.get).not.toHaveBeenCalled();
   });
+  // Restarting a document's processing raised the "processing did not
+  // complete" banner right back, because the failure it counted was the one
+  // just re-run. `superseded` was modelled as a terminal status and written by
+  // nothing, so a dead operation stayed actionable forever.
+  it('retires the operation a retry replaces', async () => {
+    const previous = {
+      ...operation,
+      status: 'needs_attention',
+      updatedAt: now,
+      sourceDocumentId: null,
+      baseSourceRevisionId: null,
+      sourceRevisionId: null,
+      categoryReferenceId: null,
+      profileProposalId: null,
+      profileRevisionId: null,
+      clientReleaseId: null,
+      clientCategoryContentId: null,
+      promptVersion: 'v1',
+      outputContractVersion: 'v1',
+    };
+    prisma.generationOperation.findUnique.mockResolvedValue(previous);
+    prisma.generationOperation.upsert.mockResolvedValue({
+      ...operation,
+      id: '00000000-0000-4000-8000-000000000009',
+    });
+
+    await expect(service.retry(operation.id)).resolves.toMatchObject({
+      id: '00000000-0000-4000-8000-000000000009',
+    });
+
+    expect(prisma.generationOperation.updateMany).toHaveBeenCalledWith({
+      where: { id: operation.id, status: 'needs_attention' },
+      data: expect.objectContaining({
+        status: 'superseded',
+        supersededAt: expect.any(Date),
+      }),
+    });
+  });
+
+  it('refuses to retry an operation that is still live', async () => {
+    prisma.generationOperation.findUnique.mockResolvedValue({
+      ...operation,
+      status: 'running',
+    });
+
+    await expect(service.retry(operation.id)).resolves.toBeNull();
+    expect(prisma.generationOperation.upsert).not.toHaveBeenCalled();
+  });
 });

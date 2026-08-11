@@ -376,7 +376,7 @@ describe('SourceDocumentService', () => {
   it('queues a fresh extraction attempt and exposes retrying state for a failed document', async () => {
     prisma.sourceDocument.findFirst.mockResolvedValue({
       ...sourceDocument({ status: 'failed', failureCode: 'PROVIDER_DOWN' }),
-      generationOperations: [{ id: operationId }],
+      generationOperations: [{ id: operationId, type: 'document_extraction' }],
     });
     generation.retry.mockResolvedValue({
       id: '00000000-0000-4000-8000-000000000005',
@@ -442,6 +442,63 @@ describe('SourceDocumentService', () => {
       service.cancelProcessing(userId, projectId, documentId),
     ).rejects.toEqual(new NotFoundException({ code: 'NOT_FOUND' }));
     expect(generation.cancel).not.toHaveBeenCalled();
+  });
+
+  // Restricted to extraction, retry restarted a stage that had already
+  // succeeded when it was the consolidation that stopped — and resolved to the
+  // finished operation, leaving the document "retrying" with no work behind it.
+  it('restarts whichever stage stopped, not always the first one', async () => {
+    prisma.sourceDocument.findFirst.mockResolvedValue({
+      ...sourceDocument({ status: 'failed' }),
+      generationOperations: [
+        { id: 'consolidation-1', type: 'source_consolidation' },
+      ],
+    });
+    generation.retry.mockResolvedValue({
+      id: 'consolidation-2',
+      status: 'queued',
+    } as never);
+    prisma.sourceDocument.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(
+      service.retryProcessing(userId, projectId, documentId),
+    ).resolves.toEqual({ operationId: 'consolidation-2', status: 'queued' });
+
+    // And it has to stand where that stage will pick it up. Every restart set
+    // `retrying`, which only extraction accepts, so a restarted consolidation
+    // was refused by its own handler and failed on the spot.
+    expect(prisma.sourceDocument.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'ready_to_consolidate' }),
+      }),
+    );
+
+    expect(prisma.sourceDocument.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: {
+          generationOperations: expect.objectContaining({
+            where: { status: { in: ['needs_attention', 'cancelled'] } },
+          }),
+        },
+      }),
+    );
+  });
+
+  it('refuses to announce a restart that queued nothing', async () => {
+    prisma.sourceDocument.findFirst.mockResolvedValue({
+      ...sourceDocument({ status: 'failed' }),
+      generationOperations: [{ id: operationId }],
+    });
+    // Deduplication can hand back the operation that already ran to completion.
+    generation.retry.mockResolvedValue({
+      id: operationId,
+      status: 'succeeded',
+    } as never);
+
+    await expect(
+      service.retryProcessing(userId, projectId, documentId),
+    ).rejects.toEqual(new NotFoundException({ code: 'NOT_FOUND' }));
+    expect(prisma.sourceDocument.updateMany).not.toHaveBeenCalled();
   });
 
   it('does not retry a document without a terminal extraction operation', async () => {

@@ -963,6 +963,29 @@ export class SourceRevisionService {
     if (advanced.count !== 1) {
       throw new Error('Canonical source head changed during commit.');
     }
+    await this.supersedeFailuresPinnedTo(tx, source.currentRevisionId);
+  }
+
+  // A failed operation pinned to a revision that is no longer the head cannot
+  // be acted on: its base is gone and re-running it would rebuild from a source
+  // that has since moved. It nevertheless stayed in `needs_attention` forever,
+  // so a single old failure kept the project's alarm lit for good — the count
+  // only ever grew.
+  private async supersedeFailuresPinnedTo(
+    tx: Prisma.TransactionClient,
+    previousRevisionId: string | null,
+  ): Promise<void> {
+    if (!previousRevisionId) return;
+    await tx.generationOperation.updateMany({
+      where: {
+        status: 'needs_attention',
+        OR: [
+          { sourceRevisionId: previousRevisionId },
+          { baseSourceRevisionId: previousRevisionId },
+        ],
+      },
+      data: { status: 'superseded', supersededAt: new Date() },
+    });
   }
 
   private hideNotFound(): never {

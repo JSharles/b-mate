@@ -22,12 +22,8 @@ const ACTIVE_OPERATION_STATUSES: readonly GenerationOperationStatus[] = [
   'waiting_provider',
   'retry_scheduled',
 ] as const;
-const TERMINAL_OPERATION_STATUSES: readonly GenerationOperationStatus[] = [
-  'succeeded',
-  'needs_attention',
-  'cancelled',
-  'superseded',
-] as const;
+export const TERMINAL_OPERATION_STATUSES: readonly GenerationOperationStatus[] =
+  ['succeeded', 'needs_attention', 'cancelled', 'superseded'] as const;
 const LEASE_MS = 30_000;
 const RETRY_DELAY_MS = 5_000;
 
@@ -433,7 +429,7 @@ export class GenerationService {
       (previous.status !== 'needs_attention' && previous.status !== 'cancelled')
     )
       return null;
-    return this.create({
+    const replacement = await this.create({
       projectId: previous.projectId,
       type: previous.type,
       deduplicationKey: `${previous.deduplicationKey}:retry:${previous.id}:${previous.updatedAt.getTime()}`,
@@ -450,5 +446,22 @@ export class GenerationService {
       clientCategoryContentId: previous.clientCategoryContentId ?? undefined,
       replacesOperationId: previous.id,
     });
+
+    // The operation that was just re-run is over, and something is running in
+    // its place. Left in `needs_attention` it kept the project's alarm lit
+    // forever: restarting a document's processing raised the "processing did
+    // not complete" banner right back, because the failure it named was the
+    // one just superseded. `superseded` was modelled for exactly this and
+    // never written by anything.
+    await this.prisma.generationOperation.updateMany({
+      where: { id: previous.id, status: previous.status },
+      data: {
+        status: 'superseded',
+        supersededAt: new Date(),
+        leaseOwner: null,
+        leaseExpiresAt: null,
+      },
+    });
+    return replacement;
   }
 }

@@ -5,11 +5,15 @@ import {
 } from '@nestjs/common';
 import type {
   GenerationOperation,
+  GenerationOperationType,
   SourceDocument,
   SourceDocumentStatus,
 } from '@prisma/client';
 import { createHash, randomUUID } from 'node:crypto';
-import { GenerationService } from '../../generation/generation.service';
+import {
+  GenerationService,
+  TERMINAL_OPERATION_STATUSES,
+} from '../../generation/generation.service';
 import { NotionConnectionService } from '../../notion-connection/notion-connection.service';
 import {
   NotionAccessError,
@@ -39,6 +43,17 @@ const PROCESSING_STATUSES = [
 // removal path already handles it. The code is what tells them apart, so the
 // interface can say "cancelled" rather than accusing the document of failing.
 export const CANCELLED_BY_CONTRIBUTOR = 'CANCELLED_BY_CONTRIBUTOR';
+
+// Where a restarted document has to stand for the stage to pick it up again.
+// Every restart used to set `retrying`, which only extraction accepts: a
+// restarted consolidation was refused by its own handler with "document is no
+// longer current", twice, and went straight back to needs_attention.
+const RESUME_STATUS_BY_STAGE: Partial<
+  Record<GenerationOperationType, SourceDocumentStatus>
+> = {
+  document_extraction: 'retrying',
+  source_consolidation: 'ready_to_consolidate',
+};
 const DOWNLOAD_URL_TTL_SECONDS = 15 * 60;
 const HIDDEN_NOT_FOUND = { code: 'NOT_FOUND' } as const;
 const ACCEPTED_MIME_TYPES = new Set([
@@ -329,13 +344,17 @@ export class SourceDocumentService {
       where: { id: documentId, projectId, status: 'failed' },
       include: {
         generationOperations: {
-          // A cancelled extraction is as re-runnable as a failed one — changing
-          // your mind after stopping the work should not mean re-uploading the
-          // document.
-          where: {
-            type: 'document_extraction',
-            status: { in: ['needs_attention', 'cancelled'] },
-          },
+          // Whichever stage stopped, not the first one. Restricted to
+          // extraction, this restarted a stage that had already succeeded when
+          // it was the consolidation that had stopped — and since that older
+          // extraction had already been re-run once, the retry resolved to the
+          // finished operation and queued nothing at all. The document was
+          // then marked "retrying" with no work behind it, which nothing
+          // recovers from.
+          //
+          // A cancelled stage is as re-runnable as a failed one: changing your
+          // mind after stopping should not mean re-uploading the document.
+          where: { status: { in: ['needs_attention', 'cancelled'] } },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -347,13 +366,20 @@ export class SourceDocumentService {
     }
 
     const replacement = await this.generation.retry(failedOperation.id);
-    if (!replacement) {
+    // A replacement that is already over is not a restart. Announcing one
+    // anyway is what left the document in `retrying` with nothing running: the
+    // interface said "processing restarted", the row spun, and no work existed
+    // behind it.
+    if (
+      !replacement ||
+      TERMINAL_OPERATION_STATUSES.includes(replacement.status)
+    ) {
       throw new NotFoundException(HIDDEN_NOT_FOUND);
     }
     await this.prisma.sourceDocument.updateMany({
       where: { id: documentId, projectId, status: 'failed' },
       data: {
-        status: 'retrying',
+        status: RESUME_STATUS_BY_STAGE[failedOperation.type] ?? 'retrying',
         failureCode: null,
         version: { increment: 1 },
       },

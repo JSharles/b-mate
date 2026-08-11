@@ -145,6 +145,39 @@ describe('SourceRevisionService flows', () => {
     expect(prisma.sourceRevisionChange.create).toHaveBeenCalledTimes(1);
     expect(prisma.categoryProjectionState.upsert).toHaveBeenCalled();
   });
+  // A failure pinned to the outgoing head cannot be acted on — its base is
+  // gone. It stayed in `needs_attention` regardless, so the project's alarm
+  // only ever grew: one old failure kept "le traitement n'a pas abouti" up for
+  // good, however many documents had succeeded since.
+  it('retires failures pinned to the revision it just replaced', async () => {
+    const { prisma, service } = setup();
+
+    await service.commitClarificationAnswers(asPrismaService(prisma), {
+      projectId,
+      projectSourceId: sourceId,
+      expectedSourceRevisionId: revisionId,
+      userId: 'user',
+      answers: [
+        {
+          clarificationId: 'clarification',
+          assertionId: 'assertion',
+          informationItemIds: ['item-1'],
+          content: 'resolved',
+        },
+      ],
+    });
+
+    expect(prisma.generationOperation.updateMany).toHaveBeenCalledWith({
+      where: {
+        status: 'needs_attention',
+        OR: [
+          { sourceRevisionId: revisionId },
+          { baseSourceRevisionId: revisionId },
+        ],
+      },
+      data: { status: 'superseded', supersededAt: expect.any(Date) },
+    });
+  });
   it('rejects duplicate or unknown clarification item answers and returns stale heads', async () => {
     const { prisma, service } = setup();
     await expect(
