@@ -6,7 +6,6 @@ export const SOURCE_CONSOLIDATION_OUTPUT_CONTRACT =
   'diaphane.source-consolidation.v1';
 
 export function buildSourceConsolidationPrompt(input: {
-  workingLanguage: string;
   inputFingerprint: string;
   observationCount: number;
 }): string {
@@ -14,7 +13,6 @@ export function buildSourceConsolidationPrompt(input: {
     `Prompt version: ${SOURCE_CONSOLIDATION_PROMPT_VERSION}`,
     `Input fingerprint: ${input.inputFingerprint}`,
     `Input observation count: ${input.observationCount}`,
-    `Canonical working language: ${input.workingLanguage}`,
     `Categories: ${DOCUMENTATION_CATEGORY_KEYS.join(', ')}`,
     '',
     'Assign exactly one disposition to every supplied observation.',
@@ -25,6 +23,7 @@ export function buildSourceConsolidationPrompt(input: {
     'Use exclude only for non-material content, with a concrete reason.',
     'Never emit a claim, item ID, observation ID, or category absent from the input.',
     'Do not rewrite current facts for style. Preserve stable item identity.',
+    'Write every canonical value in English; it is the one form the client-facing rewrite reads.',
     buildClarificationInstructions(),
     'Return only data matching the structured output contract.',
   ].join('\n');

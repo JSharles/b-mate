@@ -23,68 +23,6 @@ import {
   SOURCE_CONSOLIDATION_OUTPUT_CONTRACT,
   SOURCE_CONSOLIDATION_PROMPT_VERSION,
 } from './prompts/consolidation.prompt';
-import {
-  buildSourceLanguageChangePrompt,
-  SOURCE_LANGUAGE_CHANGE_OUTPUT_CONTRACT,
-  SOURCE_LANGUAGE_CHANGE_PROMPT_VERSION,
-} from './prompts/language-change.prompt';
-
-const SourceLanguageChangeOutputSchema = z
-  .object({
-    promptVersion: z.literal(SOURCE_LANGUAGE_CHANGE_PROMPT_VERSION),
-    inputFingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
-    items: z.array(
-      z
-        .object({
-          informationItemId: z.uuid(),
-          translatedContent: z.string().trim().min(1).max(20_000),
-        })
-        .strict(),
-    ),
-    accounting: z
-      .object({ translatedItemCount: z.number().int().nonnegative() })
-      .strict(),
-  })
-  .strict()
-  .superRefine((value, context) => {
-    if (value.accounting.translatedItemCount !== value.items.length) {
-      context.addIssue({
-        code: 'custom',
-        path: ['accounting', 'translatedItemCount'],
-        message: 'Language output accounting must match translated items.',
-      });
-    }
-  });
-
-const SOURCE_LANGUAGE_CHANGE_JSON_SCHEMA: Record<string, unknown> = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['promptVersion', 'inputFingerprint', 'items', 'accounting'],
-  properties: {
-    promptVersion: { const: SOURCE_LANGUAGE_CHANGE_PROMPT_VERSION },
-    inputFingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' },
-    items: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['informationItemId', 'translatedContent'],
-        properties: {
-          informationItemId: { type: 'string', format: 'uuid' },
-          translatedContent: { type: 'string', minLength: 1 },
-        },
-      },
-    },
-    accounting: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['translatedItemCount'],
-      properties: {
-        translatedItemCount: { type: 'integer', minimum: 0 },
-      },
-    },
-  },
-};
 
 const ConsolidationDispositionSchema = z
   .object({
@@ -219,9 +157,6 @@ export class SourceConsolidationHandler
   async buildRequest(
     operation: GenerationOperation,
   ): Promise<GenerationRequestInput> {
-    if (operation.sourceLanguageProposalId) {
-      return this.buildLanguageChangeRequest(operation);
-    }
     if (!operation.sourceDocumentId) {
       throw new Error('Source consolidation requires a document.');
     }
@@ -270,7 +205,6 @@ export class SourceConsolidationHandler
         {
           kind: 'text',
           text: buildSourceConsolidationPrompt({
-            workingLanguage: source?.workingLanguage ?? 'en',
             inputFingerprint: operation.inputFingerprint,
             observationCount: observations.length,
           }),
@@ -310,10 +244,6 @@ export class SourceConsolidationHandler
     operation: GenerationOperation,
     result: GenerationProviderResult,
   ): Promise<void> {
-    if (operation.sourceLanguageProposalId) {
-      await this.applyLanguageChange(tx, operation, result);
-      return;
-    }
     const output = SourceConsolidationOutputSchema.parse(result.output);
     if (output.inputFingerprint !== operation.inputFingerprint) {
       throw new Error('Consolidation output fingerprint does not match input.');
@@ -490,101 +420,6 @@ export class SourceConsolidationHandler
           },
         },
       });
-    }
-  }
-
-  private async buildLanguageChangeRequest(
-    operation: GenerationOperation,
-  ): Promise<GenerationRequestInput> {
-    const proposal = await this.prisma.sourceLanguageProposal.findFirst({
-      where: {
-        id: operation.sourceLanguageProposalId!,
-        projectSource: { projectId: operation.projectId },
-        confirmedAt: { not: null },
-      },
-      include: {
-        projectSource: {
-          include: {
-            currentRevision: {
-              include: {
-                items: {
-                  include: { categories: true },
-                  orderBy: { sortOrder: 'asc' },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-    if (
-      !proposal ||
-      proposal.expectedSourceRevisionId !==
-        proposal.projectSource.currentRevisionId ||
-      !proposal.expectedSourceRevisionId
-    ) {
-      throw new Error('Language change proposal is stale or unavailable.');
-    }
-    const items = proposal.projectSource.currentRevision?.items ?? [];
-    return {
-      parts: [
-        {
-          kind: 'text',
-          text: buildSourceLanguageChangePrompt({
-            fromLanguage: proposal.fromLanguage,
-            toLanguage: proposal.toLanguage,
-            inputFingerprint: operation.inputFingerprint,
-            itemCount: items.length,
-          }),
-        },
-        {
-          kind: 'json',
-          value: {
-            items: items.map((item) => ({
-              informationItemId: item.informationItemId,
-              kind: item.kind,
-              state: item.state,
-              content: item.content,
-              categories: item.categories.map(({ categoryKey }) => categoryKey),
-            })),
-          },
-        },
-      ],
-      outputContract: SOURCE_LANGUAGE_CHANGE_OUTPUT_CONTRACT,
-      outputSchema: SOURCE_LANGUAGE_CHANGE_JSON_SCHEMA,
-    };
-  }
-
-  private async applyLanguageChange(
-    tx: Prisma.TransactionClient,
-    operation: GenerationOperation,
-    result: GenerationProviderResult,
-  ): Promise<void> {
-    const output = SourceLanguageChangeOutputSchema.parse(result.output);
-    if (output.inputFingerprint !== operation.inputFingerprint) {
-      throw new Error('Language output fingerprint does not match input.');
-    }
-    const proposal = await tx.sourceLanguageProposal.findFirst({
-      where: {
-        id: operation.sourceLanguageProposalId!,
-        projectSource: { projectId: operation.projectId },
-        confirmedAt: { not: null },
-      },
-      include: { projectSource: true },
-    });
-    if (!proposal || !proposal.expectedSourceRevisionId) {
-      throw new Error('Language change proposal is unavailable.');
-    }
-    const committed = await this.revisions.commitLanguageChange(tx, {
-      projectId: operation.projectId,
-      projectSourceId: proposal.projectSourceId,
-      expectedSourceRevisionId: proposal.expectedSourceRevisionId,
-      toLanguage: proposal.toLanguage,
-      userId: proposal.createdByUserId,
-      translations: output.items,
-    });
-    if (committed.status === 'stale') {
-      throw new Error('Language change proposal became stale before commit.');
     }
   }
 }

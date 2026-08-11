@@ -90,7 +90,6 @@ export class FactualDraftHandler implements GenerationHandler, OnModuleInit {
           text: buildFactualDraftPrompt({
             categoryKey: draft.categoryKey,
             sourceRevisionId: draft.sourceRevisionId,
-            workingLanguage: draft.sourceRevision.projectSource.workingLanguage,
             items,
             correctionInstruction,
           }),

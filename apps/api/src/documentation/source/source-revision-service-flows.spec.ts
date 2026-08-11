@@ -33,7 +33,6 @@ describe('SourceRevisionService flows', () => {
       projectId,
       currentRevisionId: revisionId,
       nextSequence: 2,
-      workingLanguage: 'fr',
     };
     prisma.projectSource.findUnique.mockResolvedValue(source);
     prisma.projectSource.findUniqueOrThrow.mockResolvedValue(source);
@@ -219,46 +218,5 @@ describe('SourceRevisionService flows', () => {
         data: expect.objectContaining({ content: 'corrected' }),
       }),
     );
-  });
-  it('commits complete language translations and rejects duplicate/incomplete accounting', async () => {
-    const { prisma, service } = setup();
-    await expect(
-      service.commitLanguageChange(asPrismaService(prisma) as never, {
-        projectId,
-        projectSourceId: sourceId,
-        expectedSourceRevisionId: revisionId,
-        toLanguage: 'en',
-        userId: 'user',
-        translations: [
-          { informationItemId: 'item-1', translatedContent: 'one' },
-          { informationItemId: 'item-2', translatedContent: 'two' },
-        ],
-      }),
-    ).resolves.toEqual({ status: 'committed', revisionId: 'new-revision' });
-    expect(prisma.sourceRevisionChange.create).toHaveBeenCalledTimes(2);
-    const duplicate = [
-      { informationItemId: 'item-1', translatedContent: 'one' },
-      { informationItemId: 'item-1', translatedContent: 'again' },
-    ];
-    await expect(
-      service.commitLanguageChange(asPrismaService(prisma) as never, {
-        projectId,
-        projectSourceId: sourceId,
-        expectedSourceRevisionId: revisionId,
-        toLanguage: 'en',
-        userId: 'user',
-        translations: duplicate,
-      }),
-    ).rejects.toThrow('duplicate');
-    await expect(
-      service.commitLanguageChange(asPrismaService(prisma) as never, {
-        projectId,
-        projectSourceId: sourceId,
-        expectedSourceRevisionId: revisionId,
-        toLanguage: 'en',
-        userId: 'user',
-        translations: [],
-      }),
-    ).rejects.toThrow('account for every');
   });
 });

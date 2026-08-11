@@ -1,6 +1,4 @@
 import {
-  IsBoolean,
-  IsIn,
   IsOptional,
   IsString,
   IsUUID,
@@ -21,19 +19,4 @@ export class GuidedCorrectionDto {
   @IsString()
   @MaxLength(2_000)
   reason?: string;
-}
-
-export class CreateLanguageProposalDto {
-  @IsOptional()
-  @IsUUID()
-  expectedSourceRevisionId!: string | null;
-
-  @IsIn(['en', 'fr'])
-  language!: 'en' | 'fr';
-}
-
-export class ConfirmLanguageProposalDto {
-  @IsBoolean()
-  @IsIn([true])
-  confirmed!: true;
 }

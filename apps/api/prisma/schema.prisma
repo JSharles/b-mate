@@ -136,7 +136,6 @@ enum SourceRevisionTrigger {
   document_removed
   clarification_answered
   guided_correction
-  working_language_changed
 }
 
 enum InformationItemKind {
@@ -162,7 +161,6 @@ enum RevisionChangeKind {
   removed
   provenance_added
   provenance_removed
-  translated
   marked_open
   resolved
 }
@@ -206,7 +204,6 @@ enum CategoryDraftTrigger {
   document_removed
   clarification
   guided_correction
-  working_language_changed
   catch_up
   factual_correction
 }
@@ -365,7 +362,6 @@ model User {
   acceptedCategoryReferences DocumentationCategoryReference[] @relation("CategoryReferenceAcceptor")
   confirmedEditorialProfiles EditorialProfileRevision[]       @relation("EditorialProfileConfirmer")
   editorialProfileProposals  EditorialProfileProposal[]       @relation("EditorialProposalCreator")
-  sourceLanguageProposals    SourceLanguageProposal[]         @relation("SourceLanguageProposalCreator")
 
   @@map("users")
 }
@@ -802,7 +798,6 @@ model DocumentaryResetItem {
 model ProjectSource {
   id                String          @id @default(uuid()) @db.Uuid
   projectId         String          @unique @map("project_id") @db.Uuid
-  workingLanguage   ProjectLanguage @default(en) @map("working_language")
   currentRevisionId String?         @unique @map("current_revision_id") @db.Uuid
   nextSequence      Int             @default(1) @map("next_sequence")
   lockVersion       Int             @default(1) @map("lock_version")
@@ -815,32 +810,10 @@ model ProjectSource {
   informationItems  InformationItem[]
   assertions        ContributorAssertion[]
   clarifications    Clarification[]
-  languageProposals SourceLanguageProposal[]
 
   @@map("project_sources")
 }
 
-model SourceLanguageProposal {
-  id                       String          @id @default(uuid()) @db.Uuid
-  projectSourceId          String          @map("project_source_id") @db.Uuid
-  fromLanguage             ProjectLanguage @map("from_language")
-  toLanguage               ProjectLanguage @map("to_language")
-  expectedSourceRevisionId String?         @map("expected_source_revision_id") @db.Uuid
-  impactedItemCount        Int             @map("impacted_item_count")
-  version                  Int             @default(1)
-  createdByUserId          String          @map("created_by_user_id") @db.Uuid
-  confirmedAt              DateTime?       @map("confirmed_at")
-  createdAt                DateTime        @default(now()) @map("created_at")
-  updatedAt                DateTime        @updatedAt @map("updated_at")
-
-  projectSource          ProjectSource        @relation(fields: [projectSourceId], references: [id], onDelete: Cascade)
-  expectedSourceRevision SourceRevision?      @relation("LanguageProposalExpectedRevision", fields: [expectedSourceRevisionId], references: [id], onDelete: Restrict)
-  createdBy              User                 @relation("SourceLanguageProposalCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  generationOperation    GenerationOperation?
-
-  @@index([projectSourceId, createdAt])
-  @@map("source_language_proposals")
-}
 
 model SourceRevision {
   id                     String                @id @default(uuid()) @db.Uuid
@@ -878,7 +851,6 @@ model SourceRevision {
   categoryReferences         DocumentationCategoryReference[]
   generationBaseOperations   GenerationOperation[]                 @relation("GenerationBaseRevision")
   generationSourceOperations GenerationOperation[]                 @relation("GenerationSourceRevision")
-  languageProposals          SourceLanguageProposal[]              @relation("LanguageProposalExpectedRevision")
 
   @@unique([projectSourceId, sequence])
   @@index([projectSourceId, createdAt])
@@ -1425,7 +1397,6 @@ model GenerationOperation {
   profileRevisionId        String?                   @map("profile_revision_id") @db.Uuid
   clientReleaseId          String?                   @map("client_release_id") @db.Uuid
   clientCategoryContentId  String?                   @map("client_category_content_id") @db.Uuid
-  sourceLanguageProposalId String?                   @unique @map("source_language_proposal_id") @db.Uuid
   promptVersion            String                    @map("prompt_version") @db.VarChar(64)
   outputContractVersion    String                    @map("output_contract_version") @db.VarChar(64)
   policySnapshot           Json                      @map("policy_snapshot")
@@ -1452,7 +1423,6 @@ model GenerationOperation {
   profileRevision        EditorialProfileRevision?            @relation("GenerationProfileRevision", fields: [profileRevisionId], references: [id], onDelete: Restrict)
   clientRelease          ClientContentRelease?                @relation("GenerationClientRelease", fields: [clientReleaseId], references: [id], onDelete: Restrict)
   clientCategoryContent  ClientCategoryContent?               @relation("GenerationClientContent", fields: [clientCategoryContentId], references: [id], onDelete: Restrict)
-  sourceLanguageProposal SourceLanguageProposal?              @relation(fields: [sourceLanguageProposalId], references: [id], onDelete: Restrict)
   currentAttempt         GenerationAttempt?                   @relation("CurrentGenerationAttempt", fields: [currentAttemptId], references: [id], onDelete: SetNull)
   attempts               GenerationAttempt[]                  @relation("GenerationAttempts")
   replacesOperation      GenerationOperation?                 @relation("GenerationReplacement", fields: [replacesOperationId], references: [id], onDelete: Restrict)

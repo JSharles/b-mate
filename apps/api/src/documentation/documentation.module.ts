@@ -13,7 +13,6 @@ import { SourceRevisionService } from './source/source-revision.service';
 import { SourceDocumentsController } from './controllers/source-documents.controller';
 import { CanonicalSourceController } from './controllers/canonical-source.controller';
 import { SourceCorrectionService } from './source/source-correction.service';
-import { SourceLanguageService } from './source/source-language.service';
 import { ClarificationService } from './source/clarification.service';
 import { ClarificationsController } from './controllers/clarifications.controller';
 import { CategoryReviewController } from './controllers/category-review.controller';
@@ -56,7 +55,6 @@ import { DocumentationOperationsController } from './controllers/documentation-o
     SourceDocumentService,
     SourceRevisionService,
     SourceCorrectionService,
-    SourceLanguageService,
     ClarificationService,
     DocumentExtractionHandler,
     SourceConsolidationHandler,

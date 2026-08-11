@@ -2,7 +2,6 @@ import { z } from "zod";
 import { AsyncOperationSchema } from "./generation";
 import {
   CursorSchema,
-  DocumentationProjectLanguageSchema,
   DocumentationUuidSchema,
   createCursorPageSchema,
 } from "./documentation-common";
@@ -171,7 +170,6 @@ export const CanonicalItemSchema = z
 export const CanonicalSourcePageSchema = z
   .object({
     revision: SourceRevisionSummarySchema,
-    workingLanguage: DocumentationProjectLanguageSchema,
     items: z.array(CanonicalItemSchema),
     total: z.number().int().nonnegative(),
     nextCursor: CursorSchema.nullable(),
@@ -226,32 +224,6 @@ export const GuidedCorrectionRequestSchema = z
   })
   .strict();
 
-export const CreateLanguageProposalRequestSchema = z
-  .object({
-    expectedSourceRevisionId: DocumentationUuidSchema.nullable(),
-    language: DocumentationProjectLanguageSchema,
-  })
-  .strict();
-
-export const LanguageProposalSchema = z
-  .object({
-    id: DocumentationUuidSchema,
-    fromLanguage: DocumentationProjectLanguageSchema,
-    toLanguage: DocumentationProjectLanguageSchema,
-    expectedSourceRevisionId: DocumentationUuidSchema.nullable(),
-    impactedItemCount: z.number().int().nonnegative(),
-    version: z.number().int().positive(),
-  })
-  .strict()
-  .refine(({ fromLanguage, toLanguage }) => fromLanguage !== toLanguage, {
-    message: "The proposed working language must change.",
-    path: ["toLanguage"],
-  });
-
-export const ConfirmLanguageProposalRequestSchema = z
-  .object({ confirmed: z.literal(true) })
-  .strict();
-
 export type SourceDocument = z.infer<typeof SourceDocumentSchema>;
 export type SourceDocumentDetail = z.infer<
   typeof SourceDocumentDetailSchema
@@ -266,10 +238,6 @@ export type SourceRevisionSummary = z.infer<
 export type CanonicalItem = z.infer<typeof CanonicalItemSchema>;
 export type CanonicalSourcePage = z.infer<typeof CanonicalSourcePageSchema>;
 export type ItemProvenance = z.infer<typeof ItemProvenanceSchema>;
-export type LanguageProposal = z.infer<typeof LanguageProposalSchema>;
 export type GuidedCorrectionRequest = z.infer<
   typeof GuidedCorrectionRequestSchema
->;
-export type CreateLanguageProposalRequest = z.infer<
-  typeof CreateLanguageProposalRequestSchema
 >;

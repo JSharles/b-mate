@@ -46,7 +46,6 @@ export interface CreateGenerationOperationInput {
   profileRevisionId?: string;
   clientReleaseId?: string;
   clientCategoryContentId?: string;
-  sourceLanguageProposalId?: string;
   replacesOperationId?: string;
 }
 
@@ -443,7 +442,6 @@ export class GenerationService {
       profileRevisionId: previous.profileRevisionId ?? undefined,
       clientReleaseId: previous.clientReleaseId ?? undefined,
       clientCategoryContentId: previous.clientCategoryContentId ?? undefined,
-      sourceLanguageProposalId: previous.sourceLanguageProposalId ?? undefined,
       replacesOperationId: previous.id,
     });
   }

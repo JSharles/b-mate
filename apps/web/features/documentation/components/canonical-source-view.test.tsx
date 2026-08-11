@@ -4,8 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import {
   useCanonicalSource,
-  useConfirmWorkingLanguage,
-  useProposeWorkingLanguage,
   useSourceItemProvenance,
 } from "../hooks";
 import { CanonicalSourceView } from "./canonical-source-view";
@@ -13,8 +11,7 @@ import { CanonicalSourceView } from "./canonical-source-view";
 vi.mock("../hooks", () => ({
   useCanonicalSource: vi.fn(),
   useSourceItemProvenance: vi.fn(),
-  useProposeWorkingLanguage: vi.fn(),
-  useConfirmWorkingLanguage: vi.fn(),
+
 }));
 
 vi.mock("@/i18n/navigation", () => ({
@@ -61,16 +58,6 @@ const source = {
   nextCursor: null,
 };
 
-function idleMutation() {
-  return {
-    mutate: vi.fn(),
-    reset: vi.fn(),
-    isPending: false,
-    isError: false,
-    error: null,
-  };
-}
-
 describe("CanonicalSourceView", () => {
   beforeEach(() => {
     vi.mocked(useCanonicalSource).mockReturnValue({
@@ -104,12 +91,7 @@ describe("CanonicalSourceView", () => {
       },
       isPending: false,
     } as unknown as ReturnType<typeof useSourceItemProvenance>);
-    vi.mocked(useProposeWorkingLanguage).mockReturnValue(
-      idleMutation() as unknown as ReturnType<typeof useProposeWorkingLanguage>,
-    );
-    vi.mocked(useConfirmWorkingLanguage).mockReturnValue(
-      idleMutation() as unknown as ReturnType<typeof useConfirmWorkingLanguage>,
-    );
+
   });
 
   it("presents one readable source without offering to navigate to itself", () => {
@@ -144,37 +126,4 @@ describe("CanonicalSourceView", () => {
     expect(screen.getByText("guided-correction-dialog")).toBeVisible();
   });
 
-  it("shows a language impact preview and requires confirmation", async () => {
-    const propose = idleMutation();
-    const confirm = idleMutation();
-    propose.mutate.mockImplementation(
-      (_data, options: { onSuccess: (value: unknown) => void }) =>
-        options.onSuccess({
-          id: "proposal-1",
-          fromLanguage: "fr",
-          toLanguage: "en",
-          expectedSourceRevisionId: "revision-4",
-          impactedItemCount: 1,
-          version: 1,
-        }),
-    );
-    vi.mocked(useProposeWorkingLanguage).mockReturnValue(
-      propose as unknown as ReturnType<typeof useProposeWorkingLanguage>,
-    );
-    vi.mocked(useConfirmWorkingLanguage).mockReturnValue(
-      confirm as unknown as ReturnType<typeof useConfirmWorkingLanguage>,
-    );
-    const user = userEvent.setup();
-    render(<CanonicalSourceView projectId="project-1" />);
-
-    await user.click(screen.getByRole("button", { name: "Source.changeLanguage" }));
-    await user.click(screen.getByRole("button", { name: "Source.english" }));
-
-    expect(screen.getByText("Source.languagePreviewDescription", { exact: false })).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Source.confirmLanguage" }));
-    expect(confirm.mutate).toHaveBeenCalledWith(
-      "proposal-1",
-      expect.objectContaining({ onSuccess: expect.any(Function) }),
-    );
-  });
 });

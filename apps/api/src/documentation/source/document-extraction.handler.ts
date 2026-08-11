@@ -85,16 +85,12 @@ export class DocumentExtractionHandler
             mimeType:
               document.originalMimeType as UploadDocumentInput['mimeType'],
           });
-    const source = await this.prisma.projectSource.findUnique({
-      where: { projectId: operation.projectId },
-    });
 
     return {
       parts: [
         {
           kind: 'text',
           text: buildDocumentExtractionPrompt({
-            workingLanguage: source?.workingLanguage ?? 'en',
             inputFingerprint: operation.inputFingerprint,
             inputChunkCount: normalized.chunks.length,
           }),
@@ -153,17 +149,10 @@ export class DocumentExtractionHandler
       });
     }
 
-    const project = await tx.project.findUnique({
-      where: { id: operation.projectId },
-      select: { language: true },
-    });
     const source = await tx.projectSource.upsert({
       where: { projectId: operation.projectId },
       update: {},
-      create: {
-        projectId: operation.projectId,
-        workingLanguage: project?.language ?? 'en',
-      },
+      create: { projectId: operation.projectId },
     });
     const fingerprint = createHash('sha256')
       .update(

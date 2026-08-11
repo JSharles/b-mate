@@ -1,10 +1,8 @@
 import type {
-  AsyncOperation,
   CanonicalSourcePage,
   DocumentAcknowledgement,
   GuidedCorrectionRequest,
   ItemProvenance,
-  LanguageProposal,
   SourceDocument,
   SourceDocumentDetail,
   SourceRevisionSummary,
@@ -149,23 +147,6 @@ export function correctSourceItem(
   return apiFetch<{ status: "completed"; revisionId: string }>(
     `/projects/${projectId}/documentation/source/items/${itemId}/corrections`,
     { method: "POST", body: data },
-  );
-}
-
-export function proposeWorkingLanguage(
-  projectId: string,
-  data: { expectedSourceRevisionId: string | null; language: "en" | "fr" },
-) {
-  return apiFetch<LanguageProposal>(
-    `/projects/${projectId}/documentation/source/language-proposals`,
-    { method: "POST", body: data },
-  );
-}
-
-export function confirmWorkingLanguage(projectId: string, proposalId: string) {
-  return apiFetch<AsyncOperation>(
-    `/projects/${projectId}/documentation/source/language-proposals/${proposalId}/confirm`,
-    { method: "POST", body: { confirmed: true } },
   );
 }
 

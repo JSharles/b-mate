@@ -15,7 +15,6 @@ export interface FactualDraftPromptItem {
 export function buildFactualDraftPrompt(input: {
   categoryKey: DocumentationCategoryKey;
   sourceRevisionId: string;
-  workingLanguage: string;
   items: readonly FactualDraftPromptItem[];
   correctionInstruction?: string | null;
 }): string {
@@ -23,9 +22,9 @@ export function buildFactualDraftPrompt(input: {
     `Prompt version: ${FACTUAL_DRAFT_PROMPT_VERSION}`,
     `Category: ${input.categoryKey}`,
     `Source revision: ${input.sourceRevisionId}`,
-    `Working language: ${input.workingLanguage}`,
     'Produce a factual reference. Do not change tone, shorten for style, infer, or invent.',
     'Cover every item exactly through informationItemIds. Preserve point_to_clarify as open_point with its stable item id.',
+    'Write the draft in English, like the canonical source it is built from.',
   ];
   if (input.correctionInstruction) {
     prompt.push(

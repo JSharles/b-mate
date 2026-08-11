@@ -114,7 +114,6 @@ describe('canonical document ingestion (mocked service chain)', () => {
       Promise.resolve({
         id: projectSourceId,
         projectId,
-        workingLanguage: 'fr',
         currentRevisionId,
       }),
     );
@@ -174,7 +173,6 @@ describe('canonical document ingestion (mocked service chain)', () => {
           profileRevisionId: null,
           clientReleaseId: null,
           clientCategoryContentId: null,
-          sourceLanguageProposalId: null,
           replacesOperationId: null,
           ...input,
         } as GenerationOperation;
@@ -473,7 +471,6 @@ describe('canonical document ingestion (mocked service chain)', () => {
     prisma.projectSource.findUnique.mockResolvedValue({
       id: projectSourceId,
       currentRevisionId,
-      workingLanguage: 'fr',
     });
     prisma.sourceRevision.findFirst.mockResolvedValue(currentRevision);
     prisma.sourceRevisionItem.count.mockResolvedValue(canonicalItems.length);
@@ -537,7 +534,7 @@ describe('canonical document ingestion (mocked service chain)', () => {
       mobile.informationItemId,
     );
 
-    expect(source).toMatchObject({ workingLanguage: 'fr', total: 4 });
+    expect(source).toMatchObject({ total: 4 });
     expect(
       source.items.filter(({ content }) =>
         content.startsWith('Application mobile'),

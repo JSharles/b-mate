@@ -15,14 +15,12 @@ import type {
 import {
   addNotionDocument,
   CanonicalSourceOptions,
-  confirmWorkingLanguage,
   correctSourceItem,
   CursorPage,
   getCanonicalSource,
   getDocument,
   getItemProvenance,
   listDocuments,
-  proposeWorkingLanguage,
   uploadDocument,
   ClarificationOptions,
   listClarifications,
@@ -253,31 +251,6 @@ export function useSourceItemCorrection(projectId: string, itemId: string) {
       });
       queryClient.invalidateQueries({
         queryKey: provenanceKey(projectId, itemId),
-      });
-    },
-  });
-}
-
-export function useProposeWorkingLanguage(projectId: string) {
-  return useMutation({
-    mutationFn: (data: {
-      expectedSourceRevisionId: string | null;
-      language: "en" | "fr";
-    }) => proposeWorkingLanguage(projectId, data),
-    meta: { skipGlobalErrorToast: true },
-  });
-}
-
-export function useConfirmWorkingLanguage(projectId: string) {
-  const t = useTranslations("Projects.DocumentationNew.Toasts");
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (proposalId: string) =>
-      confirmWorkingLanguage(projectId, proposalId),
-    meta: { skipGlobalErrorToast: true, successMessage: t("languageChanged") },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: canonicalSourceKey(projectId, {}),
       });
     },
   });

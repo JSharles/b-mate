@@ -5,7 +5,6 @@ import {
   cancelEditorialProfile,
   confirmDocumentRemoval,
   confirmEditorialProfile,
-  confirmWorkingLanguage,
   correctCategoryDraft,
   correctSourceItem,
   getCategoryDraft,
@@ -21,7 +20,6 @@ import {
   listSourceRevisions,
   previewDocumentRemoval,
   proposeEditorialProfile,
-  proposeWorkingLanguage,
   resolveClarifications,
   retryDocumentRemoval,
   retryDocumentProcessing,
@@ -71,22 +69,23 @@ describe("documentation api", () => {
     );
   });
 
-  it("posts Notion, correction, proposal and explicit confirmation bodies", async () => {
+  it("posts a Notion page and a guided correction", async () => {
     mockedApiFetch.mockResolvedValue({});
     await addNotionDocument("project-1", { pageUrl: "https://notion.so/page" });
     await correctSourceItem("project-1", "item-1", {
       expectedSourceRevisionId: "revision-1",
       correctedContent: "Correction",
     });
-    await proposeWorkingLanguage("project-1", {
-      expectedSourceRevisionId: "revision-1",
-      language: "fr",
-    });
-    await confirmWorkingLanguage("project-1", "proposal-1");
 
     expect(mockedApiFetch).toHaveBeenLastCalledWith(
-      "/projects/project-1/documentation/source/language-proposals/proposal-1/confirm",
-      { method: "POST", body: { confirmed: true } },
+      "/projects/project-1/documentation/source/items/item-1/corrections",
+      {
+        method: "POST",
+        body: {
+          expectedSourceRevisionId: "revision-1",
+          correctedContent: "Correction",
+        },
+      },
     );
   });
 

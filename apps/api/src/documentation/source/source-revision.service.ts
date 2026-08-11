@@ -86,11 +86,6 @@ export interface GuidedCorrectionCommitInput {
   userId: string;
 }
 
-export interface LanguageTranslation {
-  informationItemId: string;
-  translatedContent: string;
-}
-
 export function buildConsolidationPlan(
   currentItems: readonly CurrentCanonicalItem[],
   observations: readonly ConsolidationObservation[],
@@ -299,7 +294,6 @@ export class SourceRevisionService {
     const page = rows.slice(0, pageSize);
     return {
       revision: revisionSummary(revision),
-      workingLanguage: source.workingLanguage,
       items: page.map((item) => ({
         id: item.informationItemId,
         kind: item.kind,
@@ -615,86 +609,6 @@ export class SourceRevisionService {
     return { status: 'committed', revisionId: revision.id };
   }
 
-  async commitLanguageChange(
-    tx: Prisma.TransactionClient,
-    input: {
-      projectId: string;
-      projectSourceId: string;
-      expectedSourceRevisionId: string;
-      toLanguage: 'en' | 'fr';
-      userId: string;
-      translations: LanguageTranslation[];
-    },
-  ): Promise<SourceRevisionCommitResult> {
-    const source = await this.lockSource(tx, input.projectSourceId);
-    if (source.currentRevisionId !== input.expectedSourceRevisionId) {
-      return { status: 'stale', currentRevisionId: source.currentRevisionId };
-    }
-    const items = await this.currentSnapshotRows(
-      tx,
-      input.expectedSourceRevisionId,
-    );
-    const translations = new Map<string, string>();
-    for (const translation of input.translations) {
-      if (translations.has(translation.informationItemId)) {
-        throw new Error('Language output contains duplicate item identities.');
-      }
-      translations.set(
-        translation.informationItemId,
-        translation.translatedContent,
-      );
-    }
-    if (
-      translations.size !== items.length ||
-      items.some((item) => !translations.has(item.informationItemId))
-    ) {
-      throw new Error('Language output must account for every canonical item.');
-    }
-    const revision = await tx.sourceRevision.create({
-      data: {
-        projectSourceId: source.id,
-        sequence: source.nextSequence,
-        parentRevisionId: source.currentRevisionId,
-        trigger: 'working_language_changed',
-        createdByUserId: input.userId,
-        summary: `Working language changed to ${input.toLanguage}.`,
-      },
-    });
-    const created = await this.copySnapshot(
-      tx,
-      revision.id,
-      items,
-      undefined,
-      translations,
-    );
-    const categories = uniqueCategories(
-      items.flatMap((item) =>
-        item.categories.map(({ categoryKey }) => categoryKey),
-      ),
-    );
-    await this.writeImpactsAndTargets(
-      tx,
-      input.projectId,
-      revision.id,
-      categories,
-      'Canonical working language changed.',
-    );
-    for (const item of items) {
-      await tx.sourceRevisionChange.create({
-        data: {
-          sourceRevisionId: revision.id,
-          informationItemId: item.informationItemId,
-          kind: 'translated',
-          beforeRevisionItemId: item.id,
-          afterRevisionItemId: created.get(item.informationItemId),
-          explanation: `Canonical content translated to ${input.toLanguage}.`,
-        },
-      });
-    }
-    await this.advanceSource(tx, source, revision.id, input.toLanguage);
-    return { status: 'committed', revisionId: revision.id };
-  }
-
   private async commit(
     tx: Prisma.TransactionClient,
     operation: GenerationOperation,
@@ -716,17 +630,10 @@ export class SourceRevisionService {
       };
     }
 
-    const project = await tx.project.findUnique({
-      where: { id: operation.projectId },
-      select: { language: true },
-    });
     const source = await tx.projectSource.upsert({
       where: { projectId: operation.projectId },
       update: {},
-      create: {
-        projectId: operation.projectId,
-        workingLanguage: project?.language ?? 'en',
-      },
+      create: { projectId: operation.projectId },
     });
     await tx.$queryRaw`
       SELECT "id" FROM "project_sources"
@@ -1037,7 +944,6 @@ export class SourceRevisionService {
       nextSequence: number;
     },
     revisionId: string,
-    workingLanguage?: 'en' | 'fr',
   ): Promise<void> {
     const advanced = await tx.projectSource.updateMany({
       where: {
@@ -1049,7 +955,6 @@ export class SourceRevisionService {
         currentRevisionId: revisionId,
         nextSequence: { increment: 1 },
         lockVersion: { increment: 1 },
-        ...(workingLanguage ? { workingLanguage } : {}),
       },
     });
     if (advanced.count !== 1) {

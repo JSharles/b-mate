@@ -3,7 +3,6 @@ import {
   CanonicalSourcePageSchema,
   DocumentAcknowledgementSchema,
   ItemProvenanceSchema,
-  LanguageProposalSchema,
   SourceDocumentDetailSchema,
   SourceDocumentSchema,
   SourceLocatorSchema,
@@ -89,7 +88,6 @@ describe('documentation source contracts', () => {
     expect(
       CanonicalSourcePageSchema.parse({
         revision,
-        workingLanguage: 'fr',
         items: [
           {
             id: UUID_2,
@@ -152,26 +150,4 @@ describe('documentation source contracts', () => {
     ).toBe(false);
   });
 
-  it('requires explicit versioned language confirmation proposals', () => {
-    expect(
-      LanguageProposalSchema.parse({
-        id: UUID,
-        fromLanguage: 'en',
-        toLanguage: 'fr',
-        expectedSourceRevisionId: UUID_2,
-        impactedItemCount: 12,
-        version: 1,
-      }),
-    ).toBeDefined();
-    expect(
-      LanguageProposalSchema.safeParse({
-        id: UUID,
-        fromLanguage: 'fr',
-        toLanguage: 'fr',
-        expectedSourceRevisionId: null,
-        impactedItemCount: 0,
-        version: 1,
-      }).success,
-    ).toBe(false);
-  });
 });

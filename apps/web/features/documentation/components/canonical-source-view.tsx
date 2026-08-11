@@ -3,21 +3,18 @@
 import {
   AlertCircle,
   FileText,
-  Languages,
   PencilLine,
   RefreshCw,
   ShieldCheck,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import type { CanonicalItem, LanguageProposal } from "schemas";
+import type { CanonicalItem } from "schemas";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { ApiError } from "@/shared/lib/api-client";
 import {
   useCanonicalSource,
-  useConfirmWorkingLanguage,
-  useProposeWorkingLanguage,
 } from "../hooks";
 import { GuidedCorrectionDialog } from "./guided-correction-dialog";
 import { StepHeading } from "./step-heading";
@@ -72,24 +69,12 @@ function SourceItem({
 export function CanonicalSourceView({ projectId }: { projectId: string }) {
   const t = useTranslations("Projects.Documentation");
   const source = useCanonicalSource(projectId);
-  const proposeLanguage = useProposeWorkingLanguage(projectId);
-  const confirmLanguage = useConfirmWorkingLanguage(projectId);
   const [provenanceItem, setProvenanceItem] = useState<CanonicalItem | null>(null);
   const [correctionItem, setCorrectionItem] = useState<CanonicalItem | null>(null);
-  const [languageOpen, setLanguageOpen] = useState(false);
-  const [proposal, setProposal] = useState<LanguageProposal | null>(null);
 
   const noSourceYet =
     source.isError && source.error instanceof ApiError && source.error.status === 404;
   const revision = source.data?.revision;
-  const language = source.data?.workingLanguage ?? "fr";
-
-  function closeLanguage() {
-    setLanguageOpen(false);
-    setProposal(null);
-    proposeLanguage.reset();
-    confirmLanguage.reset();
-  }
 
   return (
     <section className="border-b border-border pb-8">
@@ -114,113 +99,7 @@ export function CanonicalSourceView({ projectId }: { projectId: string }) {
                 <p className="text-sm text-muted-foreground">{t("Source.noRevision")}</p>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-md bg-muted px-2.5 py-1.5 text-xs font-medium uppercase text-muted-foreground">
-                {language}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setLanguageOpen((value) => !value)}
-              >
-                <Languages />
-                {t("Source.changeLanguage")}
-              </Button>
-            </div>
           </header>
-
-          {languageOpen && (
-            <div className="border-b border-border bg-muted/30 px-5 py-4 sm:px-6">
-              {!proposal ? (
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium">{t("Source.languageQuestion")}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      {t("Source.languageWarning")}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    {language !== "fr" && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={proposeLanguage.isPending}
-                        onClick={() =>
-                          proposeLanguage.mutate(
-                            {
-                              expectedSourceRevisionId: revision?.id ?? null,
-                              language: "fr",
-                            },
-                            { onSuccess: setProposal },
-                          )
-                        }
-                      >
-                        {t("Source.french")}
-                      </Button>
-                    )}
-                    {language !== "en" && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={proposeLanguage.isPending}
-                        onClick={() =>
-                          proposeLanguage.mutate(
-                            {
-                              expectedSourceRevisionId: revision?.id ?? null,
-                              language: "en",
-                            },
-                            { onSuccess: setProposal },
-                          )
-                        }
-                      >
-                        {t("Source.english")}
-                      </Button>
-                    )}
-                    <Button type="button" variant="ghost" size="sm" onClick={closeLanguage}>
-                      {t("Source.cancel")}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium">{t("Source.languagePreviewTitle")}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      {t("Source.languagePreviewDescription", {
-                        count: proposal.impactedItemCount,
-                        language: t(`Source.language_${proposal.toLanguage}`),
-                      })}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={confirmLanguage.isPending}
-                      onClick={() =>
-                        confirmLanguage.mutate(proposal.id, { onSuccess: closeLanguage })
-                      }
-                    >
-                      {confirmLanguage.isPending
-                        ? t("Source.confirmingLanguage")
-                        : t("Source.confirmLanguage")}
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={closeLanguage}>
-                      {t("Source.cancel")}
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {(proposeLanguage.isError || confirmLanguage.isError) && (
-                <p role="alert" className="mt-3 text-sm text-destructive">
-                  {t("Source.languageError")}
-                </p>
-              )}
-            </div>
-          )}
 
           {source.isPending ? (
             <div className="space-y-4 p-6">
