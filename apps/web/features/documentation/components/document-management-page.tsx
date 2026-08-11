@@ -12,7 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SourceDocument } from "schemas";
 import { useProject } from "@/features/projects/hooks";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -120,6 +120,7 @@ export function DocumentManagementPage({ projectId }: { projectId: string }) {
   const router = useRouter();
   const [addOpen, setAddOpen] = useState(false);
   const [removalDocumentId, setRemovalDocumentId] = useState<string | null>(null);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
   const isClient = project.data?.role === "client";
 
   useEffect(() => {
@@ -163,7 +164,7 @@ export function DocumentManagementPage({ projectId }: { projectId: string }) {
                 {t("openPipeline")}
               </Link>
             </Button>
-            <Button type="button" onClick={() => setAddOpen(true)}>
+            <Button ref={addButtonRef} type="button" onClick={() => setAddOpen(true)}>
               <FilePlus2 />
               {t("add")}
             </Button>
@@ -265,7 +266,11 @@ export function DocumentManagementPage({ projectId }: { projectId: string }) {
         documentId={removalDocumentId}
         open={Boolean(removalDocumentId)}
         onOpenChange={(open) => {
-          if (!open) setRemovalDocumentId(null);
+          if (open) return;
+          setRemovalDocumentId(null);
+          // The row that opened this dialog may no longer exist, so there is
+          // nothing for Radix to restore focus to.
+          addButtonRef.current?.focus();
         }}
       />
     </main>

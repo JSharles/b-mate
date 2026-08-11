@@ -45,7 +45,7 @@ export function DocumentStatus({
 
   if (PROCESSING_STATUSES.has(status)) {
     return (
-      <span className={muted} role="status">
+      <span className={muted}>
         <CircleDashed className="size-3.5 animate-spin motion-reduce:animate-none" />
         {since ? t("statusProcessingSince", { since }) : t("statusProcessing")}
       </span>
@@ -53,7 +53,7 @@ export function DocumentStatus({
   }
   if (status === "removal_pending") {
     return (
-      <span className={muted} role="status">
+      <span className={muted}>
         <CircleDashed className="size-3.5 animate-spin motion-reduce:animate-none" />
         {t("statusRemoving")}
       </span>
@@ -61,7 +61,7 @@ export function DocumentStatus({
   }
   if (status === "failed") {
     return (
-      <span className={bad} role="status">
+      <span className={bad}>
         <AlertCircle className="size-3.5" />
         {t("statusFailed")}
       </span>
@@ -69,7 +69,7 @@ export function DocumentStatus({
   }
   if (status === "removal_failed") {
     return (
-      <span className={bad} role="status">
+      <span className={bad}>
         <AlertCircle className="size-3.5" />
         {t("statusRemovalFailed")}
       </span>
@@ -77,7 +77,7 @@ export function DocumentStatus({
   }
   if (status === "removed") {
     return (
-      <span className={muted} role="status">
+      <span className={muted}>
         <Trash2 className="size-3.5" />
         {t("statusRemoved")}
       </span>
@@ -85,7 +85,7 @@ export function DocumentStatus({
   }
   if (status === "incorporated") {
     return (
-      <span className={muted} role="status">
+      <span className={muted}>
         <CheckCircle2 className="size-3.5 text-primary" />
         {t("statusIncorporated")}
       </span>
@@ -95,7 +95,7 @@ export function DocumentStatus({
   // Explicit rather than a fallthrough: an unrecognised status used to render
   // as a green check and "intégré à la source" — wrong, and reassuring about it.
   return (
-    <span className={muted} role="status">
+    <span className={muted}>
       <AlertCircle className="size-3.5" />
       {t("statusUnavailable")}
     </span>

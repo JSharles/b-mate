@@ -14,9 +14,14 @@ import {
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/shared/components/ui/tabs";
 import { useNotionConnectionStatus } from "@/shared/hooks/use-notion-connection-status";
 import { ApiError } from "@/shared/lib/api-client";
-import { cn } from "@/shared/lib/utils";
 import { useAddNotionDocument, useUploadDocument } from "../hooks";
 
 interface AddDocumentDialogProps {
@@ -66,28 +71,24 @@ export function AddDocumentDialog({
           <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1" role="tablist">
-          {(["upload", "notion"] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              role="tab"
-              aria-selected={kind === tab}
-              onClick={() => setKind(tab)}
-              className={cn(
-                "flex min-h-9 items-center justify-center gap-2 rounded-sm px-3 text-sm font-medium transition-colors",
-                kind === tab
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {tab === "upload" ? <FileUp /> : <Link2 />}
-              {t(tab === "upload" ? "uploadTab" : "notionTab")}
-            </button>
-          ))}
-        </div>
+      {/* This announced itself as a tablist while implementing none of the
+          contract — no tabpanel, no aria-controls, no roving tabindex, no
+          arrow keys. Promising tab semantics and not delivering them is worse
+          for a screen-reader user than plain buttons, so it uses the real
+          primitive now. */}
+      <Tabs value={kind} onValueChange={(value) => setKind(value as "upload" | "notion")}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="upload">
+            <FileUp />
+            {t("uploadTab")}
+          </TabsTrigger>
+          <TabsTrigger value="notion">
+            <Link2 />
+            {t("notionTab")}
+          </TabsTrigger>
+        </TabsList>
 
-        {kind === "upload" ? (
+        <TabsContent value="upload">
           <form
             key="upload"
             className="flex flex-col gap-4"
@@ -116,9 +117,12 @@ export function AddDocumentDialog({
               {upload.isPending ? t("uploadPending") : t("uploadSubmit")}
             </Button>
           </form>
-        ) : notion.isPending ? (
-          <p className="py-4 text-sm text-muted-foreground">{t("notionChecking")}</p>
-        ) : notion.data?.connected ? (
+        </TabsContent>
+
+        <TabsContent value="notion">
+          {notion.isPending ? (
+            <p className="py-4 text-sm text-muted-foreground">{t("notionChecking")}</p>
+          ) : notion.data?.connected ? (
           <form
             key="notion"
             className="flex flex-col gap-4"
@@ -150,16 +154,18 @@ export function AddDocumentDialog({
               {addNotion.isPending ? t("notionPending") : t("notionSubmit")}
             </Button>
           </form>
-        ) : (
-          <div className="flex flex-col gap-3 py-2">
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {t("notionUnavailable")}
-            </p>
-            <Button asChild variant="outline" className="w-fit">
-              <Link href={`/projects/${projectId}#project-tools`}>{t("configureNotion")}</Link>
-            </Button>
-          </div>
-        )}
+          ) : (
+            <div className="flex flex-col gap-3 py-2">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {t("notionUnavailable")}
+              </p>
+              <Button asChild variant="outline" className="w-fit">
+                <Link href={`/projects/${projectId}#project-tools`}>{t("configureNotion")}</Link>
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
       </DialogContent>
     </Dialog>
   );

@@ -29,10 +29,7 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex flex-col">
-      <div
-        aria-live="polite"
-        className="mb-6 flex items-start gap-3 rounded-xl border border-border bg-card p-4"
-      >
+      <div className="mb-6 flex items-start gap-3 rounded-xl border border-border bg-card p-4">
         {priority === "needs_attention" || priority === "needs_action" ? (
           <AlertTriangle className="mt-0.5 size-5 text-destructive" />
         ) : priority === "processing" ? (
@@ -41,7 +38,9 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
           <CheckCircle2 className="mt-0.5 size-5 text-primary" />
         )}
         <div>
-          <p className="font-medium">{t(`priority_${priority}`)}</p>
+          <p aria-live="polite" className="font-medium">
+            {t(`priority_${priority}`)}
+          </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {t(`visibility_${state?.clientVisibility ?? "nothing_published"}`)}
           </p>

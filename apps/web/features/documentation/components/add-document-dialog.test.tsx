@@ -80,4 +80,21 @@ describe("AddDocumentDialog", () => {
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
   });
+
+  // It announced itself as a tablist while implementing none of the contract:
+  // no tabpanel, no aria-controls, no roving tabindex, no arrow keys.
+  // Promising tab semantics and not delivering them is worse for a screen
+  // reader than plain buttons.
+  it("implements the tab contract it announces", () => {
+    render(<AddDocumentDialog projectId="project-1" open onOpenChange={vi.fn()} />);
+
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs).toHaveLength(2);
+
+    const panel = screen.getByRole("tabpanel");
+    const selected = tabs.find((tab) => tab.getAttribute("aria-selected") === "true");
+    expect(selected).toBeDefined();
+    expect(selected).toHaveAttribute("aria-controls", panel.id);
+    expect(panel).toHaveAttribute("aria-labelledby", selected!.id);
+  });
 });
