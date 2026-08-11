@@ -22,6 +22,23 @@ import { DOCUMENT_EXTRACTION_PROMPT_VERSION } from './extraction-output.schema';
 import { DocumentStorageClient } from './document-storage.client';
 
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+
+// The statuses in which a document is being worked on by the pipeline and has
+// not yet reached the canonical source. A contributor can walk away from any of
+// them: nothing downstream has been written yet, so there is nothing to unwind.
+const PROCESSING_STATUSES = [
+  'received',
+  'extracting',
+  'ready_to_consolidate',
+  'incorporating',
+  'retrying',
+] as const satisfies readonly SourceDocumentStatus[];
+
+// Why a cancelled document sits in `failed`: the two are the same situation for
+// everything downstream — work stopped short of the canonical source — and the
+// removal path already handles it. The code is what tells them apart, so the
+// interface can say "cancelled" rather than accusing the document of failing.
+export const CANCELLED_BY_CONTRIBUTOR = 'CANCELLED_BY_CONTRIBUTOR';
 const DOWNLOAD_URL_TTL_SECONDS = 15 * 60;
 const HIDDEN_NOT_FOUND = { code: 'NOT_FOUND' } as const;
 const ACCEPTED_MIME_TYPES = new Set([
@@ -249,6 +266,59 @@ export class SourceDocumentService {
     };
   }
 
+  // A document being worked on offered no way out: no stop, no delete, only a
+  // spinner. A batch stage runs for minutes and can hang for hours, so that
+  // left a contributor with a row they could neither finish nor get rid of.
+  async cancelProcessing(
+    userId: string,
+    projectId: string,
+    documentId: string,
+  ): Promise<{ cancelledOperationCount: number }> {
+    await this.access.requireContributor(userId, projectId);
+    const document = await this.prisma.sourceDocument.findFirst({
+      where: {
+        id: documentId,
+        projectId,
+        status: { in: [...PROCESSING_STATUSES] },
+      },
+      include: {
+        generationOperations: {
+          where: {
+            status: {
+              in: ['queued', 'running', 'waiting_provider', 'retry_scheduled'],
+            },
+          },
+          select: { id: true },
+        },
+      },
+    });
+    if (!document) {
+      throw new NotFoundException(HIDDEN_NOT_FOUND);
+    }
+
+    // Stop the remote work first. If the document were released before its
+    // operations were, an in-flight result could still land on it and drag it
+    // back into the pipeline the contributor just walked away from.
+    let cancelledOperationCount = 0;
+    for (const operation of document.generationOperations) {
+      const { cancelled } = await this.generation.cancel(operation.id);
+      if (cancelled) cancelledOperationCount += 1;
+    }
+
+    const claimed = await this.prisma.sourceDocument.updateMany({
+      where: { id: documentId, projectId, version: document.version },
+      data: {
+        status: 'failed',
+        failureCode: CANCELLED_BY_CONTRIBUTOR,
+        version: { increment: 1 },
+      },
+    });
+    if (claimed.count !== 1) {
+      throw new NotFoundException(HIDDEN_NOT_FOUND);
+    }
+    return { cancelledOperationCount };
+  }
+
   async retryProcessing(
     userId: string,
     projectId: string,
@@ -259,7 +329,13 @@ export class SourceDocumentService {
       where: { id: documentId, projectId, status: 'failed' },
       include: {
         generationOperations: {
-          where: { type: 'document_extraction', status: 'needs_attention' },
+          // A cancelled extraction is as re-runnable as a failed one — changing
+          // your mind after stopping the work should not mean re-uploading the
+          // document.
+          where: {
+            type: 'document_extraction',
+            status: { in: ['needs_attention', 'cancelled'] },
+          },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },

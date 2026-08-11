@@ -15,7 +15,12 @@ describe('SourceDocumentsController', () => {
   let service: jest.Mocked<
     Pick<
       SourceDocumentService,
-      'addUpload' | 'addNotion' | 'list' | 'detail' | 'retryProcessing'
+      | 'addUpload'
+      | 'addNotion'
+      | 'list'
+      | 'detail'
+      | 'retryProcessing'
+      | 'cancelProcessing'
     >
   >;
   let controller: SourceDocumentsController;
@@ -30,6 +35,7 @@ describe('SourceDocumentsController', () => {
       list: jest.fn(),
       detail: jest.fn(),
       retryProcessing: jest.fn(),
+      cancelProcessing: jest.fn(),
     };
     removal = {
       preview: jest.fn(),
@@ -117,6 +123,18 @@ describe('SourceDocumentsController', () => {
       confirmation,
     );
     expect(removal.retry).toHaveBeenCalledWith(
+      'user-1',
+      'project-1',
+      'document-1',
+    );
+  });
+
+  it('delegates stopping a document that is being processed', async () => {
+    service.cancelProcessing.mockResolvedValue({ cancelledOperationCount: 1 });
+
+    await controller.cancelProcessing(user, 'project-1', 'document-1');
+
+    expect(service.cancelProcessing).toHaveBeenCalledWith(
       'user-1',
       'project-1',
       'document-1',

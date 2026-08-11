@@ -1,11 +1,19 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, CircleDashed, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  CircleDashed,
+  CircleSlash,
+  Trash2,
+} from "lucide-react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import type { SourceDocument } from "schemas";
 import { cn } from "@/shared/lib/utils";
 
-const PROCESSING_STATUSES = new Set<SourceDocument["status"]>([
+// Exported so the row's actions and the row's status cannot disagree about
+// what "being worked on" means.
+export const PROCESSING_STATUSES = new Set<SourceDocument["status"]>([
   "received",
   "extracting",
   "ready_to_consolidate",
@@ -13,12 +21,20 @@ const PROCESSING_STATUSES = new Set<SourceDocument["status"]>([
   "retrying",
 ]);
 
+// A document a contributor stopped on purpose is held in `failed` — the same
+// halted state, handled by the same removal and retry paths. Only the code
+// tells them apart, and telling someone their own decision was a failure is
+// the kind of small lie that makes an interface feel untrustworthy.
+const CANCELLED_BY_CONTRIBUTOR = "CANCELLED_BY_CONTRIBUTOR";
+
 export function DocumentStatus({
   status,
+  failureCode,
   createdAt,
   className,
 }: {
   status: SourceDocument["status"];
+  failureCode?: string | null;
   createdAt?: string;
   className?: string;
 }) {
@@ -60,7 +76,12 @@ export function DocumentStatus({
     );
   }
   if (status === "failed") {
-    return (
+    return failureCode === CANCELLED_BY_CONTRIBUTOR ? (
+      <span className={muted}>
+        <CircleSlash className="size-3.5" />
+        {t("statusCancelled")}
+      </span>
+    ) : (
       <span className={bad}>
         <AlertCircle className="size-3.5" />
         {t("statusFailed")}

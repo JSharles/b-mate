@@ -60,6 +60,13 @@ export function getDocument(projectId: string, documentId: string) {
   );
 }
 
+export function cancelDocumentProcessing(projectId: string, documentId: string) {
+  return apiFetch<{ cancelledOperationCount: number }>(
+    `/projects/${projectId}/documentation/documents/${documentId}/processing/cancel`,
+    { method: "POST" },
+  );
+}
+
 export function retryDocumentProcessing(projectId: string, documentId: string) {
   return apiFetch<{ operationId: string; status: string }>(
     `/projects/${projectId}/documentation/documents/${documentId}/retry-processing`,

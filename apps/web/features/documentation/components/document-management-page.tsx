@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BookOpenText,
   ChevronRight,
+  CircleSlash,
   FilePlus2,
   FileText,
   LoaderCircle,
@@ -19,12 +20,13 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
+  useCancelDocumentProcessing,
   useDocumentationDocuments,
   useRetryDocumentProcessing,
   useRetryDocumentRemoval,
 } from "../hooks";
 import { AddDocumentDialog } from "./add-document-dialog";
-import { DocumentStatus } from "./document-status";
+import { DocumentStatus, PROCESSING_STATUSES } from "./document-status";
 import { RemoveDocumentDialog } from "./remove-document-dialog";
 
 function DocumentActions({
@@ -39,6 +41,7 @@ function DocumentActions({
   const t = useTranslations("Projects.Documentation.Page");
   const retryProcessing = useRetryDocumentProcessing(projectId);
   const retryRemoval = useRetryDocumentRemoval(projectId);
+  const cancelProcessing = useCancelDocumentProcessing(projectId);
 
   // `removal_pending` is NOT recoverable by hand any more. A removal abandoned
   // mid-flight is re-driven by the server's stall sweep, so offering "resume"
@@ -63,6 +66,31 @@ function DocumentActions({
       {t("remove")}
     </Button>
   );
+
+  // A document being worked on used to carry no action at all: a spinner and
+  // nothing else, for a stage that runs minutes and can hang for hours. Stopping
+  // is the way out — it leaves the document here, so it can then be retried or
+  // deleted like any other halted one.
+  if (PROCESSING_STATUSES.has(document.status)) {
+    return (
+      <div className="flex shrink-0 items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={cancelProcessing.isPending}
+          onClick={() => cancelProcessing.mutate(document.id)}
+        >
+          {cancelProcessing.isPending ? (
+            <LoaderCircle className="animate-spin motion-reduce:animate-none" />
+          ) : (
+            <CircleSlash />
+          )}
+          {t(cancelProcessing.isPending ? "cancelling" : "cancelProcessing")}
+        </Button>
+      </div>
+    );
+  }
 
   if (document.status === "failed") {
     return (
@@ -108,8 +136,8 @@ function DocumentActions({
     return <div className="flex shrink-0 items-center gap-2">{removeButton}</div>;
   }
 
-  // Processing, removing, and removed rows carry no action — the row is still
-  // reachable through its own link, which is the one thing always available.
+  // Removing and removed rows carry no action — the row is still reachable
+  // through its own link, which is the one thing always available.
   return null;
 }
 
@@ -230,6 +258,7 @@ export function DocumentManagementPage({ projectId }: { projectId: string }) {
                     </Link>
                     <DocumentStatus
                       status={document.status}
+                      failureCode={document.failureCode}
                       createdAt={document.createdAt}
                       className="mt-1"
                     />

@@ -39,6 +39,7 @@ import {
   confirmDocumentRemoval,
   previewDocumentRemoval,
   retryDocumentRemoval,
+  cancelDocumentProcessing,
   retryDocumentProcessing,
 } from "./api";
 import type { ResolveClarificationsRequest } from "schemas";
@@ -133,6 +134,26 @@ export function useSourceDocument(projectId: string, documentId: string) {
         ].includes(status)
         ? 3_000
         : false;
+    },
+  });
+}
+
+export function useCancelDocumentProcessing(projectId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (documentId: string) =>
+      cancelDocumentProcessing(projectId, documentId),
+    meta: {
+      skipGlobalErrorToast: true,
+      successMessage: t("processingCancelled"),
+    },
+    onSuccess: (_result, documentId) => {
+      queryClient.invalidateQueries({
+        queryKey: documentKey(projectId, documentId),
+      });
+      queryClient.invalidateQueries({ queryKey: documentsKey(projectId) });
+      queryClient.invalidateQueries({ queryKey: workspaceKey(projectId) });
     },
   });
 }

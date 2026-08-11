@@ -79,6 +79,16 @@ export class SourceDocumentsController {
     return this.removal.preview(user.id, projectId, documentId);
   }
 
+  @Post(':documentId/processing/cancel')
+  @HttpCode(202)
+  cancelProcessing(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Param('documentId') documentId: string,
+  ) {
+    return this.documents.cancelProcessing(user.id, projectId, documentId);
+  }
+
   @Post(':documentId/retry-processing')
   @HttpCode(202)
   retryProcessing(

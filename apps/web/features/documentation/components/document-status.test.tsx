@@ -21,6 +21,20 @@ describe("DocumentStatus", () => {
     expect(Boolean(container.querySelector(".animate-spin"))).toBe(spins);
   });
 
+  // A document a contributor stopped is parked in `failed`, because that is the
+  // same halted state as far as removal and retry are concerned. Telling them
+  // their own decision was a failure — in red, "action needed" — would be a
+  // small lie, and the kind that makes an interface feel untrustworthy.
+  it("calls a deliberate stop a stop, not a failure", () => {
+    const { container } = render(
+      <DocumentStatus status="failed" failureCode="CANCELLED_BY_CONTRIBUTOR" />,
+    );
+
+    expect(screen.getByText("statusCancelled")).toBeVisible();
+    expect(screen.queryByText("statusFailed")).toBeNull();
+    expect(container.querySelector(".text-destructive")).toBeNull();
+  });
+
   // A document list polls every 3s. A live region per row meant fifty polite
   // announcements of "Intégration en cours" with no way to tell which document
   // changed — the text is a label on its row, not an interruption.

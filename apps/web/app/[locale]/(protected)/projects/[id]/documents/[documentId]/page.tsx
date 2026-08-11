@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   ArrowLeft,
+  CircleSlash,
   Download,
   ExternalLink,
   FileText,
@@ -13,8 +14,12 @@ import {
 import { useTranslations } from "next-intl";
 import { use, useEffect, useState } from "react";
 import { RemoveDocumentDialog } from "@/features/documentation/components/remove-document-dialog";
-import { DocumentStatus } from "@/features/documentation/components/document-status";
 import {
+  DocumentStatus,
+  PROCESSING_STATUSES,
+} from "@/features/documentation/components/document-status";
+import {
+  useCancelDocumentProcessing,
   useRetryDocumentProcessing,
   useRetryDocumentRemoval,
   useSourceDocument,
@@ -35,6 +40,7 @@ export default function SourceDocumentPage({
   const document = useSourceDocument(id, documentId);
   const retryProcessing = useRetryDocumentProcessing(id);
   const retryRemoval = useRetryDocumentRemoval(id);
+  const cancelProcessing = useCancelDocumentProcessing(id);
   const router = useRouter();
   const [removeOpen, setRemoveOpen] = useState(false);
   const isClient = project.data?.role === "client";
@@ -65,10 +71,12 @@ export default function SourceDocumentPage({
 
   const item = document.data;
   const removing = item.status === "removal_pending";
+  const processing = PROCESSING_STATUSES.has(item.status);
   const processingFailed = item.status === "failed";
   const removalFailed = item.status === "removal_failed";
   const actionError =
     retryProcessing.isError ||
+    cancelProcessing.isError ||
     retryRemoval.isError ||
     retryRemoval.data?.status === "needs_attention";
 
@@ -97,7 +105,11 @@ export default function SourceDocumentPage({
               </p>
             </div>
           </div>
-          <DocumentStatus status={item.status} className="text-sm" />
+          <DocumentStatus
+            status={item.status}
+            failureCode={item.failureCode}
+            className="text-sm"
+          />
         </header>
 
         <div className="grid gap-8 px-6 py-6 sm:grid-cols-[1fr_auto]">
@@ -144,6 +156,29 @@ export default function SourceDocumentPage({
           </div>
 
           <div className="flex flex-col gap-2 sm:items-end">
+            {/* The list row offers this; the detail page did not, so opening a
+                document being processed was a dead end — the one place with
+                room to explain the wait had no way out of it. */}
+            {processing && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={cancelProcessing.isPending}
+                onClick={() => cancelProcessing.mutate(documentId)}
+              >
+                {cancelProcessing.isPending ? (
+                  <LoaderCircle className="animate-spin motion-reduce:animate-none" />
+                ) : (
+                  <CircleSlash />
+                )}
+                {t(
+                  cancelProcessing.isPending
+                    ? "cancellingProcessing"
+                    : "cancelProcessing",
+                )}
+              </Button>
+            )}
             {processingFailed && (
               <>
                 <Button

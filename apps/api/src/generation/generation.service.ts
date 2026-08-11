@@ -426,7 +426,13 @@ export class GenerationService {
     const previous = await this.prisma.generationOperation.findUnique({
       where: { id: operationId },
     });
-    if (!previous || previous.status !== 'needs_attention') return null;
+    // Cancelled counts alongside needs_attention: both are dead operations
+    // whose inputs are still valid, and re-running one is the same act.
+    if (
+      !previous ||
+      (previous.status !== 'needs_attention' && previous.status !== 'cancelled')
+    )
+      return null;
     return this.create({
       projectId: previous.projectId,
       type: previous.type,

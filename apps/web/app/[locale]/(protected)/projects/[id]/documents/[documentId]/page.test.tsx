@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  useCancelDocumentProcessing,
   useRetryDocumentProcessing,
   useRetryDocumentRemoval,
   useSourceDocument,
@@ -14,6 +15,7 @@ vi.mock("react", async (importOriginal) => {
 });
 vi.mock("@/features/documentation/hooks", () => ({
   useSourceDocument: vi.fn(),
+  useCancelDocumentProcessing: vi.fn(),
   useRetryDocumentProcessing: vi.fn(),
   useRetryDocumentRemoval: vi.fn(),
 }));
@@ -24,6 +26,7 @@ vi.mock("@/features/documentation/components/remove-document-dialog", () => ({
 vi.mock("@/features/projects/hooks", () => ({ useProject: vi.fn() }));
 
 const replace = vi.fn();
+const cancelProcessing = vi.fn();
 vi.mock("@/i18n/navigation", () => ({
   Link: ({
     href,
@@ -88,6 +91,28 @@ describe("SourceDocumentPage", () => {
       isError: false,
       data: undefined,
     } as never);
+    vi.mocked(useCancelDocumentProcessing).mockReturnValue({
+      mutate: cancelProcessing,
+      isPending: false,
+      isError: false,
+    } as never);
+  });
+
+  // Opening a document being processed was a dead end: the status said "being
+  // integrated" and the page offered nothing to do about it, on the one screen
+  // with room to explain the wait.
+  it("offers a way out of a document that is still being processed", () => {
+    vi.mocked(useSourceDocument).mockReturnValue({
+      data: { ...baseDocument, status: "extracting" },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as never);
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "cancelProcessing" }));
+
+    expect(cancelProcessing).toHaveBeenCalledWith("document-1");
   });
 
   it("shows an incorporated uploaded document and its original", () => {

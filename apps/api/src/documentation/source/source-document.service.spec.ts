@@ -53,7 +53,9 @@ function sourceDocument(
 describe('SourceDocumentService', () => {
   let prisma: PrismaMock;
   let storage: jest.Mocked<DocumentStorageClient>;
-  let generation: jest.Mocked<Pick<GenerationService, 'create' | 'retry'>>;
+  let generation: jest.Mocked<
+    Pick<GenerationService, 'create' | 'retry' | 'cancel'>
+  >;
   let access: jest.Mocked<Pick<ProjectAccessService, 'requireContributor'>>;
   let notionClient: jest.Mocked<Pick<NotionClient, 'fetchPage'>>;
   let notionConnection: jest.Mocked<
@@ -68,7 +70,7 @@ describe('SourceDocumentService', () => {
       delete: jest.fn(),
       getDownloadUrl: jest.fn(),
     } as unknown as jest.Mocked<DocumentStorageClient>;
-    generation = { create: jest.fn(), retry: jest.fn() };
+    generation = { create: jest.fn(), retry: jest.fn(), cancel: jest.fn() };
     access = { requireContributor: jest.fn().mockResolvedValue({}) };
     notionClient = { fetchPage: jest.fn() };
     notionConnection = { getDecryptedToken: jest.fn() };
@@ -397,6 +399,49 @@ describe('SourceDocumentService', () => {
         version: { increment: 1 },
       },
     });
+  });
+
+  // A document being worked on offered no action at all: a spinner, for a batch
+  // stage that runs minutes and can hang for hours. Stopping halts the remote
+  // work and parks the document where the removal and retry paths can reach it.
+  it('stops the remote work before releasing a document being processed', async () => {
+    prisma.sourceDocument.findFirst.mockResolvedValue({
+      ...sourceDocument({ status: 'extracting' }),
+      generationOperations: [{ id: operationId }, { id: 'operation-2' }],
+    });
+    generation.cancel.mockResolvedValue({
+      cancelled: true,
+      remoteAccepted: true,
+    });
+    prisma.sourceDocument.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(
+      service.cancelProcessing(userId, projectId, documentId),
+    ).resolves.toEqual({ cancelledOperationCount: 2 });
+
+    expect(generation.cancel).toHaveBeenCalledTimes(2);
+    // The order matters: released first, an in-flight result could still land
+    // and drag the document back into the pipeline just walked away from.
+    expect(generation.cancel.mock.invocationCallOrder[0]).toBeLessThan(
+      prisma.sourceDocument.updateMany.mock.invocationCallOrder[0],
+    );
+    expect(prisma.sourceDocument.updateMany).toHaveBeenCalledWith({
+      where: { id: documentId, projectId, version: 1 },
+      data: {
+        status: 'failed',
+        failureCode: 'CANCELLED_BY_CONTRIBUTOR',
+        version: { increment: 1 },
+      },
+    });
+  });
+
+  it('refuses to stop a document that is not being processed', async () => {
+    prisma.sourceDocument.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.cancelProcessing(userId, projectId, documentId),
+    ).rejects.toEqual(new NotFoundException({ code: 'NOT_FOUND' }));
+    expect(generation.cancel).not.toHaveBeenCalled();
   });
 
   it('does not retry a document without a terminal extraction operation', async () => {

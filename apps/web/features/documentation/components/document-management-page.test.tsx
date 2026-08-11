@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  useCancelDocumentProcessing,
   useDocumentationDocuments,
   useRetryDocumentProcessing,
   useRetryDocumentRemoval,
@@ -9,6 +10,7 @@ import { useProject } from "@/features/projects/hooks";
 import { DocumentManagementPage } from "./document-management-page";
 
 vi.mock("../hooks", () => ({
+  useCancelDocumentProcessing: vi.fn(),
   useDocumentationDocuments: vi.fn(),
   useRetryDocumentProcessing: vi.fn(),
   useRetryDocumentRemoval: vi.fn(),
@@ -36,6 +38,7 @@ vi.mock("@/i18n/navigation", () => ({
 
 const retryProcessing = vi.fn();
 const retryRemoval = vi.fn();
+const cancelProcessing = vi.fn();
 
 describe("DocumentManagementPage", () => {
   beforeEach(() => {
@@ -53,14 +56,19 @@ describe("DocumentManagementPage", () => {
       mutate: retryRemoval,
       isPending: false,
     } as never);
+    vi.mocked(useCancelDocumentProcessing).mockReturnValue({
+      mutate: cancelProcessing,
+      isPending: false,
+    } as never);
     vi.mocked(useDocumentationDocuments).mockReturnValue({
       data: {
         items: [
           { id: "failed", title: "Cadrage", status: "failed", kind: "notion" },
           { id: "pending", title: "Architecture", status: "removal_pending", kind: "upload" },
           { id: "stuck", title: "Ancien brief", status: "removal_failed", kind: "upload" },
+          { id: "working", title: "Product MD", status: "extracting", kind: "notion" },
         ],
-        total: 3,
+        total: 4,
         nextCursor: null,
       },
       isPending: false,
@@ -113,5 +121,15 @@ describe("DocumentManagementPage", () => {
 
     expect(replace).toHaveBeenCalledWith("/projects/project-1");
     expect(screen.queryByText("Cadrage")).not.toBeInTheDocument();
+  });
+  // A row being worked on used to carry no action at all — a spinner, for a
+  // batch stage that runs minutes and can hang for hours. There was no way to
+  // stop it and no way to delete it while it ran.
+  it("lets a contributor stop a document that is still being processed", () => {
+    render(<DocumentManagementPage projectId="project-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "cancelProcessing" }));
+
+    expect(cancelProcessing).toHaveBeenCalledWith("working");
   });
 });
