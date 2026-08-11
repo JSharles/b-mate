@@ -45,7 +45,7 @@ export function CategoryReviewList({ projectId }: { projectId: string }) {
     <section className="border-b border-border py-8" aria-labelledby="category-review-title">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 id="category-review-title" className="text-xl font-semibold">
+          <h2 id="category-review-title" className="text-lg font-semibold">
             {t("title")}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
@@ -168,7 +168,7 @@ export function CategoryReviewList({ projectId }: { projectId: string }) {
                       [detail.data.id]: event.target.value,
                     }))
                   }
-                  className="mt-2 min-h-24 w-full rounded-lg border border-input bg-background p-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="mt-2 min-h-24 w-full rounded-lg border border-input bg-card p-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   placeholder={t("correctionPlaceholder")}
                 />
                 <Button

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/shared/lib/api-client";
 import {
@@ -65,11 +66,15 @@ describe("EditorialProfileSettings", () => {
     expect(refetch).toHaveBeenCalled();
   });
 
-  it("previews an editable profile without publishing it", () => {
+  it("previews an editable profile without publishing it", async () => {
     vi.mocked(useEditorialProfile).mockReturnValue({ data: baseProfile } as never);
+    const user = userEvent.setup();
     render(<EditorialProfileSettings projectId="project-1" />);
 
-    fireEvent.change(screen.getByLabelText("length"), { target: { value: "concise" } });
+    // The four dimensions use the design system's Select now, so the choice is
+    // a listbox rather than a native dropdown carrying OS chrome.
+    await user.click(screen.getByLabelText("length"));
+    await user.click(await screen.findByRole("option", { name: "length_concise" }));
     fireEvent.change(screen.getByLabelText("guidance"), {
       target: { value: "Prefer concrete examples." },
     });

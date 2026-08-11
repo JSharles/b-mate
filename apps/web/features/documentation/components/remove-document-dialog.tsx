@@ -96,7 +96,7 @@ export function RemoveDocumentDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>{t(confirm.isError ? "close" : "cancel")}</AlertDialogCancel>
           <AlertDialogAction
-            className="bg-destructive text-white hover:bg-destructive/90"
+            className="bg-destructive text-foreground hover:bg-destructive/90"
             disabled={!preview.data || confirm.isPending}
             onClick={(event) => {
               event.preventDefault();

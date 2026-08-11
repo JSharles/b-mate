@@ -6,6 +6,14 @@ import { useState } from "react";
 import type { EditorialProfileValues } from "schemas";
 import { ClientCategoryView } from "@/shared/components/client-category-view";
 import { Button } from "@/shared/components/ui/button";
+import { Label } from "@/shared/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/components/ui/select";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { ApiError } from "@/shared/lib/api-client";
 import {
@@ -49,7 +57,7 @@ export function EditorialProfileSettings({ projectId }: { projectId: string }) {
   if (profile.isPending) {
     return (
       <section className="border-b border-border py-8">
-        <h2 className="text-xl font-semibold">{t("title")}</h2>
+        <h2 className="text-lg font-semibold">{t("title")}</h2>
         <Skeleton className="mt-4 h-24 w-full" />
       </section>
     );
@@ -57,7 +65,7 @@ export function EditorialProfileSettings({ projectId }: { projectId: string }) {
   if (profile.isError || !profile.data) {
     return (
       <section className="border-b border-border py-8">
-        <h2 className="text-xl font-semibold">{t("title")}</h2>
+        <h2 className="text-lg font-semibold">{t("title")}</h2>
         <div className="mt-4 flex flex-col items-start gap-3 rounded-xl border border-border bg-card p-6">
           <p className="flex items-center gap-2 text-sm text-destructive">
             <AlertCircle className="size-4" />
@@ -106,36 +114,44 @@ export function EditorialProfileSettings({ projectId }: { projectId: string }) {
 
   return (
     <section className="border-b border-border py-8">
-      <h2 className="text-xl font-semibold">{t("title")}</h2>
+      <h2 className="text-lg font-semibold">{t("title")}</h2>
       <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
         {t("description")}
       </p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* A native <select> renders the operating system's own dropdown
+            chrome, which does not belong to a single committed dark theme —
+            and the design system already ships a Select. */}
         {(Object.keys(options) as Array<keyof typeof options>).map((key) => (
-          <label key={key} className="text-sm font-medium">
-            {t(key)}
-            <select
-              className="mt-2 w-full rounded-md border border-input bg-background p-2"
+          <div key={key} className="flex flex-col gap-2">
+            <Label htmlFor={`editorial-${key}`}>{t(key)}</Label>
+            <Select
               value={values[key]}
-              onChange={(event) => changeSelect(key, event.target.value)}
+              onValueChange={(value) => changeSelect(key, value)}
             >
-              {options[key].map((option) => (
-                <option key={option} value={option}>
-                  {t(`${key}_${option}`)}
-                </option>
-              ))}
-            </select>
-          </label>
+              <SelectTrigger id={`editorial-${key}`} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {options[key].map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {t(`${key}_${option}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         ))}
       </div>
-      <label className="mt-4 block text-sm font-medium">
-        {t("guidance")}
+      <div className="mt-4 flex flex-col gap-2">
+        <Label htmlFor="editorial-guidance">{t("guidance")}</Label>
         <textarea
-          className="mt-2 min-h-20 w-full rounded-md border border-input bg-background p-3"
+          id="editorial-guidance"
+          className="min-h-20 w-full rounded-md border border-input bg-card p-3 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
           value={values.guidance ?? ""}
           onChange={(event) => change("guidance", event.target.value || null)}
         />
-      </label>
+      </div>
       <Button
         className="mt-4"
         disabled={propose.isPending || Boolean(proposal)}

@@ -26,7 +26,7 @@
     "features": {
       "eyebrow": "La complexité, traduite",
       "title": "La tech reste précise. Elle devient accessible.",
-      "subhead": "Diaphane retire le jargon et l'opacité, pas la substance. Chaque information reste fidèle au travail réel et devient compréhensible pour votre client.",
+      "subhead": "Diaphane retire le jargon et l’opacité, pas la substance. Chaque information reste fidèle au travail réel et devient compréhensible pour votre client.",
       "preview": {
         "badge": "Exemple de transformation",
         "sourceLabel": "Dans votre board",
@@ -36,10 +36,10 @@
         "clientLabel": "Dans Diaphane",
         "clientStatus": "En cours",
         "clientTitle": "Sécurisation des connexions",
-        "whyLabel": "Pourquoi c'est nécessaire",
+        "whyLabel": "Pourquoi c’est nécessaire",
         "why": "Certains accès supprimés peuvent rester valides trop longtemps. Cette évolution les rend révocables immédiatement.",
         "impactLabel": "Impact pour vous",
-        "impact": "Aucun changement visible dans l'utilisation quotidienne. Le travail concerne surtout la sécurité.",
+        "impact": "Aucun changement visible dans l’utilisation quotidienne. Le travail concerne surtout la sécurité.",
         "stateLabel": "État actuel",
         "state": "Une première version a été développée et se trouve maintenant en validation.",
         "clientNote": "Exemple de la vue reformulée à partir du contenu du ticket source."
@@ -58,7 +58,7 @@
         "classifyTitle": "1. Classer",
         "classifyDescription": "Chaque passage rejoint la bonne rubrique.",
         "structureTitle": "2. Structurer",
-        "structureDescription": "L'information est découpée en sections utiles.",
+        "structureDescription": "L’information est découpée en sections utiles.",
         "simplifyTitle": "3. Vulgariser",
         "simplifyDescription": "Le contenu devient clair sans perdre son sens.",
         "clientLabel": "Dans Diaphane",
@@ -68,7 +68,7 @@
         "roadmapCategory": "Roadmap",
         "otherCategory": "Autres informations",
         "sectionTitle": "Un espace unique pour suivre le projet",
-        "sectionText": "Le client retrouve l'avancement, les décisions et le contexte utile dans une vue organisée, sans parcourir les documents de travail.",
+        "sectionText": "Le client retrouve l’avancement, les décisions et le contexte utile dans une vue organisée, sans parcourir les documents de travail.",
         "controlLabel": "Avant publication :",
         "controlText": "vous validez, refusez ou reclassez chaque section proposée."
       }
@@ -99,13 +99,13 @@
     "clients": {
       "eyebrow": "Pour le client",
       "title": "Une vue claire, sans apprendre vos outils.",
-      "subhead": "Le client accède au contexte qui l'aide à comprendre et à participer, pas à la complexité de votre environnement technique.",
+      "subhead": "Le client accède au contexte qui l’aide à comprendre et à participer, pas à la complexité de votre environnement technique.",
       "card1Title": "Comprendre ce qui se passe maintenant",
       "card1Description": "La tâche en cours est présentée avec sa raison, son impact et son état en langage clair.",
       "card2Title": "Explorer une documentation structurée",
-      "card2Description": "Les informations approuvées sont rangées par sujet et reformulées clairement, avec le document d'origine toujours accessible.",
+      "card2Description": "Les informations approuvées sont rangées par sujet et reformulées clairement, avec le document d’origine toujours accessible.",
       "card3Title": "Identifier les bonnes personnes",
-      "card3Description": "L'équipe, les coordonnées utiles et le lien de réunion restent réunis dans le même espace."
+      "card3Description": "L’équipe, les coordonnées utiles et le lien de réunion restent réunis dans le même espace."
     },
     "faq": {
       "eyebrow": "Questions fréquentes",
@@ -113,15 +113,15 @@
       "groupHowItWorks": "Fonctionnement",
       "groupTrustPricing": "Confiance & tarifs",
       "q1": "Diaphane remplace-t-il mon outil de suivi ?",
-      "a1": "Non. Votre board reste l'espace où vous pilotez le projet. Diaphane est conçu pour se connecter à différents outils de suivi ; la première intégration disponible est GitHub Projects.",
+      "a1": "Non. Votre board reste l’espace où vous pilotez le projet. Diaphane est conçu pour se connecter à différents outils de suivi ; la première intégration disponible est GitHub Projects.",
       "q2": "Que fait Diaphane de mes documents ?",
       "a2": "Diaphane analyse leur contenu, le répartit entre les rubriques du projet, le structure en sections utiles puis le vulgarise. Vous pouvez valider, refuser ou reclasser chaque section avant publication.",
       "q3": "Que voit exactement mon client ?",
-      "a3": "Une vue en lecture seule de son projet : tâche en cours, progression, équipe, documentation approuvée et informations de réunion lorsqu'elles sont renseignées.",
+      "a3": "Une vue en lecture seule de son projet : tâche en cours, progression, équipe, documentation approuvée et informations de réunion lorsqu’elles sont renseignées.",
       "q4": "Comment inviter mon client ?",
-      "a4": "Vous créez une invitation dans le projet, puis vous partagez le lien sécurisé généré par Diaphane. Le client l'utilise pour créer ou rejoindre son compte.",
-      "q5": "L'IA peut-elle inventer des informations ?",
-      "a5": "Diaphane demande à l'IA de travailler uniquement à partir des sources disponibles. Vous gardez le contrôle : les sections documentaires ne sont jamais publiées sans votre approbation.",
+      "a4": "Vous créez une invitation dans le projet, puis vous partagez le lien sécurisé généré par Diaphane. Le client l’utilise pour créer ou rejoindre son compte.",
+      "q5": "L’IA peut-elle inventer des informations ?",
+      "a5": "Diaphane demande à l’IA de travailler uniquement à partir des sources disponibles. Vous gardez le contrôle : les sections documentaires ne sont jamais publiées sans votre approbation.",
       "q6": "Comment les accès sont-ils protégés ?",
       "a6": "Chaque session est authentifiée et rattachée à un utilisateur. Votre client accède uniquement aux projets auxquels il a été invité.",
       "q7": "Combien coûte Diaphane ?",
@@ -152,11 +152,11 @@
       "passwordRequired": "Le mot de passe est requis"
     },
     "SignupPage": {
-      "title": "S'inscrire"
+      "title": "S’inscrire"
     },
     "GitHubAuthCard": {
       "continue": "Continuer avec GitHub",
-      "errorEmailRequired": "GitHub n'a pas transmis d'adresse email vérifiée. Rendez un email public et vérifié sur votre compte GitHub, puis réessayez.",
+      "errorEmailRequired": "GitHub n’a pas transmis d’adresse email vérifiée. Rendez un email public et vérifié sur votre compte GitHub, puis réessayez.",
       "errorGeneric": "Une erreur est survenue lors de la connexion à GitHub. Merci de réessayer."
     },
     "AuthGateway": {
@@ -230,18 +230,18 @@
       },
       "AddDocument": {
         "title": "Enrichir la source",
-        "description": "Ajoutez un document de travail. Diaphane en extrait les informations utiles, les rapproche de l'existant et conserve leur origine.",
+        "description": "Ajoutez un document de travail. Diaphane en extrait les informations utiles, les rapproche de l’existant et conserve leur origine.",
         "uploadTab": "Importer un fichier",
         "notionTab": "Page Notion",
         "fileLabel": "Document",
-        "fileHint": "PDF, Word (.docx), PNG ou JPEG — 25 Mo maximum. L'original restera accessible.",
+        "fileHint": "PDF, Word (.docx), PNG ou JPEG — 25 Mo maximum. L’original restera accessible.",
         "uploadSubmit": "Ajouter à la source",
         "uploadPending": "Envoi en cours…",
         "notionChecking": "Vérification de la connexion Notion…",
         "notionPageUrlLabel": "Adresse de la page Notion",
         "notionSubmit": "Ajouter à la source",
         "notionPending": "Ajout en cours…",
-        "notionUnavailable": "Connectez d'abord Notion dans les outils du projet, puis revenez ajouter la page souhaitée.",
+        "notionUnavailable": "Connectez d’abord Notion dans les outils du projet, puis revenez ajouter la page souhaitée.",
         "configureNotion": "Configurer Notion"
       },
       "Source": {
@@ -257,7 +257,7 @@
         "pointToClarify": "Point à clarifier",
         "changeLanguage": "Changer la langue",
         "languageQuestion": "Choisir une nouvelle langue de travail",
-        "languageWarning": "Un aperçu de l'impact sera affiché avant toute modification. Les documents originaux ne seront jamais traduits ni remplacés.",
+        "languageWarning": "Un aperçu de l’impact sera affiché avant toute modification. Les documents originaux ne seront jamais traduits ni remplacés.",
         "french": "Français",
         "english": "Anglais",
         "cancel": "Annuler",
@@ -265,7 +265,7 @@
         "languagePreviewDescription": "{count, plural, one {# information sera traduite} other {# informations seront traduites}} en {language}. Une nouvelle révision traçable sera créée.",
         "confirmLanguage": "Confirmer",
         "confirmingLanguage": "Démarrage…",
-        "languageError": "La modification n'a pas pu être préparée. La source actuelle reste inchangée.",
+        "languageError": "La modification n’a pas pu être préparée. La source actuelle reste inchangée.",
         "language_fr": "français",
         "language_en": "anglais",
         "kind_fact": "Fait",
@@ -284,7 +284,7 @@
       },
       "Documents": {
         "title": "Documents ajoutés",
-        "description": "Les contributions conservées à l'origine de la source.",
+        "description": "Les contributions conservées à l’origine de la source.",
         "empty": "Aucun document ajouté pour le moment.",
         "loadError": "Impossible de charger les documents.",
         "statusIncorporated": "Intégré à la source",
@@ -298,15 +298,15 @@
         "statusProcessingSince": "Intégration en cours · {since}"
       },
       "Provenance": {
-        "title": "Origine de l'information",
-        "description": "Retrouvez ce qui soutient ce point et les révisions qui l'ont fait évoluer.",
-        "loadError": "Impossible de charger l'origine de cette information.",
+        "title": "Origine de l’information",
+        "description": "Retrouvez ce qui soutient ce point et les révisions qui l’ont fait évoluer.",
+        "loadError": "Impossible de charger l’origine de cette information.",
         "originsTitle": "Sources et contributions",
         "historyTitle": "Historique",
         "revisionLabel": "Révision {sequence}",
         "pdfPage": "Page {page}",
         "docxHeading": "Section « {heading} »",
-        "imageRegion": "Zone de l'image",
+        "imageRegion": "Zone de l’image",
         "notionBlock": "Bloc Notion {position}",
         "role_supports": "Confirme",
         "role_conflicts": "Contredit",
@@ -325,14 +325,14 @@
       },
       "Correction": {
         "title": "Corriger une information",
-        "description": "Décrivez le fait correct. Votre correction sera conservée comme origine et créera une nouvelle révision — le texte existant n'est jamais modifié silencieusement.",
+        "description": "Décrivez le fait correct. Votre correction sera conservée comme origine et créera une nouvelle révision — le texte existant n’est jamais modifié silencieusement.",
         "correctedContentLabel": "Information corrigée",
         "contentHint": "Réservez cette action aux faits. La longueur, le ton et le niveau pédagogique se règlent dans le profil éditorial.",
         "reasonLabel": "Pourquoi cette correction ? (facultatif)",
         "cancel": "Annuler",
         "submit": "Créer la correction",
         "submitting": "Correction en cours…",
-        "staleError": "La source a évolué depuis l'ouverture de cette fenêtre. Fermez-la puis vérifiez la dernière révision."
+        "staleError": "La source a évolué depuis l’ouverture de cette fenêtre. Fermez-la puis vérifiez la dernière révision."
       },
       "Clarifications": {
         "title": "Points à clarifier",
@@ -342,7 +342,7 @@
         "answerAction": "Répondre",
         "leaveOpenAction": "Laisser à clarifier",
         "loadError": "Impossible de charger les points à clarifier.",
-        "resolveError": "Cette décision n'a pas pu être enregistrée. Vérifiez la dernière version de la source.",
+        "resolveError": "Cette décision n’a pas pu être enregistrée. Vérifiez la dernière version de la source.",
         "loadMore": "Afficher plus",
         "loadingMore": "Chargement…"
       },
@@ -375,8 +375,8 @@
         "retryRemoval": "Réessayer la suppression",
         "retryingRemoval": "Nouvelle tentative…",
         "retryRemovalError": "La suppression n’a pas abouti. L’original et la source publiée restent protégés.",
-        "downloadOriginal": "Télécharger l'original",
-        "openOriginal": "Ouvrir la page d'origine"
+        "downloadOriginal": "Télécharger l’original",
+        "openOriginal": "Ouvrir la page d’origine"
       },
       "Pipeline": {
         "title": "Documentation du projet",
@@ -397,7 +397,7 @@
     "TeamPage": {
       "title": "Équipe",
       "backToProject": "Retour au projet",
-      "loadErrorTitle": "Impossible de charger l'équipe de ce projet",
+      "loadErrorTitle": "Impossible de charger l’équipe de ce projet",
       "loadErrorRetry": "Réessayer",
       "active": "Actifs",
       "pending": "En attente"
@@ -426,7 +426,7 @@
       "removing": "Retrait…",
       "lastAdminHint": "Un projet doit toujours garder au moins un admin",
       "removeConfirmTitle": "Retirer {name} de ce projet ?",
-      "removeConfirmDescription": "Cette personne perdra immédiatement l'accès à ce projet.",
+      "removeConfirmDescription": "Cette personne perdra immédiatement l’accès à ce projet.",
       "removeConfirmCancel": "Annuler",
       "removeConfirmAction": "Retirer"
     },
@@ -440,7 +440,7 @@
       "needsReconnect": "Votre autorisation GitHub a été révoquée — reconnectez-vous pour garder ce board synchronisé.",
       "reconnect": "Reconnecter",
       "disconnectConfirmTitle": "Déconnecter ce board ?",
-      "disconnectConfirmDescription": "Le client ne verra plus l'avancement des tâches de ce board tant qu'il n'est pas reconnecté.",
+      "disconnectConfirmDescription": "Le client ne verra plus l’avancement des tâches de ce board tant qu’il n’est pas reconnecté.",
       "disconnectConfirmCancel": "Annuler",
       "disconnectConfirmAction": "Déconnecter"
     },
@@ -448,10 +448,10 @@
       "title": "Connecter un board GitHub Projects",
       "continueWithGithub": "Continuer avec GitHub",
       "previewPending": "Vérification…",
-      "noBoards": "Ce compte GitHub n'a accès à aucun board GitHub Projects.",
+      "noBoards": "Ce compte GitHub n’a accès à aucun board GitHub Projects.",
       "connectSubmit": "Connecter",
       "connectPending": "Connexion…",
-      "estimateUnitLabel": "Quand une tâche a un nombre \"Estimate\" mais pas de \"Target date\", l'interpréter en :",
+      "estimateUnitLabel": "Quand une tâche a un nombre \"Estimate\" mais pas de \"Target date\", l’interpréter en :",
       "estimateUnitDays": "Jours",
       "estimateUnitHours": "Heures"
     },
@@ -465,13 +465,13 @@
       "disconnect": "Déconnecter",
       "disconnecting": "Déconnexion…",
       "disconnectConfirmTitle": "Déconnecter cette intégration Notion ?",
-      "disconnectConfirmDescription": "Il ne sera plus possible d'ajouter de nouvelles ressources Notion tant qu'elle n'est pas reconnectée. Les ressources déjà ajoutées depuis Notion ne sont pas affectées.",
+      "disconnectConfirmDescription": "Il ne sera plus possible d’ajouter de nouvelles ressources Notion tant qu’elle n’est pas reconnectée. Les ressources déjà ajoutées depuis Notion ne sont pas affectées.",
       "disconnectConfirmCancel": "Annuler",
       "disconnectConfirmAction": "Déconnecter"
     },
     "ConnectNotionDialog": {
       "title": "Connecter une intégration Notion",
-      "tokenLabel": "Jeton d'intégration Notion",
+      "tokenLabel": "Jeton d’intégration Notion",
       "tokenHint": "Créez-en un et copiez son secret sur",
       "connectSubmit": "Connecter",
       "connectPending": "Connexion…"
@@ -490,9 +490,9 @@
     },
     "CurrentTaskCard": {
       "title": "Tâche en cours",
-      "empty": "Votre développeur n'a pas encore commencé de tâche — revenez bientôt.",
+      "empty": "Votre développeur n’a pas encore commencé de tâche — revenez bientôt.",
       "inProgress": "En cours",
-      "why": "Pourquoi c'est nécessaire",
+      "why": "Pourquoi c’est nécessaire",
       "impact": "Impact pour vous",
       "status": "État",
       "timeline": "Commencée {started}, mise à jour {updated}.",
@@ -503,7 +503,7 @@
         "medium": "Cette estimation est une approximation raisonnable.",
         "low": "Cette estimation est incertaine — la date pourrait changer."
       },
-      "progressLabel": "Progression de l'estimation",
+      "progressLabel": "Progression de l’estimation",
       "taskCounter": "Tâche {current} sur {total}",
       "previousTask": "Tâche précédente",
       "nextTask": "Tâche suivante",
@@ -533,7 +533,7 @@
       "timezoneHint": "Utilisé pour les réunions et échéances de ce client",
       "timezonePlaceholder": "Choisir un fuseau horaire",
       "dateFormat": "Format de date",
-      "dateFormatHint": "Comment les dates s'affichent pour ce client",
+      "dateFormatHint": "Comment les dates s’affichent pour ce client",
       "dateFormatPlaceholder": "Choisir un format",
       "dateFormatOption": {
         "mdy": "Mois/Jour/Année (08/09/2026)",
@@ -550,7 +550,7 @@
     },
     "MeetingCard": {
       "title": "Réunions",
-      "hint": "Réunions à venir et passées, dès qu'elles seront planifiées.",
+      "hint": "Réunions à venir et passées, dès qu’elles seront planifiées.",
       "join": "Rejoindre la réunion"
     },
     "DocumentationNew": {
@@ -671,8 +671,8 @@
   },
   "Invite": {
     "title": "Rejoindre le projet",
-    "invalidLink": "Ce lien d'invitation n'est pas valide.",
-    "noLongerAvailable": "Cette invitation n'est plus disponible.",
+    "invalidLink": "Ce lien d’invitation n’est pas valide.",
+    "noLongerAvailable": "Cette invitation n’est plus disponible.",
     "alreadyAccepted": "Cette invitation a déjà été acceptée.",
     "AcceptInvitationForm": {
       "email": "Email",

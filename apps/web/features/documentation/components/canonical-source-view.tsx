@@ -97,7 +97,7 @@ export function CanonicalSourceView({ projectId }: { projectId: string }) {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             {t("eyebrow")}
           </p>
-          <h2 className="text-xl font-semibold tracking-tight">{t("title")}</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{t("title")}</h2>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
             {t("description")}
           </p>

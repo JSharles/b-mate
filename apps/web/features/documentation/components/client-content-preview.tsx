@@ -17,7 +17,7 @@ function Frame({ children }: { children: React.ReactNode }) {
     <section className="border-b border-border py-8">
       <div className="mb-4 flex items-center gap-3">
         <Eye className="size-5 text-primary" />
-        <h2 className="text-xl font-semibold">{t("title")}</h2>
+        <h2 className="text-lg font-semibold">{t("title")}</h2>
       </div>
       {children}
     </section>
@@ -62,7 +62,7 @@ export function ClientContentPreview({ projectId }: { projectId: string }) {
       <div className="mb-4 flex items-center gap-3">
         <Eye className="size-5 text-primary" />
         <div>
-          <h2 className="text-xl font-semibold">{t("title")}</h2>
+          <h2 className="text-lg font-semibold">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
             {preview.data.pending ? t("previousVisible") : t("exactVisible")}
           </p>
