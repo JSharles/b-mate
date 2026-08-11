@@ -118,6 +118,7 @@ describe("CategoryReviewList", () => {
       const draft = {
         id: "00000000-0000-4000-8000-000000000001",
         categoryKey: "overview",
+        status: "pending_review",
         version: 3,
         changeSummary: "One date changed",
       };
@@ -190,6 +191,7 @@ describe("CategoryReviewList", () => {
     const draft = {
       id: "00000000-0000-4000-8000-000000000001",
       categoryKey: "overview",
+      status: "pending_review",
       version: 3,
       changeSummary: "One date changed",
     };
@@ -214,6 +216,7 @@ describe("CategoryReviewList", () => {
       const draft = {
         id: "00000000-0000-4000-8000-000000000001",
         categoryKey: "overview",
+        status: "pending_review",
         version: 3,
         changeSummary: "One date changed",
       };
@@ -258,8 +261,8 @@ describe("CategoryReviewList", () => {
   // another — against an immutable source, that costs a real revision to undo.
   it("keeps each category's correction with its own draft", () => {
     const drafts = [
-      { id: "draft-a", categoryKey: "overview", version: 1, changeSummary: "A" },
-      { id: "draft-b", categoryKey: "planning", version: 1, changeSummary: "B" },
+      { id: "draft-a", categoryKey: "overview", status: "pending_review", version: 1, changeSummary: "A" },
+      { id: "draft-b", categoryKey: "planning", status: "pending_review", version: 1, changeSummary: "B" },
     ];
     vi.mocked(useCategoryDrafts).mockReturnValue({
       isPending: false,
@@ -283,5 +286,48 @@ describe("CategoryReviewList", () => {
     fireEvent.click(screen.getByRole("button", { name: /category_planning/i }));
 
     expect(screen.getByLabelText("correctionLabel")).toHaveValue("");
+  });
+
+  // Accepting derives an immutable client release. A draft still generating
+  // has an empty body, so offering "Valider et préparer la publication" over
+  // it invited approval, sight unseen, of content that does not exist.
+  it("offers no verdict on a draft that is still being generated", () => {
+    const draft = {
+      id: "00000000-0000-4000-8000-000000000001",
+      categoryKey: "overview",
+      status: "generating",
+      version: 1,
+      changeSummary: null,
+    };
+    vi.mocked(useCategoryDrafts).mockReturnValue({
+      isPending: false,
+      data: [{ activeDraft: draft }],
+    } as never);
+    vi.mocked(useCategoryDraft).mockReturnValue({
+      data: { ...draft, blocks: [] },
+    } as never);
+
+    render(<CategoryReviewList projectId="project-1" />);
+    fireEvent.click(screen.getByRole("button", { name: /category_overview/i }));
+
+    expect(screen.getByText("draftGenerating")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /accept/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /discard/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("correctionLabel")).not.toBeInTheDocument();
+  });
+
+  // The badge said how much was waiting; it counted drafts nobody could act on.
+  it("counts only the drafts a contributor can actually review", () => {
+    vi.mocked(useCategoryDrafts).mockReturnValue({
+      isPending: false,
+      data: [
+        { activeDraft: { id: "a", categoryKey: "overview", status: "pending_review", version: 1, changeSummary: "A" } },
+        { activeDraft: { id: "b", categoryKey: "planning", status: "generating", version: 1, changeSummary: null } },
+      ],
+    } as never);
+
+    render(<CategoryReviewList projectId="project-1" />);
+
+    expect(screen.getByText("pendingCount")).toBeVisible();
   });
 });

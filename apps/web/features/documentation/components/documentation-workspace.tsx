@@ -86,16 +86,16 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
           Without it the browser scrolls but leaves focus behind — measured
           landing on <body>, so the next Tab restarts from the top of the
           document and the nav is worse than useless to a keyboard user. */}
-      <div id="documentation-source" tabIndex={-1} className="scroll-mt-6 outline-none">
+      <div id="documentation-source" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <CanonicalSourceView projectId={projectId} />
       </div>
-      <div id="documentation-review" tabIndex={-1} className="scroll-mt-6 outline-none">
+      <div id="documentation-review" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <CategoryReviewList projectId={projectId} />
       </div>
-      <div id="documentation-editorial" tabIndex={-1} className="scroll-mt-6 outline-none">
+      <div id="documentation-editorial" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <EditorialProfileSettings projectId={projectId} />
       </div>
-      <div id="documentation-client" tabIndex={-1} className="scroll-mt-6 outline-none">
+      <div id="documentation-client" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <ClientContentPreview projectId={projectId} />
       </div>
     </div>

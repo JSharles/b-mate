@@ -575,7 +575,9 @@
         "error": "L’action n’a pas abouti. Réessayez dans un instant.",
         "openPoint": "À clarifier",
         "accepted": "Catégorie validée. {remaining, plural, =0 {Toutes les catégories sont validées.} one {# catégorie reste à valider.} other {# catégories restent à valider.}}",
-        "discarded": "Brouillon écarté. La version précédente reste en place."
+        "discarded": "Brouillon écarté. La version précédente reste en place.",
+        "draftGenerating": "Cette catégorie est encore en cours de génération. Elle sera lisible ici dès qu’elle sera prête.",
+        "pendingCount": "{count, plural, =0 {0 à valider} one {# à valider} other {# à valider}}"
       },
       "Preview": {
         "title": "Ce que voit votre client",
@@ -638,7 +640,7 @@
         "navReview": "À valider",
         "navEditorial": "Profil éditorial",
         "navClient": "Vue client",
-        "releaseProgress": "{ready} catégorie(s) validée(s) sur {expected} pour la prochaine publication.",
+        "releaseProgress": "{ready, plural, one {# catégorie validée} other {# catégories validées}} sur {expected} pour la prochaine publication.",
         "releaseAtomic": "Le client continue de voir la version actuelle tant que la nouvelle n’est pas complète."
       },
       "Removal": {

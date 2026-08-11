@@ -575,7 +575,9 @@
         "error": "That action did not go through. Try again in a moment.",
         "openPoint": "To clarify",
         "accepted": "Category approved. {remaining, plural, =0 {Every category is approved.} one {# category still to review.} other {# categories still to review.}}",
-        "discarded": "Draft discarded. The previous version stays in place."
+        "discarded": "Draft discarded. The previous version stays in place.",
+        "draftGenerating": "This category is still being generated. It will be readable here as soon as it is ready.",
+        "pendingCount": "{count, plural, =0 {0 to review} one {# to review} other {# to review}}"
       },
       "Preview": {
         "title": "What your client sees",
@@ -638,7 +640,7 @@
         "navReview": "To review",
         "navEditorial": "Editorial profile",
         "navClient": "Client view",
-        "releaseProgress": "{ready} of {expected} categories approved for the next release.",
+        "releaseProgress": "{ready, plural, one {# category approved} other {# categories approved}} of {expected} for the next release.",
         "releaseAtomic": "The client keeps seeing the current version until the new one is complete."
       },
       "Removal": {

@@ -11,6 +11,12 @@ import {
   useReviewCategoryDraft,
 } from "../hooks";
 
+// Accepting derives an immutable client release, so it may only be offered
+// once there is something to read. A draft still generating has an empty body.
+function isReviewable(status: string) {
+  return status === "pending_review";
+}
+
 // A rejected write must never look like a dead button. These mutations opt out
 // of the global toast because their failures are specific — a 409 means the
 // source moved under the contributor and the recovery is to reread it, not to
@@ -40,6 +46,9 @@ export function CategoryReviewList({ projectId }: { projectId: string }) {
     list.data
       ?.map((state) => state.activeDraft)
       .filter((draft): draft is NonNullable<typeof draft> => Boolean(draft)) ?? [];
+  // Only a draft that has finished generating can be accepted or refused, so
+  // only those count toward "how much is waiting for me".
+  const reviewable = drafts.filter((draft) => isReviewable(draft.status));
 
   return (
     <section className="border-b border-border py-8" aria-labelledby="category-review-title">
@@ -50,7 +59,9 @@ export function CategoryReviewList({ projectId }: { projectId: string }) {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
         </div>
-        <span className="rounded-md bg-muted px-3 py-1 text-xs">{drafts.length}</span>
+        <span className="rounded-md bg-muted px-3 py-1 text-xs">
+          {t("pendingCount", { count: reviewable.length })}
+        </span>
       </div>
 
       {list.isPending ? (
@@ -91,7 +102,12 @@ export function CategoryReviewList({ projectId }: { projectId: string }) {
             })}
           </div>
 
-          {detail.data ? (
+          {detail.data && !isReviewable(detail.data.status) ? (
+            <div className="rounded-xl border border-border bg-card p-8 text-sm text-muted-foreground">
+              <CircleDashed className="mb-2 size-5 animate-spin motion-reduce:animate-none" />
+              {t("draftGenerating")}
+            </div>
+          ) : detail.data ? (
             <div className="rounded-xl border border-border bg-card p-5">
               <div className="space-y-4">
                 {detail.data.blocks.map((block, index) =>
@@ -150,7 +166,7 @@ export function CategoryReviewList({ projectId }: { projectId: string }) {
               {review.isSuccess && (
                 <p role="status" className="mt-3 text-sm text-muted-foreground">
                   {review.variables?.action === "accept"
-                    ? t("accepted", { remaining: drafts.length })
+                    ? t("accepted", { remaining: reviewable.length })
                     : t("discarded")}
                 </p>
               )}
