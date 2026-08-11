@@ -11,7 +11,6 @@ import {
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { CanonicalItem, LanguageProposal } from "schemas";
-import { Link } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { ApiError } from "@/shared/lib/api-client";
@@ -44,7 +43,7 @@ function SourceItem({
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span>{t(`kind_${item.kind}`)}</span>
           {item.state === "point_to_clarify" && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-amber-200">
+            <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-muted-foreground">
               <AlertCircle className="size-3" />
               {t("pointToClarify")}
             </span>
@@ -53,7 +52,7 @@ function SourceItem({
             <span key={category}>{t(`category_${category}`)}</span>
           ))}
         </div>
-        <p className="max-w-3xl text-[15px] leading-7 text-foreground">{item.content}</p>
+        <p className="max-w-3xl text-sm leading-7 text-foreground">{item.content}</p>
         <div className="flex flex-wrap gap-1">
           <Button type="button" variant="ghost" size="xs" onClick={onProvenance}>
             <ShieldCheck />
@@ -103,9 +102,6 @@ export function CanonicalSourceView({ projectId }: { projectId: string }) {
             {t("description")}
           </p>
         </div>
-        <Button asChild variant="outline">
-          <Link href={`/projects/${projectId}/documents`}>{t("manageDocuments")}</Link>
-        </Button>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -248,9 +244,6 @@ export function CanonicalSourceView({ projectId }: { projectId: string }) {
                   {t("Source.emptyDescription")}
                 </p>
               </div>
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/projects/${projectId}/documents`}>{t("addFirstDocument")}</Link>
-              </Button>
             </div>
           ) : source.isError || !source.data ? (
             <div className="flex flex-col items-start gap-3 px-6 py-12">

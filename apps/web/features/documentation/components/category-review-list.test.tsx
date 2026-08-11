@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/shared/lib/api-client";
 import {
   useCategoryDraft,
   useCategoryDrafts,
@@ -107,5 +108,101 @@ describe("CategoryReviewList", () => {
     } as never);
     render(<CategoryReviewList projectId="project-1" />);
     expect(screen.queryByText("editorialRedirect")).not.toBeInTheDocument();
+  });
+
+  // These mutations suppress the global toast, so a rejected write used to be
+  // indistinguishable from a dead button — and a version conflict is routine
+  // here, because the workspace polls while the contributor is deciding.
+  describe("when a write is rejected", () => {
+    function draftInReview() {
+      const draft = {
+        id: "00000000-0000-4000-8000-000000000001",
+        categoryKey: "overview",
+        version: 3,
+        changeSummary: "One date changed",
+      };
+      vi.mocked(useCategoryDrafts).mockReturnValue({
+        isPending: false,
+        data: [{ activeDraft: draft }],
+      } as never);
+      vi.mocked(useCategoryDraft).mockReturnValue({
+        data: { ...draft, blocks: [{ type: "fact", text: "The launch is scheduled" }] },
+      } as never);
+      return draft;
+    }
+
+    it("names a version conflict rather than failing silently", () => {
+      draftInReview();
+      vi.mocked(useReviewCategoryDraft).mockReturnValue({
+        mutate: reviewMutate,
+        error: new ApiError("conflict", 409),
+      } as never);
+
+      render(<CategoryReviewList projectId="project-1" />);
+
+      expect(screen.getByRole("alert")).toHaveTextContent("staleError");
+    });
+
+    it("falls back to a generic failure for anything else", () => {
+      draftInReview();
+      vi.mocked(useReviewCategoryDraft).mockReturnValue({
+        mutate: reviewMutate,
+        error: new ApiError("boom", 500),
+      } as never);
+
+      render(<CategoryReviewList projectId="project-1" />);
+
+      expect(screen.getByRole("alert")).toHaveTextContent("error");
+    });
+
+    it("surfaces a rejected correction too", () => {
+      draftInReview();
+      vi.mocked(useCorrectCategoryDraft).mockReturnValue({
+        mutate: correctMutate,
+        data: undefined,
+        error: new ApiError("conflict", 409),
+      } as never);
+
+      render(<CategoryReviewList projectId="project-1" />);
+
+      expect(screen.getByRole("alert")).toHaveTextContent("staleError");
+    });
+
+    // A second click on an in-flight action is what produces the conflict in
+    // the first place.
+    it("locks both review actions while one is in flight", () => {
+      draftInReview();
+      vi.mocked(useReviewCategoryDraft).mockReturnValue({
+        mutate: reviewMutate,
+        isPending: true,
+      } as never);
+
+      render(<CategoryReviewList projectId="project-1" />);
+
+      expect(screen.getByRole("button", { name: /accept/i })).toBeDisabled();
+      expect(screen.getByRole("button", { name: /discard/i })).toBeDisabled();
+    });
+  });
+
+  // Without this the rail had no selected state at all: move the mouse away and
+  // neither a sighted nor a screen-reader user could tell which draft was open.
+  it("marks the selected category as pressed", () => {
+    const draft = {
+      id: "00000000-0000-4000-8000-000000000001",
+      categoryKey: "overview",
+      version: 3,
+      changeSummary: "One date changed",
+    };
+    vi.mocked(useCategoryDrafts).mockReturnValue({
+      isPending: false,
+      data: [{ activeDraft: draft }],
+    } as never);
+
+    render(<CategoryReviewList projectId="project-1" />);
+    const button = screen.getByRole("button", { name: /category_overview/i });
+    expect(button).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-pressed", "true");
   });
 });

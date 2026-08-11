@@ -24,7 +24,7 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
         ) : priority === "processing" ? (
           <LoaderCircle className="mt-0.5 size-5 animate-spin text-primary motion-reduce:animate-none" />
         ) : (
-          <CheckCircle2 className="mt-0.5 size-5 text-emerald-400" />
+          <CheckCircle2 className="mt-0.5 size-5 text-primary" />
         )}
         <div>
           <p className="font-medium">{t(`priority_${priority}`)}</p>
@@ -35,7 +35,7 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
               : ""}
           </p>
           {workspace.isError && (
-            <p className="mt-1 text-xs text-amber-300">{t("refreshDelayed")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("refreshDelayed")}</p>
           )}
         </div>
       </div>

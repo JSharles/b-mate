@@ -39,8 +39,30 @@ function DocumentActions({
   const t = useTranslations("Projects.Documentation.Page");
   const retryProcessing = useRetryDocumentProcessing(projectId);
   const retryRemoval = useRetryDocumentRemoval(projectId);
-  const deletionNeedsRecovery =
-    document.status === "removal_failed" || document.status === "removal_pending";
+
+  // `removal_pending` is NOT recoverable by hand any more. A removal abandoned
+  // mid-flight is re-driven by the server's stall sweep, so offering "resume"
+  // here made the row assert two opposite things at once: a spinner saying it
+  // is working, beside a button saying it is stuck. Only a genuinely failed
+  // removal is the contributor's problem to act on.
+  const deletionNeedsRecovery = document.status === "removal_failed";
+
+  // One treatment per action, whatever the row's status: delete is always the
+  // same outline button carrying the same word. Previously the same action
+  // rendered as a destructive outline in one branch and a muted ghost icon in
+  // another, so it read as two different capabilities.
+  const removeButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="text-destructive hover:text-destructive"
+      onClick={onRemove}
+    >
+      <Trash2 />
+      {t("remove")}
+    </Button>
+  );
 
   if (document.status === "failed") {
     return (
@@ -58,16 +80,7 @@ function DocumentActions({
           )}
           {t(retryProcessing.isPending ? "retrying" : "retryProcessing")}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          className="text-destructive hover:text-destructive"
-          aria-label={t("remove")}
-          onClick={onRemove}
-        >
-          <Trash2 />
-        </Button>
+        {removeButton}
       </div>
     );
   }
@@ -92,20 +105,11 @@ function DocumentActions({
   }
 
   if (document.status === "incorporated") {
-    return (
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className="text-muted-foreground hover:text-destructive"
-        aria-label={t("remove")}
-        onClick={onRemove}
-      >
-        <Trash2 />
-      </Button>
-    );
+    return <div className="flex shrink-0 items-center gap-2">{removeButton}</div>;
   }
 
+  // Processing, removing, and removed rows carry no action — the row is still
+  // reachable through its own link, which is the one thing always available.
   return null;
 }
 
@@ -202,30 +206,34 @@ export function DocumentManagementPage({ projectId }: { projectId: string }) {
             <ul className="divide-y divide-border">
               {documents.data.items.map((document) => (
                 <li key={document.id} className="flex min-h-20 items-center gap-3 px-4 py-3 sm:px-5">
-                  <Link
-                    href={`/projects/${projectId}/documents/${document.id}`}
-                    className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                      <FileText className="size-5" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{document.title}</span>
-                      <DocumentStatus status={document.status} className="mt-1" />
-                    </span>
-                  </Link>
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <FileText className="size-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    {/* One link per row, and its accessible name is the title
+                        alone. The status used to sit inside the anchor, so the
+                        link renamed itself on every poll; and a second link to
+                        the same URL made every document appear twice in a
+                        screen reader's link list. */}
+                    <Link
+                      href={`/projects/${projectId}/documents/${document.id}`}
+                      title={document.title}
+                      className="block truncate rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {document.title}
+                    </Link>
+                    <DocumentStatus
+                      status={document.status}
+                      createdAt={document.createdAt}
+                      className="mt-1"
+                    />
+                  </span>
                   <DocumentActions
                     projectId={projectId}
                     document={document}
                     onRemove={() => setRemovalDocumentId(document.id)}
                   />
-                  <Link
-                    href={`/projects/${projectId}/documents/${document.id}`}
-                    className="rounded-md p-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label={t("open", { title: document.title })}
-                  >
-                    <ChevronRight className="size-4" />
-                  </Link>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 </li>
               ))}
             </ul>

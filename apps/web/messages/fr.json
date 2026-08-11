@@ -201,8 +201,6 @@
       "eyebrow": "Documentation vivante",
       "title": "La source du projet",
       "description": "Diaphane rassemble les informations utiles en une source claire et traçable. Chaque nouveau document enrichit cette source sans devenir une section isolée.",
-      "addDocument": "Ajouter un document",
-      "addFirstDocument": "Ajouter le premier document",
       "manageDocuments": "Gérer les documents",
       "retry": "Réessayer",
       "Page": {
@@ -224,7 +222,7 @@
         "retryProcessing": "Relancer",
         "resumeRemoval": "Reprendre la suppression",
         "retrying": "En cours…",
-        "remove": "Supprimer ce document",
+        "remove": "Supprimer",
         "open": "Ouvrir {title}"
       },
       "AddDocument": {
@@ -291,7 +289,8 @@
         "statusRemovalFailed": "Suppression à reprendre",
         "statusRemoved": "Supprimé",
         "statusUnavailable": "Indisponible",
-        "remove": "Retirer ce document"
+        "remove": "Supprimer",
+        "statusProcessingSince": "Intégration en cours · {since}"
       },
       "Provenance": {
         "title": "Origine de l'information",
@@ -349,7 +348,6 @@
         "processing": "Intégration en cours",
         "failed": "Le traitement demande une intervention",
         "removing": "Suppression en cours",
-        "removalFailed": "La suppression demande une intervention",
         "removed": "Document supprimé",
         "incorporated": "Intégré à la source",
         "roleTitle": "Rôle dans la source",
@@ -416,38 +414,6 @@
       "removeConfirmDescription": "Cette personne perdra immédiatement l'accès à ce projet.",
       "removeConfirmCancel": "Annuler",
       "removeConfirmAction": "Retirer"
-    },
-    "ResourcesList": {
-      "title": "Ressources",
-      "add": "Ajouter une ressource",
-      "empty": "Aucune ressource pour le moment",
-      "statusPending": "Analyse en cours",
-      "statusFailed": "Échec"
-    },
-    "AddResourceDialog": {
-      "title": "Ajouter une ressource",
-      "uploadTab": "Envoyer un fichier",
-      "notionTab": "Connecter Notion",
-      "fileLabel": "Fichier",
-      "fileHint": "PDF, Word (.docx), PNG ou JPEG — 25 Mo maximum.",
-      "uploadSubmit": "Envoyer",
-      "uploadPending": "Envoi…",
-      "notionPageUrlLabel": "URL de la page Notion",
-      "notionConnectSubmit": "Connecter",
-      "notionConnectPending": "Connexion…",
-      "notionNotConnectedMessage": "Connectez une intégration Notion pour ce projet avant d'ajouter une page comme ressource.",
-      "notionGoToSettings": "Aller aux paramètres"
-    },
-    "ResourceDetailPage": {
-      "processing": "Traitement en cours — revenez dans quelques minutes.",
-      "failed": "Une erreur est survenue lors du traitement de cette ressource.",
-      "delete": "Supprimer",
-      "deletePending": "Suppression…",
-      "downloadOriginal": "Télécharger le document original",
-      "viewOnNotion": "Voir la page Notion originale",
-      "backToProject": "Retour au projet",
-      "loadErrorTitle": "Impossible de charger cette ressource",
-      "loadErrorRetry": "Réessayer"
     },
     "BoardConnectionCard": {
       "title": "Board",
@@ -589,7 +555,10 @@
         "category_overview": "Le projet",
         "category_how_it_works": "Comment ça marche",
         "category_planning": "Planning & jalons",
-        "category_other": "Autres informations"
+        "category_other": "Autres informations",
+        "staleError": "La source a évolué pendant votre lecture. Rechargez la page pour repartir de la dernière version.",
+        "error": "L’action n’a pas abouti. Réessayez dans un instant.",
+        "openPoint": "À clarifier"
       },
       "Preview": {
         "title": "Ce que voit votre client",
@@ -604,44 +573,61 @@
       "Editorial": {
         "title": "Profil éditorial",
         "description": "Ajustez la forme du contenu client sans modifier les faits validés.",
-        "length": "Longueur", "pedagogy": "Pédagogie", "technicalFamiliarity": "Familiarité technique", "tone": "Ton", "guidance": "Consigne complémentaire",
-        "length_concise": "Concis", "length_balanced": "Équilibré", "length_detailed": "Détaillé",
-        "pedagogy_direct": "Directe", "pedagogy_guided": "Guidée", "pedagogy_highly_explanatory": "Très explicative",
-        "technicalFamiliarity_novice": "Novice", "technicalFamiliarity_informed": "Informé", "technicalFamiliarity_technical": "Technique",
-        "tone_reassuring": "Rassurant", "tone_neutral": "Neutre", "tone_direct": "Direct", "tone_formal": "Formel",
-        "preview": "Générer un aperçu", "generating": "Aperçu en préparation…", "noContent": "Aucun contenu publié : ce profil peut être enregistré directement.", "previewTitle": "Aperçu avant confirmation", "before": "Avant", "after": "Après", "confirm": "Confirmer", "cancel": "Annuler"
+        "length": "Longueur",
+        "pedagogy": "Pédagogie",
+        "technicalFamiliarity": "Familiarité technique",
+        "tone": "Ton",
+        "guidance": "Consigne complémentaire",
+        "length_concise": "Concis",
+        "length_balanced": "Équilibré",
+        "length_detailed": "Détaillé",
+        "pedagogy_direct": "Directe",
+        "pedagogy_guided": "Guidée",
+        "pedagogy_highly_explanatory": "Très explicative",
+        "technicalFamiliarity_novice": "Novice",
+        "technicalFamiliarity_informed": "Informé",
+        "technicalFamiliarity_technical": "Technique",
+        "tone_reassuring": "Rassurant",
+        "tone_neutral": "Neutre",
+        "tone_direct": "Direct",
+        "tone_formal": "Formel",
+        "preview": "Générer un aperçu",
+        "generating": "Aperçu en préparation…",
+        "noContent": "Aucun contenu publié : ce profil peut être enregistré directement.",
+        "previewTitle": "Aperçu avant confirmation",
+        "before": "Avant",
+        "after": "Après",
+        "confirm": "Confirmer",
+        "cancel": "Annuler",
+        "staleError": "Le profil a été modifié entre-temps. Rechargez la page pour repartir de la dernière version.",
+        "error": "L’action n’a pas abouti. Réessayez dans un instant."
       },
       "Workspace": {
-        "priority_needs_action": "Votre validation est attendue", "priority_processing": "Diaphane traite vos documents", "priority_published": "La documentation client est à jour", "priority_empty": "Ajoutez un premier document", "priority_needs_attention": "Une opération nécessite votre attention",
-        "visibility_nothing_published": "Rien n’est visible par le client", "visibility_previous_version_visible": "La version précédente reste visible par le client", "visibility_current_version_visible": "Le client voit la version actuelle", "refreshDelayed": "La mise à jour automatique est retardée ; les dernières données connues restent affichées."
+        "priority_needs_action": "Votre validation est attendue",
+        "priority_processing": "Diaphane traite vos documents",
+        "priority_published": "La documentation client est à jour",
+        "priority_empty": "Ajoutez un premier document",
+        "priority_needs_attention": "Une opération nécessite votre attention",
+        "visibility_nothing_published": "Rien n’est visible par le client",
+        "visibility_previous_version_visible": "La version précédente reste visible par le client",
+        "visibility_current_version_visible": "Le client voit la version actuelle",
+        "refreshDelayed": "La mise à jour automatique est retardée ; les dernières données connues restent affichées."
       },
-      "Removal": { "title": "Supprimer ce document ?", "description": "Diaphane supprimera définitivement l’original stocké. S’il a déjà alimenté la source, celle-ci sera reconstruite uniquement à partir des contributions restantes.", "impact": "{items} informations utilisent ce document, dont {sole} sans autre support. {categories} catégories seront revérifiées.", "notIncorporatedImpact": "Ce document n’a jamais été intégré à la source. Sa suppression ne modifiera aucune information consolidée.", "clientSafety": "La version actuellement visible par le client reste inchangée jusqu’à votre prochaine validation.", "loadingImpact": "Vérification de l’impact…", "retryPreview": "Réessayer", "cancel": "Conserver", "close": "Fermer", "confirm": "Supprimer définitivement", "retryConfirm": "Réessayer la suppression", "removing": "Suppression…", "error": "La suppression n’a pas pu être terminée. Fermez cette fenêtre ou réessayez ; la source publiée reste inchangée." }
-    },
-    "ReferenceDraftQueue": {
-      "title": "À vérifier",
-      "intro": "L'IA a mis à jour votre documentation de référence. Rien n'est visible par votre client tant que vous n'avez pas validé.",
-      "empty": "Rien à vérifier pour le moment.",
-      "generating": "Régénération en cours…",
-      "triggerDocumentAdded": "Après l’ajout de « {document} »",
-      "triggerDocumentRemoved": "Après la suppression d’un document",
-      "triggerRegeneration": "Après votre demande de correction",
-      "attempt": "Tentative {attempt} sur 3",
-      "accept": "Valider",
-      "refuse": "Refuser",
-      "questionsIntro": "Quelques points changeraient ce que votre client va lire. Répondez à ce que vous pouvez — ce que vous laissez reste signalé comme point à clarifier dans le texte.",
-      "answerPlaceholder": "Votre réponse",
-      "answer": "Envoyer les réponses",
-      "answerPending": "Envoi…"
-    },
-    "RegenerateDraftDialog": {
-      "title": "Que faut-il corriger ?",
-      "description": "Décrivez la correction dans vos mots. Ou jetez ce brouillon : la version précédente reste en place.",
-      "instructionLabel": "Votre consigne",
-      "instructionPlaceholder": "Ex. : la migration est prévue en mars, pas en février.",
-      "regenerate": "Régénérer",
-      "regeneratePending": "Envoi…",
-      "discard": "Jeter ce brouillon",
-      "capReached": "Trois tentatives ont déjà eu lieu sans converger. Validez en l’état, ou jetez ce brouillon."
+      "Removal": {
+        "title": "Supprimer ce document ?",
+        "description": "Diaphane supprimera définitivement l’original stocké. S’il a déjà alimenté la source, celle-ci sera reconstruite uniquement à partir des contributions restantes.",
+        "impact": "{items, plural, one {# information utilise} other {# informations utilisent}} ce document, dont {sole, plural, one {# sans autre support} other {# sans autre support}}. {categories, plural, one {# catégorie sera revérifiée} other {# catégories seront revérifiées}}.",
+        "notIncorporatedImpact": "Ce document n’a jamais été intégré à la source. Sa suppression ne modifiera aucune information consolidée.",
+        "clientSafety": "La version actuellement visible par le client reste inchangée jusqu’à votre prochaine validation.",
+        "loadingImpact": "Vérification de l’impact…",
+        "retryPreview": "Réessayer",
+        "cancel": "Conserver",
+        "close": "Fermer",
+        "confirm": "Supprimer définitivement",
+        "retryConfirm": "Réessayer la suppression",
+        "removing": "Suppression…",
+        "error": "La suppression n’a pas pu être terminée. Fermez cette fenêtre ou réessayez ; la source publiée reste inchangée."
+      }
     }
   },
   "Invite": {

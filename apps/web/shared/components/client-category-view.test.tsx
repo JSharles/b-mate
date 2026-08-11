@@ -23,8 +23,11 @@ describe("ClientCategoryView", () => {
 
     expect(screen.getByText("A clear introduction")).toBeVisible();
     expect(screen.getByText("A concrete result")).toBeVisible();
+    // An open point is set apart by its own surface, not by a second accent
+    // colour — periwinkle is the only colour allowed to carry emphasis
+    // (DESIGN.md, One Voice Rule).
     expect(screen.getByText("Delivery date to confirm")).toHaveClass(
-      "text-amber-100",
+      "bg-muted",
     );
     expect(screen.getByText("•")).toHaveAttribute("aria-hidden", "true");
   });

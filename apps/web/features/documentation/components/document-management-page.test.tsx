@@ -58,8 +58,9 @@ describe("DocumentManagementPage", () => {
         items: [
           { id: "failed", title: "Cadrage", status: "failed", kind: "notion" },
           { id: "pending", title: "Architecture", status: "removal_pending", kind: "upload" },
+          { id: "stuck", title: "Ancien brief", status: "removal_failed", kind: "upload" },
         ],
-        total: 2,
+        total: 3,
         nextCursor: null,
       },
       isPending: false,
@@ -72,11 +73,22 @@ describe("DocumentManagementPage", () => {
 
     expect(screen.getByRole("heading", { name: "title" })).toBeVisible();
     expect(screen.getByText("statusFailed")).toBeVisible();
-    expect(screen.getByText("statusRemoving")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "retryProcessing" }));
     expect(retryProcessing).toHaveBeenCalledWith("failed");
+
+    // Only a removal that genuinely failed is the contributor's to resume.
     fireEvent.click(screen.getByRole("button", { name: "resumeRemoval" }));
-    expect(retryRemoval).toHaveBeenCalledWith("pending");
+    expect(retryRemoval).toHaveBeenCalledWith("stuck");
+  });
+
+  // A removal still in flight is recovered by the server's stall sweep, so
+  // offering "resume" beside its spinner made the row claim to be working and
+  // stuck at the same time.
+  it("offers no recovery beside a removal that is still running", () => {
+    render(<DocumentManagementPage projectId="project-1" />);
+
+    expect(screen.getByText("statusRemoving")).toBeVisible();
+    expect(screen.getAllByRole("button", { name: "resumeRemoval" })).toHaveLength(1);
   });
 
   it("opens addition and confirmed deletion from the same page", () => {

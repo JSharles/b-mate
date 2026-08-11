@@ -45,7 +45,7 @@ function ClarificationCard({
   return (
     <article className="space-y-4 border-b border-border py-5 last:border-b-0">
       <div className="flex gap-3">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-400/10 text-xs font-semibold text-amber-200">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold text-foreground">
           {clarification.impactRank}
         </span>
         <div>
@@ -95,7 +95,7 @@ export function ClarificationsPanel({ projectId, revisionId }: { projectId: stri
   return (
     <section className="border-b border-border py-7">
       <div className="flex items-start gap-3">
-        <MessageCircleQuestion className="mt-0.5 size-5 text-amber-300" />
+        <MessageCircleQuestion className="mt-0.5 size-5 text-muted-foreground" />
         <div>
           <h3 className="font-semibold">{t("title")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{t("total", { count: clarifications.data.total })}</p>

@@ -48,12 +48,31 @@ const locales = readdirSync(MESSAGES)
 // Keys assembled at runtime (`t(`q${n}`)`), which no static scan can resolve.
 // Listed rather than silently skipped: each entry is a promise that a human
 // checked the call site once, and the list is short enough to re-check.
+// A key built at runtime has no literal call site to find, so it has to be
+// declared here or the check reports it as waste. Each entry names the file
+// that builds it — if that file goes, so does the entry.
 const DYNAMIC_KEYS = [
   // apps/web/features/landing/components/faq-section.tsx builds `q${n}`/`a${n}`
   // from GROUPS[].questionNumbers.
   /^Landing\.faq\.[qa]\d+$/,
   // The three landing sections index their cards by number.
   /^Landing\.(clients|developers|features)\.card\d+(Title|Description)$/,
+  // features-section, how-it-works-section and document-preview all render
+  // `t(`${key}Description`)` over a local list of keys.
+  /^Landing\.(features|howItWorks)\.\w+Description$/,
+  /^Landing\.features\.documentPreview\.\w+Description$/,
+  // ai-preview.tsx renders `t(`${key}Label`)`.
+  /^Landing\.features\.preview\.\w+Label$/,
+  // provenance-sheet.tsx labels each entry by its role and change type.
+  /^Projects\.Documentation\.Provenance\.(change|role)_\w+$/,
+  // canonical-source-view.tsx labels an item by its kind, and the working
+  // language by its code.
+  /^Projects\.Documentation\.Source\.(kind|language)_\w+$/,
+  // editorial-profile-settings.tsx renders `t(`${key}_${option}`)` over the
+  // four enum dimensions of the editorial profile.
+  /^Projects\.DocumentationNew\.Editorial\.(length|pedagogy|technicalFamiliarity|tone)_\w+$/,
+  // documentation-workspace.tsx renders the aggregate's own state values.
+  /^Projects\.DocumentationNew\.Workspace\.(priority|visibility)_\w+$/,
 ];
 
 function escapeRegExp(value) {

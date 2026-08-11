@@ -74,6 +74,15 @@ vi.mock("next-intl", async (importOriginal) => {
     ...actual,
     useTranslations: () => (key: string) => key,
     useLocale: () => "fr",
+    // Same contract as useTranslations: formatted output is deterministic and
+    // decoupled from real copy, so a component can render an elapsed time
+    // without a test needing an Intl provider or a frozen clock.
+    useFormatter: () => ({
+      relativeTime: () => "relativeTime",
+      dateTime: () => "dateTime",
+      number: () => "number",
+      list: () => "list",
+    }),
     NextIntlClientProvider: ({ children }: { children: ReactNode }) => children,
   };
 });

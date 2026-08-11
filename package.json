@@ -12,7 +12,8 @@
     "test": "turbo run test",
     "test:cov": "turbo run test:cov",
     "knip": "knip",
-    "i18n:orphans": "node scripts/check-i18n-orphans.mjs"
+    "i18n:orphans": "node scripts/check-i18n-orphans.mjs",
+    "design:check": "cd apps/web && node ../../.claude/skills/impeccable/scripts/detect.mjs features"
   },
   "keywords": [],
   "author": "",

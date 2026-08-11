@@ -201,8 +201,6 @@
       "eyebrow": "Living documentation",
       "title": "The project source",
       "description": "Diaphane brings useful information together into one clear, traceable source. Each new document enriches it instead of becoming an isolated section.",
-      "addDocument": "Add a document",
-      "addFirstDocument": "Add the first document",
       "manageDocuments": "Manage documents",
       "retry": "Retry",
       "Page": {
@@ -224,7 +222,7 @@
         "retryProcessing": "Retry",
         "resumeRemoval": "Resume deletion",
         "retrying": "Working…",
-        "remove": "Delete this document",
+        "remove": "Delete",
         "open": "Open {title}"
       },
       "AddDocument": {
@@ -291,7 +289,8 @@
         "statusRemovalFailed": "Deletion needs retrying",
         "statusRemoved": "Deleted",
         "statusUnavailable": "Unavailable",
-        "remove": "Remove this document"
+        "remove": "Delete",
+        "statusProcessingSince": "Being incorporated · {since}"
       },
       "Provenance": {
         "title": "Information origin",
@@ -349,7 +348,6 @@
         "processing": "Being incorporated",
         "failed": "Processing needs attention",
         "removing": "Deletion in progress",
-        "removalFailed": "Deletion needs attention",
         "removed": "Document deleted",
         "incorporated": "Incorporated into the source",
         "roleTitle": "Role in the source",
@@ -416,38 +414,6 @@
       "removeConfirmDescription": "They'll lose access to this project immediately.",
       "removeConfirmCancel": "Cancel",
       "removeConfirmAction": "Remove"
-    },
-    "ResourcesList": {
-      "title": "Resources",
-      "add": "Add a resource",
-      "empty": "No resources yet",
-      "statusPending": "Analysing",
-      "statusFailed": "Failed"
-    },
-    "AddResourceDialog": {
-      "title": "Add a resource",
-      "uploadTab": "Upload a file",
-      "notionTab": "Connect Notion",
-      "fileLabel": "File",
-      "fileHint": "PDF, Word (.docx), PNG, or JPEG — up to 25 MB.",
-      "uploadSubmit": "Upload",
-      "uploadPending": "Uploading…",
-      "notionPageUrlLabel": "Notion page URL",
-      "notionConnectSubmit": "Connect",
-      "notionConnectPending": "Connecting…",
-      "notionNotConnectedMessage": "Connect a Notion integration for this project before adding a page as a resource.",
-      "notionGoToSettings": "Go to Settings"
-    },
-    "ResourceDetailPage": {
-      "processing": "Still processing — check back in a few minutes.",
-      "failed": "Something went wrong processing this resource.",
-      "delete": "Delete",
-      "deletePending": "Deleting…",
-      "downloadOriginal": "Download the original document",
-      "viewOnNotion": "View the original Notion page",
-      "backToProject": "Back to project",
-      "loadErrorTitle": "Couldn't load this resource",
-      "loadErrorRetry": "Retry"
     },
     "BoardConnectionCard": {
       "title": "Board",
@@ -574,47 +540,94 @@
     },
     "DocumentationNew": {
       "Reviews": {
-        "title": "To approve", "description": "Each category is reviewed independently before publication.", "loading": "Preparing drafts…", "empty": "No factual change is waiting for approval.", "generating": "Generating", "select": "Select a category to review its content.", "accept": "Approve and prepare publication", "discard": "Discard", "correctionLabel": "Factual correction", "correctionPlaceholder": "e.g. the correct date is September 18.", "regenerate": "Regenerate with this correction", "editorialRedirect": "This request concerns style. Update the editorial profile below instead.",
-        "category_overview": "The project", "category_how_it_works": "How it works", "category_planning": "Planning & milestones", "category_other": "Other information"
+        "title": "To approve",
+        "description": "Each category is reviewed independently before publication.",
+        "loading": "Preparing drafts…",
+        "empty": "No factual change is waiting for approval.",
+        "generating": "Generating",
+        "select": "Select a category to review its content.",
+        "accept": "Approve and prepare publication",
+        "discard": "Discard",
+        "correctionLabel": "Factual correction",
+        "correctionPlaceholder": "e.g. the correct date is September 18.",
+        "regenerate": "Regenerate with this correction",
+        "editorialRedirect": "This request concerns style. Update the editorial profile below instead.",
+        "category_overview": "The project",
+        "category_how_it_works": "How it works",
+        "category_planning": "Planning & milestones",
+        "category_other": "Other information",
+        "staleError": "The source changed while you were reading. Reload the page to start from the latest version.",
+        "error": "That action did not go through. Try again in a moment.",
+        "openPoint": "To clarify"
       },
       "Preview": {
-        "title": "What your client sees", "exactVisible": "This view exactly matches the published version.", "previousVisible": "A new version is being prepared. Your client still sees the previous version.", "empty": "Nothing has been published to the client yet.",
-        "category_overview": "The project", "category_how_it_works": "How it works", "category_planning": "Planning & milestones", "category_other": "Other information"
+        "title": "What your client sees",
+        "exactVisible": "This view exactly matches the published version.",
+        "previousVisible": "A new version is being prepared. Your client still sees the previous version.",
+        "empty": "Nothing has been published to the client yet.",
+        "category_overview": "The project",
+        "category_how_it_works": "How it works",
+        "category_planning": "Planning & milestones",
+        "category_other": "Other information"
       },
       "Editorial": {
-        "title": "Editorial profile", "description": "Adjust client-facing form without changing validated facts.", "length": "Length", "pedagogy": "Pedagogy", "technicalFamiliarity": "Technical familiarity", "tone": "Tone", "guidance": "Additional guidance",
-        "length_concise": "Concise", "length_balanced": "Balanced", "length_detailed": "Detailed", "pedagogy_direct": "Direct", "pedagogy_guided": "Guided", "pedagogy_highly_explanatory": "Highly explanatory", "technicalFamiliarity_novice": "Novice", "technicalFamiliarity_informed": "Informed", "technicalFamiliarity_technical": "Technical", "tone_reassuring": "Reassuring", "tone_neutral": "Neutral", "tone_direct": "Direct", "tone_formal": "Formal", "preview": "Generate preview", "generating": "Preparing preview…", "noContent": "No published content: this profile can be saved directly.", "previewTitle": "Preview before confirmation", "before": "Before", "after": "After", "confirm": "Confirm", "cancel": "Cancel"
+        "title": "Editorial profile",
+        "description": "Adjust client-facing form without changing validated facts.",
+        "length": "Length",
+        "pedagogy": "Pedagogy",
+        "technicalFamiliarity": "Technical familiarity",
+        "tone": "Tone",
+        "guidance": "Additional guidance",
+        "length_concise": "Concise",
+        "length_balanced": "Balanced",
+        "length_detailed": "Detailed",
+        "pedagogy_direct": "Direct",
+        "pedagogy_guided": "Guided",
+        "pedagogy_highly_explanatory": "Highly explanatory",
+        "technicalFamiliarity_novice": "Novice",
+        "technicalFamiliarity_informed": "Informed",
+        "technicalFamiliarity_technical": "Technical",
+        "tone_reassuring": "Reassuring",
+        "tone_neutral": "Neutral",
+        "tone_direct": "Direct",
+        "tone_formal": "Formal",
+        "preview": "Generate preview",
+        "generating": "Preparing preview…",
+        "noContent": "No published content: this profile can be saved directly.",
+        "previewTitle": "Preview before confirmation",
+        "before": "Before",
+        "after": "After",
+        "confirm": "Confirm",
+        "cancel": "Cancel",
+        "staleError": "The profile changed in the meantime. Reload the page to start from the latest version.",
+        "error": "That action did not go through. Try again in a moment."
       },
       "Workspace": {
-        "priority_needs_action": "Your approval is needed", "priority_processing": "Diaphane is processing your documents", "priority_published": "Client documentation is up to date", "priority_empty": "Add your first document", "priority_needs_attention": "An operation needs your attention", "visibility_nothing_published": "Nothing is visible to the client", "visibility_previous_version_visible": "The client still sees the previous version", "visibility_current_version_visible": "The client sees the current version", "refreshDelayed": "Automatic refresh is delayed; the last known data remains visible."
+        "priority_needs_action": "Your approval is needed",
+        "priority_processing": "Diaphane is processing your documents",
+        "priority_published": "Client documentation is up to date",
+        "priority_empty": "Add your first document",
+        "priority_needs_attention": "An operation needs your attention",
+        "visibility_nothing_published": "Nothing is visible to the client",
+        "visibility_previous_version_visible": "The client still sees the previous version",
+        "visibility_current_version_visible": "The client sees the current version",
+        "refreshDelayed": "Automatic refresh is delayed; the last known data remains visible."
       },
-      "Removal": { "title": "Delete this document?", "description": "Diaphane will permanently delete the stored original. If it already contributed to the source, the source will be rebuilt only from remaining contributions.", "impact": "{items} items use this document, including {sole} with no other support. {categories} categories will be reviewed again.", "notIncorporatedImpact": "This document was never incorporated into the source. Deleting it will not change any consolidated information.", "clientSafety": "The version currently visible to the client remains unchanged until your next approval.", "loadingImpact": "Checking the impact…", "retryPreview": "Try again", "cancel": "Keep", "close": "Close", "confirm": "Delete permanently", "retryConfirm": "Retry deletion", "removing": "Deleting…", "error": "Deletion could not complete. Close this dialog or retry; published content remains unchanged." }
-    },
-    "ReferenceDraftQueue": {
-      "title": "To review",
-      "intro": "The AI updated your reference documentation. Nothing reaches your client until you approve it.",
-      "empty": "Nothing to review right now.",
-      "generating": "Regenerating…",
-      "triggerDocumentAdded": "After adding “{document}”",
-      "triggerDocumentRemoved": "After a document was removed",
-      "triggerRegeneration": "After your correction request",
-      "attempt": "Attempt {attempt} of 3",
-      "accept": "Approve",
-      "refuse": "Refuse",
-      "questionsIntro": "A few points would change what your client is told. Answer what you can — anything you leave is kept marked as an open point in the text.",
-      "answerPlaceholder": "Your answer",
-      "answer": "Send answers",
-      "answerPending": "Sending…"
-    },
-    "RegenerateDraftDialog": {
-      "title": "What needs fixing?",
-      "description": "Describe the correction in your own words. Or discard this draft: the previous version stays live.",
-      "instructionLabel": "Your instruction",
-      "instructionPlaceholder": "e.g. the migration is March, not February.",
-      "regenerate": "Regenerate",
-      "regeneratePending": "Sending…",
-      "discard": "Discard this draft",
-      "capReached": "Three attempts have already been made without converging. Approve it as it stands, or discard it."
+      "Removal": {
+        "title": "Delete this document?",
+        "description": "Diaphane will permanently delete the stored original. If it already contributed to the source, the source will be rebuilt only from remaining contributions.",
+        "impact": "{items, plural, one {# item uses} other {# items use}} this document, {sole, plural, one {# of them with no other support} other {# of them with no other support}}. {categories, plural, one {# category will be re-checked} other {# categories will be re-checked}}.",
+        "notIncorporatedImpact": "This document was never incorporated into the source. Deleting it will not change any consolidated information.",
+        "clientSafety": "The version currently visible to the client remains unchanged until your next approval.",
+        "loadingImpact": "Checking the impact…",
+        "retryPreview": "Try again",
+        "cancel": "Keep",
+        "close": "Close",
+        "confirm": "Delete permanently",
+        "retryConfirm": "Retry deletion",
+        "removing": "Deleting…",
+        "error": "Deletion could not complete. Close this dialog or retry; published content remains unchanged."
+      }
     }
   },
   "Invite": {

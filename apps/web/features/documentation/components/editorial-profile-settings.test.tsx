@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/shared/lib/api-client";
 import {
   useCancelEditorialProfile,
   useConfirmEditorialProfile,
@@ -91,5 +92,57 @@ describe("EditorialProfileSettings", () => {
       expect(confirm).toHaveBeenCalledWith({ proposalId: "proposal-1", expectedVersion: 4 });
     }
     expect(cancel).toHaveBeenCalledWith({ proposalId: "proposal-1", expectedVersion: 4 });
+  });
+
+  // The editorial mutations suppress the global toast, so without a rendered
+  // error a rejected confirm was indistinguishable from a dead button.
+  describe("when a write is rejected", () => {
+    it("names a version conflict on the proposal actions", () => {
+      vi.mocked(useEditorialProfile).mockReturnValue({
+        data: {
+          ...baseProfile,
+          proposal: { id: "proposal-1", version: 4, status: "preview_ready" },
+        },
+      } as never);
+      vi.mocked(useConfirmEditorialProfile).mockReturnValue({
+        mutate: confirm,
+        error: new ApiError("conflict", 409),
+      } as never);
+
+      render(<EditorialProfileSettings projectId="project-1" />);
+
+      expect(screen.getByRole("alert")).toHaveTextContent("staleError");
+    });
+
+    it("surfaces a rejected preview request", () => {
+      vi.mocked(useEditorialProfile).mockReturnValue({ data: baseProfile } as never);
+      vi.mocked(useProposeEditorialProfile).mockReturnValue({
+        mutate: propose,
+        isPending: false,
+        error: new ApiError("boom", 500),
+      } as never);
+
+      render(<EditorialProfileSettings projectId="project-1" />);
+
+      expect(screen.getByRole("alert")).toHaveTextContent("error");
+    });
+
+    it("locks confirm and cancel while one is in flight", () => {
+      vi.mocked(useEditorialProfile).mockReturnValue({
+        data: {
+          ...baseProfile,
+          proposal: { id: "proposal-1", version: 4, status: "preview_ready" },
+        },
+      } as never);
+      vi.mocked(useConfirmEditorialProfile).mockReturnValue({
+        mutate: confirm,
+        isPending: true,
+      } as never);
+
+      render(<EditorialProfileSettings projectId="project-1" />);
+
+      expect(screen.getByRole("button", { name: "confirm" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "cancel" })).toBeDisabled();
+    });
   });
 });

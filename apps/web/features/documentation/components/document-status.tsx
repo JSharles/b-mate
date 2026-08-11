@@ -1,12 +1,7 @@
 "use client";
 
-import {
-  AlertCircle,
-  CheckCircle2,
-  CircleDashed,
-  Trash2,
-} from "lucide-react";
-import { useTranslations } from "next-intl";
+import { AlertCircle, CheckCircle2, CircleDashed, Trash2 } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import type { SourceDocument } from "schemas";
 import { cn } from "@/shared/lib/utils";
 
@@ -20,24 +15,39 @@ const PROCESSING_STATUSES = new Set<SourceDocument["status"]>([
 
 export function DocumentStatus({
   status,
+  createdAt,
   className,
 }: {
   status: SourceDocument["status"];
+  createdAt?: string;
   className?: string;
 }) {
   const t = useTranslations("Projects.Documentation.Documents");
+  const format = useFormatter();
+
+  const muted = cn(
+    "inline-flex items-center gap-1.5 text-xs text-muted-foreground",
+    className,
+  );
+  const bad = cn("inline-flex items-center gap-1.5 text-xs text-destructive", className);
+
+  // Extraction runs on a batch queue: minutes, sometimes hours. A bare spinner
+  // is a promise of imminence, and holding one that long is what drives a
+  // contributor to re-upload the same document. Elapsed time turns "is this
+  // stuck?" into a question the row answers by itself.
+  const since = createdAt ? format.relativeTime(new Date(createdAt)) : null;
 
   if (PROCESSING_STATUSES.has(status)) {
     return (
-      <span className={cn("inline-flex items-center gap-1.5 text-xs text-muted-foreground", className)}>
+      <span className={muted} role="status">
         <CircleDashed className="size-3.5 animate-spin motion-reduce:animate-none" />
-        {t("statusProcessing")}
+        {since ? t("statusProcessingSince", { since }) : t("statusProcessing")}
       </span>
     );
   }
   if (status === "removal_pending") {
     return (
-      <span className={cn("inline-flex items-center gap-1.5 text-xs text-muted-foreground", className)}>
+      <span className={muted} role="status">
         <CircleDashed className="size-3.5 animate-spin motion-reduce:animate-none" />
         {t("statusRemoving")}
       </span>
@@ -45,7 +55,7 @@ export function DocumentStatus({
   }
   if (status === "failed") {
     return (
-      <span className={cn("inline-flex items-center gap-1.5 text-xs text-destructive", className)}>
+      <span className={bad} role="status">
         <AlertCircle className="size-3.5" />
         {t("statusFailed")}
       </span>
@@ -53,7 +63,7 @@ export function DocumentStatus({
   }
   if (status === "removal_failed") {
     return (
-      <span className={cn("inline-flex items-center gap-1.5 text-xs text-destructive", className)}>
+      <span className={bad} role="status">
         <AlertCircle className="size-3.5" />
         {t("statusRemovalFailed")}
       </span>
@@ -61,16 +71,27 @@ export function DocumentStatus({
   }
   if (status === "removed") {
     return (
-      <span className={cn("inline-flex items-center gap-1.5 text-xs text-muted-foreground", className)}>
+      <span className={muted} role="status">
         <Trash2 className="size-3.5" />
         {t("statusRemoved")}
       </span>
     );
   }
+  if (status === "incorporated") {
+    return (
+      <span className={muted} role="status">
+        <CheckCircle2 className="size-3.5 text-primary" />
+        {t("statusIncorporated")}
+      </span>
+    );
+  }
+
+  // Explicit rather than a fallthrough: an unrecognised status used to render
+  // as a green check and "intégré à la source" — wrong, and reassuring about it.
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-xs text-muted-foreground", className)}>
-      <CheckCircle2 className="size-3.5 text-emerald-400" />
-      {t("statusIncorporated")}
+    <span className={muted} role="status">
+      <AlertCircle className="size-3.5" />
+      {t("statusUnavailable")}
     </span>
   );
 }

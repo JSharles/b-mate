@@ -112,14 +112,15 @@ describe("CanonicalSourceView", () => {
     );
   });
 
-  it("presents one readable source and links to document management", () => {
+  it("presents one readable source without offering to navigate to itself", () => {
     render(<CanonicalSourceView projectId="project-1" />);
 
     expect(screen.getByText("Le lancement public est prévu le 19 septembre.")).toBeVisible();
-    expect(screen.getByRole("link", { name: "manageDocuments" })).toHaveAttribute(
-      "href",
-      "/projects/project-1/documents",
-    );
+    // This view is only ever rendered by the document-management page, so a
+    // link to that page navigated to the page the user was already on.
+    expect(
+      screen.queryByRole("link", { name: "manageDocuments" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("revision", { exact: false })).toBeVisible();
   });
 

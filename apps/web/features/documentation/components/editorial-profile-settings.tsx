@@ -5,12 +5,27 @@ import { useState } from "react";
 import type { EditorialProfileValues } from "schemas";
 import { ClientCategoryView } from "@/shared/components/client-category-view";
 import { Button } from "@/shared/components/ui/button";
+import { ApiError } from "@/shared/lib/api-client";
 import {
   useCancelEditorialProfile,
   useConfirmEditorialProfile,
   useEditorialProfile,
   useProposeEditorialProfile,
 } from "../hooks";
+
+// These mutations suppress the global toast, so without this a rejected write
+// is indistinguishable from a dead button — and a version conflict is routine
+// here, because the workspace polls while the contributor is deciding.
+function ActionError({ error }: { error: unknown }) {
+  const t = useTranslations("Projects.DocumentationNew.Editorial");
+  if (!error) return null;
+  const isStale = error instanceof ApiError && error.status === 409;
+  return (
+    <p role="alert" className="mt-3 text-sm text-destructive">
+      {t(isStale ? "staleError" : "error")}
+    </p>
+  );
+}
 
 const options = {
   length: ["concise", "balanced", "detailed"],
@@ -98,6 +113,7 @@ export function EditorialProfileSettings({ projectId }: { projectId: string }) {
       >
         {t("preview")}
       </Button>
+      <ActionError error={propose.error} />
       {proposal && (
         <div className="mt-6 rounded-xl border border-border bg-card p-5">
           <h3 className="font-semibold">
@@ -126,6 +142,8 @@ export function EditorialProfileSettings({ projectId }: { projectId: string }) {
           <div className="mt-5 flex gap-2">
             <Button
               disabled={
+                confirm.isPending ||
+                cancel.isPending ||
                 !["preview_ready", "saved_without_preview"].includes(
                   proposal.status,
                 )
@@ -141,6 +159,7 @@ export function EditorialProfileSettings({ projectId }: { projectId: string }) {
             </Button>
             <Button
               variant="outline"
+              disabled={confirm.isPending || cancel.isPending}
               onClick={() =>
                 cancel.mutate({
                   proposalId: proposal.id,
@@ -151,6 +170,7 @@ export function EditorialProfileSettings({ projectId }: { projectId: string }) {
               {t("cancel")}
             </Button>
           </div>
+          <ActionError error={confirm.error ?? cancel.error} />
         </div>
       )}
     </section>

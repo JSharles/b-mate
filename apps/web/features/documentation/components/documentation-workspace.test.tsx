@@ -52,6 +52,8 @@ describe("DocumentationWorkspace", () => {
     render(<DocumentationWorkspace projectId="project-1" />);
 
     expect(screen.getByText("priority_empty")).toBeVisible();
-    expect(screen.getByText("refreshDelayed")).toHaveClass("text-amber-300");
+    // A delayed refresh is de-emphasised, not accented: periwinkle is the only
+    // colour allowed to mean emphasis (DESIGN.md, One Voice Rule).
+    expect(screen.getByText("refreshDelayed")).toHaveClass("text-muted-foreground");
   });
 });

@@ -294,6 +294,13 @@ export function useCategoryDrafts(projectId: string) {
   return useQuery({
     queryKey: categoryDraftsKey(projectId),
     queryFn: () => listCategoryDrafts(projectId),
+    // A draft with no summary yet is still being generated. Without this it
+    // showed "Génération en cours" and then stayed frozen on that text until
+    // the contributor thought to reload the page by hand.
+    refetchInterval: (query) =>
+      query.state.data?.some((state) => state.activeDraft?.changeSummary == null)
+        ? 5_000
+        : false,
   });
 }
 export function useCategoryDraft(projectId: string, draftId: string | null) {
