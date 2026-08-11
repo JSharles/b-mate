@@ -25,7 +25,7 @@ export const PROCESSING_STATUSES = new Set<SourceDocument["status"]>([
 // halted state, handled by the same removal and retry paths. Only the code
 // tells them apart, and telling someone their own decision was a failure is
 // the kind of small lie that makes an interface feel untrustworthy.
-const CANCELLED_BY_CONTRIBUTOR = "CANCELLED_BY_CONTRIBUTOR";
+export const CANCELLED_BY_CONTRIBUTOR = "CANCELLED_BY_CONTRIBUTOR";
 
 export function DocumentStatus({
   status,

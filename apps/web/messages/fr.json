@@ -359,6 +359,7 @@
         "category_other": "Autres informations",
         "failureCode": "Diagnostic : {code}",
         "processingFailureHelp": "Le traitement n’a pas abouti. Vous pouvez le relancer sans ajouter le document une seconde fois.",
+        "cancelledHelp": "Vous avez arrêté ce traitement. Relancez-le, ou supprimez le document.",
         "removalFailureHelp": "La suppression n’a pas été finalisée. Vous pouvez la reprendre sans risque pour la version publiée.",
         "technicalDetails": "Détails techniques",
         "retryProcessing": "Relancer le traitement",

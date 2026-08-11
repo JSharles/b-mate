@@ -15,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { use, useEffect, useState } from "react";
 import { RemoveDocumentDialog } from "@/features/documentation/components/remove-document-dialog";
 import {
+  CANCELLED_BY_CONTRIBUTOR,
   DocumentStatus,
   PROCESSING_STATUSES,
 } from "@/features/documentation/components/document-status";
@@ -72,6 +73,7 @@ export default function SourceDocumentPage({
   const item = document.data;
   const removing = item.status === "removal_pending";
   const processing = PROCESSING_STATUSES.has(item.status);
+  const cancelled = item.failureCode === CANCELLED_BY_CONTRIBUTOR;
   const processingFailed = item.status === "failed";
   const removalFailed = item.status === "removal_failed";
   const actionError =
@@ -137,7 +139,17 @@ export default function SourceDocumentPage({
                 </div>
               </div>
             )}
-            {item.failureCode && (
+            {/* A stop is not an incident. Reported through the failure block
+                the page contradicted its own status line — "Traitement arrêté"
+                above, "le traitement n'a pas abouti" in red below — and
+                offered a technical code for something the contributor did on
+                purpose. */}
+            {cancelled && (
+              <p className="text-sm text-muted-foreground">
+                {t("cancelledHelp")}
+              </p>
+            )}
+            {item.failureCode && !cancelled && (
               <div role="alert" className="space-y-2 text-sm text-destructive">
                 <p>{t(processingFailed ? "processingFailureHelp" : "removalFailureHelp")}</p>
                 <details className="text-xs text-muted-foreground">

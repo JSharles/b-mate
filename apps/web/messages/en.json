@@ -359,6 +359,7 @@
         "category_other": "Other information",
         "failureCode": "Diagnostic: {code}",
         "processingFailureHelp": "Processing didn't complete. You can retry without adding the document again.",
+        "cancelledHelp": "You stopped this processing. Restart it, or delete the document.",
         "removalFailureHelp": "Deletion wasn't finalized. You can safely resume it without changing the published version.",
         "technicalDetails": "Technical details",
         "retryProcessing": "Retry processing",

@@ -101,6 +101,35 @@ describe("SourceDocumentPage", () => {
   // Opening a document being processed was a dead end: the status said "being
   // integrated" and the page offered nothing to do about it, on the one screen
   // with room to explain the wait.
+  // The page contradicted itself: "Traitement arrêté" in the header, and in red
+  // below it "le traitement n'a pas abouti" plus a technical code — for
+  // something the contributor had just chosen to do.
+  it("does not report a deliberate stop as an incident", () => {
+    vi.mocked(useSourceDocument).mockReturnValue({
+      data: {
+        ...baseDocument,
+        status: "failed",
+        failureCode: "CANCELLED_BY_CONTRIBUTOR",
+      },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as never);
+
+    renderPage();
+
+    expect(screen.getByText("cancelledHelp")).toBeVisible();
+    expect(screen.queryByText("processingFailureHelp")).toBeNull();
+    expect(screen.queryByText("technicalDetails")).toBeNull();
+    // Both ways forward stay available.
+    expect(
+      screen.getByRole("button", { name: "retryProcessing" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "removeDocument" }),
+    ).toBeVisible();
+  });
+
   it("offers a way out of a document that is still being processed", () => {
     vi.mocked(useSourceDocument).mockReturnValue({
       data: { ...baseDocument, status: "extracting" },
