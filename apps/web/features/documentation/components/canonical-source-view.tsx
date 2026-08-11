@@ -20,6 +20,7 @@ import {
   useProposeWorkingLanguage,
 } from "../hooks";
 import { GuidedCorrectionDialog } from "./guided-correction-dialog";
+import { StepHeading } from "./step-heading";
 import { ProvenanceSheet } from "./provenance-sheet";
 import { ClarificationsPanel } from "./clarifications-panel";
 
@@ -92,31 +93,25 @@ export function CanonicalSourceView({ projectId }: { projectId: string }) {
 
   return (
     <section className="border-b border-border pb-8">
-      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1.5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            {t("eyebrow")}
-          </p>
-          <h2 className="text-lg font-semibold tracking-tight">{t("title")}</h2>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            {t("description")}
-          </p>
-        </div>
-      </div>
+      <StepHeading
+        step={1}
+        namespace="Projects.Documentation.Steps"
+        titleKey="title1"
+        purposeKey="purpose1"
+      />
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="min-w-0">
           <header className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div>
-              <h3 className="font-semibold">{t("Source.title")}</h3>
               {revision ? (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   {t("Source.revision", { sequence: revision.sequence })}
                   <span aria-hidden="true"> · </span>
                   {revision.summary}
                 </p>
               ) : (
-                <p className="mt-1 text-xs text-muted-foreground">{t("Source.noRevision")}</p>
+                <p className="text-sm text-muted-foreground">{t("Source.noRevision")}</p>
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2">

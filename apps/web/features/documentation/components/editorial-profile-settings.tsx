@@ -22,6 +22,7 @@ import {
   useEditorialProfile,
   useProposeEditorialProfile,
 } from "../hooks";
+import { StepHeading } from "./step-heading";
 
 // These mutations suppress the global toast, so without this a rejected write
 // is indistinguishable from a dead button — and a version conflict is routine
@@ -114,10 +115,12 @@ export function EditorialProfileSettings({ projectId }: { projectId: string }) {
 
   return (
     <section className="border-b border-border py-8">
-      <h2 className="text-lg font-semibold">{t("title")}</h2>
-      <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-        {t("description")}
-      </p>
+      <StepHeading
+        step={3}
+        namespace="Projects.Documentation.Steps"
+        titleKey="title3"
+        purposeKey="purpose3"
+      />
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* A native <select> renders the operating system's own dropdown
             chrome, which does not belong to a single committed dark theme —

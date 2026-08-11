@@ -198,7 +198,6 @@
       "joinMeeting": "Join meeting"
     },
     "Documentation": {
-      "eyebrow": "Living documentation",
       "title": "The project source",
       "description": "Diaphane brings useful information together into one clear, traceable source. Each new document enriches it instead of becoming an isolated section.",
       "manageDocuments": "Manage documents",
@@ -245,7 +244,6 @@
         "configureNotion": "Configure Notion"
       },
       "Source": {
-        "title": "Canonical source",
         "revision": "Revision {sequence}",
         "noRevision": "No revision yet",
         "emptyTitle": "The source is waiting for its first document",
@@ -380,11 +378,22 @@
       },
       "Pipeline": {
         "title": "Project documentation",
-        "description": "The consolidated source, the points to clarify, what is waiting for your approval, and what your client sees at the end.",
+        "description": "Your documents become documentation your client can read. Diaphane writes it, you approve what is true. Four steps, in order.",
         "back": "Back to project",
         "manageDocuments": "Source documents",
         "loadError": "This project's documentation could not be loaded.",
         "retry": "Try again"
+      },
+      "Steps": {
+        "stepLabel": "Step {step} of 4",
+        "title1": "What Diaphane took from your documents",
+        "purpose1": "Everything your documents say, gathered in one place and tied back to where it came from. This is the raw material — not what your client reads.",
+        "title2": "What is waiting for your approval",
+        "purpose2": "Diaphane proposes one version per category. You check the facts, dates and figures. Nothing reaches your client without your say-so.",
+        "title3": "The voice used for your client",
+        "purpose3": "How the text is written: its length, how much it explains. It changes none of the facts you approved.",
+        "title4": "What your client will see",
+        "purpose4": "The final result. It only changes once every category is approved — never halfway."
       }
     },
     "TeamSummaryCard": {
@@ -636,10 +645,10 @@
         "visibility_current_version_visible": "The client sees the current version",
         "refreshDelayed": "Automatic refresh is delayed; the last known data remains visible.",
         "navLabel": "Documentation workspace sections",
-        "navSource": "Source",
-        "navReview": "To review",
-        "navEditorial": "Editorial profile",
-        "navClient": "Client view",
+        "navSource": "1 · Source",
+        "navReview": "2 · To review",
+        "navEditorial": "3 · Voice",
+        "navClient": "4 · Client view",
         "releaseProgress": "{ready, plural, one {# category approved} other {# categories approved}} of {expected} for the next release.",
         "releaseAtomic": "The client keeps seeing the current version until the new one is complete.",
         "failedAction": "{count, plural, one {See the document concerned} other {See the # documents concerned}}"

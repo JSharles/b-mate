@@ -198,7 +198,6 @@
       "joinMeeting": "Rejoindre la réunion"
     },
     "Documentation": {
-      "eyebrow": "Documentation vivante",
       "title": "La source du projet",
       "description": "Diaphane rassemble les informations utiles en une source claire et traçable. Chaque nouveau document enrichit cette source sans devenir une section isolée.",
       "manageDocuments": "Gérer les documents",
@@ -245,7 +244,6 @@
         "configureNotion": "Configurer Notion"
       },
       "Source": {
-        "title": "Source canonique",
         "revision": "Révision {sequence}",
         "noRevision": "Aucune révision pour le moment",
         "emptyTitle": "La source attend son premier document",
@@ -380,11 +378,22 @@
       },
       "Pipeline": {
         "title": "Documentation du projet",
-        "description": "La source consolidée, les points à clarifier, ce qui attend votre validation, et ce que votre client voit au bout.",
+        "description": "Vos documents deviennent une documentation que votre client peut lire. Diaphane rédige, vous validez ce qui est vrai. Quatre étapes, dans l’ordre.",
         "back": "Retour au projet",
         "manageDocuments": "Documents source",
         "loadError": "Impossible de charger la documentation de ce projet.",
         "retry": "Réessayer"
+      },
+      "Steps": {
+        "stepLabel": "Étape {step} sur 4",
+        "title1": "Ce que Diaphane a retenu de vos documents",
+        "purpose1": "Tout ce que vos documents disent, rassemblé au même endroit et rattaché à son origine. C’est la matière première — pas ce que votre client lira.",
+        "title2": "Ce qui attend votre validation",
+        "purpose2": "Diaphane propose une version par catégorie. Vous vérifiez les faits, les dates et les chiffres. Rien ne part chez votre client sans votre accord.",
+        "title3": "Le ton employé pour votre client",
+        "purpose3": "Comment le texte est écrit : sa longueur, son niveau d’explication. Cela ne change aucun fait que vous avez validé.",
+        "title4": "Ce que votre client verra",
+        "purpose4": "Le résultat final. Il ne change que lorsque toutes les catégories sont validées — jamais à moitié."
       }
     },
     "TeamSummaryCard": {
@@ -636,10 +645,10 @@
         "visibility_current_version_visible": "Le client voit la version actuelle",
         "refreshDelayed": "La mise à jour automatique est retardée ; les dernières données connues restent affichées.",
         "navLabel": "Sections de l’espace documentaire",
-        "navSource": "Source",
-        "navReview": "À valider",
-        "navEditorial": "Profil éditorial",
-        "navClient": "Vue client",
+        "navSource": "1 · Source",
+        "navReview": "2 · À valider",
+        "navEditorial": "3 · Ton",
+        "navClient": "4 · Vue client",
         "releaseProgress": "{ready, plural, one {# catégorie validée} other {# catégories validées}} sur {expected} pour la prochaine publication.",
         "releaseAtomic": "Le client continue de voir la version actuelle tant que la nouvelle n’est pas complète.",
         "failedAction": "{count, plural, one {Voir le document concerné} other {Voir les # documents concernés}}"

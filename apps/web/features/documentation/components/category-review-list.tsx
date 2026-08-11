@@ -10,6 +10,7 @@ import {
   useCorrectCategoryDraft,
   useReviewCategoryDraft,
 } from "../hooks";
+import { StepHeading } from "./step-heading";
 
 // Accepting derives an immutable client release, so it may only be offered
 // once there is something to read. A draft still generating has an empty body.
@@ -51,15 +52,15 @@ export function CategoryReviewList({ projectId }: { projectId: string }) {
   const reviewable = drafts.filter((draft) => isReviewable(draft.status));
 
   return (
-    <section className="border-b border-border py-8" aria-labelledby="category-review-title">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 id="category-review-title" className="text-lg font-semibold">
-            {t("title")}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
-        </div>
-        <span className="rounded-md bg-muted px-3 py-1 text-xs">
+    <section className="border-b border-border py-8" aria-label={t("title")}>
+      <div className="flex items-start justify-between gap-4">
+        <StepHeading
+          step={2}
+          namespace="Projects.Documentation.Steps"
+          titleKey="title2"
+          purposeKey="purpose2"
+        />
+        <span className="mt-0.5 shrink-0 rounded-md bg-muted px-3 py-1 text-xs">
           {t("pendingCount", { count: reviewable.length })}
         </span>
       </div>
