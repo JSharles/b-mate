@@ -21,6 +21,10 @@ import {
   LeasedGenerationOperation,
 } from './generation.service';
 
+// How long to wait before reading a job we could not reach. Unrelated to the
+// attempt budget: this delay costs nothing but a second look at the provider.
+const POLL_RETRY_MS = 5_000;
+
 @Injectable()
 export class GenerationWorkerService {
   private readonly workerId = `generation-${randomUUID()}`;
@@ -199,20 +203,27 @@ export class GenerationWorkerService {
         providerCorrelationId: attempt.providerCorrelationId,
         providerRequestId: attempt.providerRequestId,
       });
-      if (result.state === 'failed' && result.failure.retryable) {
+      // Reading the job failed, so the job itself is untouched: poll it again
+      // rather than spending one of the attempt budget on a network blip.
+      if (result.state === 'unreadable') {
         await this.generation.markPolling(
           operation.id,
           attempt.id,
-          new Date(Date.now() + 5_000),
+          new Date(Date.now() + POLL_RETRY_MS),
         );
         return;
       }
+      // Anything else is the job's own outcome. A retryable one goes back
+      // through recordAttemptFailure, which submits a *new* job and stops at
+      // the route's maxAttempts. Re-polling the finished job instead — which
+      // is what this did — returns the same bad result every five seconds
+      // until the remote deadline, a full day of silent retries.
       await this.handlePoll(operation, attempt.id, result);
     } catch {
       await this.generation.markPolling(
         operation.id,
         attempt.id,
-        new Date(Date.now() + 5_000),
+        new Date(Date.now() + POLL_RETRY_MS),
       );
     }
   }

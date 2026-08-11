@@ -83,6 +83,9 @@ export class AnthropicGenerationProvider implements GenerationProviderAdapter {
       if (batch.processing_status !== 'ended') {
         return { state: 'pending', nextPollAt: nextPollAt() };
       }
+      // Past this point the batch has ended: every outcome below is final for
+      // this attempt. Only the enclosing catch, which means we never got to
+      // read the batch, is worth polling again.
 
       const results = await this.client.messages.batches.results(
         request.providerJobId,
@@ -110,7 +113,7 @@ export class AnthropicGenerationProvider implements GenerationProviderAdapter {
         false,
       );
     } catch (error) {
-      return { state: 'failed', failure: normalizeAnthropicError(error) };
+      return { state: 'unreadable', failure: normalizeAnthropicError(error) };
     }
   }
 
@@ -134,6 +137,7 @@ export class AnthropicGenerationProvider implements GenerationProviderAdapter {
       ],
       output_config: {
         format: { type: 'json_schema', schema: anthropicSchema },
+        ...(request.effort ? { effort: request.effort } : {}),
       },
     };
   }
@@ -142,6 +146,14 @@ export class AnthropicGenerationProvider implements GenerationProviderAdapter {
     message: Message,
     correlationId: string,
   ): GenerationSubmission & GenerationPollResult {
+    // A truncated answer is not malformed JSON, it is a budget that was too
+    // small — and it says so. Naming it separately matters: reported as
+    // "invalid output" it sent us looking at the schema and the prompt, when
+    // the model had simply spent every output token reasoning and emitted no
+    // text at all.
+    if (message.stop_reason === 'max_tokens') {
+      return failed('invalid_output', 'ANTHROPIC_OUTPUT_TRUNCATED', true);
+    }
     const text = message.content
       .filter((block) => block.type === 'text')
       .map((block) => block.text)

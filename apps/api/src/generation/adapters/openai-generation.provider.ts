@@ -50,6 +50,7 @@ export class OpenAIGenerationProvider implements GenerationProviderAdapter {
           },
         },
         max_output_tokens: request.maxOutputTokens,
+        ...(request.effort ? { reasoning: { effort: request.effort } } : {}),
         metadata: { correlation_id: request.correlationId },
         store: false,
         background: request.transport === 'batch',
@@ -106,7 +107,10 @@ export class OpenAIGenerationProvider implements GenerationProviderAdapter {
         };
       return { state: 'pending', nextPollAt: nextPollAt() };
     } catch (error) {
-      return { state: 'failed', failure: classifyHttpFailure('openai', error) };
+      return {
+        state: 'unreadable',
+        failure: classifyHttpFailure('openai', error),
+      };
     }
   }
 }

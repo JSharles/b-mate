@@ -333,4 +333,79 @@ describe('GenerationWorkerService', () => {
       expect.objectContaining({ code: 'REMOTE_FAILED' }),
     );
   });
+
+  // A finished job returns the same thing every time it is read, so re-reading
+  // it after a bad result is not a retry — it is a loop. A Notion page whose
+  // extraction came back truncated was polled every five seconds for a quarter
+  // of an hour, and would have kept going for the full 24h remote deadline,
+  // with the document stuck on "processing" and nothing reported anywhere.
+  it('spends an attempt on a retryable poll failure instead of re-reading the job', async () => {
+    generation.leaseNext.mockResolvedValueOnce({
+      ...operation,
+      currentAttemptId: 'attempt-1',
+      currentAttempt: {
+        id: 'attempt-1',
+        provider: 'fake',
+        model: 'deterministic-v1',
+        transport: 'batch',
+        providerJobId: 'job-1',
+        providerCorrelationId: null,
+        providerRequestId: null,
+        status: 'submitted',
+      },
+    } as never);
+    provider.poll.mockResolvedValueOnce({
+      state: 'failed',
+      failure: {
+        errorClass: 'invalid_output',
+        code: 'ANTHROPIC_OUTPUT_TRUNCATED',
+        retryable: true,
+      },
+    });
+
+    await worker.tick();
+
+    expect(generation.markPolling).not.toHaveBeenCalled();
+    expect(generation.recordAttemptFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ id: operation.id }),
+      'attempt-1',
+      expect.objectContaining({ code: 'ANTHROPIC_OUTPUT_TRUNCATED' }),
+    );
+  });
+
+  // The other half of the same rule: when the job could not be read at all the
+  // job is untouched, and burning one of two attempts on a 429 would be wrong.
+  it('re-reads a job it could not reach, without spending an attempt', async () => {
+    generation.leaseNext.mockResolvedValueOnce({
+      ...operation,
+      currentAttemptId: 'attempt-1',
+      currentAttempt: {
+        id: 'attempt-1',
+        provider: 'fake',
+        model: 'deterministic-v1',
+        transport: 'batch',
+        providerJobId: 'job-1',
+        providerCorrelationId: null,
+        providerRequestId: null,
+        status: 'submitted',
+      },
+    } as never);
+    provider.poll.mockResolvedValueOnce({
+      state: 'unreadable',
+      failure: {
+        errorClass: 'transient',
+        code: 'ANTHROPIC_RATE_LIMITED',
+        retryable: true,
+      },
+    });
+
+    await worker.tick();
+
+    expect(generation.recordAttemptFailure).not.toHaveBeenCalled();
+    expect(generation.markPolling).toHaveBeenCalledWith(
+      operation.id,
+      'attempt-1',
+      expect.any(Date),
+    );
+  });
 });

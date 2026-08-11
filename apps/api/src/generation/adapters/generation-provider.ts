@@ -15,6 +15,10 @@ export interface GenerationProviderRequest {
   outputContract: string;
   outputSchema?: Record<string, unknown>;
   maxOutputTokens?: number;
+  // How much reasoning a stage is worth. Left unset the model decides, and on a
+  // mechanical stage it decides generously: extraction spent 21k of its 32k
+  // output budget thinking about a Notion page and got cut off mid-answer.
+  effort?: 'low' | 'medium' | 'high';
   correlationId: string;
 }
 
@@ -64,6 +68,12 @@ export interface GenerationPollRequest {
 export type GenerationPollResult =
   | { state: 'pending'; nextPollAt: Date }
   | { state: 'completed'; result: GenerationProviderResult }
+  // The job could not be read at all — a network error, a 429, a 500. The
+  // remote job is untouched, so the right move is to read it again later.
+  | { state: 'unreadable'; failure: GenerationProviderFailure }
+  // The job ended and its outcome is unusable. Reading it again is pointless:
+  // a finished job returns the same thing forever. Separating this from
+  // `unreadable` is what stops a bad result from being polled in a loop.
   | { state: 'failed'; failure: GenerationProviderFailure };
 
 export interface GenerationProviderAdapter {

@@ -292,6 +292,40 @@ describe('AnthropicGenerationProvider', () => {
     });
   });
 
+  // A Notion page spent all 16k output tokens reasoning and returned a single
+  // thinking block, no text. Reported as invalid output that reads as a broken
+  // schema or a broken prompt; it was neither, the budget was simply too small.
+  // Extraction asks for `low`: the stage is mechanical and the reasoning was
+  // what ate the budget. A stage that says nothing keeps the model's own choice.
+  it('passes a stage effort through to the model, and omits it when unset', async () => {
+    mockCreate.mockResolvedValue(message({ observations: [] }));
+
+    await provider.submit({ ...request, effort: 'low' });
+    expect(mockCreate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        output_config: expect.objectContaining({ effort: 'low' }),
+      }),
+    );
+
+    await provider.submit(request);
+    expect(mockCreate.mock.calls.at(-1)?.[0].output_config).not.toHaveProperty(
+      'effort',
+    );
+  });
+
+  it('names a truncated answer for what it is rather than calling it invalid', async () => {
+    mockCreate.mockResolvedValue({
+      ...message({}),
+      content: [{ type: 'thinking', thinking: '', signature: 'sig' }],
+      stop_reason: 'max_tokens',
+    });
+
+    await expect(provider.submit(request)).resolves.toMatchObject({
+      state: 'failed',
+      failure: { code: 'ANTHROPIC_OUTPUT_TRUNCATED', retryable: true },
+    });
+  });
+
   it('fails closed without credentials for both submission and polling', async () => {
     const disabled = new AnthropicGenerationProvider({
       get: jest.fn().mockReturnValue(undefined),
@@ -322,6 +356,9 @@ describe('AnthropicGenerationProvider', () => {
       failure: { httpStatus: 429, retryable: true },
     });
 
+    // A 503 means we never got to read the batch, so the batch is untouched
+    // and worth reading again. Reporting that as a failed job would have spent
+    // one of two attempts on somebody else's outage.
     mockBatchRetrieve.mockRejectedValueOnce(
       Object.assign(new Error('unavailable'), { status: 503 }),
     );
@@ -333,7 +370,7 @@ describe('AnthropicGenerationProvider', () => {
         providerJobId: 'batch-1',
       }),
     ).resolves.toMatchObject({
-      state: 'failed',
+      state: 'unreadable',
       failure: { httpStatus: 503, retryable: true },
     });
   });

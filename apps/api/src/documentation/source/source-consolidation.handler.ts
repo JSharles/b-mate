@@ -138,6 +138,14 @@ export const SOURCE_CONSOLIDATION_JSON_SCHEMA: Record<string, unknown> = {
   },
 };
 
+// Consolidation rewrites the whole canonical source from every observation
+// gathered so far, so its answer only grows as a project accumulates
+// documents. Same ceiling as extraction, and for the same reason: the budget
+// has to cover the model's reasoning as well as the text it returns. No effort
+// cap here — reconciling contradictions between documents is the one place in
+// this pipeline where the reasoning is the work.
+const CONSOLIDATION_MAX_OUTPUT_TOKENS = 64_000;
+
 @Injectable()
 export class SourceConsolidationHandler
   implements GenerationHandler, OnModuleInit
@@ -236,6 +244,7 @@ export class SourceConsolidationHandler
       ],
       outputContract: SOURCE_CONSOLIDATION_OUTPUT_CONTRACT,
       outputSchema: SOURCE_CONSOLIDATION_JSON_SCHEMA,
+      maxOutputTokens: CONSOLIDATION_MAX_OUTPUT_TOKENS,
     };
   }
 

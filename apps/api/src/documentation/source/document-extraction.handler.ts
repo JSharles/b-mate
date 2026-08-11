@@ -27,6 +27,20 @@ import {
   SOURCE_CONSOLIDATION_PROMPT_VERSION,
 } from './prompts/consolidation.prompt';
 
+// Extraction reads a whole document and emits every observation it holds, so
+// its answer grows with the source. This stage ran on the provider default of
+// 16k and a Notion page hit the ceiling twice over: the budget has to cover
+// the model's reasoning as well as the answer, and both grow with the source.
+// A ceiling is only charged when it is used, so it is set well clear of what
+// a large document needs rather than at the edge.
+const EXTRACTION_MAX_OUTPUT_TOKENS = 64_000;
+
+// Left to decide for itself the model spent 21k tokens reasoning about how to
+// transcribe a page — two thirds of the budget, and then it ran out mid-answer.
+// Extraction is the mechanical stage: read the document, write down what it
+// says. The judgement calls happen later, at consolidation.
+const EXTRACTION_EFFORT = 'low' as const;
+
 @Injectable()
 export class DocumentExtractionHandler
   implements GenerationHandler, OnModuleInit
@@ -99,6 +113,8 @@ export class DocumentExtractionHandler
       ],
       outputContract: DOCUMENT_EXTRACTION_OUTPUT_CONTRACT,
       outputSchema: DOCUMENT_EXTRACTION_JSON_SCHEMA,
+      maxOutputTokens: EXTRACTION_MAX_OUTPUT_TOKENS,
+      effort: EXTRACTION_EFFORT,
     };
   }
 
