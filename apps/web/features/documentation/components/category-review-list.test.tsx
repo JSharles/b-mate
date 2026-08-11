@@ -205,4 +205,83 @@ describe("CategoryReviewList", () => {
     fireEvent.click(button);
     expect(button).toHaveAttribute("aria-pressed", "true");
   });
+
+  // Accepting is the action the whole product exists for, and it produced no
+  // acknowledgement anywhere in the viewport: the only signals were a count
+  // badge silently decrementing and a banner five sections up.
+  describe("after a review lands", () => {
+    function draftInReview() {
+      const draft = {
+        id: "00000000-0000-4000-8000-000000000001",
+        categoryKey: "overview",
+        version: 3,
+        changeSummary: "One date changed",
+      };
+      vi.mocked(useCategoryDrafts).mockReturnValue({
+        isPending: false,
+        data: [{ activeDraft: draft }],
+      } as never);
+      vi.mocked(useCategoryDraft).mockReturnValue({
+        data: { ...draft, blocks: [{ type: "fact", text: "The launch is scheduled" }] },
+      } as never);
+    }
+
+    it("says the category was approved and what is left before publication", () => {
+      draftInReview();
+      vi.mocked(useReviewCategoryDraft).mockReturnValue({
+        mutate: reviewMutate,
+        isSuccess: true,
+        variables: { action: "accept" },
+      } as never);
+
+      render(<CategoryReviewList projectId="project-1" />);
+
+      expect(screen.getByRole("status")).toHaveTextContent("accepted");
+    });
+
+    it("reassures that discarding leaves the published version alone", () => {
+      draftInReview();
+      vi.mocked(useReviewCategoryDraft).mockReturnValue({
+        mutate: reviewMutate,
+        isSuccess: true,
+        variables: { action: "discard" },
+      } as never);
+
+      render(<CategoryReviewList projectId="project-1" />);
+
+      expect(screen.getByRole("status")).toHaveTextContent("discarded");
+    });
+  });
+
+  // The instruction used to live at list level and never cleared on selection
+  // change, so a correction typed for one category could be sent against
+  // another — against an immutable source, that costs a real revision to undo.
+  it("keeps each category's correction with its own draft", () => {
+    const drafts = [
+      { id: "draft-a", categoryKey: "overview", version: 1, changeSummary: "A" },
+      { id: "draft-b", categoryKey: "planning", version: 1, changeSummary: "B" },
+    ];
+    vi.mocked(useCategoryDrafts).mockReturnValue({
+      isPending: false,
+      data: drafts.map((activeDraft) => ({ activeDraft })),
+    } as never);
+    vi.mocked(useCategoryDraft).mockImplementation(
+      (_projectId: string, draftId: string | null) =>
+        ({
+          data: draftId
+            ? { ...drafts.find((d) => d.id === draftId), blocks: [] }
+            : undefined,
+        }) as never,
+    );
+
+    render(<CategoryReviewList projectId="project-1" />);
+    fireEvent.click(screen.getByRole("button", { name: /category_overview/i }));
+    fireEvent.change(screen.getByLabelText("correctionLabel"), {
+      target: { value: "The date is 18 September." },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /category_planning/i }));
+
+    expect(screen.getByLabelText("correctionLabel")).toHaveValue("");
+  });
 });

@@ -34,7 +34,7 @@ export function CategoryReviewList({ projectId }: { projectId: string }) {
   const detail = useCategoryDraft(projectId, selected);
   const review = useReviewCategoryDraft(projectId);
   const correct = useCorrectCategoryDraft(projectId);
-  const [instruction, setInstruction] = useState("");
+  const [instructions, setInstructions] = useState<Record<string, string>>({});
 
   const drafts =
     list.data
@@ -147,6 +147,13 @@ export function CategoryReviewList({ projectId }: { projectId: string }) {
                 </Button>
               </div>
               <ActionError error={review.error} />
+              {review.isSuccess && (
+                <p role="status" className="mt-3 text-sm text-muted-foreground">
+                  {review.variables?.action === "accept"
+                    ? t("accepted", { remaining: drafts.length })
+                    : t("discarded")}
+                </p>
+              )}
 
               <div className="mt-5 border-t border-border pt-5">
                 <label className="text-sm font-medium" htmlFor="factual-instruction">
@@ -154,20 +161,25 @@ export function CategoryReviewList({ projectId }: { projectId: string }) {
                 </label>
                 <textarea
                   id="factual-instruction"
-                  value={instruction}
-                  onChange={(event) => setInstruction(event.target.value)}
+                  value={instructions[detail.data.id] ?? ""}
+                  onChange={(event) =>
+                    setInstructions((current) => ({
+                      ...current,
+                      [detail.data.id]: event.target.value,
+                    }))
+                  }
                   className="mt-2 min-h-24 w-full rounded-lg border border-input bg-background p-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   placeholder={t("correctionPlaceholder")}
                 />
                 <Button
                   className="mt-2"
                   variant="secondary"
-                  disabled={!instruction.trim() || correct.isPending}
+                  disabled={!(instructions[detail.data.id] ?? "").trim() || correct.isPending}
                   onClick={() =>
                     correct.mutate({
                       draftId: detail.data.id,
                       expectedVersion: detail.data.version,
-                      instruction,
+                      instruction: instructions[detail.data.id] ?? "",
                     })
                   }
                 >

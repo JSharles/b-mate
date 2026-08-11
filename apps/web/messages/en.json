@@ -564,7 +564,9 @@
         "category_other": "Other information",
         "staleError": "The source changed while you were reading. Reload the page to start from the latest version.",
         "error": "That action did not go through. Try again in a moment.",
-        "openPoint": "To clarify"
+        "openPoint": "To clarify",
+        "accepted": "Category approved. {remaining, plural, =0 {Every category is approved.} one {# category still to review.} other {# categories still to review.}}",
+        "discarded": "Draft discarded. The previous version stays in place."
       },
       "Preview": {
         "title": "What your client sees",
@@ -574,7 +576,9 @@
         "category_overview": "The project",
         "category_how_it_works": "How it works",
         "category_planning": "Planning & milestones",
-        "category_other": "Other information"
+        "category_other": "Other information",
+        "loadError": "The client preview could not be loaded.",
+        "retry": "Try again"
       },
       "Editorial": {
         "title": "Editorial profile",
@@ -606,7 +610,9 @@
         "confirm": "Confirm",
         "cancel": "Cancel",
         "staleError": "The profile changed in the meantime. Reload the page to start from the latest version.",
-        "error": "That action did not go through. Try again in a moment."
+        "error": "That action did not go through. Try again in a moment.",
+        "loadError": "The editorial profile could not be loaded.",
+        "retry": "Try again"
       },
       "Workspace": {
         "priority_needs_action": "Your approval is needed",
@@ -640,6 +646,17 @@
         "retryConfirm": "Retry deletion",
         "removing": "Deleting…",
         "error": "Deletion could not complete. Close this dialog or retry; published content remains unchanged."
+      },
+      "Toasts": {
+        "documentAdded": "Document added. Its analysis is queued — this page updates itself.",
+        "processingRetried": "Processing restarted.",
+        "removalResumed": "Removal resumed.",
+        "documentRemoved": "Document removed. The source was rebuilt without it.",
+        "correctionSent": "Correction sent. A new draft is being prepared.",
+        "clarificationsAnswered": "Answers saved.",
+        "languageChanged": "Working language changed.",
+        "editorialConfirmed": "Editorial profile confirmed. Client content is being regenerated.",
+        "editorialCancelled": "Proposal dropped. The previous profile stays in place."
       }
     }
   },

@@ -1,10 +1,12 @@
 "use client";
 
+import { AlertCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { EditorialProfileValues } from "schemas";
 import { ClientCategoryView } from "@/shared/components/client-category-view";
 import { Button } from "@/shared/components/ui/button";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { ApiError } from "@/shared/lib/api-client";
 import {
   useCancelEditorialProfile,
@@ -42,7 +44,37 @@ export function EditorialProfileSettings({ projectId }: { projectId: string }) {
   const cancel = useCancelEditorialProfile(projectId);
   const [edited, setEdited] = useState<EditorialProfileValues | null>(null);
 
-  if (!profile.data) return null;
+  // Same reasoning as the client preview: a nav chip points here, so returning
+  // nothing on load or error scrolls the contributor to an empty page region.
+  if (profile.isPending) {
+    return (
+      <section className="border-b border-border py-8">
+        <h2 className="text-xl font-semibold">{t("title")}</h2>
+        <Skeleton className="mt-4 h-24 w-full" />
+      </section>
+    );
+  }
+  if (profile.isError || !profile.data) {
+    return (
+      <section className="border-b border-border py-8">
+        <h2 className="text-xl font-semibold">{t("title")}</h2>
+        <div className="mt-4 flex flex-col items-start gap-3 rounded-xl border border-border bg-card p-6">
+          <p className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="size-4" />
+            {t("loadError")}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void profile.refetch()}
+          >
+            {t("retry")}
+          </Button>
+        </div>
+      </section>
+    );
+  }
   const values =
     edited ?? {
       length: profile.data.length,

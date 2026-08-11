@@ -564,7 +564,9 @@
         "category_other": "Autres informations",
         "staleError": "La source a évolué pendant votre lecture. Rechargez la page pour repartir de la dernière version.",
         "error": "L’action n’a pas abouti. Réessayez dans un instant.",
-        "openPoint": "À clarifier"
+        "openPoint": "À clarifier",
+        "accepted": "Catégorie validée. {remaining, plural, =0 {Toutes les catégories sont validées.} one {# catégorie reste à valider.} other {# catégories restent à valider.}}",
+        "discarded": "Brouillon écarté. La version précédente reste en place."
       },
       "Preview": {
         "title": "Ce que voit votre client",
@@ -574,7 +576,9 @@
         "category_overview": "Le projet",
         "category_how_it_works": "Comment ça marche",
         "category_planning": "Planning & jalons",
-        "category_other": "Autres informations"
+        "category_other": "Autres informations",
+        "loadError": "L’aperçu client n’a pas pu être chargé.",
+        "retry": "Réessayer"
       },
       "Editorial": {
         "title": "Profil éditorial",
@@ -606,7 +610,9 @@
         "confirm": "Confirmer",
         "cancel": "Annuler",
         "staleError": "Le profil a été modifié entre-temps. Rechargez la page pour repartir de la dernière version.",
-        "error": "L’action n’a pas abouti. Réessayez dans un instant."
+        "error": "L’action n’a pas abouti. Réessayez dans un instant.",
+        "loadError": "Le profil éditorial n’a pas pu être chargé.",
+        "retry": "Réessayer"
       },
       "Workspace": {
         "priority_needs_action": "Votre validation est attendue",
@@ -640,6 +646,17 @@
         "retryConfirm": "Réessayer la suppression",
         "removing": "Suppression…",
         "error": "La suppression n’a pas pu être terminée. Fermez cette fenêtre ou réessayez ; la source publiée reste inchangée."
+      },
+      "Toasts": {
+        "documentAdded": "Document ajouté. Son analyse est en file — la page se met à jour toute seule.",
+        "processingRetried": "Traitement relancé.",
+        "removalResumed": "Suppression reprise.",
+        "documentRemoved": "Document supprimé. La source a été reconstruite sans lui.",
+        "correctionSent": "Correction envoyée. Un nouveau brouillon est en préparation.",
+        "clarificationsAnswered": "Réponses enregistrées.",
+        "languageChanged": "Langue de travail changée.",
+        "editorialConfirmed": "Profil éditorial confirmé. Le contenu client est en cours de régénération.",
+        "editorialCancelled": "Proposition abandonnée. Le profil précédent reste en place."
       }
     }
   },

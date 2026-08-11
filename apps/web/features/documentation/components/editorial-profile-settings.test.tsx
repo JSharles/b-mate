@@ -39,10 +39,30 @@ describe("EditorialProfileSettings", () => {
     vi.mocked(useCancelEditorialProfile).mockReturnValue({ mutate: cancel } as never);
   });
 
-  it("waits for the profile query", () => {
-    vi.mocked(useEditorialProfile).mockReturnValue({ data: undefined } as never);
+  // A nav chip points at this section, so rendering nothing while loading or
+  // on error scrolled the contributor to an empty region of the page.
+  it("keeps the section present while the profile loads", () => {
+    vi.mocked(useEditorialProfile).mockReturnValue({
+      data: undefined,
+      isPending: true,
+    } as never);
     const { container } = render(<EditorialProfileSettings projectId="project-1" />);
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByRole("heading", { name: "title" })).toBeVisible();
+    expect(container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument();
+  });
+
+  it("offers a retry when the profile cannot be loaded", () => {
+    const refetch = vi.fn();
+    vi.mocked(useEditorialProfile).mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      refetch,
+    } as never);
+    render(<EditorialProfileSettings projectId="project-1" />);
+    expect(screen.getByText("loadError")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "retry" }));
+    expect(refetch).toHaveBeenCalled();
   });
 
   it("previews an editable profile without publishing it", () => {

@@ -44,6 +44,7 @@ import {
   retryDocumentProcessing,
 } from "./api";
 import type { ResolveClarificationsRequest } from "schemas";
+import { useTranslations } from "next-intl";
 
 export const documentationKey = (projectId: string) =>
   ["projects", projectId, "documentation"] as const;
@@ -139,11 +140,12 @@ export function useSourceDocument(projectId: string, documentId: string) {
 }
 
 export function useRetryDocumentProcessing(projectId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (documentId: string) =>
       retryDocumentProcessing(projectId, documentId),
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("processingRetried") },
     onSuccess: (_result, documentId) => {
       queryClient.invalidateQueries({
         queryKey: documentKey(projectId, documentId),
@@ -208,10 +210,11 @@ function mergeAcknowledgement(
 }
 
 export function useUploadDocument(projectId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (file: File) => uploadDocument(projectId, file),
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("documentAdded") },
     onSuccess: ({ document }) => {
       queryClient.setQueryData<InfiniteData<CursorPage<SourceDocument>>>(
         documentsKey(projectId),
@@ -222,11 +225,12 @@ export function useUploadDocument(projectId: string) {
 }
 
 export function useAddNotionDocument(projectId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: { pageUrl: string }) =>
       addNotionDocument(projectId, data),
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("documentAdded") },
     onSuccess: ({ document }) => {
       queryClient.setQueryData<InfiniteData<CursorPage<SourceDocument>>>(
         documentsKey(projectId),
@@ -237,11 +241,12 @@ export function useAddNotionDocument(projectId: string) {
 }
 
 export function useSourceItemCorrection(projectId: string, itemId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: GuidedCorrectionRequest) =>
       correctSourceItem(projectId, itemId, data),
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("correctionSent") },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: canonicalSourceKey(projectId, {}),
@@ -264,11 +269,12 @@ export function useProposeWorkingLanguage(projectId: string) {
 }
 
 export function useConfirmWorkingLanguage(projectId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (proposalId: string) =>
       confirmWorkingLanguage(projectId, proposalId),
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("languageChanged") },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: canonicalSourceKey(projectId, {}),
@@ -295,11 +301,12 @@ export function useClarifications(
 }
 
 export function useResolveClarifications(projectId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: ResolveClarificationsRequest) =>
       resolveClarifications(projectId, data),
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("clarificationsAnswered") },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [...documentationKey(projectId), "clarifications"],
@@ -381,6 +388,7 @@ export function useReviewCategoryDraft(projectId: string) {
   });
 }
 export function useCorrectCategoryDraft(projectId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
   const invalidate = useInvalidateDocumentation(projectId);
   return useMutation({
     mutationFn: (input: {
@@ -395,7 +403,7 @@ export function useCorrectCategoryDraft(projectId: string) {
         input.instruction,
       ),
     onSuccess: invalidate,
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("correctionSent") },
   });
 }
 export function useClientContentPreview(projectId: string) {
@@ -434,6 +442,7 @@ export function useProposeEditorialProfile(projectId: string) {
   });
 }
 export function useConfirmEditorialProfile(projectId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
   const invalidate = useInvalidateDocumentation(projectId);
   return useMutation({
     mutationFn: (input: { proposalId: string; expectedVersion: number }) =>
@@ -443,10 +452,11 @@ export function useConfirmEditorialProfile(projectId: string) {
         input.expectedVersion,
       ),
     onSuccess: invalidate,
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("editorialConfirmed") },
   });
 }
 export function useCancelEditorialProfile(projectId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { proposalId: string; expectedVersion: number }) =>
@@ -459,7 +469,7 @@ export function useCancelEditorialProfile(projectId: string) {
       queryClient.invalidateQueries({
         queryKey: editorialProfileKey(projectId),
       }),
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("editorialCancelled") },
   });
 }
 
@@ -474,6 +484,7 @@ export function useDocumentRemovalPreview(
   });
 }
 export function useConfirmDocumentRemoval(projectId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
   const invalidate = useInvalidateDocumentation(projectId);
   return useMutation({
     mutationFn: (input: {
@@ -481,15 +492,16 @@ export function useConfirmDocumentRemoval(projectId: string) {
       data: Parameters<typeof confirmDocumentRemoval>[2];
     }) => confirmDocumentRemoval(projectId, input.documentId, input.data),
     onSuccess: invalidate,
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("documentRemoved") },
   });
 }
 export function useRetryDocumentRemoval(projectId: string) {
+  const t = useTranslations("Projects.DocumentationNew.Toasts");
   const invalidate = useInvalidateDocumentation(projectId);
   return useMutation({
     mutationFn: (documentId: string) =>
       retryDocumentRemoval(projectId, documentId),
     onSuccess: invalidate,
-    meta: { skipGlobalErrorToast: true },
+    meta: { skipGlobalErrorToast: true, successMessage: t("removalResumed") },
   });
 }
