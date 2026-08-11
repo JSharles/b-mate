@@ -87,4 +87,25 @@ describe("DocumentationWorkspace", () => {
       "#documentation-client",
     );
   });
+
+  // Measured in the browser before this was added: activating a chip scrolled
+  // the page but left focus on <body>, so the next Tab restarted from the top
+  // of the document. An anchor can only move focus into a target the browser
+  // considers focusable.
+  it("makes every section focusable so the nav can move focus into it", () => {
+    vi.mocked(useDocumentationWorkspace).mockReturnValue({
+      data: { priority: "published", clientVisibility: "current_version_visible" },
+      isError: false,
+    } as never);
+
+    const { container } = render(<DocumentationWorkspace projectId="project-1" />);
+
+    const nav = screen.getByRole("navigation", { name: "navLabel" });
+    for (const link of within(nav).getAllByRole("link")) {
+      const id = link.getAttribute("href")?.slice(1);
+      const target = container.querySelector(`#${id}`);
+      expect(target).not.toBeNull();
+      expect(target).toHaveAttribute("tabindex", "-1");
+    }
+  });
 });

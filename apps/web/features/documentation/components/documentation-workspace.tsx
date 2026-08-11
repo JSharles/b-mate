@@ -83,16 +83,20 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
         </ul>
       </nav>
 
-      <div id="documentation-source" className="scroll-mt-6">
+      {/* `tabIndex={-1}` is what lets the anchor move focus INTO the section.
+          Without it the browser scrolls but leaves focus behind — measured
+          landing on <body>, so the next Tab restarts from the top of the
+          document and the nav is worse than useless to a keyboard user. */}
+      <div id="documentation-source" tabIndex={-1} className="scroll-mt-6 outline-none">
         <CanonicalSourceView projectId={projectId} />
       </div>
-      <div id="documentation-review" className="scroll-mt-6">
+      <div id="documentation-review" tabIndex={-1} className="scroll-mt-6 outline-none">
         <CategoryReviewList projectId={projectId} />
       </div>
-      <div id="documentation-editorial" className="scroll-mt-6">
+      <div id="documentation-editorial" tabIndex={-1} className="scroll-mt-6 outline-none">
         <EditorialProfileSettings projectId={projectId} />
       </div>
-      <div id="documentation-client" className="scroll-mt-6">
+      <div id="documentation-client" tabIndex={-1} className="scroll-mt-6 outline-none">
         <ClientContentPreview projectId={projectId} />
       </div>
     </div>
