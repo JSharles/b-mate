@@ -108,7 +108,11 @@ export const SourceRevisionSummarySchema = z
     id: DocumentationUuidSchema,
     sequence: z.number().int().positive(),
     trigger: SourceRevisionTriggerSchema,
+    // Server-side detail, kept for support and audit. The interface writes the
+    // sentence itself from `trigger` and `triggerDocumentTitle`, so a French
+    // contributor does not read English.
     summary: z.string().trim().min(1),
+    triggerDocumentTitle: z.string().nullable(),
     impactedCategories: z.array(DocumentationCategoryKeySchema),
     createdAt: z.iso.datetime(),
   })

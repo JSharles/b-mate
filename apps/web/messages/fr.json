@@ -265,7 +265,12 @@
         "category_planning": "Planning & jalons",
         "category_other": "Autres informations",
         "loadMore": "Afficher plus",
-        "loadingMore": "Chargement…"
+        "loadingMore": "Chargement…",
+        "trigger_document_added": "Document ajouté : {document}",
+        "trigger_document_removed": "Document retiré",
+        "trigger_clarification_answered": "Réponse à un point à clarifier",
+        "trigger_guided_correction": "Correction apportée par vous",
+        "trigger_document_added_unknown": "Document ajouté"
       },
       "Documents": {
         "title": "Documents ajoutés",
@@ -638,7 +643,7 @@
         "navClient": "4 · Vue client",
         "releaseProgress": "{ready, plural, one {# catégorie validée} other {# catégories validées}} sur {expected} pour la prochaine publication.",
         "releaseAtomic": "Le client continue de voir la version actuelle tant que la nouvelle n’est pas complète.",
-        "failedAction": "{count, plural, one {Voir le document concerné} other {Voir les # documents concernés}}"
+        "failedAction": "Voir les documents concernés"
       },
       "Removal": {
         "title": "Supprimer ce document ?",

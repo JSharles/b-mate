@@ -79,7 +79,7 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
                 className="inline-flex items-center gap-1.5 rounded-md text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <FileWarning className="size-4" />
-                {t("failedAction", { count: state?.failedOperationCount ?? 0 })}
+                {t("failedAction")}
               </Link>
             </p>
           )}

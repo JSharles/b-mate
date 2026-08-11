@@ -65,9 +65,9 @@ const DYNAMIC_KEYS = [
   /^Landing\.features\.preview\.\w+Label$/,
   // provenance-sheet.tsx labels each entry by its role and change type.
   /^Projects\.Documentation\.Provenance\.(change|role)_\w+$/,
-  // canonical-source-view.tsx labels an item by its kind, and the working
-  // language by its code.
-  /^Projects\.Documentation\.Source\.(kind|language)_\w+$/,
+  // canonical-source-view.tsx labels an item by its kind, and a revision by
+  // what triggered it.
+  /^Projects\.Documentation\.Source\.(kind|trigger)_\w+$/,
   // editorial-profile-settings.tsx renders `t(`${key}_${option}`)` over the
   // four enum dimensions of the editorial profile.
   /^Projects\.DocumentationNew\.Editorial\.(length|pedagogy|technicalFamiliarity|tone)_\w+$/,

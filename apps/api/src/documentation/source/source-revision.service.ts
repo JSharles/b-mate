@@ -267,7 +267,7 @@ export class SourceRevisionService {
     }
     const revision = await this.prisma.sourceRevision.findFirst({
       where: { id: revisionId, projectSourceId: source.id },
-      include: { impacts: true },
+      include: { impacts: true, triggerDocument: { select: { title: true } } },
     });
     if (!revision) {
       this.hideNotFound();
@@ -324,7 +324,10 @@ export class SourceRevisionService {
       this.prisma.sourceRevision.count({ where }),
       this.prisma.sourceRevision.findMany({
         where,
-        include: { impacts: true },
+        include: {
+          impacts: true,
+          triggerDocument: { select: { title: true } },
+        },
         orderBy: [{ sequence: 'desc' }, { id: 'desc' }],
         take: pageSize + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -990,6 +993,7 @@ function revisionSummary(revision: {
   trigger: string;
   summary: string;
   createdAt: Date;
+  triggerDocument?: { title: string } | null;
   impacts: Array<{ categoryKey: DocumentationCategoryKey }>;
 }) {
   return {
@@ -997,6 +1001,7 @@ function revisionSummary(revision: {
     sequence: revision.sequence,
     trigger: revision.trigger,
     summary: revision.summary,
+    triggerDocumentTitle: revision.triggerDocument?.title ?? null,
     impactedCategories: revision.impacts.map((impact) => impact.categoryKey),
     createdAt: revision.createdAt.toISOString(),
   };

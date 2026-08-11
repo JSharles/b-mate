@@ -93,7 +93,16 @@ export function CanonicalSourceView({ projectId }: { projectId: string }) {
                 <p className="text-sm text-muted-foreground">
                   {t("Source.revision", { sequence: revision.sequence })}
                   <span aria-hidden="true"> · </span>
-                  {revision.summary}
+                  {/* The server writes an English summary for support and
+                      audit; the sentence a contributor reads is written here,
+                      in their language. */}
+                  {revision.trigger === "document_added" && revision.triggerDocumentTitle
+                    ? t("Source.trigger_document_added", {
+                        document: revision.triggerDocumentTitle,
+                      })
+                    : revision.trigger === "document_added"
+                      ? t("Source.trigger_document_added_unknown")
+                      : t(`Source.trigger_${revision.trigger}`)}
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">{t("Source.noRevision")}</p>

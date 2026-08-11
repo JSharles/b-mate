@@ -33,8 +33,18 @@ export class DocumentationWorkspaceService {
           },
         },
       }),
+      // An operation attached to a document that has since been removed is not
+      // something a contributor can act on, and counting it meant the alarm
+      // could never be cleared: it kept every failure the project ever had.
       this.prisma.generationOperation.count({
-        where: { projectId, status: 'needs_attention' },
+        where: {
+          projectId,
+          status: 'needs_attention',
+          OR: [
+            { sourceDocumentId: null },
+            { sourceDocument: { status: { not: 'removed' } } },
+          ],
+        },
       }),
       this.prisma.clarification.count({
         where: {

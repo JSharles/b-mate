@@ -72,7 +72,10 @@ describe('documentation source contracts', () => {
       id: UUID,
       sequence: 2,
       trigger: 'document_added',
-      summary: 'Le cadrage a été intégré.',
+      summary: 'Document incorporated: Cadrage',
+      // The server keeps an English summary for support; the interface writes
+      // the sentence a contributor reads from the trigger and this title.
+      triggerDocumentTitle: 'Cadrage',
       impactedCategories: ['overview'],
       createdAt: '2026-08-11T12:00:00.000Z',
     });
