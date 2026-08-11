@@ -3,11 +3,21 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Interval } from '@nestjs/schedule';
 import type { DocumentationCategoryKey } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
 import { DocumentStorageClient } from './document-storage.client';
+
+// How often to look for removals abandoned mid-flight.
+const STALLED_REMOVAL_SWEEP_MS = 30_000;
+
+// How long a `removal_pending` document must sit untouched before it counts as
+// abandoned rather than in progress. Comfortably longer than a finalization
+// takes, so a slow rebuild is never mistaken for a crash and re-driven
+// underneath itself.
+const STALLED_REMOVAL_AFTER_MS = 120_000;
 
 @Injectable()
 export class DocumentRemovalService {
@@ -117,39 +127,13 @@ export class DocumentRemovalService {
     const document = await this.prisma.sourceDocument.findUnique({
       where: { id: documentId },
     });
-    try {
-      if (document?.storedObjectKey)
-        await this.storage.delete(document.storedObjectKey);
-    } catch {
-      await this.prisma.sourceDocument.update({
-        where: { id: documentId },
-        data: {
-          status: 'removal_failed',
-          failureCode: 'DOCUMENT_STORAGE_REMOVAL_FAILED',
-        },
-      });
-      return {
-        status: 'needs_attention',
-        code: 'DOCUMENT_STORAGE_REMOVAL_FAILED',
-      };
-    }
-    try {
-      if (preIncorporationRemoval) {
-        await this.finalizeUnincorporatedRemoval(documentId);
-        return { status: 'completed' };
-      }
-      const revisionId = await this.rebuild(projectId, documentId, userId);
-      return { status: 'completed', revisionId };
-    } catch {
-      await this.markRemovalFailed(
-        documentId,
-        'DOCUMENT_REMOVAL_FINALIZATION_FAILED',
-      );
-      return {
-        status: 'needs_attention',
-        code: 'DOCUMENT_REMOVAL_FINALIZATION_FAILED',
-      };
-    }
+    return this.finalizeRemoval(
+      projectId,
+      documentId,
+      userId,
+      !preIncorporationRemoval,
+      document?.storedObjectKey ?? null,
+    );
   }
   async retry(userId: string, projectId: string, documentId: string) {
     await this.access.requireContributor(userId, projectId);
@@ -169,19 +153,77 @@ export class DocumentRemovalService {
       where: { id: documentId },
       data: { status: 'removal_pending', failureCode: null },
     });
-    try {
-      if (document.storedObjectKey)
-        await this.storage.delete(document.storedObjectKey);
-    } catch {
-      await this.prisma.sourceDocument.update({
-        where: { id: documentId },
-        data: {
-          status: 'removal_failed',
-          failureCode: 'DOCUMENT_STORAGE_REMOVAL_FAILED',
-        },
-      });
-      return { status: 'needs_attention' };
+    return this.finalizeRemoval(
+      projectId,
+      documentId,
+      userId,
+      requiresRebuild,
+      document.storedObjectKey,
+    );
+  }
+  // `removal_pending` is an in-flight state held in memory by whichever request
+  // is finalizing the removal. If that process dies in between — a crash, a
+  // deploy, an API that will not boot — nothing is left to drive it, and the
+  // document sits pending forever behind a spinner that will never resolve.
+  // That is exactly how four documents got stranded in dev.
+  //
+  // Recovery is safe to automate because finalization is all local work
+  // (delete the stored object, rebuild the source): there is no provider call
+  // to double-submit, and every step below is idempotent. A stall is therefore
+  // a crash to recover from, not a decision to escalate — genuine failures
+  // still land in `removal_failed`, where the existing contributor-facing
+  // retry takes over.
+  @Interval(STALLED_REMOVAL_SWEEP_MS)
+  async recoverStalledRemovals(): Promise<void> {
+    const stalledBefore = new Date(Date.now() - STALLED_REMOVAL_AFTER_MS);
+    const stalled = await this.prisma.sourceDocument.findMany({
+      where: { status: 'removal_pending', updatedAt: { lt: stalledBefore } },
+      include: { project: { include: { projectSource: true } } },
+    });
+
+    for (const document of stalled) {
+      try {
+        await this.finalizeRemoval(
+          document.projectId,
+          document.id,
+          // Provenance for the rebuild. The contributor who asked for the
+          // removal is not recorded on the document, so the one who added it
+          // stands in — this is a system-driven recovery of their request,
+          // not a new decision by anyone else.
+          document.addedByUserId,
+          document.incorporatedInRevisionId !== null,
+          document.storedObjectKey,
+        );
+      } catch {
+        // One stranded document must not stop the sweep clearing the others;
+        // finalizeRemoval has already recorded why this one stayed behind.
+      }
     }
+  }
+
+  // The finalization half of a removal, shared by the request path, the
+  // contributor's retry, and the stall sweep — so all three leave the document
+  // in the same states for the same reasons.
+  private async finalizeRemoval(
+    projectId: string,
+    documentId: string,
+    userId: string,
+    requiresRebuild: boolean,
+    storedObjectKey: string | null,
+  ): Promise<{ status: string; code?: string; revisionId?: string }> {
+    try {
+      if (storedObjectKey) await this.storage.delete(storedObjectKey);
+    } catch {
+      await this.markRemovalFailed(
+        documentId,
+        'DOCUMENT_STORAGE_REMOVAL_FAILED',
+      );
+      return {
+        status: 'needs_attention',
+        code: 'DOCUMENT_STORAGE_REMOVAL_FAILED',
+      };
+    }
+
     try {
       if (!requiresRebuild) {
         await this.finalizeUnincorporatedRemoval(documentId);
@@ -202,6 +244,7 @@ export class DocumentRemovalService {
       };
     }
   }
+
   private async finalizeUnincorporatedRemoval(
     documentId: string,
   ): Promise<void> {

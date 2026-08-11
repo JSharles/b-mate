@@ -256,8 +256,11 @@ describe('DocumentRemovalService', () => {
       project: { projectSource: { currentRevisionId: revisionId } },
     });
     storage.delete.mockRejectedValueOnce(new Error('R2 down'));
+    // Retry now names the reason like confirmation always did — the two share
+    // one finalization path, so a contributor retrying gets the same answer
+    // they got the first time rather than a bare "needs attention".
     await expect(service.retry('user', projectId, documentId)).resolves.toEqual(
-      { status: 'needs_attention' },
+      { status: 'needs_attention', code: 'DOCUMENT_STORAGE_REMOVAL_FAILED' },
     );
     expect(prisma.sourceDocument.update).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -369,4 +372,109 @@ describe('DocumentRemovalService', () => {
       confirmationToken: preview.confirmationToken,
     };
   }
+
+  // `removal_pending` is held in memory by whichever request is finalizing.
+  // When that process dies — a crash, a deploy, an API that will not boot —
+  // nothing was left to drive it and the document sat behind a spinner that
+  // would never resolve. Four documents were stranded that way in dev.
+  describe('recovering removals abandoned mid-flight', () => {
+    it('only considers a pending removal stalled once it has sat untouched', async () => {
+      const { prisma, service } = setup();
+      prisma.sourceDocument.findMany.mockResolvedValue([]);
+
+      await service.recoverStalledRemovals();
+
+      const [[call]] = prisma.sourceDocument.findMany.mock.calls as [
+        [{ where: { status: string; updatedAt: { lt: Date } } }],
+      ];
+      expect(call.where.status).toBe('removal_pending');
+      // A slow rebuild must never be mistaken for a crash and re-driven
+      // underneath itself.
+      expect(call.where.updatedAt.lt.getTime()).toBeLessThan(Date.now());
+    });
+
+    it('finishes a stalled removal that never reached the source', async () => {
+      const { prisma, storage, service } = setup();
+      prisma.sourceDocument.findMany.mockResolvedValue([
+        {
+          id: documentId,
+          projectId,
+          storedObjectKey: 'stored-key',
+          incorporatedInRevisionId: null,
+          addedByUserId: 'user-1',
+          project: { projectSource: { currentRevisionId: revisionId } },
+        },
+      ]);
+
+      await service.recoverStalledRemovals();
+
+      expect(storage.delete).toHaveBeenCalledWith('stored-key');
+      expect(prisma.sourceDocument.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'removed',
+            storedObjectKey: null,
+          }) as unknown,
+        }),
+      );
+    });
+
+    // A stall is a crash to recover from; a genuine failure is still a
+    // decision to escalate, and lands where the contributor's retry can reach
+    // it rather than being retried forever by the sweep.
+    it('escalates to removal_failed when finalization genuinely fails', async () => {
+      const { prisma, storage, service } = setup();
+      prisma.sourceDocument.findMany.mockResolvedValue([
+        {
+          id: documentId,
+          projectId,
+          storedObjectKey: 'stored-key',
+          incorporatedInRevisionId: null,
+          addedByUserId: 'user-1',
+          project: { projectSource: { currentRevisionId: revisionId } },
+        },
+      ]);
+      storage.delete.mockRejectedValueOnce(new Error('R2 down'));
+
+      await service.recoverStalledRemovals();
+
+      expect(prisma.sourceDocument.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'removal_failed',
+            failureCode: 'DOCUMENT_STORAGE_REMOVAL_FAILED',
+          }) as unknown,
+        }),
+      );
+    });
+
+    it('keeps clearing the queue when one document cannot be recovered', async () => {
+      const { prisma, storage, service } = setup();
+      prisma.sourceDocument.findMany.mockResolvedValue([
+        {
+          id: 'doc-broken',
+          projectId,
+          storedObjectKey: 'key-1',
+          incorporatedInRevisionId: null,
+          addedByUserId: 'user-1',
+          project: { projectSource: { currentRevisionId: revisionId } },
+        },
+        {
+          id: documentId,
+          projectId,
+          storedObjectKey: 'key-2',
+          incorporatedInRevisionId: null,
+          addedByUserId: 'user-1',
+          project: { projectSource: { currentRevisionId: revisionId } },
+        },
+      ]);
+      prisma.sourceDocument.update.mockRejectedValueOnce(
+        new Error('write conflict'),
+      );
+
+      await service.recoverStalledRemovals();
+
+      expect(storage.delete).toHaveBeenCalledWith('key-2');
+    });
+  });
 });
