@@ -20,9 +20,11 @@ describe("DocumentationSummaryCard", () => {
 
       render(<DocumentationSummaryCard projectId="project-1" />);
 
+      // The card reports the pipeline's priority, so it has to lead to the
+      // pipeline — the document inventory cannot answer "what needs me".
       expect(screen.getByRole("link")).toHaveAttribute(
         "href",
-        "/projects/project-1/documents",
+        "/projects/project-1/documentation",
       );
       expect(screen.getByText(`priority_${priority}`)).toBeVisible();
     },

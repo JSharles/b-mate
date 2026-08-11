@@ -71,7 +71,9 @@ describe("DocumentManagementPage", () => {
   it("puts recovery actions beside documents that need them", () => {
     render(<DocumentManagementPage projectId="project-1" />);
 
-    expect(screen.getByRole("heading", { name: "title" })).toBeVisible();
+    // The page is the inventory now: its h1 names the list, and the pipeline
+    // lives on its own route.
+    expect(screen.getByRole("heading", { name: "documentsTitle" })).toBeVisible();
     expect(screen.getByText("statusFailed")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "retryProcessing" }));
     expect(retryProcessing).toHaveBeenCalledWith("failed");

@@ -28,8 +28,8 @@ export function DocumentationSummaryCard({ projectId }: { projectId: string }) {
   return (
     <section className="border-b border-border py-6">
       <Link
-        href={`/projects/${projectId}/documents`}
-        className="group flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-5 transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        href={`/projects/${projectId}/documentation`}
+        className="group flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <BookOpenText className="size-5" />

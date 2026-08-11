@@ -225,7 +225,8 @@
         "remove": "Delete",
         "open": "Open {title}",
         "loadMore": "Show more",
-        "loadingMore": "Loading…"
+        "loadingMore": "Loading…",
+        "openPipeline": "Open the documentation"
       },
       "AddDocument": {
         "title": "Enrich the source",
@@ -376,6 +377,14 @@
         "retryRemovalError": "Deletion did not complete. The original and published source remain protected.",
         "downloadOriginal": "Download original",
         "openOriginal": "Open original page"
+      },
+      "Pipeline": {
+        "title": "Project documentation",
+        "description": "The consolidated source, the points to clarify, what is waiting for your approval, and what your client sees at the end.",
+        "back": "Back to project",
+        "manageDocuments": "Source documents",
+        "loadError": "This project's documentation could not be loaded.",
+        "retry": "Try again"
       }
     },
     "TeamSummaryCard": {

@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   ArrowLeft,
+  BookOpenText,
   ChevronRight,
   FilePlus2,
   FileText,
@@ -24,7 +25,6 @@ import {
 } from "../hooks";
 import { AddDocumentDialog } from "./add-document-dialog";
 import { DocumentStatus } from "./document-status";
-import { DocumentationWorkspace } from "./documentation-workspace";
 import { RemoveDocumentDialog } from "./remove-document-dialog";
 
 function DocumentActions({
@@ -151,28 +151,33 @@ export function DocumentManagementPage({ projectId }: { projectId: string }) {
         </Link>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("documentsTitle")}</h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("description")}
+              {t("documentsDescription")}
             </p>
           </div>
-          <Button type="button" onClick={() => setAddOpen(true)}>
-            <FilePlus2 />
-            {t("add")}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href={`/projects/${projectId}/documentation`}>
+                <BookOpenText />
+                {t("openPipeline")}
+              </Link>
+            </Button>
+            <Button type="button" onClick={() => setAddOpen(true)}>
+              <FilePlus2 />
+              {t("add")}
+            </Button>
+          </div>
         </div>
       </div>
 
-      <section aria-labelledby="source-documents-title">
-        <div className="mb-3 flex items-end justify-between gap-4">
-          <div>
-            <h2 id="source-documents-title" className="text-lg font-semibold">
-              {t("documentsTitle")}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("documentsDescription")}</p>
-          </div>
+      {/* The page IS the list now, so the h1 names it; repeating that as a
+          section heading was one of the four names this surface used for the
+          same thing. What is left is the count, which the h1 cannot carry. */}
+      <section aria-labelledby="source-documents-count">
+        <div className="mb-3 flex items-end justify-end gap-4">
           {documents.data && (
-            <span className="text-sm text-muted-foreground">
+            <span id="source-documents-count" className="text-sm text-muted-foreground">
               {t("documentCount", { count: documents.data.total })}
             </span>
           )}
@@ -253,8 +258,6 @@ export function DocumentManagementPage({ projectId }: { projectId: string }) {
           )}
         </div>
       </section>
-
-      <DocumentationWorkspace projectId={projectId} />
 
       <AddDocumentDialog projectId={projectId} open={addOpen} onOpenChange={setAddOpen} />
       <RemoveDocumentDialog

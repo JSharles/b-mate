@@ -225,7 +225,8 @@
         "remove": "Supprimer",
         "open": "Ouvrir {title}",
         "loadMore": "Afficher plus",
-        "loadingMore": "Chargement…"
+        "loadingMore": "Chargement…",
+        "openPipeline": "Ouvrir la documentation"
       },
       "AddDocument": {
         "title": "Enrichir la source",
@@ -376,6 +377,14 @@
         "retryRemovalError": "La suppression n’a pas abouti. L’original et la source publiée restent protégés.",
         "downloadOriginal": "Télécharger l'original",
         "openOriginal": "Ouvrir la page d'origine"
+      },
+      "Pipeline": {
+        "title": "Documentation du projet",
+        "description": "La source consolidée, les points à clarifier, ce qui attend votre validation, et ce que votre client voit au bout.",
+        "back": "Retour au projet",
+        "manageDocuments": "Documents source",
+        "loadError": "Impossible de charger la documentation de ce projet.",
+        "retry": "Réessayer"
       }
     },
     "TeamSummaryCard": {
