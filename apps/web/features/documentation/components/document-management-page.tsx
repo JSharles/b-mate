@@ -238,6 +238,19 @@ export function DocumentManagementPage({ projectId }: { projectId: string }) {
               ))}
             </ul>
           )}
+          {documents.hasNextPage && (
+            <div className="border-t border-border p-4 sm:px-5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={documents.isFetchingNextPage}
+                onClick={() => void documents.fetchNextPage()}
+              >
+                {t(documents.isFetchingNextPage ? "loadingMore" : "loadMore")}
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 

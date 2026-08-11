@@ -65,7 +65,7 @@ describe("documentation hooks", () => {
     vi.mocked(getItemProvenance).mockResolvedValue({} as never);
     const { Wrapper } = wrapper();
 
-    renderHook(() => useDocumentationDocuments("project-1", "cursor-1"), {
+    renderHook(() => useDocumentationDocuments("project-1"), {
       wrapper: Wrapper,
     });
     renderHook(() => useSourceDocument("project-1", "document-1"), {
@@ -77,9 +77,9 @@ describe("documentation hooks", () => {
     });
 
     await waitFor(() => expect(vi.mocked(listDocuments)).toHaveBeenCalled());
-    expect(documentsKey("project-1", "cursor-1")).not.toEqual(
-      documentsKey("project-1"),
-    );
+    // One infinite query owns every page now, so the cursor is no longer part
+    // of the key — it is a page param inside it.
+    expect(documentsKey("project-1")).not.toEqual(documentKey("project-1", "d"));
     expect(documentKey("project-1", "document-1")).not.toEqual(
       canonicalSourceKey("project-1", {}),
     );
@@ -140,8 +140,15 @@ describe("documentation hooks", () => {
     const { Wrapper, queryClient } = wrapper();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
     renderHook(() => useClarifications("project-1", { status: "open" }), { wrapper: Wrapper });
-    await waitFor(() => expect(listClarifications).toHaveBeenCalledWith("project-1", { status: "open" }));
-    expect(clarificationsKey("project-1", { cursor: "next" })).not.toEqual(
+    await waitFor(() =>
+      expect(listClarifications).toHaveBeenCalledWith("project-1", {
+        status: "open",
+        cursor: undefined,
+      }),
+    );
+    // The cursor is a page param inside one infinite query, not part of its
+    // key — filters still are, so a filtered list stays its own cache entry.
+    expect(clarificationsKey("project-1", { status: "open" })).not.toEqual(
       clarificationsKey("project-1"),
     );
     const { result } = renderHook(() => useResolveClarifications("project-1"), { wrapper: Wrapper });
@@ -157,5 +164,104 @@ describe("documentation hooks", () => {
       queryKey: ["projects", "project-1", "documentation", "clarifications"],
     });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: canonicalSourceKey("project-1", {}) });
+  });
+
+  // Every one of these endpoints returns a `nextCursor` that used to be
+  // discarded, so a project past its first page had documents it simply could
+  // not reach — while the header went on counting them.
+  it("reads a second page of documents and appends it to the first", async () => {
+    vi.mocked(listDocuments)
+      .mockResolvedValueOnce({
+        items: [{ id: "doc-1", title: "Cadrage" }],
+        total: 2,
+        nextCursor: "cursor-2",
+      } as never)
+      .mockResolvedValueOnce({
+        items: [{ id: "doc-2", title: "Architecture" }],
+        total: 2,
+        nextCursor: null,
+      } as never);
+    const { Wrapper } = wrapper();
+
+    const { result } = renderHook(() => useDocumentationDocuments("project-1"), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(1));
+    expect(result.current.hasNextPage).toBe(true);
+
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
+    expect(listDocuments).toHaveBeenLastCalledWith("project-1", "cursor-2");
+    // The count in the header comes from the page, and must keep describing
+    // the whole corpus rather than what happens to be loaded.
+    expect(result.current.data?.total).toBe(2);
+    expect(result.current.hasNextPage).toBe(false);
+  });
+
+  it("reads a second page of the canonical source, keeping the revision header", async () => {
+    vi.mocked(getCanonicalSource)
+      .mockResolvedValueOnce({
+        revision: { id: "revision-1", sequence: 4 },
+        workingLanguage: "fr",
+        items: [{ id: "item-1" }],
+        nextCursor: "cursor-2",
+      } as never)
+      .mockResolvedValueOnce({
+        revision: { id: "revision-1", sequence: 4 },
+        workingLanguage: "fr",
+        items: [{ id: "item-2" }],
+        nextCursor: null,
+      } as never);
+    const { Wrapper } = wrapper();
+
+    const { result } = renderHook(() => useCanonicalSource("project-1", {}), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true));
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
+    expect(result.current.data?.revision?.sequence).toBe(4);
+    expect(getCanonicalSource).toHaveBeenLastCalledWith("project-1", {
+      cursor: "cursor-2",
+    });
+  });
+
+  it("reads a second page of clarifications", async () => {
+    vi.mocked(listClarifications)
+      .mockResolvedValueOnce({
+        items: [{ id: "clarification-1" }],
+        total: 2,
+        nextCursor: "cursor-2",
+      } as never)
+      .mockResolvedValueOnce({
+        items: [{ id: "clarification-2" }],
+        total: 2,
+        nextCursor: null,
+      } as never);
+    const { Wrapper } = wrapper();
+
+    const { result } = renderHook(
+      () => useClarifications("project-1", { status: "open" }),
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true));
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
+    expect(listClarifications).toHaveBeenLastCalledWith("project-1", {
+      status: "open",
+      cursor: "cursor-2",
+    });
   });
 });

@@ -223,7 +223,9 @@
         "resumeRemoval": "Resume deletion",
         "retrying": "Working…",
         "remove": "Delete",
-        "open": "Open {title}"
+        "open": "Open {title}",
+        "loadMore": "Show more",
+        "loadingMore": "Loading…"
       },
       "AddDocument": {
         "title": "Enrich the source",
@@ -275,7 +277,9 @@
         "category_overview": "The project",
         "category_how_it_works": "How it works",
         "category_planning": "Planning & milestones",
-        "category_other": "Other information"
+        "category_other": "Other information",
+        "loadMore": "Show more",
+        "loadingMore": "Loading…"
       },
       "Documents": {
         "title": "Added documents",
@@ -337,7 +341,9 @@
         "answerAction": "Answer",
         "leaveOpenAction": "Leave as open",
         "loadError": "The points to clarify couldn't be loaded.",
-        "resolveError": "This decision couldn't be saved. Check the latest source version."
+        "resolveError": "This decision couldn't be saved. Check the latest source version.",
+        "loadMore": "Show more",
+        "loadingMore": "Loading…"
       },
       "DocumentDetail": {
         "back": "Back to project",
@@ -611,7 +617,14 @@
         "visibility_nothing_published": "Nothing is visible to the client",
         "visibility_previous_version_visible": "The client still sees the previous version",
         "visibility_current_version_visible": "The client sees the current version",
-        "refreshDelayed": "Automatic refresh is delayed; the last known data remains visible."
+        "refreshDelayed": "Automatic refresh is delayed; the last known data remains visible.",
+        "navLabel": "Documentation workspace sections",
+        "navSource": "Source",
+        "navReview": "To review",
+        "navEditorial": "Editorial profile",
+        "navClient": "Client view",
+        "releaseProgress": "{ready} of {expected} categories approved for the next release.",
+        "releaseAtomic": "The client keeps seeing the current version until the new one is complete."
       },
       "Removal": {
         "title": "Delete this document?",

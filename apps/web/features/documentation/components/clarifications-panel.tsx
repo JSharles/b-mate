@@ -106,6 +106,18 @@ export function ClarificationsPanel({ projectId, revisionId }: { projectId: stri
         {clarifications.data.items.map((clarification) => (
           <ClarificationCard key={clarification.id} clarification={clarification} revisionId={revisionId} resolve={resolve} />
         ))}
+        {clarifications.hasNextPage && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            disabled={clarifications.isFetchingNextPage}
+            onClick={() => void clarifications.fetchNextPage()}
+          >
+            {t(clarifications.isFetchingNextPage ? "loadingMore" : "loadMore")}
+          </Button>
+        )}
       </div>
       {resolve.isError && <p role="alert" className="flex items-center gap-2 text-sm text-destructive"><AlertCircle className="size-4" />{t("resolveError")}</p>}
     </section>

@@ -223,7 +223,9 @@
         "resumeRemoval": "Reprendre la suppression",
         "retrying": "En cours…",
         "remove": "Supprimer",
-        "open": "Ouvrir {title}"
+        "open": "Ouvrir {title}",
+        "loadMore": "Afficher plus",
+        "loadingMore": "Chargement…"
       },
       "AddDocument": {
         "title": "Enrichir la source",
@@ -275,7 +277,9 @@
         "category_overview": "Le projet",
         "category_how_it_works": "Comment ça marche",
         "category_planning": "Planning & jalons",
-        "category_other": "Autres informations"
+        "category_other": "Autres informations",
+        "loadMore": "Afficher plus",
+        "loadingMore": "Chargement…"
       },
       "Documents": {
         "title": "Documents ajoutés",
@@ -337,7 +341,9 @@
         "answerAction": "Répondre",
         "leaveOpenAction": "Laisser à clarifier",
         "loadError": "Impossible de charger les points à clarifier.",
-        "resolveError": "Cette décision n'a pas pu être enregistrée. Vérifiez la dernière version de la source."
+        "resolveError": "Cette décision n'a pas pu être enregistrée. Vérifiez la dernière version de la source.",
+        "loadMore": "Afficher plus",
+        "loadingMore": "Chargement…"
       },
       "DocumentDetail": {
         "back": "Retour au projet",
@@ -611,7 +617,14 @@
         "visibility_nothing_published": "Rien n’est visible par le client",
         "visibility_previous_version_visible": "La version précédente reste visible par le client",
         "visibility_current_version_visible": "Le client voit la version actuelle",
-        "refreshDelayed": "La mise à jour automatique est retardée ; les dernières données connues restent affichées."
+        "refreshDelayed": "La mise à jour automatique est retardée ; les dernières données connues restent affichées.",
+        "navLabel": "Sections de l’espace documentaire",
+        "navSource": "Source",
+        "navReview": "À valider",
+        "navEditorial": "Profil éditorial",
+        "navClient": "Vue client",
+        "releaseProgress": "{ready} catégorie(s) validée(s) sur {expected} pour la prochaine publication.",
+        "releaseAtomic": "Le client continue de voir la version actuelle tant que la nouvelle n’est pas complète."
       },
       "Removal": {
         "title": "Supprimer ce document ?",

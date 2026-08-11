@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type {
   EditorialProfileValues,
   GuidedCorrectionRequest,
@@ -41,8 +46,8 @@ import type { ResolveClarificationsRequest } from "schemas";
 
 export const documentationKey = (projectId: string) =>
   ["projects", projectId, "documentation"] as const;
-export const documentsKey = (projectId: string, cursor?: string) =>
-  [...documentationKey(projectId), "documents", cursor ?? null] as const;
+export const documentsKey = (projectId: string) =>
+  [...documentationKey(projectId), "documents"] as const;
 export const documentKey = (projectId: string, documentId: string) =>
   [...documentationKey(projectId), "documents", "detail", documentId] as const;
 export const canonicalSourceKey = (
@@ -53,7 +58,6 @@ export const canonicalSourceKey = (
     ...documentationKey(projectId),
     "source",
     options.revisionId ?? null,
-    options.cursor ?? null,
   ] as const;
 export const provenanceKey = (
   projectId: string,
@@ -75,16 +79,28 @@ export const clarificationsKey = (
     "clarifications",
     options.status ?? null,
     options.categoryKey ?? null,
-    options.cursor ?? null,
   ] as const;
 
-export function useDocumentationDocuments(projectId: string, cursor?: string) {
-  return useQuery({
-    queryKey: documentsKey(projectId, cursor),
-    queryFn: () => listDocuments(projectId, cursor),
+// Cursor pages, read to the end. Every one of these endpoints returns a
+// `nextCursor` that used to be discarded, so a project past its first page had
+// documents, source items and clarifications it simply could not reach — while
+// the header went on counting them.
+export function useDocumentationDocuments(projectId: string) {
+  return useInfiniteQuery({
+    queryKey: documentsKey(projectId),
+    queryFn: ({ pageParam }) => listDocuments(projectId, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    // Flattened so a consumer reads one list, exactly as it did before paging
+    // existed; `fetchNextPage`/`hasNextPage` stay on the query result.
+    select: (data) => ({
+      items: data.pages.flatMap((page) => page.items),
+      total: data.pages[0]?.total ?? 0,
+    }),
     refetchInterval: (query) => {
       if (document.visibilityState === "hidden") return false;
-      const hasActiveDocument = query.state.data?.items.some(({ status }) =>
+      const hasActiveDocument = query.state.data?.pages.some((page) =>
+        page.items.some(({ status }) =>
         [
           "received",
           "extracting",
@@ -93,6 +109,7 @@ export function useDocumentationDocuments(projectId: string, cursor?: string) {
           "retrying",
           "removal_pending",
         ].includes(status),
+        ),
       );
       return hasActiveDocument ? 3_000 : false;
     },
@@ -140,9 +157,16 @@ export function useCanonicalSource(
   projectId: string,
   options: CanonicalSourceOptions = {},
 ) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: canonicalSourceKey(projectId, options),
-    queryFn: () => getCanonicalSource(projectId, options),
+    queryFn: ({ pageParam }) =>
+      getCanonicalSource(projectId, { ...options, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    select: (data) => ({
+      ...data.pages[0],
+      items: data.pages.flatMap((page) => page.items),
+    }),
   });
 }
 
@@ -244,9 +268,16 @@ export function useClarifications(
   projectId: string,
   options: ClarificationOptions = {},
 ) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: clarificationsKey(projectId, options),
-    queryFn: () => listClarifications(projectId, options),
+    queryFn: ({ pageParam }) =>
+      listClarifications(projectId, { ...options, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    select: (data) => ({
+      items: data.pages.flatMap((page) => page.items),
+      total: data.pages[0]?.total ?? 0,
+    }),
   });
 }
 

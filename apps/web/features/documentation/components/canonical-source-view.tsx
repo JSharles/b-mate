@@ -268,6 +268,19 @@ export function CanonicalSourceView({ projectId }: { projectId: string }) {
               ))}
             </ul>
           )}
+          {source.hasNextPage && (
+            <div className="border-t border-border px-5 py-4 sm:px-6">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={source.isFetchingNextPage}
+                onClick={() => void source.fetchNextPage()}
+              >
+                {t(source.isFetchingNextPage ? "Source.loadingMore" : "Source.loadMore")}
+              </Button>
+            </div>
+          )}
         </div>
 
       </div>
