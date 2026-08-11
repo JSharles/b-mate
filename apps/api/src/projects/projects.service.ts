@@ -13,6 +13,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { ProjectAccessService } from './project-access.service';
 
 export interface ProjectMemberDetails {
   userId: string;
@@ -39,7 +40,25 @@ export type ProjectDetails = Project & {
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly projectAccess: ProjectAccessService,
+  ) {}
+
+  requireMember(userId: string, projectId: string): Promise<ProjectMember> {
+    return this.projectAccess.requireMember(userId, projectId);
+  }
+
+  requireContributor(
+    userId: string,
+    projectId: string,
+  ): Promise<ProjectMember> {
+    return this.projectAccess.requireContributor(userId, projectId);
+  }
+
+  requireClient(userId: string, projectId: string): Promise<ProjectMember> {
+    return this.projectAccess.requireClient(userId, projectId);
+  }
 
   // The creator becomes a contributor and admin of their own project — see
   // docs/PRODUCT.md "Ownership & handoff" for why is_admin is independent of
@@ -214,16 +233,6 @@ export class ProjectsService {
     userId: string,
     projectId: string,
   ): Promise<ProjectMember> {
-    const membership = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
-    });
-
-    if (!membership) {
-      // Same response whether the project doesn't exist or the caller isn't
-      // a member — never confirm a project's existence to a non-member.
-      throw new NotFoundException('Project not found');
-    }
-
-    return membership;
+    return this.projectAccess.requireMember(userId, projectId);
   }
 }

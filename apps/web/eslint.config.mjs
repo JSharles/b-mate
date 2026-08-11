@@ -13,10 +13,13 @@ const eslintConfig = defineConfig([
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
-    ".next/**",
+    "node_modules/**",
+    ".next*/**",
+    "dist/**",
     "out/**",
     "build/**",
     "coverage/**",
+    "*.min.js",
     "next-env.d.ts",
     // shadcn-generated, not hand-authored — re-run `shadcn add --overwrite`
     // to update rather than hand-editing these.

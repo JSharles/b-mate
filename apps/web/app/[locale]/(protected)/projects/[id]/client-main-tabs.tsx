@@ -1,10 +1,10 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
-import { RESOURCE_CATEGORIES, resourceCategoryLabel } from "schemas";
-import type { CategoryContent } from "schemas";
+import { useTranslations } from "next-intl";
+import type { PublicClientCategory } from "schemas";
 import { CurrentTaskCard } from "@/features/current-task/components/current-task-card";
-import { useCategoryContent } from "@/features/resources/hooks";
+import { usePublicClientCategories } from "@/features/documentation/hooks";
+import { ClientCategoryView } from "@/shared/components/client-category-view";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { cn } from "@/shared/lib/utils";
 
@@ -19,11 +19,13 @@ const CURRENT_TASK_TAB_KEY = "__current-task__";
 // tabs never reshuffle as content accumulates, and `other` is always last.
 // A category with no content is simply absent from the response, which is
 // what produces "no empty tab" (FR-012).
-function orderByFrozenList(content: CategoryContent[]): CategoryContent[] {
+const CATEGORY_ORDER = ["overview", "how_it_works", "planning", "other"] as const;
+
+function orderByFrozenList(content: PublicClientCategory[]): PublicClientCategory[] {
   const byKey = new Map(content.map((entry) => [entry.categoryKey, entry]));
 
-  return RESOURCE_CATEGORIES.flatMap((category) => {
-    const entry = byKey.get(category.key);
+  return CATEGORY_ORDER.flatMap((category) => {
+    const entry = byKey.get(category);
     return entry ? [entry] : [];
   });
 }
@@ -33,7 +35,7 @@ function orderByFrozenList(content: CategoryContent[]): CategoryContent[] {
 // category that has something to say. No overarching title — the tabs are
 // self-labeling, and a generic label like "Documents" would misdescribe both a
 // non-document tab like Current Task and content that is no longer organised
-// by document at all. Composes features/current-task and features/resources,
+// by document at all. Composes current-task and documentation concerns,
 // so per Constitution III it cannot live inside either feature folder.
 export function ClientMainTabs({
   projectId,
@@ -42,8 +44,7 @@ export function ClientMainTabs({
   projectId: string;
   className?: string;
 }) {
-  const { data: content } = useCategoryContent(projectId);
-  const locale = useLocale();
+  const { data: content } = usePublicClientCategories(projectId);
   const t = useTranslations("Projects.ClientMainTabs");
   const currentTaskLabel = useTranslations("Projects.CurrentTaskCard")("title");
 
@@ -59,7 +60,7 @@ export function ClientMainTabs({
         <TabsTrigger value={CURRENT_TASK_TAB_KEY}>{currentTaskLabel}</TabsTrigger>
         {categories.map((category) => (
           <TabsTrigger key={category.categoryKey} value={category.categoryKey}>
-            {resourceCategoryLabel(category.categoryKey, locale)}
+            {t(`category_${category.categoryKey}`)}
           </TabsTrigger>
         ))}
       </TabsList>
@@ -72,9 +73,7 @@ export function ClientMainTabs({
           value={category.categoryKey}
           className="min-h-0 overflow-y-auto"
         >
-          <p className="max-w-prose leading-relaxed whitespace-pre-line text-foreground/90">
-            {category.content}
-          </p>
+          <ClientCategoryView category={category} />
         </TabsContent>
       ))}
     </Tabs>

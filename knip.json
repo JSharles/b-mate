@@ -5,6 +5,7 @@
       "entry": [
         "src/main.ts",
         "src/**/*.spec.ts",
+        "src/**/*.e2e-spec.ts",
         "test/**/*.ts"
       ],
       "project": [

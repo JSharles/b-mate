@@ -1,0 +1,303 @@
+import Anthropic from '@anthropic-ai/sdk';
+import { jsonSchemaOutputFormat } from '@anthropic-ai/sdk/helpers/json-schema';
+import type {
+  ContentBlockParam,
+  Message,
+  MessageCreateParamsNonStreaming,
+} from '@anthropic-ai/sdk/resources/messages/messages';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  GenerationPollRequest,
+  GenerationPollResult,
+  GenerationProviderAdapter,
+  GenerationProviderFailure,
+  GenerationProviderRequest,
+  GenerationProviderResult,
+  GenerationSubmission,
+  GenerationUsage,
+} from './generation-provider';
+import { classifyHttpFailure } from '../generation-errors';
+
+const DEFAULT_MAX_OUTPUT_TOKENS = 16_000;
+const POLL_INTERVAL_MS = 5_000;
+
+@Injectable()
+export class AnthropicGenerationProvider implements GenerationProviderAdapter {
+  readonly key = 'anthropic';
+  private readonly client: Anthropic | null;
+
+  constructor(config: ConfigService) {
+    const apiKey = config.get<string>('ANTHROPIC_API_KEY');
+    this.client = apiKey ? new Anthropic({ apiKey, maxRetries: 0 }) : null;
+  }
+
+  async submit(
+    request: GenerationProviderRequest,
+  ): Promise<GenerationSubmission> {
+    if (!this.client) {
+      return failed('model_unavailable', 'ANTHROPIC_CREDENTIAL_MISSING', false);
+    }
+    if (!request.outputSchema) {
+      return failed(
+        'invalid_request',
+        'ANTHROPIC_OUTPUT_SCHEMA_MISSING',
+        false,
+      );
+    }
+
+    try {
+      const params = this.buildParams(request, request.outputSchema);
+      if (request.transport === 'batch') {
+        const batch = await this.client.messages.batches.create({
+          requests: [{ custom_id: request.attemptId, params }],
+        });
+        return {
+          state: 'accepted',
+          providerCorrelationId: request.correlationId,
+          providerJobId: batch.id,
+          nextPollAt: nextPollAt(),
+        };
+      }
+
+      const message = await this.client.messages.create(params);
+      return this.completed(message, request.correlationId);
+    } catch (error) {
+      return { state: 'failed', failure: normalizeAnthropicError(error) };
+    }
+  }
+
+  async poll(request: GenerationPollRequest): Promise<GenerationPollResult> {
+    if (!this.client) {
+      return failedPoll(
+        'model_unavailable',
+        'ANTHROPIC_CREDENTIAL_MISSING',
+        false,
+      );
+    }
+
+    try {
+      const batch = await this.client.messages.batches.retrieve(
+        request.providerJobId,
+      );
+      if (batch.processing_status !== 'ended') {
+        return { state: 'pending', nextPollAt: nextPollAt() };
+      }
+
+      const results = await this.client.messages.batches.results(
+        request.providerJobId,
+      );
+      for await (const item of results) {
+        if (item.custom_id !== request.attemptId) {
+          continue;
+        }
+        if (item.result.type === 'succeeded') {
+          return this.completed(
+            item.result.message,
+            request.providerCorrelationId ?? request.attemptId,
+          );
+        }
+        const code = `ANTHROPIC_BATCH_${item.result.type.toUpperCase()}`;
+        return failedPoll(
+          item.result.type === 'errored' ? 'provider_terminal' : 'transient',
+          code,
+          item.result.type === 'errored',
+        );
+      }
+      return failedPoll(
+        'provider_terminal',
+        'ANTHROPIC_BATCH_RESULT_MISSING',
+        false,
+      );
+    } catch (error) {
+      return { state: 'failed', failure: normalizeAnthropicError(error) };
+    }
+  }
+
+  private buildParams(
+    request: GenerationProviderRequest,
+    outputSchema: Record<string, unknown>,
+  ): MessageCreateParamsNonStreaming {
+    const schema = addMissingScalarTypes(outputSchema);
+    if (schema.type !== 'object') {
+      throw new Error('Anthropic output schema root must be an object.');
+    }
+    const anthropicSchema = jsonSchemaOutputFormat(
+      schema as Parameters<typeof jsonSchemaOutputFormat>[0],
+    ).schema;
+    return {
+      model: request.model,
+      max_tokens: request.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+      metadata: { user_id: request.correlationId },
+      messages: [
+        { role: 'user', content: request.parts.map(toAnthropicContent) },
+      ],
+      output_config: {
+        format: { type: 'json_schema', schema: anthropicSchema },
+      },
+    };
+  }
+
+  private completed(
+    message: Message,
+    correlationId: string,
+  ): GenerationSubmission & GenerationPollResult {
+    const text = message.content
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text)
+      .join('');
+    try {
+      const output = JSON.parse(text) as unknown;
+      const result: GenerationProviderResult = {
+        output,
+        usage: normalizeUsage(message.usage),
+        providerCorrelationId: correlationId,
+        providerRequestId:
+          (message as Message & { _request_id?: string })._request_id ??
+          message.id,
+      };
+      return { state: 'completed', result };
+    } catch {
+      return failed('invalid_output', 'ANTHROPIC_INVALID_OUTPUT', true);
+    }
+  }
+}
+
+function addMissingScalarTypes(
+  value: Record<string, unknown>,
+): Record<string, unknown> {
+  const transformed = Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [
+      key,
+      transformSchemaValue(child),
+    ]),
+  );
+  if (transformed.type === undefined) {
+    const inferred = inferJsonSchemaType(transformed.const ?? transformed.enum);
+    if (inferred) transformed.type = inferred;
+  }
+  return transformed;
+}
+
+function transformSchemaValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(transformSchemaValue);
+  if (value && typeof value === 'object') {
+    return addMissingScalarTypes(value as Record<string, unknown>);
+  }
+  return value;
+}
+
+function inferJsonSchemaType(value: unknown): string | null {
+  const candidates = Array.isArray(value) ? value : [value];
+  if (
+    candidates.length === 0 ||
+    candidates.some((item) => item === undefined)
+  ) {
+    return null;
+  }
+  const types = new Set(
+    candidates.map((item) =>
+      typeof item === 'number' && Number.isInteger(item)
+        ? 'integer'
+        : typeof item,
+    ),
+  );
+  const [type] = [...types];
+  return types.size === 1 &&
+    ['string', 'integer', 'number', 'boolean'].includes(type)
+    ? type
+    : null;
+}
+
+function toAnthropicContent(
+  part: GenerationProviderRequest['parts'][number],
+): ContentBlockParam {
+  switch (part.kind) {
+    case 'text':
+      return { type: 'text', text: part.text };
+    case 'json':
+      return { type: 'text', text: JSON.stringify(part.value) };
+    case 'pdf':
+      return {
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: Buffer.from(part.data).toString('base64'),
+        },
+      };
+    case 'image':
+      if (part.mimeType !== 'image/png' && part.mimeType !== 'image/jpeg') {
+        throw Object.assign(
+          new Error(`Unsupported Anthropic image type: ${part.mimeType}`),
+          { status: 400 },
+        );
+      }
+      return {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: part.mimeType,
+          data: Buffer.from(part.data).toString('base64'),
+        },
+      };
+  }
+}
+
+function normalizeUsage(usage: Message['usage']): GenerationUsage {
+  return {
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    cacheReadTokens: usage.cache_read_input_tokens ?? 0,
+    cacheWriteTokens: usage.cache_creation_input_tokens ?? 0,
+  };
+}
+
+function normalizeAnthropicError(error: unknown): GenerationProviderFailure {
+  return classifyHttpFailure('anthropic', error);
+}
+
+function failure(
+  errorClass: GenerationProviderFailure['errorClass'],
+  code: string,
+  retryable: boolean,
+  error?: unknown,
+): GenerationProviderFailure {
+  const status = (error as { status?: number } | undefined)?.status;
+  return {
+    errorClass,
+    code,
+    retryable,
+    ...(status === undefined ? {} : { httpStatus: status }),
+    ...(error === undefined
+      ? {}
+      : {
+          protectedDiagnostic: (error instanceof Error
+            ? error.message
+            : typeof error === 'string'
+              ? error
+              : (JSON.stringify(error) ?? 'Unknown provider error')
+          ).slice(0, 2_000),
+        }),
+  };
+}
+
+function failed(
+  errorClass: GenerationProviderFailure['errorClass'],
+  code: string,
+  retryable: boolean,
+): Extract<GenerationSubmission, { state: 'failed' }> {
+  return { state: 'failed', failure: failure(errorClass, code, retryable) };
+}
+
+function failedPoll(
+  errorClass: GenerationProviderFailure['errorClass'],
+  code: string,
+  retryable: boolean,
+): Extract<GenerationPollResult, { state: 'failed' }> {
+  return { state: 'failed', failure: failure(errorClass, code, retryable) };
+}
+
+function nextPollAt(): Date {
+  return new Date(Date.now() + POLL_INTERVAL_MS);
+}

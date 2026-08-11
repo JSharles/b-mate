@@ -1,215 +1,121 @@
 import type { PrismaService } from '../prisma/prisma.service';
 
-export type PrismaMock = {
-  user: {
-    findUnique: jest.Mock;
-    create: jest.Mock;
-    update: jest.Mock;
-  };
-  session: {
-    create: jest.Mock;
-    deleteMany: jest.Mock;
-    findUnique: jest.Mock;
-  };
-  project: {
-    create: jest.Mock;
-    findMany: jest.Mock;
-    findFirst: jest.Mock;
-    findUniqueOrThrow: jest.Mock;
-    update: jest.Mock;
-  };
-  projectMember: {
-    create: jest.Mock;
-    findUnique: jest.Mock;
-    findMany: jest.Mock;
-    delete: jest.Mock;
-  };
-  invitation: {
-    create: jest.Mock;
-    findFirst: jest.Mock;
-    findMany: jest.Mock;
-    findUnique: jest.Mock;
-    update: jest.Mock;
-  };
-  boardConnection: {
-    upsert: jest.Mock;
-    findUnique: jest.Mock;
-    findMany: jest.Mock;
-    deleteMany: jest.Mock;
-    update: jest.Mock;
-  };
-  vulgarizedTask: {
-    findUnique: jest.Mock;
-    findMany: jest.Mock;
-    upsert: jest.Mock;
-    deleteMany: jest.Mock;
-  };
-  taskProgress: {
-    findUnique: jest.Mock;
-    upsert: jest.Mock;
-    deleteMany: jest.Mock;
-  };
-  resource: {
-    create: jest.Mock;
-    findUnique: jest.Mock;
-    findMany: jest.Mock;
-    update: jest.Mock;
-    delete: jest.Mock;
-  };
-  categoryExtract: {
-    create: jest.Mock;
-    upsert: jest.Mock;
-    findFirst: jest.Mock;
-    findMany: jest.Mock;
-    deleteMany: jest.Mock;
-  };
-  categoryReference: {
-    findUnique: jest.Mock;
-    findMany: jest.Mock;
-    upsert: jest.Mock;
-    update: jest.Mock;
-    delete: jest.Mock;
-    deleteMany: jest.Mock;
-  };
-  categoryReferenceDraft: {
-    create: jest.Mock;
-    upsert: jest.Mock;
-    findUnique: jest.Mock;
-    findMany: jest.Mock;
-    update: jest.Mock;
-    delete: jest.Mock;
-    deleteMany: jest.Mock;
-  };
-  categoryContent: {
-    findMany: jest.Mock;
-    upsert: jest.Mock;
-    delete: jest.Mock;
-    deleteMany: jest.Mock;
-  };
-  referenceQuestion: {
-    createMany: jest.Mock;
-    findMany: jest.Mock;
-    update: jest.Mock;
-    updateMany: jest.Mock;
-    deleteMany: jest.Mock;
-  };
-  notionConnection: {
-    findUnique: jest.Mock;
-    upsert: jest.Mock;
-    delete: jest.Mock;
-    deleteMany: jest.Mock;
-  };
+const DELEGATE_METHODS = [
+  'aggregate',
+  'count',
+  'create',
+  'createMany',
+  'delete',
+  'deleteMany',
+  'findFirst',
+  'findFirstOrThrow',
+  'findMany',
+  'findUnique',
+  'findUniqueOrThrow',
+  'update',
+  'updateMany',
+  'upsert',
+] as const;
+
+export type PrismaDelegateMock = Record<
+  (typeof DELEGATE_METHODS)[number],
+  jest.Mock
+>;
+
+const DELEGATE_NAMES = [
+  'user',
+  'session',
+  'project',
+  'projectMember',
+  'invitation',
+  'task',
+  'boardConnection',
+  'vulgarizedTask',
+  'taskProgress',
+  'notionConnection',
+  // Reset-empty legacy documentary delegates retained until T117.
+  'resource',
+  'categoryExtract',
+  'categoryReference',
+  'categoryReferenceDraft',
+  'categoryContent',
+  'referenceQuestion',
+  // Transition and reset audit delegates.
+  'documentaryTransitionState',
+  'documentaryResetRun',
+  'documentaryResetItem',
+  // Canonical source and provenance delegates.
+  'projectSource',
+  'sourceRevision',
+  'sourceRevisionImpact',
+  'informationItem',
+  'sourceRevisionItem',
+  'sourceRevisionItemCategory',
+  'sourceRevisionChange',
+  'sourceDocument',
+  'documentObservation',
+  'documentObservationCategory',
+  'contributorAssertion',
+  'sourceLanguageProposal',
+  'provenanceLink',
+  'clarification',
+  'clarificationItem',
+  'clarificationEvidence',
+  'clarificationResolution',
+  // Factual projection and editorial/publication delegates.
+  'categoryProjectionState',
+  'documentationCategoryReferenceDraft',
+  'categoryDraftReview',
+  'documentationCategoryReference',
+  'projectEditorialSettings',
+  'editorialProfileRevision',
+  'editorialProfileProposal',
+  'editorialPreview',
+  'clientCategoryContent',
+  'clientContentRelease',
+  'clientContentReleaseEntry',
+  'projectClientPublication',
+  // Durable generation delegates.
+  'generationOperation',
+  'generationAttempt',
+] as const;
+
+type DelegateName = (typeof DELEGATE_NAMES)[number];
+
+export type PrismaMock = Record<DelegateName, PrismaDelegateMock> & {
+  $executeRaw: jest.Mock;
+  $executeRawUnsafe: jest.Mock;
   $queryRaw: jest.Mock;
+  $queryRawUnsafe: jest.Mock;
   $transaction: jest.Mock;
 };
 
+function createDelegateMock(): PrismaDelegateMock {
+  return Object.fromEntries(
+    DELEGATE_METHODS.map((method) => [method, jest.fn()]),
+  ) as PrismaDelegateMock;
+}
+
 export function createPrismaMock(): PrismaMock {
-  const mock: PrismaMock = {
-    user: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-    },
-    session: {
-      create: jest.fn(),
-      deleteMany: jest.fn(),
-      findUnique: jest.fn(),
-    },
-    project: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      findFirst: jest.fn(),
-      findUniqueOrThrow: jest.fn(),
-      update: jest.fn(),
-    },
-    projectMember: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      delete: jest.fn(),
-    },
-    invitation: {
-      create: jest.fn(),
-      findFirst: jest.fn(),
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-    },
-    boardConnection: {
-      upsert: jest.fn(),
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      deleteMany: jest.fn(),
-      update: jest.fn(),
-    },
-    vulgarizedTask: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      upsert: jest.fn(),
-      deleteMany: jest.fn(),
-    },
-    taskProgress: {
-      findUnique: jest.fn(),
-      upsert: jest.fn(),
-      deleteMany: jest.fn(),
-    },
-    resource: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-    categoryExtract: {
-      create: jest.fn(),
-      upsert: jest.fn(),
-      findFirst: jest.fn(),
-      findMany: jest.fn(),
-      deleteMany: jest.fn(),
-    },
-    categoryReference: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      upsert: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      deleteMany: jest.fn(),
-    },
-    categoryReferenceDraft: {
-      create: jest.fn(),
-      upsert: jest.fn(),
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      deleteMany: jest.fn(),
-    },
-    categoryContent: {
-      findMany: jest.fn(),
-      upsert: jest.fn(),
-      delete: jest.fn(),
-      deleteMany: jest.fn(),
-    },
-    referenceQuestion: {
-      createMany: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      updateMany: jest.fn(),
-      deleteMany: jest.fn(),
-    },
-    notionConnection: {
-      findUnique: jest.fn(),
-      upsert: jest.fn(),
-      delete: jest.fn(),
-      deleteMany: jest.fn(),
-    },
+  const delegates = Object.fromEntries(
+    DELEGATE_NAMES.map((name) => [name, createDelegateMock()]),
+  ) as Record<DelegateName, PrismaDelegateMock>;
+
+  const mock = {
+    ...delegates,
+    $executeRaw: jest.fn(),
+    $executeRawUnsafe: jest.fn(),
     $queryRaw: jest.fn(),
-    // Runs the callback with this same mock standing in for the transaction
-    // client, so tests can assert on `prisma.project.create` etc. directly.
-    $transaction: jest.fn((callback: (tx: PrismaMock) => unknown) =>
-      callback(mock),
-    ),
-  };
+    $queryRawUnsafe: jest.fn(),
+    $transaction: jest.fn(),
+  } as PrismaMock;
+
+  // Interactive transactions receive the same fully populated mock. Array
+  // transactions preserve Prisma's ordered Promise.all-style result shape.
+  mock.$transaction.mockImplementation(
+    (input: ((tx: PrismaMock) => unknown) | readonly unknown[]) =>
+      typeof input === 'function' ? input(mock) : Promise.all(input),
+  );
 
   return mock;
 }

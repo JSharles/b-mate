@@ -1,0 +1,3 @@
+import { describe, expect, it } from "vitest";
+import { DocumentationWorkspaceSchema } from "./documentation-workspace";
+describe("documentation workspace", () => { it("contains no provider diagnostics", () => expect(DocumentationWorkspaceSchema.safeParse({ priority: "empty", activeOperationCount: 0, openClarificationCount: 0, pendingReviewCount: 0, failedOperationCount: 0, documentCount: 0, currentSourceRevisionId: null, currentReleaseId: null, pendingReleaseId: null, releaseProgress: null, clientVisibility: "nothing_published", changeToken: "0:0", refreshAfterMs: 30000, provider: "anthropic" }).success).toBe(false)); });

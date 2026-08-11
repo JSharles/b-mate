@@ -7,7 +7,7 @@ import { connectNotionConnection, disconnectNotionConnection, getNotionConnectio
 
 // Reuses the shared key (apps/web/shared/hooks/use-notion-connection-status.ts)
 // so connecting/disconnecting here invalidates the same cache entry
-// features/resources' Add Resource dialog reads (specs/012-project-settings
+// the documentation Add Document dialog reads (specs/012-project-settings
 // research.md Decision 4) — one query, two consumers.
 export function useNotionConnection(projectId: string) {
   return useQuery({

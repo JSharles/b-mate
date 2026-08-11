@@ -1,0 +1,311 @@
+"use client";
+
+import {
+  AlertCircle,
+  FileText,
+  Languages,
+  PencilLine,
+  RefreshCw,
+  ShieldCheck,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
+import type { CanonicalItem, LanguageProposal } from "schemas";
+import { Link } from "@/i18n/navigation";
+import { Button } from "@/shared/components/ui/button";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import { ApiError } from "@/shared/lib/api-client";
+import {
+  useCanonicalSource,
+  useConfirmWorkingLanguage,
+  useProposeWorkingLanguage,
+} from "../hooks";
+import { GuidedCorrectionDialog } from "./guided-correction-dialog";
+import { ProvenanceSheet } from "./provenance-sheet";
+import { ClarificationsPanel } from "./clarifications-panel";
+
+function SourceItem({
+  item,
+  onProvenance,
+  onCorrection,
+}: {
+  item: CanonicalItem;
+  onProvenance: () => void;
+  onCorrection: () => void;
+}) {
+  const t = useTranslations("Projects.Documentation.Source");
+  return (
+    <li className="group flex gap-4 border-b border-border py-5 last:border-b-0">
+      <span
+        className="mt-2 size-1.5 shrink-0 rounded-full bg-primary"
+        aria-hidden="true"
+      />
+      <div className="min-w-0 flex-1 space-y-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>{t(`kind_${item.kind}`)}</span>
+          {item.state === "point_to_clarify" && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-amber-200">
+              <AlertCircle className="size-3" />
+              {t("pointToClarify")}
+            </span>
+          )}
+          {item.categories.map((category) => (
+            <span key={category}>{t(`category_${category}`)}</span>
+          ))}
+        </div>
+        <p className="max-w-3xl text-[15px] leading-7 text-foreground">{item.content}</p>
+        <div className="flex flex-wrap gap-1">
+          <Button type="button" variant="ghost" size="xs" onClick={onProvenance}>
+            <ShieldCheck />
+            {t("showProvenance", { count: item.provenanceCount })}
+          </Button>
+          <Button type="button" variant="ghost" size="xs" onClick={onCorrection}>
+            <PencilLine />
+            {t("correctItem")}
+          </Button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+export function CanonicalSourceView({ projectId }: { projectId: string }) {
+  const t = useTranslations("Projects.Documentation");
+  const source = useCanonicalSource(projectId);
+  const proposeLanguage = useProposeWorkingLanguage(projectId);
+  const confirmLanguage = useConfirmWorkingLanguage(projectId);
+  const [provenanceItem, setProvenanceItem] = useState<CanonicalItem | null>(null);
+  const [correctionItem, setCorrectionItem] = useState<CanonicalItem | null>(null);
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [proposal, setProposal] = useState<LanguageProposal | null>(null);
+
+  const noSourceYet =
+    source.isError && source.error instanceof ApiError && source.error.status === 404;
+  const revision = source.data?.revision;
+  const language = source.data?.workingLanguage ?? "fr";
+
+  function closeLanguage() {
+    setLanguageOpen(false);
+    setProposal(null);
+    proposeLanguage.reset();
+    confirmLanguage.reset();
+  }
+
+  return (
+    <section className="border-b border-border pb-8">
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            {t("eyebrow")}
+          </p>
+          <h2 className="text-xl font-semibold tracking-tight">{t("title")}</h2>
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            {t("description")}
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href={`/projects/${projectId}/documents`}>{t("manageDocuments")}</Link>
+        </Button>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="min-w-0">
+          <header className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div>
+              <h3 className="font-semibold">{t("Source.title")}</h3>
+              {revision ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("Source.revision", { sequence: revision.sequence })}
+                  <span aria-hidden="true"> · </span>
+                  {revision.summary}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">{t("Source.noRevision")}</p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-md bg-muted px-2.5 py-1.5 text-xs font-medium uppercase text-muted-foreground">
+                {language}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setLanguageOpen((value) => !value)}
+              >
+                <Languages />
+                {t("Source.changeLanguage")}
+              </Button>
+            </div>
+          </header>
+
+          {languageOpen && (
+            <div className="border-b border-border bg-muted/30 px-5 py-4 sm:px-6">
+              {!proposal ? (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{t("Source.languageQuestion")}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {t("Source.languageWarning")}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {language !== "fr" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={proposeLanguage.isPending}
+                        onClick={() =>
+                          proposeLanguage.mutate(
+                            {
+                              expectedSourceRevisionId: revision?.id ?? null,
+                              language: "fr",
+                            },
+                            { onSuccess: setProposal },
+                          )
+                        }
+                      >
+                        {t("Source.french")}
+                      </Button>
+                    )}
+                    {language !== "en" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={proposeLanguage.isPending}
+                        onClick={() =>
+                          proposeLanguage.mutate(
+                            {
+                              expectedSourceRevisionId: revision?.id ?? null,
+                              language: "en",
+                            },
+                            { onSuccess: setProposal },
+                          )
+                        }
+                      >
+                        {t("Source.english")}
+                      </Button>
+                    )}
+                    <Button type="button" variant="ghost" size="sm" onClick={closeLanguage}>
+                      {t("Source.cancel")}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{t("Source.languagePreviewTitle")}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {t("Source.languagePreviewDescription", {
+                        count: proposal.impactedItemCount,
+                        language: t(`Source.language_${proposal.toLanguage}`),
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={confirmLanguage.isPending}
+                      onClick={() =>
+                        confirmLanguage.mutate(proposal.id, { onSuccess: closeLanguage })
+                      }
+                    >
+                      {confirmLanguage.isPending
+                        ? t("Source.confirmingLanguage")
+                        : t("Source.confirmLanguage")}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={closeLanguage}>
+                      {t("Source.cancel")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {(proposeLanguage.isError || confirmLanguage.isError) && (
+                <p role="alert" className="mt-3 text-sm text-destructive">
+                  {t("Source.languageError")}
+                </p>
+              )}
+            </div>
+          )}
+
+          {source.isPending ? (
+            <div className="space-y-4 p-6">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-5 w-4/5" />
+            </div>
+          ) : noSourceYet ? (
+            <div className="flex flex-col items-start gap-3 px-6 py-12">
+              <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <FileText className="size-5" />
+              </div>
+              <div>
+                <p className="font-medium">{t("Source.emptyTitle")}</p>
+                <p className="mt-1 max-w-lg text-sm leading-relaxed text-muted-foreground">
+                  {t("Source.emptyDescription")}
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/projects/${projectId}/documents`}>{t("addFirstDocument")}</Link>
+              </Button>
+            </div>
+          ) : source.isError || !source.data ? (
+            <div className="flex flex-col items-start gap-3 px-6 py-12">
+              <AlertCircle className="size-6 text-destructive" />
+              <p className="text-sm text-muted-foreground">{t("Source.loadError")}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => source.refetch()}>
+                <RefreshCw />
+                {t("retry")}
+              </Button>
+            </div>
+          ) : source.data.items.length === 0 ? (
+            <p className="px-6 py-12 text-sm text-muted-foreground">{t("Source.noItems")}</p>
+          ) : (
+            <ul className="px-5 sm:px-6">
+              {source.data.items.map((item) => (
+                <SourceItem
+                  key={item.id}
+                  item={item}
+                  onProvenance={() => setProvenanceItem(item)}
+                  onCorrection={() => setCorrectionItem(item)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+
+      </div>
+
+      {revision && (
+        <ClarificationsPanel projectId={projectId} revisionId={revision.id} />
+      )}
+
+      {revision && provenanceItem && (
+        <ProvenanceSheet
+          projectId={projectId}
+          itemId={provenanceItem.id}
+          revisionId={revision.id}
+          open
+          onOpenChange={(open) => {
+            if (!open) setProvenanceItem(null);
+          }}
+        />
+      )}
+      {revision && correctionItem && (
+        <GuidedCorrectionDialog
+          projectId={projectId}
+          itemId={correctionItem.id}
+          currentContent={correctionItem.content}
+          revisionId={revision.id}
+          open
+          onOpenChange={(open) => {
+            if (!open) setCorrectionItem(null);
+          }}
+        />
+      )}
+    </section>
+  );
+}

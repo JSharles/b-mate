@@ -1,0 +1,24 @@
+{
+  "pageId": "canonical-workflow-fixture",
+  "capturedAt": "2026-08-11T10:00:00.000Z",
+  "blocks": [
+    {
+      "id": "meeting-title-block",
+      "position": 1,
+      "type": "heading",
+      "text": "Compte rendu produit"
+    },
+    {
+      "id": "support-duration-block",
+      "position": 2,
+      "type": "paragraph",
+      "text": "Le support post-lancement doit durer 30 jours, alors que la proposition signée mentionne 14 jours. La décision reste ouverte."
+    },
+    {
+      "id": "client-validation-block",
+      "position": 3,
+      "type": "paragraph",
+      "text": "La validation finale du client est requise avant la mise en production."
+    }
+  ]
+}

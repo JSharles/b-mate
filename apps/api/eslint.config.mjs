@@ -6,7 +6,14 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['eslint.config.mjs'],
+    ignores: [
+      'eslint.config.mjs',
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      'coverage/**',
+      '*.min.js',
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -31,6 +38,17 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-argument': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
       "prettier/prettier": ["error", { endOfLine: "auto" }],
+    },
+  },
+  {
+    files: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/require-await': 'off',
+      'no-unsafe-optional-chaining': 'off',
     },
   },
 );
