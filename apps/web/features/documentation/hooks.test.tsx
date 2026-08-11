@@ -92,10 +92,14 @@ describe("documentation hooks", () => {
     } as unknown as DocumentAcknowledgement;
     vi.mocked(uploadDocument).mockResolvedValue(acknowledgement);
     const { Wrapper, queryClient } = wrapper();
+    // Seeded in the shape the running app actually holds at this key — an
+    // infinite query's `{ pages, pageParams }`. Seeding a flat page here let
+    // this test pass while every real upload threw inside `onSuccess`, which
+    // React Query reports as a failed mutation on a document that uploaded
+    // fine.
     queryClient.setQueryData(documentsKey("project-1"), {
-      items: [],
-      total: 0,
-      nextCursor: null,
+      pages: [{ items: [], total: 0, nextCursor: null }],
+      pageParams: [undefined],
     });
     const { result } = renderHook(() => useUploadDocument("project-1"), {
       wrapper: Wrapper,
@@ -103,11 +107,43 @@ describe("documentation hooks", () => {
 
     await act(async () => result.current.mutateAsync(new File(["x"], "brief.pdf")));
 
+    expect(result.current.isError).toBe(false);
     expect(queryClient.getQueryData(documentsKey("project-1"))).toEqual({
-      items: [acknowledgement.document],
-      total: 1,
-      nextCursor: null,
+      pages: [
+        { items: [acknowledgement.document], total: 1, nextCursor: null },
+      ],
+      pageParams: [undefined],
     });
+  });
+
+  it("leaves later document pages untouched when acknowledging an upload", async () => {
+    const acknowledgement = {
+      document: { id: "document-9", title: "Brief", status: "received" },
+      operation: { operationId: "operation-9", status: "queued" },
+    } as unknown as DocumentAcknowledgement;
+    vi.mocked(uploadDocument).mockResolvedValue(acknowledgement);
+    const { Wrapper, queryClient } = wrapper();
+    queryClient.setQueryData(documentsKey("project-1"), {
+      pages: [
+        { items: [{ id: "document-1" }], total: 2, nextCursor: "cursor-2" },
+        { items: [{ id: "document-2" }], total: 2, nextCursor: null },
+      ],
+      pageParams: [undefined, "cursor-2"],
+    });
+    const { result } = renderHook(() => useUploadDocument("project-1"), {
+      wrapper: Wrapper,
+    });
+
+    await act(async () => result.current.mutateAsync(new File(["x"], "brief.pdf")));
+
+    const data = queryClient.getQueryData(documentsKey("project-1")) as {
+      pages: { items: { id: string }[] }[];
+    };
+    expect(data.pages[0].items.map(({ id }) => id)).toEqual([
+      "document-9",
+      "document-1",
+    ]);
+    expect(data.pages[1].items.map(({ id }) => id)).toEqual(["document-2"]);
   });
 
   it("invalidates canonical source and provenance after correction", async () => {

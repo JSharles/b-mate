@@ -6,6 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import type { InfiniteData } from "@tanstack/react-query";
 import type {
   EditorialProfileValues,
   GuidedCorrectionRequest,
@@ -181,16 +182,28 @@ export function useSourceItemProvenance(
   });
 }
 
+// `documentsKey` is owned by an infinite query, so the cache entry is
+// `{ pages, pageParams }` — not a bare page. Writing the flat shape here threw
+// inside `onSuccess`, which React Query treats as a failed mutation: the
+// upload had already succeeded, but the dialog reported a generic error and
+// stayed open. The natural response is to upload again, and the duplicate is
+// then consolidated into the canonical source — the one artefact the product
+// promises is trustworthy.
 function mergeAcknowledgement(
-  current: CursorPage<SourceDocument> | undefined,
+  current: InfiniteData<CursorPage<SourceDocument>> | undefined,
   document: SourceDocument,
-): CursorPage<SourceDocument> | undefined {
+): InfiniteData<CursorPage<SourceDocument>> | undefined {
   if (!current) return undefined;
-  if (current.items.some(({ id }) => id === document.id)) return current;
+  const [first, ...rest] = current.pages;
+  if (!first) return current;
+  if (current.pages.some((page) => page.items.some(({ id }) => id === document.id)))
+    return current;
   return {
     ...current,
-    items: [document, ...current.items],
-    total: current.total + 1,
+    pages: [
+      { ...first, items: [document, ...first.items], total: first.total + 1 },
+      ...rest,
+    ],
   };
 }
 
@@ -200,7 +213,7 @@ export function useUploadDocument(projectId: string) {
     mutationFn: (file: File) => uploadDocument(projectId, file),
     meta: { skipGlobalErrorToast: true },
     onSuccess: ({ document }) => {
-      queryClient.setQueryData<CursorPage<SourceDocument>>(
+      queryClient.setQueryData<InfiniteData<CursorPage<SourceDocument>>>(
         documentsKey(projectId),
         (current) => mergeAcknowledgement(current, document),
       );
@@ -215,7 +228,7 @@ export function useAddNotionDocument(projectId: string) {
       addNotionDocument(projectId, data),
     meta: { skipGlobalErrorToast: true },
     onSuccess: ({ document }) => {
-      queryClient.setQueryData<CursorPage<SourceDocument>>(
+      queryClient.setQueryData<InfiniteData<CursorPage<SourceDocument>>>(
         documentsKey(projectId),
         (current) => mergeAcknowledgement(current, document),
       );
