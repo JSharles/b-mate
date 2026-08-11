@@ -18,6 +18,9 @@ export function DocumentationSummaryCard({ projectId }: { projectId: string }) {
   const state = workspace.data;
   const priority = state?.priority ?? "empty";
 
+  const needsAttention =
+    priority === "needs_attention" || priority === "needs_action";
+
   const StatusIcon =
     priority === "needs_attention" || priority === "needs_action"
       ? AlertTriangle
@@ -36,7 +39,11 @@ export function DocumentationSummaryCard({ projectId }: { projectId: string }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-semibold">{pageT("summaryTitle")}</span>
-          <span className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+          <span
+            className={`mt-1 flex items-center gap-2 text-sm ${
+              needsAttention ? "text-destructive" : "text-muted-foreground"
+            }`}
+          >
             <StatusIcon
               className={`size-4 shrink-0 ${priority === "processing" ? "animate-spin motion-reduce:animate-none" : ""}`}
             />

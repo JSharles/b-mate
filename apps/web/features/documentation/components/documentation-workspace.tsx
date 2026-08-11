@@ -1,7 +1,13 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, LoaderCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileWarning,
+  LoaderCircle,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useDocumentationWorkspace } from "../hooks";
 import { CanonicalSourceView } from "./canonical-source-view";
 import { CategoryReviewList } from "./category-review-list";
@@ -46,17 +52,35 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
           </p>
           {/* Atomic publication is the product's most reassuring property and
               it used to be a bare "· 2/4" glued onto the sentence above. The
-              contributor has to be able to read what is still missing, and why
-              nothing has moved for their client yet. */}
+              progress figures need a release record, but the guarantee itself
+              does not — and the moment it reassures most is while categories
+              are still waiting, before any release exists. */}
           {release && release.expected > 0 && (
             <p className="mt-1 text-sm text-muted-foreground">
               {t("releaseProgress", {
                 ready: release.ready,
                 expected: release.expected,
               })}
-              {release.ready < release.expected && (
-                <span className="mt-1 block text-xs">{t("releaseAtomic")}</span>
-              )}
+            </p>
+          )}
+          {(state?.pendingReviewCount ?? 0) > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">{t("releaseAtomic")}</p>
+          )}
+
+          {/* The most urgent state the system can enter used to be a sentence
+              with no object and no verb: a red triangle saying an "operation"
+              needed attention, on a page offering nothing to act on. The
+              failing document is not in this payload, but the inventory route
+              lists it with its retry — so the banner carries the way there. */}
+          {(state?.failedOperationCount ?? 0) > 0 && (
+            <p className="mt-2 text-sm">
+              <Link
+                href={`/projects/${projectId}/documents`}
+                className="inline-flex items-center gap-1.5 rounded-md text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <FileWarning className="size-4" />
+                {t("failedAction", { count: state?.failedOperationCount ?? 0 })}
+              </Link>
             </p>
           )}
           {workspace.isError && (

@@ -630,7 +630,7 @@
         "priority_processing": "Diaphane is processing your documents",
         "priority_published": "Client documentation is up to date",
         "priority_empty": "Add your first document",
-        "priority_needs_attention": "An operation needs your attention",
+        "priority_needs_attention": "A document could not be processed",
         "visibility_nothing_published": "Nothing is visible to the client",
         "visibility_previous_version_visible": "The client still sees the previous version",
         "visibility_current_version_visible": "The client sees the current version",
@@ -641,7 +641,8 @@
         "navEditorial": "Editorial profile",
         "navClient": "Client view",
         "releaseProgress": "{ready, plural, one {# category approved} other {# categories approved}} of {expected} for the next release.",
-        "releaseAtomic": "The client keeps seeing the current version until the new one is complete."
+        "releaseAtomic": "The client keeps seeing the current version until the new one is complete.",
+        "failedAction": "{count, plural, one {See the document concerned} other {See the # documents concerned}}"
       },
       "Removal": {
         "title": "Delete this document?",

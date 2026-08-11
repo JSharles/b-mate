@@ -4,6 +4,11 @@ import { useDocumentationWorkspace } from "../hooks";
 import { DocumentationWorkspace } from "./documentation-workspace";
 
 vi.mock("../hooks", () => ({ useDocumentationWorkspace: vi.fn() }));
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
+}));
 vi.mock("./canonical-source-view", () => ({
   CanonicalSourceView: () => <div>canonical-source</div>,
 }));
@@ -30,6 +35,9 @@ describe("DocumentationWorkspace", () => {
         priority,
         clientVisibility: "previous_version_visible",
         releaseProgress: { ready: 2, expected: 4 },
+        // The guarantee is tied to categories still waiting, not to a release
+        // record — that is the state where it reassures.
+        pendingReviewCount: 2,
       },
       isError: false,
     } as never);
@@ -107,5 +115,40 @@ describe("DocumentationWorkspace", () => {
       expect(target).not.toBeNull();
       expect(target).toHaveAttribute("tabindex", "-1");
     }
+  });
+
+  // The most urgent state the system can enter used to be a sentence with no
+  // object, on a page offering nothing to act on.
+  it("points a failed operation at the route that can retry it", () => {
+    vi.mocked(useDocumentationWorkspace).mockReturnValue({
+      data: {
+        priority: "needs_attention",
+        clientVisibility: "nothing_published",
+        failedOperationCount: 1,
+      },
+      isError: false,
+    } as never);
+
+    render(<DocumentationWorkspace projectId="project-1" />);
+
+    expect(screen.getByRole("link", { name: /failedAction/ })).toHaveAttribute(
+      "href",
+      "/projects/project-1/documents",
+    );
+  });
+
+  it("offers no such link when nothing has failed", () => {
+    vi.mocked(useDocumentationWorkspace).mockReturnValue({
+      data: {
+        priority: "published",
+        clientVisibility: "current_version_visible",
+        failedOperationCount: 0,
+      },
+      isError: false,
+    } as never);
+
+    render(<DocumentationWorkspace projectId="project-1" />);
+
+    expect(screen.queryByText("failedAction")).not.toBeInTheDocument();
   });
 });
