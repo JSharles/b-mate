@@ -398,63 +398,81 @@ describe('canonical document ingestion (mocked service chain)', () => {
           .map(({ id, sourceDocumentId }) => ({ id, sourceDocumentId })),
       ),
     );
+    // The handler rebuilds the reference map from the same two queries the
+    // request was built from, so the head has to be readable here too.
+    prisma.projectSource.findUnique.mockImplementation(() =>
+      Promise.resolve({
+        id: projectSourceId,
+        currentRevisionId,
+        currentRevision: {
+          items: [...canonicalItems].sort(
+            (left, right) => left.sortOrder - right.sortOrder,
+          ),
+        },
+      }),
+    );
     const consolidation = new SourceConsolidationHandler(
       asPrismaService(prisma),
       revisionWriter,
       new GenerationHandlerRegistry(),
     );
 
-    const itemId = (content: string) =>
-      canonicalItems.find((item) => item.content === content)
-        ?.informationItemId;
+    const itemRefFor = (content: string) => {
+      const ordered = [...canonicalItems].sort(
+        (left, right) => left.sortOrder - right.sortOrder,
+      );
+      return `i${ordered.findIndex((item) => item.content === content)}`;
+    };
     for (const [index, operation] of consolidationOperations.entries()) {
       const incoming = [...observations.values()].filter(
         ({ sourceDocumentId }) =>
           sourceDocumentId === operation.sourceDocumentId,
       );
+      // The model answers in the short references it was given, never in
+      // identifiers — see reference-token.ts.
       const dispositions =
         index === 0
-          ? incoming.map((observation) => ({
-              observationId: observation.id,
+          ? incoming.map((_observation, position) => ({
+              observationRef: `o${position}`,
               action: 'add' as const,
               reason: 'New supported fact.',
             }))
           : index === 1
             ? [
                 {
-                  observationId: incoming[0].id,
+                  observationRef: 'o0',
                   action: 'support' as const,
-                  targetInformationItemId: itemId(
+                  targetItemRef: itemRefFor(
                     'Application mobile pour les équipes terrain.',
                   ),
                   match: 'exact' as const,
                   reason: 'Equivalent statement in another document.',
                 },
                 {
-                  observationId: incoming[1].id,
+                  observationRef: 'o1',
                   action: 'add' as const,
                   reason: 'New architecture decision.',
                 },
               ]
             : [
                 {
-                  observationId: incoming[0].id,
+                  observationRef: 'o0',
                   action: 'supersede' as const,
-                  targetInformationItemId: itemId(
+                  targetItemRef: itemRefFor(
                     'Le lancement public est prévu le 12 septembre.',
                   ),
                   reason:
                     'The newer dated decision explicitly postpones launch.',
                 },
                 {
-                  observationId: incoming[1].id,
+                  observationRef: 'o1',
                   action: 'add' as const,
                   reason: 'New product constraint.',
                 },
               ];
       await consolidation.apply(prisma as never, operation, {
         output: {
-          promptVersion: 'source-consolidation-v1',
+          promptVersion: 'source-consolidation-v2',
           inputFingerprint: operation.inputFingerprint,
           dispositions,
           clarifications: [],

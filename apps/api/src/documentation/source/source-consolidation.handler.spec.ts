@@ -15,17 +15,21 @@ const operation = {
   sourceDocumentId: '00000000-0000-4000-8000-000000000003',
   baseSourceRevisionId: '00000000-0000-4000-8000-000000000004',
   inputFingerprint: 'f'.repeat(64),
-  promptVersion: 'source-consolidation-v1',
-  outputContractVersion: 'diaphane.source-consolidation.v1',
+  promptVersion: 'source-consolidation-v2',
+  outputContractVersion: 'diaphane.source-consolidation.v2',
   policySnapshot: { version: 'policy-v1', routes: [] },
 } as unknown as GenerationOperation;
 
+const OBSERVATION_ID = '00000000-0000-4000-8000-000000000005';
+
 const output = {
-  promptVersion: 'source-consolidation-v1',
+  promptVersion: 'source-consolidation-v2',
   inputFingerprint: 'f'.repeat(64),
   dispositions: [
     {
-      observationId: '00000000-0000-4000-8000-000000000005',
+      // A short ref, not an identifier: the model is never asked to copy a
+      // UUID back — see reference-token.ts.
+      observationRef: 'o0',
       action: 'add',
       reason: 'New supported fact.',
     },
@@ -69,10 +73,7 @@ describe('SourceConsolidationHandler', () => {
 
   it('requeues against the current head when an otherwise valid result is stale', async () => {
     prisma.documentObservation.findMany.mockResolvedValue([
-      {
-        id: output.dispositions[0].observationId,
-        sourceDocumentId: operation.sourceDocumentId,
-      },
+      { id: OBSERVATION_ID, sourceDocumentId: operation.sourceDocumentId },
     ]);
     revisions.commitFromConsolidation.mockResolvedValue({
       status: 'stale',
@@ -94,10 +95,7 @@ describe('SourceConsolidationHandler', () => {
 
   it('is idempotent when the document already committed the same revision', async () => {
     prisma.documentObservation.findMany.mockResolvedValue([
-      {
-        id: output.dispositions[0].observationId,
-        sourceDocumentId: operation.sourceDocumentId,
-      },
+      { id: OBSERVATION_ID, sourceDocumentId: operation.sourceDocumentId },
     ]);
     revisions.commitFromConsolidation.mockResolvedValue({
       status: 'already_committed',

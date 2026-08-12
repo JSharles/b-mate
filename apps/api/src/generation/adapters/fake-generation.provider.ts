@@ -37,6 +37,11 @@ export class FakeGenerationProvider implements GenerationProviderAdapter {
     return Promise.resolve({ state: 'completed', result });
   }
 
+  cancelRemote(providerJobId: string): Promise<void> {
+    this.accepted.delete(providerJobId);
+    return Promise.resolve();
+  }
+
   poll(request: GenerationPollRequest): Promise<GenerationPollResult> {
     const result = this.accepted.get(request.providerJobId);
     if (!result) {

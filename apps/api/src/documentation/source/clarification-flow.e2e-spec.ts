@@ -7,14 +7,14 @@ describe('clarification flow corpus', () => {
   it('keeps more than five material conflicts reachable with stable open-point identity across workflow states', () => {
     const corpus = ClarificationOutputSchema.parse({
       clarifications: Array.from({ length: 7 }, (_, index) => ({
-        conflictObservationId: id(10 + index),
+        conflictObservationRef: `o${10 + index}`,
         question: `Décision contradictoire ${index + 1} ?`,
         impactRank: index + 1,
         impactExplanation:
           'Cette décision modifie ce que le client peut comprendre.',
         materialImpact: index % 2 ? 'scope' : 'timing',
-        evidenceObservationIds: [id(10 + index), id(30 + index)],
-        relatedInformationItemIds: [id(50 + index)],
+        evidenceObservationRefs: [`o${10 + index}`, `o${30 + index}`],
+        relatedItemRefs: [`i${50 + index}`],
         openPointContent: `Point ${index + 1} à clarifier.`,
         categories: [index % 2 ? 'overview' : 'planning'],
       })),

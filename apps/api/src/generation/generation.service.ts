@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type {
   GenerationAttempt,
   GenerationOperation,
@@ -11,6 +11,10 @@ import type {
   GenerationProviderFailure,
   GenerationProviderResult,
   GenerationSubmission,
+} from './adapters/generation-provider';
+import {
+  GENERATION_PROVIDERS,
+  GenerationProviderAdapter,
 } from './adapters/generation-provider';
 import { GenerationHandlerRegistry } from './generation-handler.registry';
 import type { GenerationPolicyRoute } from './policy/generation-policy.schema';
@@ -51,11 +55,42 @@ export type LeasedGenerationOperation = GenerationOperation & {
 
 @Injectable()
 export class GenerationService {
+  private readonly logger = new Logger(GenerationService.name);
+  private readonly providersByKey: ReadonlyMap<
+    string,
+    GenerationProviderAdapter
+  >;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly policy: GenerationPolicyService,
     private readonly handlers: GenerationHandlerRegistry,
-  ) {}
+    @Inject(GENERATION_PROVIDERS)
+    providers: GenerationProviderAdapter[] = [],
+  ) {
+    this.providersByKey = new Map(
+      providers.map((provider) => [provider.key, provider]),
+    );
+  }
+
+  // Giving up locally is not giving up remotely. A batch we stop waiting on
+  // keeps generating and keeps billing, so every place that abandons an
+  // accepted job has to say so to the provider first.
+  private async releaseRemoteJob(attempt: {
+    provider: string;
+    providerJobId: string | null;
+  }): Promise<void> {
+    if (!attempt.providerJobId) return;
+    const provider = this.providersByKey.get(attempt.provider);
+    if (!provider) return;
+    try {
+      await provider.cancelRemote(attempt.providerJobId);
+    } catch (error) {
+      this.logger.warn(
+        `Could not release ${attempt.providerJobId}: ${String(error)}`,
+      );
+    }
+  }
 
   create(input: CreateGenerationOperationInput): Promise<GenerationOperation> {
     return this.createInTransaction(this.prisma, input);
@@ -298,6 +333,9 @@ export class GenerationService {
       return { cancelled: false, remoteAccepted: false };
     }
     const remoteAccepted = Boolean(operation.currentAttempt?.providerJobId);
+    if (operation.currentAttempt) {
+      await this.releaseRemoteJob(operation.currentAttempt);
+    }
 
     const updated = await this.prisma.generationOperation.updateMany({
       where: {
@@ -383,6 +421,13 @@ export class GenerationService {
     attemptId: string,
     code: string,
   ): Promise<void> {
+    // Reached when a job outlives its deadline. Waiting was the only thing
+    // being abandoned here — the job carried on generating at our expense.
+    const attempt = await this.prisma.generationAttempt.findUnique({
+      where: { id: attemptId },
+      select: { provider: true, providerJobId: true },
+    });
+    if (attempt) await this.releaseRemoteJob(attempt);
     await this.prisma.$transaction(async (tx) => {
       const operation = await tx.generationOperation.findUnique({
         where: { id: operationId },

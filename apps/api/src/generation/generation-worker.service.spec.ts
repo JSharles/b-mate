@@ -75,6 +75,7 @@ describe('GenerationWorkerService', () => {
         result: { output: { claims: [] } },
       }),
       poll: jest.fn(),
+      cancelRemote: jest.fn(),
     };
     worker = new GenerationWorkerService(
       generation as unknown as GenerationService,
@@ -406,6 +407,44 @@ describe('GenerationWorkerService', () => {
       operation.id,
       'attempt-1',
       expect.any(Date),
+    );
+  });
+  // A result we fetched and then failed to apply is our own bug, not a reason
+  // to read the finished job again. Sharing one catch with the fetch is what
+  // polled a five-minute batch for eight hours, in silence.
+  it('fails the attempt when applying a fetched result throws, with the reason', async () => {
+    generation.leaseNext.mockResolvedValueOnce({
+      ...operation,
+      currentAttemptId: 'attempt-1',
+      currentAttempt: {
+        id: 'attempt-1',
+        provider: 'fake',
+        model: 'deterministic-v1',
+        transport: 'batch',
+        providerJobId: 'job-1',
+        providerCorrelationId: null,
+        providerRequestId: null,
+        status: 'submitted',
+      },
+    } as never);
+    provider.poll.mockResolvedValueOnce({
+      state: 'completed',
+      result: { output: {} },
+    });
+    generation.applySuccessfulResult.mockRejectedValueOnce(
+      new Error('Consolidation references unknown observation o99.'),
+    );
+
+    await worker.tick();
+
+    expect(generation.markPolling).not.toHaveBeenCalled();
+    expect(generation.recordAttemptFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ id: operation.id }),
+      'attempt-1',
+      expect.objectContaining({
+        code: 'GENERATION_RESULT_NOT_APPLICABLE',
+        protectedDiagnostic: expect.stringContaining('unknown observation'),
+      }),
     );
   });
 });

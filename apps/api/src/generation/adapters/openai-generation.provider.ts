@@ -81,6 +81,14 @@ export class OpenAIGenerationProvider implements GenerationProviderAdapter {
       return { state: 'failed', failure: classifyHttpFailure('openai', error) };
     }
   }
+  async cancelRemote(providerJobId: string): Promise<void> {
+    if (!this.client) return;
+    try {
+      await this.client.responses.cancel(providerJobId);
+    } catch {
+      // Best effort: see the adapter contract.
+    }
+  }
   async poll(request: GenerationPollRequest): Promise<GenerationPollResult> {
     if (!this.client) return failedPoll('OPENAI_CREDENTIAL_MISSING');
     try {

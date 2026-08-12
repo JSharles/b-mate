@@ -23,10 +23,19 @@ import {
   SOURCE_CONSOLIDATION_OUTPUT_CONTRACT,
   SOURCE_CONSOLIDATION_PROMPT_VERSION,
 } from './prompts/consolidation.prompt';
+import {
+  ITEM_REF_JSON_SCHEMA,
+  ItemRefSchema,
+  itemRef,
+  OBSERVATION_REF_JSON_SCHEMA,
+  ObservationRefSchema,
+  observationRef,
+  resolveRef,
+} from './reference-token';
 
 const ConsolidationDispositionSchema = z
   .object({
-    observationId: z.uuid(),
+    observationRef: ObservationRefSchema,
     action: z.enum([
       'add',
       'support',
@@ -35,7 +44,7 @@ const ConsolidationDispositionSchema = z
       'open',
       'exclude',
     ]),
-    targetInformationItemId: z.uuid().optional(),
+    targetItemRef: ItemRefSchema.optional(),
     match: z.enum(['exact', 'semantic']).optional(),
     reason: z.string().trim().min(1).max(2_000),
   })
@@ -44,10 +53,10 @@ const ConsolidationDispositionSchema = z
     const needsTarget = ['support', 'supersede', 'conflict'].includes(
       value.action,
     );
-    if (needsTarget && !value.targetInformationItemId) {
+    if (needsTarget && !value.targetItemRef) {
       context.addIssue({
         code: 'custom',
-        path: ['targetInformationItemId'],
+        path: ['targetItemRef'],
         message: `${value.action} requires a target item.`,
       });
     }
@@ -101,9 +110,9 @@ export const SOURCE_CONSOLIDATION_JSON_SCHEMA: Record<string, unknown> = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['observationId', 'action', 'reason'],
+        required: ['observationRef', 'action', 'reason'],
         properties: {
-          observationId: { type: 'string', format: 'uuid' },
+          observationRef: OBSERVATION_REF_JSON_SCHEMA,
           action: {
             enum: [
               'add',
@@ -114,7 +123,7 @@ export const SOURCE_CONSOLIDATION_JSON_SCHEMA: Record<string, unknown> = {
               'exclude',
             ],
           },
-          targetInformationItemId: { type: 'string', format: 'uuid' },
+          targetItemRef: ITEM_REF_JSON_SCHEMA,
           match: { enum: ['exact', 'semantic'] },
           reason: { type: 'string' },
         },
@@ -145,6 +154,17 @@ export const SOURCE_CONSOLIDATION_JSON_SCHEMA: Record<string, unknown> = {
 // cap here — reconciling contradictions between documents is the one place in
 // this pipeline where the reasoning is the work.
 const CONSOLIDATION_MAX_OUTPUT_TOKENS = 64_000;
+
+// The clarification as the model wrote it, with every reference turned back
+// into the identifier it stands for.
+type ResolvedClarification = Omit<
+  ClarificationCandidate,
+  'conflictObservationRef' | 'evidenceObservationRefs' | 'relatedItemRefs'
+> & {
+  conflictObservationId: string;
+  evidenceObservationIds: string[];
+  relatedInformationItemIds: string[];
+};
 
 @Injectable()
 export class SourceConsolidationHandler
@@ -220,9 +240,12 @@ export class SourceConsolidationHandler
         {
           kind: 'json',
           value: {
+            // Short references, not identifiers — see reference-token.ts. The
+            // order is the contract: `apply` rebuilds the same references from
+            // the same query, so nothing has to be carried between the two.
             currentItems:
-              source?.currentRevision?.items.map((item) => ({
-                informationItemId: item.informationItemId,
+              source?.currentRevision?.items.map((item, index) => ({
+                ref: itemRef(index),
                 kind: item.kind,
                 state: item.state,
                 content: item.content,
@@ -230,8 +253,8 @@ export class SourceConsolidationHandler
                   (category) => category.categoryKey,
                 ),
               })) ?? [],
-            observations: observations.map((observation) => ({
-              id: observation.id,
+            observations: observations.map((observation, index) => ({
+              ref: observationRef(index),
               kind: observation.kind,
               content: observation.normalizedContent,
               exactContentHash: observation.exactContentHash,
@@ -260,18 +283,45 @@ export class SourceConsolidationHandler
     if (!operation.sourceDocumentId) {
       throw new Error('Source consolidation requires a document.');
     }
-    const observations = await tx.documentObservation.findMany({
-      where: { sourceDocumentId: operation.sourceDocumentId },
-      select: { id: true },
-    });
-    const known = new Set(observations.map(({ id }) => id));
+    // Rebuild the same reference map buildRequest handed out — same queries,
+    // same order — then work in identifiers from here on. If the canonical head
+    // moved underneath us an item reference will not resolve; that fails the
+    // attempt loudly, where before the stale identifiers simply failed the
+    // commit further down.
+    const { observationIdByRef, itemIdByRef } = await this.referenceMaps(
+      tx,
+      operation.projectId,
+      operation.sourceDocumentId,
+    );
+    const dispositions = output.dispositions.map((disposition) => ({
+      ...disposition,
+      observationId: resolveRef(
+        observationIdByRef,
+        disposition.observationRef,
+        'observation',
+      ),
+      targetInformationItemId: disposition.targetItemRef
+        ? resolveRef(itemIdByRef, disposition.targetItemRef, 'item')
+        : undefined,
+    }));
+    const clarifications = output.clarifications.map((clarification) => ({
+      ...clarification,
+      conflictObservationId: resolveRef(
+        observationIdByRef,
+        clarification.conflictObservationRef,
+        'observation',
+      ),
+      evidenceObservationIds: clarification.evidenceObservationRefs.map((ref) =>
+        resolveRef(observationIdByRef, ref, 'observation'),
+      ),
+      relatedInformationItemIds: clarification.relatedItemRefs.map((ref) =>
+        resolveRef(itemIdByRef, ref, 'item'),
+      ),
+    }));
+
+    const known = new Set(observationIdByRef.values());
     const seen = new Set<string>();
-    for (const disposition of output.dispositions) {
-      if (!known.has(disposition.observationId)) {
-        throw new Error(
-          `Consolidation references unknown observation ${disposition.observationId}.`,
-        );
-      }
+    for (const disposition of dispositions) {
       if (seen.has(disposition.observationId)) {
         throw new Error('Every observation requires exactly one disposition.');
       }
@@ -282,14 +332,12 @@ export class SourceConsolidationHandler
     }
 
     const materialConflicts = new Set(
-      output.dispositions
+      dispositions
         .filter(({ action }) => action === 'conflict' || action === 'open')
         .map(({ observationId }) => observationId),
     );
     const explainedConflicts = new Set(
-      output.clarifications.map(
-        ({ conflictObservationId }) => conflictObservationId,
-      ),
+      clarifications.map(({ conflictObservationId }) => conflictObservationId),
     );
     if (
       materialConflicts.size !== explainedConflicts.size ||
@@ -299,31 +347,23 @@ export class SourceConsolidationHandler
         'Every material conflict requires exactly one clarification.',
       );
     }
-    const evidenceIds = new Set(
-      output.clarifications.flatMap(
-        ({ evidenceObservationIds }) => evidenceObservationIds,
-      ),
-    );
-    if ([...evidenceIds].some((id) => !known.has(id))) {
-      throw new Error('Clarification references unknown evidence.');
-    }
 
     const committed = await this.revisions.commitFromConsolidation(
       tx,
       operation,
-      output.dispositions,
+      dispositions,
     );
     if (committed.status === 'committed') {
       await this.supersedeSettledClarifications(
         tx,
         committed.revisionId,
-        output.dispositions,
+        dispositions,
       );
       await this.persistClarifications(
         tx,
         operation,
         committed.revisionId,
-        output.clarifications,
+        clarifications,
       );
       return;
     }
@@ -357,6 +397,62 @@ export class SourceConsolidationHandler
     });
   }
 
+  // Extraction had this and consolidation did not, so a consolidation that
+  // gave up left the document in `incorporating` with nothing running — the
+  // row spun forever and nothing in the interface said otherwise.
+  async onTerminalFailure(
+    tx: Prisma.TransactionClient,
+    operation: GenerationOperation,
+    failureCode: string,
+  ): Promise<void> {
+    if (!operation.sourceDocumentId) return;
+    await tx.sourceDocument.updateMany({
+      where: {
+        id: operation.sourceDocumentId,
+        projectId: operation.projectId,
+        status: { in: ['ready_to_consolidate', 'incorporating'] },
+      },
+      data: { status: 'failed', failureCode },
+    });
+  }
+
+  // The mirror of what buildRequest handed the model: same queries, same
+  // order, so `o12` means the same observation on both sides without anything
+  // being carried between the two calls.
+  private async referenceMaps(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    sourceDocumentId: string,
+  ): Promise<{
+    observationIdByRef: Map<string, string>;
+    itemIdByRef: Map<string, string>;
+  }> {
+    const observations = await tx.documentObservation.findMany({
+      where: { sourceDocumentId },
+      select: { id: true },
+      orderBy: { sequence: 'asc' },
+    });
+    const source = await tx.projectSource.findUnique({
+      where: { projectId },
+      include: {
+        currentRevision: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
+        },
+      },
+    });
+    return {
+      observationIdByRef: new Map(
+        observations.map(({ id }, index) => [observationRef(index), id]),
+      ),
+      itemIdByRef: new Map(
+        (source?.currentRevision?.items ?? []).map((item, index) => [
+          itemRef(index),
+          item.informationItemId,
+        ]),
+      ),
+    };
+  }
+
   private async supersedeSettledClarifications(
     tx: Prisma.TransactionClient,
     revisionId: string,
@@ -387,7 +483,7 @@ export class SourceConsolidationHandler
     tx: Prisma.TransactionClient,
     operation: GenerationOperation,
     revisionId: string,
-    candidates: ClarificationCandidate[],
+    candidates: ResolvedClarification[],
   ): Promise<void> {
     for (const candidate of candidates) {
       let informationItemIds = candidate.relatedInformationItemIds;

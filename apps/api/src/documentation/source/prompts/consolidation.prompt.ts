@@ -1,9 +1,9 @@
 import { DOCUMENTATION_CATEGORY_KEYS } from '../../documentation-categories';
 import { buildClarificationInstructions } from './clarification.prompt';
 
-export const SOURCE_CONSOLIDATION_PROMPT_VERSION = 'source-consolidation-v1';
+export const SOURCE_CONSOLIDATION_PROMPT_VERSION = 'source-consolidation-v2';
 export const SOURCE_CONSOLIDATION_OUTPUT_CONTRACT =
-  'diaphane.source-consolidation.v1';
+  'diaphane.source-consolidation.v2';
 
 export function buildSourceConsolidationPrompt(input: {
   inputFingerprint: string;
@@ -21,7 +21,8 @@ export function buildSourceConsolidationPrompt(input: {
     'Use conflict when evidence is contradictory or materially ambiguous; never guess.',
     'Use open for a material self-conflict that has no current canonical target.',
     'Use exclude only for non-material content, with a concrete reason.',
-    'Never emit a claim, item ID, observation ID, or category absent from the input.',
+    'Refer to observations and items only by the short ref given in the input, such as o12 or i3. Copy it exactly; never invent one and never write an identifier.',
+    'Never emit a claim, ref, or category absent from the input.',
     'Do not rewrite current facts for style. Preserve stable item identity.',
     'Write every canonical value in English; it is the one form the client-facing rewrite reads.',
     buildClarificationInstructions(),

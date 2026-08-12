@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import { DOCUMENTATION_CATEGORY_KEYS } from '../documentation-categories';
+import {
+  ITEM_REF_JSON_SCHEMA,
+  ItemRefSchema,
+  OBSERVATION_REF_JSON_SCHEMA,
+  ObservationRefSchema,
+} from './reference-token';
 
 const MaterialImpactSchema = z.enum([
   'timing',
@@ -12,22 +18,22 @@ const MaterialImpactSchema = z.enum([
 
 export const ClarificationCandidateSchema = z
   .object({
-    conflictObservationId: z.uuid(),
+    conflictObservationRef: ObservationRefSchema,
     question: z.string().trim().min(1).max(2_000),
     impactRank: z.number().int().positive(),
     impactExplanation: z.string().trim().min(1).max(2_000),
     materialImpact: MaterialImpactSchema,
-    evidenceObservationIds: z.array(z.uuid()).min(2),
-    relatedInformationItemIds: z.array(z.uuid()),
+    evidenceObservationRefs: z.array(ObservationRefSchema).min(2),
+    relatedItemRefs: z.array(ItemRefSchema),
     openPointContent: z.string().trim().min(1).max(10_000),
     categories: z.array(z.enum(DOCUMENTATION_CATEGORY_KEYS)).min(1),
   })
   .strict()
   .refine(
-    ({ conflictObservationId, evidenceObservationIds }) =>
-      evidenceObservationIds.includes(conflictObservationId),
+    ({ conflictObservationRef, evidenceObservationRefs }) =>
+      evidenceObservationRefs.includes(conflictObservationRef),
     {
-      path: ['evidenceObservationIds'],
+      path: ['evidenceObservationRefs'],
       message: 'Conflict evidence must cite its triggering observation.',
     },
   );
@@ -48,14 +54,14 @@ export const ClarificationOutputSchema = z
     }
     const seen = new Set<string>();
     for (const [index, clarification] of clarifications.entries()) {
-      if (seen.has(clarification.conflictObservationId)) {
+      if (seen.has(clarification.conflictObservationRef)) {
         context.addIssue({
           code: 'custom',
-          path: ['clarifications', index, 'conflictObservationId'],
+          path: ['clarifications', index, 'conflictObservationRef'],
           message: 'A conflict can create only one clarification.',
         });
       }
-      seen.add(clarification.conflictObservationId);
+      seen.add(clarification.conflictObservationRef);
     }
   });
 
@@ -71,32 +77,32 @@ export const CLARIFICATION_JSON_SCHEMA: Record<string, unknown> = {
     type: 'object',
     additionalProperties: false,
     required: [
-      'conflictObservationId',
+      'conflictObservationRef',
       'question',
       'impactRank',
       'impactExplanation',
       'materialImpact',
-      'evidenceObservationIds',
-      'relatedInformationItemIds',
+      'evidenceObservationRefs',
+      'relatedItemRefs',
       'openPointContent',
       'categories',
     ],
     properties: {
-      conflictObservationId: { type: 'string', format: 'uuid' },
+      conflictObservationRef: OBSERVATION_REF_JSON_SCHEMA,
       question: { type: 'string', minLength: 1 },
       impactRank: { type: 'integer', minimum: 1 },
       impactExplanation: { type: 'string', minLength: 1 },
       materialImpact: {
         enum: ['timing', 'scope', 'behavior', 'cost', 'decision', 'constraint'],
       },
-      evidenceObservationIds: {
+      evidenceObservationRefs: {
         type: 'array',
         minItems: 2,
-        items: { type: 'string', format: 'uuid' },
+        items: OBSERVATION_REF_JSON_SCHEMA,
       },
-      relatedInformationItemIds: {
+      relatedItemRefs: {
         type: 'array',
-        items: { type: 'string', format: 'uuid' },
+        items: ITEM_REF_JSON_SCHEMA,
       },
       openPointContent: { type: 'string', minLength: 1 },
       categories: {

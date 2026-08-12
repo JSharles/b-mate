@@ -117,6 +117,16 @@ export class AnthropicGenerationProvider implements GenerationProviderAdapter {
     }
   }
 
+  async cancelRemote(providerJobId: string): Promise<void> {
+    if (!this.client) return;
+    try {
+      await this.client.messages.batches.cancel(providerJobId);
+    } catch {
+      // A batch that already ended cannot be cancelled, and a provider we
+      // cannot reach must not hold up stopping on our side.
+    }
+  }
+
   private buildParams(
     request: GenerationProviderRequest,
     outputSchema: Record<string, unknown>,

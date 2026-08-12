@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { randomUUID } from 'node:crypto';
 import type { GenerationAttempt, GenerationOperation } from '@prisma/client';
@@ -27,6 +27,7 @@ const POLL_RETRY_MS = 5_000;
 
 @Injectable()
 export class GenerationWorkerService {
+  private readonly logger = new Logger(GenerationWorkerService.name);
   private readonly workerId = `generation-${randomUUID()}`;
   private readonly providersByKey: ReadonlyMap<
     string,
@@ -194,8 +195,12 @@ export class GenerationWorkerService {
       );
       return;
     }
+    // Only reading the job is covered here. Everything after it is our own
+    // work on a result we already hold, and a bug in that work is not a reason
+    // to read the job again — see below.
+    let result: GenerationPollResult;
     try {
-      const result = await provider.poll({
+      result = await provider.poll({
         operationId: operation.id,
         attemptId: attempt.id,
         model: attempt.model,
@@ -203,28 +208,51 @@ export class GenerationWorkerService {
         providerCorrelationId: attempt.providerCorrelationId,
         providerRequestId: attempt.providerRequestId,
       });
-      // Reading the job failed, so the job itself is untouched: poll it again
-      // rather than spending one of the attempt budget on a network blip.
-      if (result.state === 'unreadable') {
-        await this.generation.markPolling(
-          operation.id,
-          attempt.id,
-          new Date(Date.now() + POLL_RETRY_MS),
-        );
-        return;
-      }
+    } catch (error) {
+      await this.generation.markPolling(
+        operation.id,
+        attempt.id,
+        new Date(Date.now() + POLL_RETRY_MS),
+      );
+      this.logger.warn(
+        `Could not read ${attempt.providerJobId}: ${describe(error)}`,
+      );
+      return;
+    }
+
+    // Reading the job failed, so the job itself is untouched: poll it again
+    // rather than spending one of the attempt budget on a network blip.
+    if (result.state === 'unreadable') {
+      await this.generation.markPolling(
+        operation.id,
+        attempt.id,
+        new Date(Date.now() + POLL_RETRY_MS),
+      );
+      return;
+    }
+
+    try {
       // Anything else is the job's own outcome. A retryable one goes back
       // through recordAttemptFailure, which submits a *new* job and stops at
       // the route's maxAttempts. Re-polling the finished job instead — which
       // is what this did — returns the same bad result every five seconds
       // until the remote deadline, a full day of silent retries.
       await this.handlePoll(operation, attempt.id, result);
-    } catch {
-      await this.generation.markPolling(
-        operation.id,
-        attempt.id,
-        new Date(Date.now() + POLL_RETRY_MS),
+    } catch (error) {
+      // Applying a result we successfully fetched is our own code. When it
+      // threw, the catch that also covered the fetch re-read the finished job
+      // instead — for eight hours, in silence, on a batch that had succeeded
+      // in five minutes. A domain failure is the attempt's failure, and it
+      // says why.
+      this.logger.error(
+        `Applying ${operation.type} ${operation.id} failed: ${describe(error)}`,
       );
+      await this.generation.recordAttemptFailure(operation, attempt.id, {
+        errorClass: 'invalid_output',
+        code: 'GENERATION_RESULT_NOT_APPLICABLE',
+        retryable: true,
+        protectedDiagnostic: describe(error),
+      });
     }
   }
 
@@ -267,4 +295,13 @@ export class GenerationWorkerService {
       ).slice(0, 2000),
     };
   }
+}
+
+// The message is what makes a silent loop diagnosable. Bounded because it is
+// persisted on the attempt, where a provider payload must never end up whole.
+function describe(error: unknown): string {
+  return (error instanceof Error ? error.message : String(error)).slice(
+    0,
+    2000,
+  );
 }

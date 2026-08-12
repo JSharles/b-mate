@@ -80,6 +80,15 @@ export interface GenerationProviderAdapter {
   readonly key: string;
   submit(request: GenerationProviderRequest): Promise<GenerationSubmission>;
   poll(request: GenerationPollRequest): Promise<GenerationPollResult>;
+  /**
+   * Tells the provider we no longer want a job we already submitted. Without
+   * it, stopping a document or giving up on a deadline only stopped us
+   * waiting: the model kept generating, and we kept paying for output nobody
+   * would ever read. Best effort — a job that has already ended cannot be
+   * called back, and failing to reach the provider must not block the local
+   * decision to stop.
+   */
+  cancelRemote(providerJobId: string): Promise<void>;
 }
 
 export const GENERATION_PROVIDERS = Symbol('GENERATION_PROVIDERS');

@@ -5,6 +5,7 @@ import {
 } from '../test/prisma-mock';
 import { GenerationHandlerRegistry } from './generation-handler.registry';
 import { GenerationPolicyService } from './policy/generation-policy.service';
+import type { GenerationProviderAdapter } from './adapters/generation-provider';
 import { GenerationService } from './generation.service';
 
 const now = new Date('2026-08-11T12:00:00.000Z');
@@ -31,6 +32,9 @@ describe('GenerationService', () => {
   let prisma: PrismaMock;
   let policy: jest.Mocked<Pick<GenerationPolicyService, 'snapshotFor'>>;
   let handlers: jest.Mocked<Pick<GenerationHandlerRegistry, 'get'>>;
+  let provider: jest.Mocked<
+    Pick<GenerationProviderAdapter, 'key' | 'submit' | 'poll' | 'cancelRemote'>
+  >;
   let service: GenerationService;
 
   beforeEach(() => {
@@ -39,10 +43,17 @@ describe('GenerationService', () => {
       snapshotFor: jest.fn().mockReturnValue(operation.policySnapshot),
     };
     handlers = { get: jest.fn() };
+    provider = {
+      key: 'fake',
+      submit: jest.fn(),
+      poll: jest.fn(),
+      cancelRemote: jest.fn(),
+    };
     service = new GenerationService(
       asPrismaService(prisma),
       policy as unknown as GenerationPolicyService,
       handlers as unknown as GenerationHandlerRegistry,
+      [provider],
     );
   });
 
@@ -462,5 +473,37 @@ describe('GenerationService', () => {
 
     await expect(service.retry(operation.id)).resolves.toBeNull();
     expect(prisma.generationOperation.upsert).not.toHaveBeenCalled();
+  });
+  // Stopping locally is not stopping remotely. A batch we walk away from keeps
+  // generating and keeps billing until it finishes on its own.
+  it('tells the provider to drop a job it walks away from', async () => {
+    prisma.generationOperation.findUnique.mockResolvedValue({
+      ...operation,
+      status: 'waiting_provider',
+      currentAttempt: {
+        id: 'attempt-1',
+        provider: 'fake',
+        providerJobId: 'batch-1',
+      },
+    });
+    prisma.generationOperation.updateMany.mockResolvedValue({ count: 1 });
+
+    await service.cancel(operation.id);
+
+    expect(provider.cancelRemote).toHaveBeenCalledWith('batch-1');
+  });
+
+  it('drops the remote job when a deadline runs out too', async () => {
+    prisma.generationAttempt.findUnique.mockResolvedValue({
+      provider: 'fake',
+      providerJobId: 'batch-2',
+    });
+    prisma.generationOperation.findUnique.mockResolvedValue(operation);
+    prisma.generationOperation.updateMany.mockResolvedValue({ count: 0 });
+    handlers.get.mockReturnValue({} as never);
+
+    await service.abandonUnknown(operation.id, 'attempt-1', 'DEADLINE');
+
+    expect(provider.cancelRemote).toHaveBeenCalledWith('batch-2');
   });
 });

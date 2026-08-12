@@ -1,17 +1,20 @@
 import { ClarificationOutputSchema } from './clarification-output.schema';
 
-const id = (value: number) =>
-  `00000000-0000-4000-8000-${value.toString().padStart(12, '0')}`;
+// Short references, not identifiers: the model is never asked to copy a UUID
+// back — see reference-token.ts for the single mistyped character that cost a
+// whole consolidation.
+const obs = (value: number) => `o${value}`;
+const item = (value: number) => `i${value}`;
 
 describe('ClarificationOutputSchema', () => {
   const candidate = {
-    conflictObservationId: id(1),
+    conflictObservationRef: obs(1),
     question: 'Quelle date de lancement faut-il communiquer ?',
     impactRank: 1,
     impactExplanation: 'La date modifie le planning visible par le client.',
     materialImpact: 'timing',
-    evidenceObservationIds: [id(1), id(2)],
-    relatedInformationItemIds: [id(3)],
+    evidenceObservationRefs: [obs(1), obs(2)],
+    relatedItemRefs: [item(3)],
     openPointContent: 'La date de lancement reste à confirmer.',
     categories: ['planning'],
   };
@@ -19,8 +22,8 @@ describe('ClarificationOutputSchema', () => {
   it('accepts all ranked material conflicts without a numerical cap', () => {
     const clarifications = Array.from({ length: 8 }, (_, index) => ({
       ...candidate,
-      conflictObservationId: id(10 + index),
-      evidenceObservationIds: [id(10 + index), id(30 + index)],
+      conflictObservationRef: obs(10 + index),
+      evidenceObservationRefs: [obs(10 + index), obs(30 + index)],
       impactRank: index + 1,
     }));
     expect(
@@ -38,7 +41,7 @@ describe('ClarificationOutputSchema', () => {
     ).toThrow();
     expect(() =>
       ClarificationOutputSchema.parse({
-        clarifications: [{ ...candidate, evidenceObservationIds: [id(1)] }],
+        clarifications: [{ ...candidate, evidenceObservationRefs: [obs(1)] }],
         clarificationCount: 1,
       }),
     ).toThrow();
@@ -59,9 +62,9 @@ describe('ClarificationOutputSchema', () => {
   it('preserves a self-conflict before any canonical item exists', () => {
     expect(
       ClarificationOutputSchema.parse({
-        clarifications: [{ ...candidate, relatedInformationItemIds: [] }],
+        clarifications: [{ ...candidate, relatedItemRefs: [] }],
         clarificationCount: 1,
-      }).clarifications[0].relatedInformationItemIds,
+      }).clarifications[0].relatedItemRefs,
     ).toEqual([]);
   });
 });
