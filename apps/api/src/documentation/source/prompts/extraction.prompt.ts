@@ -4,15 +4,13 @@ import { DOCUMENT_EXTRACTION_PROMPT_VERSION } from '../extraction-output.schema'
 export { DOCUMENT_EXTRACTION_PROMPT_VERSION };
 
 export const DOCUMENT_EXTRACTION_OUTPUT_CONTRACT =
-  'diaphane.document-extraction.v1';
+  'diaphane.document-extraction.v2';
 
 export function buildDocumentExtractionPrompt(input: {
-  inputFingerprint: string;
   inputChunkCount: number;
 }): string {
   return [
     `Prompt version: ${DOCUMENT_EXTRACTION_PROMPT_VERSION}`,
-    `Input fingerprint: ${input.inputFingerprint}`,
     `Input chunk count: ${input.inputChunkCount}`,
     `Allowed categories: ${DOCUMENTATION_CATEGORY_KEYS.join(', ')}`,
     '',

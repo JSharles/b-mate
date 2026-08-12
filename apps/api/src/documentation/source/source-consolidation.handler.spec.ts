@@ -24,7 +24,6 @@ const OBSERVATION_ID = '00000000-0000-4000-8000-000000000005';
 
 const output = {
   promptVersion: 'source-consolidation-v3',
-  inputFingerprint: 'f'.repeat(64),
   // Nothing to report: the single observation is a plain addition, and the
   // model no longer restates those.
   exceptions: [],

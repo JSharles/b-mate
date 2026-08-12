@@ -6,13 +6,11 @@ export const SOURCE_CONSOLIDATION_OUTPUT_CONTRACT =
   'diaphane.source-consolidation.v3';
 
 export function buildSourceConsolidationPrompt(input: {
-  inputFingerprint: string;
   observationCount: number;
   currentItemCount: number;
 }): string {
   return [
     `Prompt version: ${SOURCE_CONSOLIDATION_PROMPT_VERSION}`,
-    `Input fingerprint: ${input.inputFingerprint}`,
     `Input observation count: ${input.observationCount}`,
     `Current item count: ${input.currentItemCount}`,
     // Told only "never reference something absent from the input", the model

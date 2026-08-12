@@ -24,8 +24,7 @@ describe('ExtractionOutputSchema', () => {
     { type: 'notion_block', blockId: 'block-1', position: 4 },
   ])('accepts attributable $type observations', (locator) => {
     const output = parseExtractionOutput({
-      promptVersion: 'document-extraction-v1',
-      inputFingerprint: 'a'.repeat(64),
+      promptVersion: 'document-extraction-v2',
       inputChunkCount: 1,
       observations: [{ ...baseObservation, locator }],
       accounting: { outputObservationCount: 1, rejectedClaimCount: 0 },
@@ -36,8 +35,7 @@ describe('ExtractionOutputSchema', () => {
 
   it('rejects accounting that does not match the observations', () => {
     const parsed = ExtractionOutputSchema.safeParse({
-      promptVersion: 'document-extraction-v1',
-      inputFingerprint: 'b'.repeat(64),
+      promptVersion: 'document-extraction-v2',
       inputChunkCount: 2,
       observations: [
         {
@@ -53,8 +51,7 @@ describe('ExtractionOutputSchema', () => {
 
   it('rejects duplicate sequence numbers and unsupported categories', () => {
     const parsed = ExtractionOutputSchema.safeParse({
-      promptVersion: 'document-extraction-v1',
-      inputFingerprint: 'c'.repeat(64),
+      promptVersion: 'document-extraction-v2',
       inputChunkCount: 1,
       observations: [
         {
@@ -76,8 +73,7 @@ describe('ExtractionOutputSchema', () => {
   it('rejects a claim without an exact original excerpt', () => {
     expect(() =>
       parseExtractionOutput({
-        promptVersion: 'document-extraction-v1',
-        inputFingerprint: 'd'.repeat(64),
+        promptVersion: 'document-extraction-v2',
         inputChunkCount: 1,
         observations: [
           {

@@ -17,7 +17,6 @@ import {
 const EditorialPreviewOutputSchema = z
   .object({
     promptVersion: z.literal(EDITORIAL_PREVIEW_PROMPT_VERSION),
-    inputFingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
     categoryKey: z.enum(['overview', 'how_it_works', 'planning', 'other']),
     blocks: z.array(
       z
@@ -33,10 +32,9 @@ const EditorialPreviewOutputSchema = z
 const schema: Record<string, unknown> = {
   type: 'object',
   additionalProperties: false,
-  required: ['promptVersion', 'inputFingerprint', 'categoryKey', 'blocks'],
+  required: ['promptVersion', 'categoryKey', 'blocks'],
   properties: {
     promptVersion: { const: EDITORIAL_PREVIEW_PROMPT_VERSION },
-    inputFingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' },
     categoryKey: { enum: ['overview', 'how_it_works', 'planning', 'other'] },
     blocks: {
       type: 'array',
@@ -86,7 +84,6 @@ export class EditorialPreviewHandler
           kind: 'text',
           text: buildEditorialPreviewPrompt({
             categoryKey: proposal.representativeCategoryReference.categoryKey,
-            inputFingerprint: operation.inputFingerprint,
             factualBlocks:
               proposal.representativeCategoryReference.structuredContent,
             profile: {
@@ -110,10 +107,11 @@ export class EditorialPreviewHandler
     result: GenerationProviderResult,
   ): Promise<void> {
     const output = EditorialPreviewOutputSchema.parse(result.output);
-    if (
-      output.inputFingerprint !== operation.inputFingerprint ||
-      !operation.profileProposalId
-    )
+    // No echoed fingerprint to compare: a result comes back on the attempt it
+    // was submitted for, and applySuccessfulResult refuses an attempt that is
+    // no longer the operation's current one. Copying 64 random characters back
+    // verified nothing the plumbing did not already guarantee.
+    if (!operation.profileProposalId)
       throw new Error('EDITORIAL_PREVIEW_OUTPUT_MISMATCH');
     const proposal = await tx.editorialProfileProposal.findUnique({
       where: { id: operation.profileProposalId },

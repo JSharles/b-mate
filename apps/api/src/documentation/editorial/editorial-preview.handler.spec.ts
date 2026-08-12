@@ -33,15 +33,13 @@ describe('EditorialPreviewHandler', () => {
       id: 'op',
       projectId: 'project',
       profileProposalId: proposalId,
-      inputFingerprint: 'a'.repeat(64),
     };
     await expect(
       handler.buildRequest(operation as never),
-    ).resolves.toMatchObject({ outputContract: 'editorial-preview-v1' });
+    ).resolves.toMatchObject({ outputContract: 'editorial-preview-v2' });
     await handler.apply(asPrismaService(prisma), operation as never, {
       output: {
-        promptVersion: 'editorial-preview-v1',
-        inputFingerprint: operation.inputFingerprint,
+        promptVersion: 'editorial-preview-v2',
         categoryKey: 'overview',
         blocks: [
           { type: 'open_point', text: 'Still TBD', openPointId: openId },
@@ -77,12 +75,10 @@ describe('EditorialPreviewHandler', () => {
         asPrismaService(prisma) as never,
         {
           profileProposalId: proposalId,
-          inputFingerprint: 'a'.repeat(64),
         } as never,
         {
           output: {
-            promptVersion: 'editorial-preview-v1',
-            inputFingerprint: 'a'.repeat(64),
+            promptVersion: 'editorial-preview-v2',
             categoryKey: 'overview',
             blocks: [],
           },

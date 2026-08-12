@@ -68,9 +68,7 @@ describe('FactualDraftHandler', () => {
     await handler.apply(asPrismaService(prisma), operation as never, {
       output: {
         promptVersion: 'factual-draft-v2',
-        inputFingerprint: operation.inputFingerprint,
         categoryKey: 'overview',
-        sourceRevisionId,
         blocks: [{ type: 'fact', text: 'Fact', informationItemIds: [itemId] }],
         changeSummary: 'No ambiguity',
         provenanceSummary: [{ label: 'Brief', itemCount: 1 }],
@@ -102,6 +100,9 @@ describe('FactualDraftHandler', () => {
     await expect(
       handler.buildRequest({
         ...operation,
+        // Our own fingerprint, not one the model echoed: this guard compares
+        // what the draft's inputs hash to now against what they hashed to when
+        // the operation was created, and it stays.
         inputFingerprint: 'b'.repeat(64),
       } as never),
     ).rejects.toThrow('INPUT_DRIFT');
@@ -149,28 +150,18 @@ describe('FactualDraftHandler', () => {
     const { prisma, handler, items, operation } = setup();
     const validOutput = {
       promptVersion: 'factual-draft-v2' as const,
-      inputFingerprint: operation.inputFingerprint,
       categoryKey: 'overview' as const,
-      sourceRevisionId,
       blocks: [
         { type: 'fact' as const, text: 'Fact', informationItemIds: [itemId] },
       ],
       changeSummary: 'No ambiguity',
       provenanceSummary: [{ label: 'Brief', itemCount: 1 }],
     };
-    await expect(
-      handler.apply(asPrismaService(prisma), operation as never, {
-        output: { ...validOutput, inputFingerprint: 'b'.repeat(64) },
-      }),
-    ).rejects.toThrow('OUTPUT_MISMATCH');
-    await expect(
-      handler.apply(asPrismaService(prisma), operation as never, {
-        output: {
-          ...validOutput,
-          sourceRevisionId: '00000000-0000-4000-8000-000000000099',
-        },
-      }),
-    ).rejects.toThrow('OUTPUT_MISMATCH');
+    // The output no longer echoes the fingerprint or the revision id back:
+    // copying 64 random characters plus a UUID verified nothing the plumbing
+    // did not already guarantee, and killed this stage twice when the model
+    // got one character wrong. What still has to hold is that the draft this
+    // result belongs to is the current one — checked below.
 
     prisma.documentationCategoryReferenceDraft.findUnique.mockResolvedValue({
       id: 'draft',

@@ -36,7 +36,6 @@ describe('ClientDerivationHandler', () => {
       categoryReferenceId: referenceId,
       profileRevisionId: profileId,
       clientReleaseId: releaseId,
-      inputFingerprint: 'a'.repeat(64),
     };
     return { prisma, registry, handler, reference, profile, operation };
   }
@@ -51,7 +50,7 @@ describe('ClientDerivationHandler', () => {
     prisma.editorialProfileRevision.findUnique.mockResolvedValue(profile);
     await expect(
       handler.buildRequest(operation as never),
-    ).resolves.toMatchObject({ outputContract: 'client-derivation-v1' });
+    ).resolves.toMatchObject({ outputContract: 'client-derivation-v2' });
     prisma.documentationCategoryReference.findUnique.mockResolvedValue(
       reference,
     );
@@ -68,8 +67,7 @@ describe('ClientDerivationHandler', () => {
     });
     await handler.apply(asPrismaService(prisma), operation as never, {
       output: {
-        promptVersion: 'client-derivation-v1',
-        inputFingerprint: operation.inputFingerprint,
+        promptVersion: 'client-derivation-v2',
         categoryKey: 'overview',
         locale: 'fr',
         blocks: [{ type: 'open_point', text: 'TBD', openPointId: openId }],
@@ -100,8 +98,7 @@ describe('ClientDerivationHandler', () => {
     });
     await handler.apply(asPrismaService(prisma), operation as never, {
       output: {
-        promptVersion: 'client-derivation-v1',
-        inputFingerprint: operation.inputFingerprint,
+        promptVersion: 'client-derivation-v2',
         categoryKey: 'overview',
         locale: 'fr',
         blocks: [{ type: 'open_point', text: 'TBD', openPointId: openId }],
@@ -130,8 +127,7 @@ describe('ClientDerivationHandler', () => {
     await expect(
       handler.apply(asPrismaService(prisma) as never, operation as never, {
         output: {
-          promptVersion: 'client-derivation-v1',
-          inputFingerprint: operation.inputFingerprint,
+          promptVersion: 'client-derivation-v2',
           categoryKey: 'overview',
           locale: 'fr',
           blocks: [],

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { DOCUMENTATION_CATEGORY_KEYS } from '../documentation-categories';
 
-export const DOCUMENT_EXTRACTION_PROMPT_VERSION = 'document-extraction-v1';
+export const DOCUMENT_EXTRACTION_PROMPT_VERSION = 'document-extraction-v2';
 
 const CategoryKeySchema = z.enum(DOCUMENTATION_CATEGORY_KEYS);
 const ObservationKindSchema = z.enum([
@@ -62,7 +62,6 @@ export const ExtractedObservationSchema = z
 export const ExtractionOutputSchema = z
   .object({
     promptVersion: z.literal(DOCUMENT_EXTRACTION_PROMPT_VERSION),
-    inputFingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
     inputChunkCount: z.number().int().nonnegative(),
     observations: z.array(ExtractedObservationSchema),
     accounting: z
@@ -99,16 +98,9 @@ export type ExtractionOutput = z.infer<typeof ExtractionOutputSchema>;
 export const DOCUMENT_EXTRACTION_JSON_SCHEMA: Record<string, unknown> = {
   type: 'object',
   additionalProperties: false,
-  required: [
-    'promptVersion',
-    'inputFingerprint',
-    'inputChunkCount',
-    'observations',
-    'accounting',
-  ],
+  required: ['promptVersion', 'inputChunkCount', 'observations', 'accounting'],
   properties: {
     promptVersion: { const: DOCUMENT_EXTRACTION_PROMPT_VERSION },
-    inputFingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' },
     inputChunkCount: { type: 'integer', minimum: 0 },
     observations: {
       type: 'array',

@@ -65,7 +65,6 @@ const ConsolidationExceptionSchema = z
 export const SourceConsolidationOutputSchema = z
   .object({
     promptVersion: z.literal(SOURCE_CONSOLIDATION_PROMPT_VERSION),
-    inputFingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
     exceptions: z.array(ConsolidationExceptionSchema),
     clarifications: z.array(ClarificationCandidateSchema),
   })
@@ -87,15 +86,9 @@ export const SourceConsolidationOutputSchema = z
 export const SOURCE_CONSOLIDATION_JSON_SCHEMA: Record<string, unknown> = {
   type: 'object',
   additionalProperties: false,
-  required: [
-    'promptVersion',
-    'inputFingerprint',
-    'exceptions',
-    'clarifications',
-  ],
+  required: ['promptVersion', 'exceptions', 'clarifications'],
   properties: {
     promptVersion: { const: SOURCE_CONSOLIDATION_PROMPT_VERSION },
-    inputFingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' },
     exceptions: {
       type: 'array',
       description:
@@ -205,7 +198,6 @@ export class SourceConsolidationHandler
         {
           kind: 'text',
           text: buildSourceConsolidationPrompt({
-            inputFingerprint: operation.inputFingerprint,
             observationCount: observations.length,
             currentItemCount: source?.currentRevision?.items.length ?? 0,
           }),
@@ -250,9 +242,10 @@ export class SourceConsolidationHandler
     result: GenerationProviderResult,
   ): Promise<void> {
     const output = SourceConsolidationOutputSchema.parse(result.output);
-    if (output.inputFingerprint !== operation.inputFingerprint) {
-      throw new Error('Consolidation output fingerprint does not match input.');
-    }
+    // No echoed fingerprint to compare: a result comes back on the attempt it
+    // was submitted for, and applySuccessfulResult refuses an attempt that is
+    // no longer the operation's current one. Copying 64 random characters back
+    // verified nothing the plumbing did not already guarantee.
     if (!operation.sourceDocumentId) {
       throw new Error('Source consolidation requires a document.');
     }

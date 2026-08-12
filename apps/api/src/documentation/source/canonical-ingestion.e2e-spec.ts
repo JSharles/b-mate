@@ -291,8 +291,7 @@ describe('canonical document ingestion (mocked service chain)', () => {
       const facts = normalized[index];
       await extraction.apply(prisma as never, operation, {
         output: {
-          promptVersion: 'document-extraction-v1',
-          inputFingerprint: operation.inputFingerprint,
+          promptVersion: 'document-extraction-v2',
           inputChunkCount: 1,
           observations: facts.map(
             ([kind, content, category, excerpt], sequence) => ({
@@ -456,7 +455,6 @@ describe('canonical document ingestion (mocked service chain)', () => {
       await consolidation.apply(prisma as never, operation, {
         output: {
           promptVersion: 'source-consolidation-v3',
-          inputFingerprint: operation.inputFingerprint,
           exceptions,
           clarifications: [],
         },

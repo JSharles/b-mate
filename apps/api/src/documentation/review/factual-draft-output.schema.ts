@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const FACTUAL_DRAFT_PROMPT_VERSION = 'factual-draft-v2';
-export const FACTUAL_DRAFT_OUTPUT_CONTRACT = 'factual-draft-v1';
+export const FACTUAL_DRAFT_OUTPUT_CONTRACT = 'factual-draft-v2';
 
 export const FactualDraftBlockSchema = z
   .object({
@@ -32,9 +32,7 @@ export const FactualDraftBlockSchema = z
 export const FactualDraftOutputSchema = z
   .object({
     promptVersion: z.literal(FACTUAL_DRAFT_PROMPT_VERSION),
-    inputFingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
     categoryKey: z.enum(['overview', 'how_it_works', 'planning', 'other']),
-    sourceRevisionId: z.uuid(),
     blocks: z.array(FactualDraftBlockSchema),
     changeSummary: z.string().trim().min(1).max(2_000),
     provenanceSummary: z.array(
@@ -53,18 +51,14 @@ export const FACTUAL_DRAFT_JSON_SCHEMA: Record<string, unknown> = {
   additionalProperties: false,
   required: [
     'promptVersion',
-    'inputFingerprint',
     'categoryKey',
-    'sourceRevisionId',
     'blocks',
     'changeSummary',
     'provenanceSummary',
   ],
   properties: {
     promptVersion: { const: FACTUAL_DRAFT_PROMPT_VERSION },
-    inputFingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' },
     categoryKey: { enum: ['overview', 'how_it_works', 'planning', 'other'] },
-    sourceRevisionId: { type: 'string', format: 'uuid' },
     blocks: {
       type: 'array',
       items: {

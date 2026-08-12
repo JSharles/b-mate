@@ -17,7 +17,6 @@ import {
 export const ClientDerivationOutputSchema = z
   .object({
     promptVersion: z.literal(CLIENT_DERIVATION_PROMPT_VERSION),
-    inputFingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
     categoryKey: z.enum(['overview', 'how_it_works', 'planning', 'other']),
     locale: z.string().min(2).max(16),
     blocks: z.array(
@@ -35,16 +34,9 @@ export const ClientDerivationOutputSchema = z
 const CLIENT_DERIVATION_JSON_SCHEMA: Record<string, unknown> = {
   type: 'object',
   additionalProperties: false,
-  required: [
-    'promptVersion',
-    'inputFingerprint',
-    'categoryKey',
-    'locale',
-    'blocks',
-  ],
+  required: ['promptVersion', 'categoryKey', 'locale', 'blocks'],
   properties: {
     promptVersion: { const: CLIENT_DERIVATION_PROMPT_VERSION },
-    inputFingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' },
     categoryKey: { enum: ['overview', 'how_it_works', 'planning', 'other'] },
     locale: { type: 'string' },
     blocks: {
@@ -97,7 +89,6 @@ export class ClientDerivationHandler
           text: buildClientDerivationPrompt({
             categoryKey: reference.categoryKey,
             locale: 'fr',
-            inputFingerprint: operation.inputFingerprint,
             profile: {
               length: profile.length,
               pedagogy: profile.pedagogy,
@@ -120,8 +111,11 @@ export class ClientDerivationHandler
     result: GenerationProviderResult,
   ): Promise<void> {
     const output = ClientDerivationOutputSchema.parse(result.output);
+    // No echoed fingerprint to compare: a result comes back on the attempt it
+    // was submitted for, and applySuccessfulResult refuses an attempt that is
+    // no longer the operation's current one. Copying 64 random characters back
+    // verified nothing the plumbing did not already guarantee.
     if (
-      output.inputFingerprint !== operation.inputFingerprint ||
       !operation.categoryReferenceId ||
       !operation.profileRevisionId ||
       !operation.clientReleaseId

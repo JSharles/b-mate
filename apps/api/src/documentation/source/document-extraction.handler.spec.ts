@@ -18,7 +18,6 @@ const operation = {
   projectId,
   type: 'document_extraction',
   sourceDocumentId: documentId,
-  inputFingerprint: 'a'.repeat(64),
   policySnapshot: { version: 'extract-policy', routes: [] },
 } as unknown as GenerationOperation;
 
@@ -45,8 +44,7 @@ const document = {
 } as SourceDocument;
 
 const output = {
-  promptVersion: 'document-extraction-v1',
-  inputFingerprint: 'a'.repeat(64),
+  promptVersion: 'document-extraction-v2',
   inputChunkCount: 0,
   observations: [
     {
@@ -142,7 +140,7 @@ describe('DocumentExtractionHandler', () => {
     });
     expect(storage.get).toHaveBeenCalledWith(document.storedObjectKey);
     expect(request).toMatchObject({
-      outputContract: 'diaphane.document-extraction.v1',
+      outputContract: 'diaphane.document-extraction.v2',
       outputSchema: expect.any(Object),
     });
   });
@@ -186,15 +184,6 @@ describe('DocumentExtractionHandler', () => {
 
     expect(prisma.documentObservation.create).not.toHaveBeenCalled();
     expect(prisma.generationOperation.upsert).not.toHaveBeenCalled();
-  });
-
-  it('rejects provider output for a different fingerprint before mutating state', async () => {
-    await expect(
-      handler.apply(prisma as never, operation, {
-        output: { ...output, inputFingerprint: 'b'.repeat(64) },
-      }),
-    ).rejects.toThrow('fingerprint');
-    expect(prisma.sourceDocument.updateMany).not.toHaveBeenCalled();
   });
 
   it('marks the document failed when extraction exhausts its routes', async () => {

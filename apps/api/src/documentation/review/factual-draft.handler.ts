@@ -107,11 +107,11 @@ export class FactualDraftHandler implements GenerationHandler, OnModuleInit {
     result: GenerationProviderResult,
   ): Promise<void> {
     const output = FactualDraftOutputSchema.parse(result.output);
-    if (
-      output.inputFingerprint !== operation.inputFingerprint ||
-      output.sourceRevisionId !== operation.sourceRevisionId
-    )
-      throw new Error('FACTUAL_DRAFT_OUTPUT_MISMATCH');
+    // No echoed fingerprint to compare: a result comes back on the attempt it
+    // was submitted for, and applySuccessfulResult refuses an attempt that is
+    // no longer the operation's current one. Asking the model to copy 64 random
+    // characters plus a UUID verified nothing and killed this stage twice when
+    // it got one of them wrong.
     const draft = await tx.documentationCategoryReferenceDraft.findUnique({
       where: { generationOperationId: operation.id },
       include: {

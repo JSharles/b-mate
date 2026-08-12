@@ -5,9 +5,7 @@ import {
 const id = '00000000-0000-4000-8000-000000000001';
 const base = {
   promptVersion: 'factual-draft-v2' as const,
-  inputFingerprint: 'a'.repeat(64),
   categoryKey: 'overview' as const,
-  sourceRevisionId: id,
   blocks: [{ type: 'fact' as const, text: 'Fact', informationItemIds: [id] }],
   changeSummary: 'Added fact',
   provenanceSummary: [{ label: 'Brief', itemCount: 1 }],

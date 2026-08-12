@@ -105,7 +105,6 @@ export class DocumentExtractionHandler
         {
           kind: 'text',
           text: buildDocumentExtractionPrompt({
-            inputFingerprint: operation.inputFingerprint,
             inputChunkCount: normalized.chunks.length,
           }),
         },
@@ -124,9 +123,10 @@ export class DocumentExtractionHandler
     result: GenerationProviderResult,
   ): Promise<void> {
     const output = ExtractionOutputSchema.parse(result.output);
-    if (output.inputFingerprint !== operation.inputFingerprint) {
-      throw new Error('Extraction output fingerprint does not match input.');
-    }
+    // No echoed fingerprint to compare: a result comes back on the attempt it
+    // was submitted for, and applySuccessfulResult refuses an attempt that is
+    // no longer the operation's current one. Copying 64 random characters back
+    // verified nothing the plumbing did not already guarantee.
     if (!operation.sourceDocumentId) {
       throw new Error('Document extraction requires a source document.');
     }
