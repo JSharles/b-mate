@@ -16,6 +16,13 @@ import {
 // still to draft.
 const STRANDED_CATEGORY_SWEEP_MS = 30_000;
 
+// How long a category must sit untouched before the sweep treats it as
+// stranded rather than as work in progress. Accepting a draft frees the slot
+// and records the revision as reviewed in the same breath; without this delay
+// the sweep read the state in between and queued a second draft of something
+// that had just been approved — a category that could never be finished.
+const STRANDED_CATEGORY_AFTER_MS = 120_000;
+
 @Injectable()
 export class CategoryProjectionService {
   private readonly logger = new Logger(CategoryProjectionService.name);
@@ -32,8 +39,13 @@ export class CategoryProjectionService {
   // contributor has been told about, not something to re-run every half minute.
   @Interval(STRANDED_CATEGORY_SWEEP_MS)
   async recoverStrandedCategories(): Promise<void> {
+    const settledBefore = new Date(Date.now() - STRANDED_CATEGORY_AFTER_MS);
     const stranded = await this.prisma.categoryProjectionState.findMany({
-      where: { targetSourceRevisionId: { not: null }, activeDraftId: null },
+      where: {
+        targetSourceRevisionId: { not: null },
+        activeDraftId: null,
+        updatedAt: { lt: settledBefore },
+      },
     });
     for (const state of stranded) {
       const target = state.targetSourceRevisionId;

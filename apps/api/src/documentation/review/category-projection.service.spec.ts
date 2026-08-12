@@ -283,4 +283,27 @@ describe('CategoryProjectionService', () => {
 
     expect(generation.createInTransaction).not.toHaveBeenCalled();
   });
+  // Accepting a draft frees the slot and records the revision as reviewed in
+  // the same breath. Reading the state in between, the sweep queued a second
+  // draft of something that had just been approved — a category that could
+  // never be finished.
+  it('leaves a category alone until it has settled', async () => {
+    const prisma = createPrismaMock();
+    const generation = { createInTransaction: jest.fn() };
+    prisma.categoryProjectionState.findMany.mockResolvedValue([]);
+    const service = new CategoryProjectionService(
+      asPrismaService(prisma),
+      generation as unknown as GenerationService,
+    );
+
+    await service.recoverStrandedCategories();
+
+    expect(prisma.categoryProjectionState.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          updatedAt: { lt: expect.any(Date) },
+        }),
+      }),
+    );
+  });
 });
