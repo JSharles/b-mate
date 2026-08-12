@@ -189,6 +189,51 @@ export class CategoryProjectionService {
     );
   }
 
+  // Retrying a drafting operation directly produced an operation with no draft
+  // behind it, which failed NOT_CURRENT on every attempt and then sat in
+  // needs_attention for good — a button that could only ever make things worse.
+  // A draft belongs to its category, so a retry is a fresh attempt at the
+  // category, not a re-run of a dead operation.
+  async retryDraft(
+    projectId: string,
+    operationId: string,
+  ): Promise<string | null> {
+    const draft =
+      await this.prisma.documentationCategoryReferenceDraft.findFirst({
+        where: { projectId, generationOperationId: operationId },
+      });
+    if (!draft) return null;
+
+    // Superseded rather than left failed: the attempt is being replaced, and a
+    // revision carrying a failed draft is one the sweep deliberately leaves
+    // alone.
+    await this.prisma.documentationCategoryReferenceDraft.updateMany({
+      where: { id: draft.id, status: { in: ['failed', 'discarded'] } },
+      data: { status: 'superseded', version: { increment: 1 } },
+    });
+    await this.prisma.categoryProjectionState.updateMany({
+      where: {
+        projectId,
+        categoryKey: draft.categoryKey,
+        activeDraftId: draft.id,
+      },
+      data: { activeDraftId: null, version: { increment: 1 } },
+    });
+
+    const state = await this.prisma.categoryProjectionState.findUnique({
+      where: {
+        projectId_categoryKey: { projectId, categoryKey: draft.categoryKey },
+      },
+    });
+    if (!state?.targetSourceRevisionId) return null;
+    return this.queue(
+      projectId,
+      draft.categoryKey,
+      state.targetSourceRevisionId,
+      'catch_up',
+    );
+  }
+
   async catchUp(
     projectId: string,
     categoryKey: DocumentationCategoryKey,
