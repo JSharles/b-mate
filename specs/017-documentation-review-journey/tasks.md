@@ -30,8 +30,8 @@ The plan's slices ship in order, and **nothing existing is removed until its rep
 
 **Purpose**: Nothing to scaffold — the monorepo, both apps and the shared package already exist. This phase only establishes the branch and the shared contract file the rest of the work imports.
 
-- [ ] T001 Create `packages/schemas/src/documentation-sections.ts` exporting empty placeholder schemas, and re-export it from `packages/schemas/src/index.ts`, so both apps can import from one place from the first task onward
-- [ ] T002 [P] Add the feature's translated string namespaces to `apps/web/messages/fr.json` and `apps/web/messages/en.json` under `Projects.Documentation.Sections`, keeping both catalogues in step from the start (`pnpm i18n:orphans` fails on divergence)
+- [x] T001 Create `packages/schemas/src/documentation-sections.ts` and re-export it from `packages/schemas/src/index.ts`, so both apps can import from one place from the first task onward. Done together with T006/T007 rather than as a placeholder: the file is the same file, and an empty version would have had to be rewritten before anything could import it
+- [x] ~~T002 Add the feature's translated string namespaces to `apps/web/messages/fr.json` and `apps/web/messages/en.json`~~ **Dropped as written.** `scripts/check-i18n-orphans.mjs` fails on any key with no call site, not only on divergence between locales — adding the namespaces before their components exist turns the check red for the whole of phases 2–5. Translated strings are added with the component that reads them, in both catalogues in the same commit
 
 ---
 
@@ -41,11 +41,11 @@ The plan's slices ship in order, and **nothing existing is removed until its rep
 
 **⚠️ CRITICAL**: No user story below can start until this phase is done.
 
-- [ ] T003 Add `ClientSection` to `apps/api/prisma/schema.prisma` per [data-model.md](./data-model.md): project, name, instructions, the four editorial dimensions, sortOrder, refreshNeeded, archivedAt, createdByUserId, version
-- [ ] T004 Add `SectionProposal` and `SectionQuestion` to `apps/api/prisma/schema.prisma`, with the unique constraint on `generationOperationId` and the status enum from data-model.md
-- [ ] T005 Generate and apply the additive migration with `pnpm --filter api prisma:migrate`, then `pnpm --filter api prisma:generate`. Nothing is dropped in this migration
-- [ ] T006 [P] Define the section, proposal and question contracts in `packages/schemas/src/documentation-sections.ts` with their Zod schemas and inferred types
-- [ ] T007 [P] Write `packages/schemas/src/documentation-sections.test.ts` covering the contracts' accepted and rejected shapes
+- [x] T003 Add `ClientSection` to `apps/api/prisma/schema.prisma` per [data-model.md](./data-model.md): project, name, instructions, the four editorial dimensions, sortOrder, refreshNeeded, archivedAt, createdByUserId, version
+- [x] T004 Add `SectionProposal` and `SectionQuestion` to `apps/api/prisma/schema.prisma`, with the unique constraint on `generationOperationId` and the status enum from data-model.md. Added beyond the task: `ClientSection.activeProposalId` (unique) so FR-013's one-at-a-time rule is a database constraint rather than a convention, following `CategoryProjectionState.activeDraftId`; `SectionQuestionItem` as a join table rather than an array column, following `ClarificationItem`; a `SectionProposalOutcome` enum so FR-011's "nothing matched" is distinguishable from "still composing"; and the `section_composition` value on `GenerationOperationType`, so the models and the operation that fills them arrive in one migration
+- [x] T005 Generate and apply the additive migration with `pnpm --filter api prisma:migrate`, then `pnpm --filter api prisma:generate`. Nothing is dropped in this migration
+- [x] T006 [P] Define the section, proposal and question contracts in `packages/schemas/src/documentation-sections.ts` with their Zod schemas and inferred types
+- [x] T007 [P] Write `packages/schemas/src/documentation-sections.test.ts` covering the contracts' accepted and rejected shapes
 - [ ] T008 Create `apps/api/src/documentation/sections/client-section.service.ts` with create, list, update, archive and reorder, each enforcing contributor access through `ProjectAccessService`
 - [ ] T009 Write `apps/api/src/documentation/sections/client-section.service.spec.ts`, including that a caller without project access gets the same response as one asking about a project that does not exist (constitution Principle V)
 - [ ] T010 Create `apps/api/src/documentation/controllers/sections.controller.ts` exposing `POST/GET/PATCH/DELETE /sections` per [contracts/sections-api.md](./contracts/sections-api.md), and register it in the documentation module

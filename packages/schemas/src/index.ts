@@ -9,6 +9,7 @@ export * from "./documentation-common";
 export * from "./documentation-source";
 export * from "./documentation-clarification";
 export * from "./documentation-review";
+export * from "./documentation-sections";
 export * from "./client-release";
 export * from "./editorial-profile";
 export * from "./documentation-workspace";

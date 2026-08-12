@@ -272,6 +272,11 @@ enum GenerationOperationType {
   editorial_preview
   client_derivation
   output_validation
+  // Composes one author-defined section from the canonical source
+  // (specs/017-documentation-review-journey). Added here rather than in a
+  // later migration so the section models and the operation that fills them
+  // arrive together.
+  section_composition
 }
 
 enum GenerationOperationStatus {
@@ -362,6 +367,8 @@ model User {
   acceptedCategoryReferences DocumentationCategoryReference[] @relation("CategoryReferenceAcceptor")
   confirmedEditorialProfiles EditorialProfileRevision[]       @relation("EditorialProfileConfirmer")
   editorialProfileProposals  EditorialProfileProposal[]       @relation("EditorialProposalCreator")
+  authoredClientSections     ClientSection[]                  @relation("ClientSectionAuthor")
+  approvedSectionProposals   SectionProposal[]                @relation("SectionProposalApprover")
 
   @@map("users")
 }
@@ -424,6 +431,7 @@ model Project {
   clientContentReleases           ClientContentRelease[]
   clientPublication               ProjectClientPublication?
   generationOperations            GenerationOperation[]
+  clientSections                  ClientSection[]
 
   @@map("projects")
 }
@@ -796,24 +804,23 @@ model DocumentaryResetItem {
 }
 
 model ProjectSource {
-  id                String          @id @default(uuid()) @db.Uuid
-  projectId         String          @unique @map("project_id") @db.Uuid
-  currentRevisionId String?         @unique @map("current_revision_id") @db.Uuid
-  nextSequence      Int             @default(1) @map("next_sequence")
-  lockVersion       Int             @default(1) @map("lock_version")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @updatedAt @map("updated_at")
+  id                String   @id @default(uuid()) @db.Uuid
+  projectId         String   @unique @map("project_id") @db.Uuid
+  currentRevisionId String?  @unique @map("current_revision_id") @db.Uuid
+  nextSequence      Int      @default(1) @map("next_sequence")
+  lockVersion       Int      @default(1) @map("lock_version")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  project           Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  currentRevision   SourceRevision?          @relation("CurrentSourceRevision", fields: [currentRevisionId], references: [id], onDelete: SetNull)
-  revisions         SourceRevision[]         @relation("SourceRevisions")
-  informationItems  InformationItem[]
-  assertions        ContributorAssertion[]
-  clarifications    Clarification[]
+  project          Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  currentRevision  SourceRevision?        @relation("CurrentSourceRevision", fields: [currentRevisionId], references: [id], onDelete: SetNull)
+  revisions        SourceRevision[]       @relation("SourceRevisions")
+  informationItems InformationItem[]
+  assertions       ContributorAssertion[]
+  clarifications   Clarification[]
 
   @@map("project_sources")
 }
-
 
 model SourceRevision {
   id                     String                @id @default(uuid()) @db.Uuid
@@ -851,6 +858,7 @@ model SourceRevision {
   categoryReferences         DocumentationCategoryReference[]
   generationBaseOperations   GenerationOperation[]                 @relation("GenerationBaseRevision")
   generationSourceOperations GenerationOperation[]                 @relation("GenerationSourceRevision")
+  sectionProposals           SectionProposal[]                     @relation("SectionProposalRevision")
 
   @@unique([projectSourceId, sequence])
   @@index([projectSourceId, createdAt])
@@ -875,12 +883,13 @@ model InformationItem {
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
-  projectSource      ProjectSource          @relation(fields: [projectSourceId], references: [id], onDelete: Cascade)
-  createdInRevision  SourceRevision         @relation("InformationItemCreation", fields: [createdInRevisionId], references: [id], onDelete: Restrict)
-  revisionItems      SourceRevisionItem[]
-  revisionChanges    SourceRevisionChange[]
-  assertions         ContributorAssertion[]
-  clarificationItems ClarificationItem[]
+  projectSource        ProjectSource          @relation(fields: [projectSourceId], references: [id], onDelete: Cascade)
+  createdInRevision    SourceRevision         @relation("InformationItemCreation", fields: [createdInRevisionId], references: [id], onDelete: Restrict)
+  revisionItems        SourceRevisionItem[]
+  revisionChanges      SourceRevisionChange[]
+  assertions           ContributorAssertion[]
+  clarificationItems   ClarificationItem[]
+  sectionQuestionItems SectionQuestionItem[]
 
   @@index([projectSourceId])
   @@map("information_items")
@@ -1024,15 +1033,16 @@ model ContributorAssertion {
   appliedInRevisionId     String?                  @map("applied_in_revision_id") @db.Uuid
   createdAt               DateTime                 @default(now()) @map("created_at")
 
-  projectSource         ProjectSource             @relation(fields: [projectSourceId], references: [id], onDelete: Cascade)
-  authorUser            User                      @relation("ContributorAssertionAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
-  targetInformationItem InformationItem?          @relation(fields: [targetInformationItemId], references: [id], onDelete: Restrict)
-  appliedInRevision     SourceRevision?           @relation("AssertionAppliedRevision", fields: [appliedInRevisionId], references: [id], onDelete: Restrict)
-  triggeredRevisions    SourceRevision[]          @relation("RevisionTriggerAssertion")
-  changeCauses          SourceRevisionChange[]    @relation("ChangeCauseAssertion")
-  provenanceLinks       ProvenanceLink[]
-  clarificationEvidence ClarificationEvidence[]
-  answerResolutions     ClarificationResolution[]
+  projectSource            ProjectSource             @relation(fields: [projectSourceId], references: [id], onDelete: Cascade)
+  authorUser               User                      @relation("ContributorAssertionAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  targetInformationItem    InformationItem?          @relation(fields: [targetInformationItemId], references: [id], onDelete: Restrict)
+  appliedInRevision        SourceRevision?           @relation("AssertionAppliedRevision", fields: [appliedInRevisionId], references: [id], onDelete: Restrict)
+  triggeredRevisions       SourceRevision[]          @relation("RevisionTriggerAssertion")
+  changeCauses             SourceRevisionChange[]    @relation("ChangeCauseAssertion")
+  provenanceLinks          ProvenanceLink[]
+  clarificationEvidence    ClarificationEvidence[]
+  answerResolutions        ClarificationResolution[]
+  answeredSectionQuestions SectionQuestion[]         @relation("SectionQuestionAnswer")
 
   @@index([projectSourceId, createdAt])
   @@map("contributor_assertions")
@@ -1213,6 +1223,135 @@ model DocumentationCategoryReference {
   @@map("documentation_category_references")
 }
 
+// ─── Author-defined client sections (specs/017-documentation-review-journey) ───
+//
+// A section is a heading its contributor created, not one the product chose.
+// Nothing below references DocumentationCategoryKey: sections are added beside
+// the four fixed categories and the two run in parallel until every project has
+// migrated (plan.md, Slice 4). Removing the categories is that slice's job, not
+// this one's.
+
+enum SectionProposalStatus {
+  composing
+  pending_review
+  approved
+  superseded
+  failed
+}
+
+// FR-011: a composition that matched nothing says so. Without this the caller
+// cannot tell "found nothing" from "still composing", and both look like an
+// empty block list.
+enum SectionProposalOutcome {
+  composed
+  nothing_matched
+}
+
+model ClientSection {
+  id                   String                     @id @default(uuid()) @db.Uuid
+  projectId            String                     @map("project_id") @db.Uuid
+  // Contributor-authored and shown to the client as-is — never a translation
+  // key, because the system cannot translate what it did not write
+  // (research Decision 7).
+  name                 String                     @db.VarChar(120)
+  // What composition should look for in the canonical source. The field the
+  // whole feature's output quality rests on.
+  instructions         String
+  length               EditorialLength
+  pedagogy             EditorialPedagogy
+  technicalFamiliarity ClientTechnicalFamiliarity @map("technical_familiarity")
+  tone                 EditorialTone
+  sortOrder            Int                        @map("sort_order")
+  // True from creation: a section that has never composed needs to.
+  refreshNeeded        Boolean                    @default(true) @map("refresh_needed")
+  // Soft delete. A deleted section must stop being readable by the client while
+  // the proposals and provenance that fed it stay explicable, so every read path
+  // filters on this rather than the row disappearing (research Decision 1).
+  archivedAt           DateTime?                  @map("archived_at")
+  // FR-013 made structural rather than conventional: at most one non-terminal
+  // proposal per section, guaranteed by the unique constraint instead of by a
+  // check the next caller might forget. Same procedure as
+  // CategoryProjectionState.activeDraftId.
+  activeProposalId     String?                    @unique @map("active_proposal_id") @db.Uuid
+  createdByUserId      String                     @map("created_by_user_id") @db.Uuid
+  version              Int                        @default(1)
+  createdAt            DateTime                   @default(now()) @map("created_at")
+  updatedAt            DateTime                   @updatedAt @map("updated_at")
+
+  project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdByUser  User              @relation("ClientSectionAuthor", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  activeProposal SectionProposal?  @relation("SectionActiveProposal", fields: [activeProposalId], references: [id], onDelete: SetNull)
+  proposals      SectionProposal[] @relation("SectionProposals")
+
+  @@index([projectId, archivedAt, sortOrder])
+  @@map("client_sections")
+}
+
+model SectionProposal {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  sectionId             String                  @map("section_id") @db.Uuid
+  // The canonical head this was composed from, so a refresh can tell whether
+  // the source has moved since.
+  sourceRevisionId      String                  @map("source_revision_id") @db.Uuid
+  generationOperationId String                  @unique @map("generation_operation_id") @db.Uuid
+  status                SectionProposalStatus   @default(composing)
+  outcome               SectionProposalOutcome?
+  structuredContent     Json?                   @map("structured_content")
+  changeSummary         String?                 @map("change_summary")
+  provenanceSummary     Json?                   @map("provenance_summary")
+  failureCode           String?                 @map("failure_code") @db.VarChar(128)
+  version               Int                     @default(1)
+  approvedAt            DateTime?               @map("approved_at")
+  approvedByUserId      String?                 @map("approved_by_user_id") @db.Uuid
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
+
+  section             ClientSection       @relation("SectionProposals", fields: [sectionId], references: [id], onDelete: Cascade)
+  activeForSection    ClientSection?      @relation("SectionActiveProposal")
+  sourceRevision      SourceRevision      @relation("SectionProposalRevision", fields: [sourceRevisionId], references: [id], onDelete: Restrict)
+  generationOperation GenerationOperation @relation("SectionProposalGenerationOperation", fields: [generationOperationId], references: [id], onDelete: Restrict)
+  approvedByUser      User?               @relation("SectionProposalApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  questions           SectionQuestion[]
+
+  @@index([sectionId, status, createdAt])
+  @@map("section_proposals")
+}
+
+// FR-010: what composition could not resolve is stored beside the proposal, not
+// inside its content, so the contributor reads the two separately.
+model SectionQuestion {
+  id                    String   @id @default(uuid()) @db.Uuid
+  proposalId            String   @map("proposal_id") @db.Uuid
+  question              String
+  impactExplanation     String   @map("impact_explanation")
+  // Null until answered. An unanswered question never blocks publication — the
+  // section publishes with the point explicitly marked open.
+  answeredByAssertionId String?  @map("answered_by_assertion_id") @db.Uuid
+  sortOrder             Int      @map("sort_order")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  proposal            SectionProposal       @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  answeredByAssertion ContributorAssertion? @relation("SectionQuestionAnswer", fields: [answeredByAssertionId], references: [id], onDelete: SetNull)
+  items               SectionQuestionItem[]
+
+  @@index([proposalId, sortOrder])
+  @@map("section_questions")
+}
+
+// The statements a question concerns. A join table rather than an array column,
+// following ClarificationItem — it keeps the foreign key real, so a question
+// cannot outlive the statement it is about without the database noticing.
+model SectionQuestionItem {
+  questionId        String @map("question_id") @db.Uuid
+  informationItemId String @map("information_item_id") @db.Uuid
+
+  question        SectionQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  informationItem InformationItem @relation(fields: [informationItemId], references: [id], onDelete: Restrict)
+
+  @@id([questionId, informationItemId])
+  @@map("section_question_items")
+}
+
 model ProjectEditorialSettings {
   projectId                String   @id @map("project_id") @db.Uuid
   currentProfileRevisionId String?  @unique @map("current_profile_revision_id") @db.Uuid
@@ -1388,52 +1527,53 @@ model ProjectClientPublication {
 }
 
 model GenerationOperation {
-  id                       String                    @id @default(uuid()) @db.Uuid
-  projectId                String                    @map("project_id") @db.Uuid
-  type                     GenerationOperationType
-  deduplicationKey         String                    @unique @map("deduplication_key")
-  inputFingerprint         String                    @map("input_fingerprint") @db.VarChar(64)
-  sourceDocumentId         String?                   @map("source_document_id") @db.Uuid
-  baseSourceRevisionId     String?                   @map("base_source_revision_id") @db.Uuid
-  sourceRevisionId         String?                   @map("source_revision_id") @db.Uuid
-  categoryReferenceId      String?                   @map("category_reference_id") @db.Uuid
-  profileProposalId        String?                   @map("profile_proposal_id") @db.Uuid
-  profileRevisionId        String?                   @map("profile_revision_id") @db.Uuid
-  clientReleaseId          String?                   @map("client_release_id") @db.Uuid
-  clientCategoryContentId  String?                   @map("client_category_content_id") @db.Uuid
-  promptVersion            String                    @map("prompt_version") @db.VarChar(64)
-  outputContractVersion    String                    @map("output_contract_version") @db.VarChar(64)
-  policySnapshot           Json                      @map("policy_snapshot")
-  status                   GenerationOperationStatus @default(queued)
-  currentRouteIndex        Int                       @default(0) @map("current_route_index")
-  currentAttemptId         String?                   @unique @map("current_attempt_id") @db.Uuid
-  runAfter                 DateTime                  @default(now()) @map("run_after")
-  leaseOwner               String?                   @map("lease_owner") @db.VarChar(128)
-  leaseExpiresAt           DateTime?                 @map("lease_expires_at")
-  terminalFailureCode      String?                   @map("terminal_failure_code") @db.VarChar(128)
-  replacesOperationId      String?                   @map("replaces_operation_id") @db.Uuid
-  cancelledAt              DateTime?                 @map("cancelled_at")
-  supersededAt             DateTime?                 @map("superseded_at")
-  completedAt              DateTime?                 @map("completed_at")
-  createdAt                DateTime                  @default(now()) @map("created_at")
-  updatedAt                DateTime                  @updatedAt @map("updated_at")
+  id                      String                    @id @default(uuid()) @db.Uuid
+  projectId               String                    @map("project_id") @db.Uuid
+  type                    GenerationOperationType
+  deduplicationKey        String                    @unique @map("deduplication_key")
+  inputFingerprint        String                    @map("input_fingerprint") @db.VarChar(64)
+  sourceDocumentId        String?                   @map("source_document_id") @db.Uuid
+  baseSourceRevisionId    String?                   @map("base_source_revision_id") @db.Uuid
+  sourceRevisionId        String?                   @map("source_revision_id") @db.Uuid
+  categoryReferenceId     String?                   @map("category_reference_id") @db.Uuid
+  profileProposalId       String?                   @map("profile_proposal_id") @db.Uuid
+  profileRevisionId       String?                   @map("profile_revision_id") @db.Uuid
+  clientReleaseId         String?                   @map("client_release_id") @db.Uuid
+  clientCategoryContentId String?                   @map("client_category_content_id") @db.Uuid
+  promptVersion           String                    @map("prompt_version") @db.VarChar(64)
+  outputContractVersion   String                    @map("output_contract_version") @db.VarChar(64)
+  policySnapshot          Json                      @map("policy_snapshot")
+  status                  GenerationOperationStatus @default(queued)
+  currentRouteIndex       Int                       @default(0) @map("current_route_index")
+  currentAttemptId        String?                   @unique @map("current_attempt_id") @db.Uuid
+  runAfter                DateTime                  @default(now()) @map("run_after")
+  leaseOwner              String?                   @map("lease_owner") @db.VarChar(128)
+  leaseExpiresAt          DateTime?                 @map("lease_expires_at")
+  terminalFailureCode     String?                   @map("terminal_failure_code") @db.VarChar(128)
+  replacesOperationId     String?                   @map("replaces_operation_id") @db.Uuid
+  cancelledAt             DateTime?                 @map("cancelled_at")
+  supersededAt            DateTime?                 @map("superseded_at")
+  completedAt             DateTime?                 @map("completed_at")
+  createdAt               DateTime                  @default(now()) @map("created_at")
+  updatedAt               DateTime                  @updatedAt @map("updated_at")
 
-  project                Project                              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sourceDocument         SourceDocument?                      @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
-  baseSourceRevision     SourceRevision?                      @relation("GenerationBaseRevision", fields: [baseSourceRevisionId], references: [id], onDelete: Restrict)
-  sourceRevision         SourceRevision?                      @relation("GenerationSourceRevision", fields: [sourceRevisionId], references: [id], onDelete: Restrict)
-  categoryReference      DocumentationCategoryReference?      @relation("GenerationCategoryReference", fields: [categoryReferenceId], references: [id], onDelete: Restrict)
-  profileProposal        EditorialProfileProposal?            @relation("GenerationProfileProposal", fields: [profileProposalId], references: [id], onDelete: Restrict)
-  profileRevision        EditorialProfileRevision?            @relation("GenerationProfileRevision", fields: [profileRevisionId], references: [id], onDelete: Restrict)
-  clientRelease          ClientContentRelease?                @relation("GenerationClientRelease", fields: [clientReleaseId], references: [id], onDelete: Restrict)
-  clientCategoryContent  ClientCategoryContent?               @relation("GenerationClientContent", fields: [clientCategoryContentId], references: [id], onDelete: Restrict)
-  currentAttempt         GenerationAttempt?                   @relation("CurrentGenerationAttempt", fields: [currentAttemptId], references: [id], onDelete: SetNull)
-  attempts               GenerationAttempt[]                  @relation("GenerationAttempts")
-  replacesOperation      GenerationOperation?                 @relation("GenerationReplacement", fields: [replacesOperationId], references: [id], onDelete: Restrict)
-  replacementOperations  GenerationOperation[]                @relation("GenerationReplacement")
-  categoryDraft          DocumentationCategoryReferenceDraft? @relation("CategoryDraftGenerationOperation")
-  editorialPreview       EditorialPreview?                    @relation("EditorialPreviewGenerationOperation")
-  validatedContent       ClientCategoryContent?               @relation("ContentValidationOperation")
+  project               Project                              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceDocument        SourceDocument?                      @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  baseSourceRevision    SourceRevision?                      @relation("GenerationBaseRevision", fields: [baseSourceRevisionId], references: [id], onDelete: Restrict)
+  sourceRevision        SourceRevision?                      @relation("GenerationSourceRevision", fields: [sourceRevisionId], references: [id], onDelete: Restrict)
+  categoryReference     DocumentationCategoryReference?      @relation("GenerationCategoryReference", fields: [categoryReferenceId], references: [id], onDelete: Restrict)
+  profileProposal       EditorialProfileProposal?            @relation("GenerationProfileProposal", fields: [profileProposalId], references: [id], onDelete: Restrict)
+  profileRevision       EditorialProfileRevision?            @relation("GenerationProfileRevision", fields: [profileRevisionId], references: [id], onDelete: Restrict)
+  clientRelease         ClientContentRelease?                @relation("GenerationClientRelease", fields: [clientReleaseId], references: [id], onDelete: Restrict)
+  clientCategoryContent ClientCategoryContent?               @relation("GenerationClientContent", fields: [clientCategoryContentId], references: [id], onDelete: Restrict)
+  currentAttempt        GenerationAttempt?                   @relation("CurrentGenerationAttempt", fields: [currentAttemptId], references: [id], onDelete: SetNull)
+  attempts              GenerationAttempt[]                  @relation("GenerationAttempts")
+  replacesOperation     GenerationOperation?                 @relation("GenerationReplacement", fields: [replacesOperationId], references: [id], onDelete: Restrict)
+  replacementOperations GenerationOperation[]                @relation("GenerationReplacement")
+  categoryDraft         DocumentationCategoryReferenceDraft? @relation("CategoryDraftGenerationOperation")
+  editorialPreview      EditorialPreview?                    @relation("EditorialPreviewGenerationOperation")
+  validatedContent      ClientCategoryContent?               @relation("ContentValidationOperation")
+  sectionProposal       SectionProposal?                     @relation("SectionProposalGenerationOperation")
 
   @@index([status, runAfter, leaseExpiresAt])
   @@index([projectId, type, createdAt])
