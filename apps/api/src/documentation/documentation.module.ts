@@ -17,6 +17,8 @@ import { ClarificationService } from './source/clarification.service';
 import { ClarificationsController } from './controllers/clarifications.controller';
 import { SectionsController } from './controllers/sections.controller';
 import { ClientSectionService } from './sections/client-section.service';
+import { SectionCompositionHandler } from './composition/section-composition.handler';
+import { SectionProposalService } from './composition/section-proposal.service';
 import { CategoryReviewController } from './controllers/category-review.controller';
 import { ClientContentController } from './controllers/client-content.controller';
 import { FactualDraftHandler } from './review/factual-draft.handler';
@@ -72,6 +74,8 @@ import { DocumentationOperationsController } from './controllers/documentation-o
     DocumentationWorkspaceService,
     DocumentRemovalService,
     ClientSectionService,
+    SectionCompositionHandler,
+    SectionProposalService,
   ],
   exports: [SourceDocumentService, SourceRevisionService],
 })

@@ -72,6 +72,14 @@ export class UpdateClientSectionDto {
   expectedVersion!: number;
 }
 
+// FR-012: approving names the version the contributor actually read, so a
+// proposal replaced under them is refused rather than approved unseen.
+export class ApproveSectionProposalDto {
+  @IsInt()
+  @Min(1)
+  expectedVersion!: number;
+}
+
 // The full ordered set travels every time, so the resulting order is never a
 // function of what the server already held.
 export class ReorderClientSectionsDto {

@@ -63,17 +63,17 @@ The plan's slices ship in order, and **nothing existing is removed until its rep
 
 ### Composition, API side
 
-- [ ] T012 [US1] Create `apps/api/src/documentation/sections/prompts/composition.prompt.ts`: the section's name, tone and instructions, the canonical statements, and the instruction to state plainly when nothing matches rather than padding (FR-011)
-- [ ] T013 [US1] Create `apps/api/src/documentation/composition/composition-output.schema.ts`: the proposed blocks and the unresolved questions, as two separate arrays (FR-010). Follow the lesson recorded in research Decision 5 — the model is never asked to echo an identifier back
-- [ ] T014 [P] [US1] Write `apps/api/src/documentation/composition/composition-output.schema.spec.ts` covering a normal proposal, an empty-match proposal, and a rejected malformed one
-- [ ] T015 [US1] Create `apps/api/src/documentation/composition/section-composition.handler.ts` implementing `buildRequest` (whole canonical source, minus this section's exclusions — the exclusion set is empty until US2) and `apply` (persist the proposal and its questions), plus `onTerminalFailure` so a dead composition never leaves the section stranded
-- [ ] T016 [US1] Write `apps/api/src/documentation/composition/section-composition.handler.spec.ts`, including that a terminal failure marks the proposal failed and leaves any approved content readable
+- [x] T012 [US1] Create `apps/api/src/documentation/sections/prompts/composition.prompt.ts`: the section's name, tone and instructions, the canonical statements, and the instruction to state plainly when nothing matches rather than padding (FR-011)
+- [x] T013 [US1] Create `apps/api/src/documentation/composition/composition-output.schema.ts`: the proposed blocks and the unresolved questions, as two separate arrays (FR-010). Follow the lesson recorded in research Decision 5 — the model is never asked to echo an identifier back
+- [x] T014 [P] [US1] Write `apps/api/src/documentation/composition/composition-output.schema.spec.ts` covering a normal proposal, an empty-match proposal, and a rejected malformed one
+- [x] T015 [US1] Create `apps/api/src/documentation/composition/section-composition.handler.ts` implementing `buildRequest` (whole canonical source, minus this section's exclusions — the exclusion set is empty until US2) and `apply` (persist the proposal and its questions), plus `onTerminalFailure` so a dead composition never leaves the section stranded
+- [x] T016 [US1] Write `apps/api/src/documentation/composition/section-composition.handler.spec.ts`, including that a terminal failure marks the proposal failed and leaves any approved content readable
 - [x] T017 [US1] Add `section_composition` to the generation policy stages in `apps/api/.env.example`. **Pulled forward from Phase 3 by the compiler**: `GenerationPolicySchema.stages` is strict and requires a route for every value of `GenerationOperationType`, so adding the enum value in T004 made the API fail to build until the stage existed. Every deployment's `GENERATION_POLICY_JSON` must now declare it or the API will not boot
-- [ ] T018 [US1] Create `apps/api/src/documentation/composition/section-proposal.service.ts`: trigger a composition (refusing a second while one runs, FR-013), read the current proposal, approve it
-- [ ] T019 [US1] Write `apps/api/src/documentation/composition/section-proposal.service.spec.ts` covering the one-at-a-time rule and the approval path
+- [x] T018 [US1] Create `apps/api/src/documentation/composition/section-proposal.service.ts`: trigger a composition (refusing a second while one runs, FR-013), read the current proposal, approve it
+- [x] T019 [US1] Write `apps/api/src/documentation/composition/section-proposal.service.spec.ts` covering the one-at-a-time rule and the approval path
 - [ ] T020 [US1] Extend `apps/api/src/documentation/publication/client-publication.service.ts` so an approved section proposal queues a client release keyed by section, reusing the conditional-swap publication built on 2026-08-12 unchanged
 - [ ] T021 [US1] Write the publication tests in `apps/api/src/documentation/publication/client-publication.service.spec.ts` proving two approvals seconds apart leave exactly one published set holding both sections
-- [ ] T022 [US1] Add the composition and approval routes to `apps/api/src/documentation/controllers/sections.controller.ts` with their tests
+- [x] T022 [US1] Add the composition and approval routes to `apps/api/src/documentation/controllers/sections.controller.ts` with their tests
 
 ### Composition, web side
 

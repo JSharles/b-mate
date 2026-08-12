@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import type { User } from '@prisma/client';
+import { SectionProposalService } from '../composition/section-proposal.service';
 import { ClientSectionService } from '../sections/client-section.service';
 import { SectionsController } from './sections.controller';
 
@@ -24,10 +25,17 @@ describe('SectionsController', () => {
       archive: jest.fn(),
       reorder: jest.fn(),
     };
+    const proposals = {
+      compose: jest.fn(),
+      current: jest.fn(),
+      approve: jest.fn(),
+    };
     return {
       sections,
+      proposals,
       controller: new SectionsController(
         sections as unknown as ClientSectionService,
+        proposals as unknown as SectionProposalService,
       ),
     };
   }
@@ -128,5 +136,76 @@ describe('SectionsController', () => {
     await controller.reorder(user, projectId, body);
 
     expect(sections.reorder).toHaveBeenCalledWith('user-1', projectId, body);
+  });
+
+  it('triggers a composition', async () => {
+    const { proposals, controller } = setup();
+    proposals.compose.mockResolvedValue({ proposalId: 'p1' });
+
+    await controller.compose(user, projectId, sectionId);
+
+    expect(proposals.compose).toHaveBeenCalledWith(
+      'user-1',
+      projectId,
+      sectionId,
+    );
+  });
+
+  it('refuses a second composition as a conflict', async () => {
+    const { proposals, controller } = setup();
+    proposals.compose.mockRejectedValue(
+      new ConflictException({ code: 'SECTION_COMPOSING' }),
+    );
+
+    await expect(
+      controller.compose(user, projectId, sectionId),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: { code: 'SECTION_COMPOSING' },
+    });
+  });
+
+  it('reads the current proposal', async () => {
+    const { proposals, controller } = setup();
+    proposals.current.mockResolvedValue(null);
+
+    await expect(
+      controller.proposal(user, projectId, sectionId),
+    ).resolves.toBeNull();
+    expect(proposals.current).toHaveBeenCalledWith(
+      'user-1',
+      projectId,
+      sectionId,
+    );
+  });
+
+  it('approves at the version the contributor read', async () => {
+    const { proposals, controller } = setup();
+    proposals.approve.mockResolvedValue({ approved: true });
+
+    await controller.approve(user, projectId, sectionId, {
+      expectedVersion: 3,
+    });
+
+    expect(proposals.approve).toHaveBeenCalledWith(
+      'user-1',
+      projectId,
+      sectionId,
+      3,
+    );
+  });
+
+  it('refuses approving a proposal that has been replaced', async () => {
+    const { proposals, controller } = setup();
+    proposals.approve.mockRejectedValue(
+      new ConflictException({ code: 'PROPOSAL_STALE' }),
+    );
+
+    await expect(
+      controller.approve(user, projectId, sectionId, { expectedVersion: 1 }),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: { code: 'PROPOSAL_STALE' },
+    });
   });
 });

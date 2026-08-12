@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -16,12 +17,17 @@ import {
   ReorderClientSectionsDto,
   UpdateClientSectionDto,
 } from '../dto/client-section.dto';
+import { ApproveSectionProposalDto } from '../dto/client-section.dto';
+import { SectionProposalService } from '../composition/section-proposal.service';
 import { ClientSectionService } from '../sections/client-section.service';
 
 @Controller('projects/:projectId/documentation/sections')
 @UseGuards(SessionGuard)
 export class SectionsController {
-  constructor(private readonly sections: ClientSectionService) {}
+  constructor(
+    private readonly sections: ClientSectionService,
+    private readonly proposals: SectionProposalService,
+  ) {}
 
   @Get()
   list(@CurrentUser() user: User, @Param('projectId') projectId: string) {
@@ -65,5 +71,40 @@ export class SectionsController {
     @Param('sectionId') sectionId: string,
   ) {
     return this.sections.archive(user.id, projectId, sectionId);
+  }
+
+  @Post(':sectionId/composition')
+  @HttpCode(202)
+  compose(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Param('sectionId') sectionId: string,
+  ) {
+    return this.proposals.compose(user.id, projectId, sectionId);
+  }
+
+  @Get(':sectionId/proposal')
+  proposal(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Param('sectionId') sectionId: string,
+  ) {
+    return this.proposals.current(user.id, projectId, sectionId);
+  }
+
+  @Post(':sectionId/proposal/approve')
+  @HttpCode(202)
+  approve(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Param('sectionId') sectionId: string,
+    @Body() body: ApproveSectionProposalDto,
+  ) {
+    return this.proposals.approve(
+      user.id,
+      projectId,
+      sectionId,
+      body.expectedVersion,
+    );
   }
 }
