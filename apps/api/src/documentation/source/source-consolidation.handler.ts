@@ -235,6 +235,7 @@ export class SourceConsolidationHandler
           text: buildSourceConsolidationPrompt({
             inputFingerprint: operation.inputFingerprint,
             observationCount: observations.length,
+            currentItemCount: source?.currentRevision?.items.length ?? 0,
           }),
         },
         {

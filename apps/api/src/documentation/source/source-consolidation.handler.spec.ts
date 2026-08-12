@@ -106,4 +106,24 @@ describe('SourceConsolidationHandler', () => {
 
     expect(prisma.generationOperation.upsert).not.toHaveBeenCalled();
   });
+  // Told only "never reference something absent from the input", the model
+  // answered `targetItemRef: "i1"` against a canonical source holding nothing.
+  it('spells out that an empty canonical source leaves nothing to target', async () => {
+    prisma.sourceDocument.findFirst.mockResolvedValue({
+      id: operation.sourceDocumentId,
+      version: 1,
+      status: 'ready_to_consolidate',
+    });
+    prisma.sourceDocument.updateMany.mockResolvedValue({ count: 1 });
+    prisma.projectSource.findUnique.mockResolvedValue(null);
+    prisma.documentObservation.findMany.mockResolvedValue([
+      { id: OBSERVATION_ID, categories: [] },
+    ] as never);
+
+    const request = await handler.buildRequest(operation);
+    const prompt = request.parts[0] as { text: string };
+
+    expect(prompt.text).toContain('Current item count: 0');
+    expect(prompt.text).toContain('canonical source is empty');
+  });
 });

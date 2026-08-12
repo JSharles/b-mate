@@ -22,6 +22,12 @@ import { classifyHttpFailure } from '../generation-errors';
 const DEFAULT_MAX_OUTPUT_TOKENS = 16_000;
 const POLL_INTERVAL_MS = 5_000;
 
+// `output_config.effort` is rejected outright by models that do not take it:
+// Haiku 4.5 answers 400 "This model does not support the effort parameter".
+// The models endpoint reports it per model under `capabilities.effort` — this
+// list is the offline copy, and the 400 is unmistakable if it ever drifts.
+const MODELS_ACCEPTING_EFFORT = /^claude-(opus|sonnet|fable|mythos)-/u;
+
 @Injectable()
 export class AnthropicGenerationProvider implements GenerationProviderAdapter {
   readonly key = 'anthropic';
@@ -48,10 +54,14 @@ export class AnthropicGenerationProvider implements GenerationProviderAdapter {
 
     try {
       const params = this.buildParams(request, request.outputSchema);
+      const options = request.timeoutMs
+        ? { timeout: request.timeoutMs }
+        : undefined;
       if (request.transport === 'batch') {
-        const batch = await this.client.messages.batches.create({
-          requests: [{ custom_id: request.attemptId, params }],
-        });
+        const batch = await this.client.messages.batches.create(
+          { requests: [{ custom_id: request.attemptId, params }] },
+          options,
+        );
         return {
           state: 'accepted',
           providerCorrelationId: request.correlationId,
@@ -60,7 +70,13 @@ export class AnthropicGenerationProvider implements GenerationProviderAdapter {
         };
       }
 
-      const message = await this.client.messages.create(params);
+      // Streamed, not because anyone reads the chunks, but because the SDK
+      // refuses a non-streaming call whose budget could take over ten minutes
+      // — and these stages ask for 64k. `finalMessage()` gives back exactly
+      // what `create` would have.
+      const message = await this.client.messages
+        .stream(params, options)
+        .finalMessage();
       return this.completed(message, request.correlationId);
     } catch (error) {
       return { state: 'failed', failure: normalizeAnthropicError(error) };
@@ -147,7 +163,9 @@ export class AnthropicGenerationProvider implements GenerationProviderAdapter {
       ],
       output_config: {
         format: { type: 'json_schema', schema: anthropicSchema },
-        ...(request.effort ? { effort: request.effort } : {}),
+        ...(request.effort && MODELS_ACCEPTING_EFFORT.test(request.model)
+          ? { effort: request.effort }
+          : {}),
       },
     };
   }

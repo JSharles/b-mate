@@ -131,6 +131,7 @@ export class GenerationWorkerService {
         attemptId: attempt.id,
         model: route.model,
         transport: route.transport,
+        timeoutMs: route.requestTimeoutMs,
         correlationId: `${operation.id}:${attempt.id}`,
       };
       const submission = await provider.submit(request);

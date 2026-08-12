@@ -1,4 +1,12 @@
+// The sync path streams — the SDK refuses a non-streaming call whose budget
+// could run past ten minutes, and these stages ask for 64k. `mockCreate` still
+// stands for "what the model answered"; only the way it is fetched changed.
 const mockCreate = jest.fn();
+const mockStream = jest.fn((...args: unknown[]) => {
+  mockStreamArgs(...args);
+  return { finalMessage: () => mockCreate(...args) };
+});
+const mockStreamArgs = jest.fn();
 const mockBatchCreate = jest.fn();
 const mockBatchRetrieve = jest.fn();
 const mockBatchResults = jest.fn();
@@ -10,6 +18,7 @@ jest.mock('@anthropic-ai/sdk', () =>
     return {
       messages: {
         create: mockCreate,
+        stream: mockStream,
         batches: {
           create: mockBatchCreate,
           retrieve: mockBatchRetrieve,
@@ -112,7 +121,7 @@ describe('AnthropicGenerationProvider', () => {
       apiKey: 'sk-ant-test-key',
       maxRetries: 0,
     });
-    expect(mockCreate).toHaveBeenCalledWith(
+    expect(mockCreate.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({
         model: request.model,
         metadata: { user_id: request.correlationId },
@@ -172,7 +181,7 @@ describe('AnthropicGenerationProvider', () => {
 
     await provider.submit({ ...request, outputSchema: constrainedSchema });
 
-    expect(mockCreate).toHaveBeenCalledWith(
+    expect(mockCreate.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({
         output_config: {
           format: expect.objectContaining({
@@ -216,7 +225,7 @@ describe('AnthropicGenerationProvider', () => {
       providerJobId: 'batch-1',
       nextPollAt: expect.any(Date),
     });
-    expect(mockBatchCreate).toHaveBeenCalledWith({
+    expect(mockBatchCreate.mock.calls.at(-1)?.[0]).toEqual({
       requests: [
         expect.objectContaining({
           custom_id: request.attemptId,
@@ -301,7 +310,7 @@ describe('AnthropicGenerationProvider', () => {
     mockCreate.mockResolvedValue(message({ observations: [] }));
 
     await provider.submit({ ...request, effort: 'low' });
-    expect(mockCreate).toHaveBeenLastCalledWith(
+    expect(mockCreate.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({
         output_config: expect.objectContaining({ effort: 'low' }),
       }),
@@ -311,6 +320,34 @@ describe('AnthropicGenerationProvider', () => {
     expect(mockCreate.mock.calls.at(-1)?.[0].output_config).not.toHaveProperty(
       'effort',
     );
+  });
+
+  // Haiku 4.5 answers 400 "This model does not support the effort parameter",
+  // so the hint cannot simply be forwarded to whatever model a route names.
+  it('drops the effort hint for a model that rejects it', async () => {
+    mockCreate.mockResolvedValue(message({ observations: [] }));
+
+    await provider.submit({
+      ...request,
+      model: 'claude-haiku-4-5',
+      effort: 'low',
+    });
+
+    expect(mockCreate.mock.calls.at(-1)?.[0].output_config).not.toHaveProperty(
+      'effort',
+    );
+  });
+
+  // The stage's requestTimeoutMs was validated by the policy schema and read by
+  // nobody: a route could declare 30s and then wait on the SDK default.
+  it("applies the route's request timeout", async () => {
+    mockCreate.mockResolvedValue(message({ observations: [] }));
+
+    await provider.submit({ ...request, timeoutMs: 30_000 });
+
+    expect(mockStreamArgs).toHaveBeenLastCalledWith(expect.anything(), {
+      timeout: 30_000,
+    });
   });
 
   it('names a truncated answer for what it is rather than calling it invalid', async () => {

@@ -8,11 +8,24 @@ export const SOURCE_CONSOLIDATION_OUTPUT_CONTRACT =
 export function buildSourceConsolidationPrompt(input: {
   inputFingerprint: string;
   observationCount: number;
+  currentItemCount: number;
 }): string {
   return [
     `Prompt version: ${SOURCE_CONSOLIDATION_PROMPT_VERSION}`,
     `Input fingerprint: ${input.inputFingerprint}`,
     `Input observation count: ${input.observationCount}`,
+    `Current item count: ${input.currentItemCount}`,
+    // Told only "never reference something absent from the input", the model
+    // still answered `targetItemRef: "i1"` against an empty canonical source.
+    // Stating the count, and what follows from a count of zero, leaves nothing
+    // to infer.
+    ...(input.currentItemCount === 0
+      ? [
+          'The canonical source is empty: there is no item to support, supersede or conflict with. Every disposition must be add or exclude, and no disposition may carry a target item ref.',
+        ]
+      : [
+          `Item refs run from i0 to i${input.currentItemCount - 1}. Never write one outside that range.`,
+        ]),
     `Categories: ${DOCUMENTATION_CATEGORY_KEYS.join(', ')}`,
     '',
     'Assign exactly one disposition to every supplied observation.',

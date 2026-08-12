@@ -19,6 +19,10 @@ export interface GenerationProviderRequest {
   // mechanical stage it decides generously: extraction spent 21k of its 32k
   // output budget thinking about a Notion page and got cut off mid-answer.
   effort?: 'low' | 'medium' | 'high';
+  // The route's requestTimeoutMs. It was validated by the policy schema and
+  // then read by nobody, so a stage could declare a 30s budget and wait ten
+  // minutes on the SDK default.
+  timeoutMs?: number;
   correlationId: string;
 }
 
