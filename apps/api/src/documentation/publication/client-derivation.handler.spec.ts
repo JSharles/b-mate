@@ -62,9 +62,11 @@ describe('ClientDerivationHandler', () => {
       status: 'preparing',
       entries: [{}],
     });
-    prisma.projectClientPublication.findUnique.mockResolvedValue({
-      currentReleaseId: null,
-    });
+    // The head moves by conditional swap now, not by read-then-write: four
+    // categories accepted seconds apart each read the same head and two of
+    // them published, leaving the client two live releases covering half the
+    // categories between them.
+    prisma.projectClientPublication.updateMany.mockResolvedValue({ count: 1 });
     await handler.apply(asPrismaService(prisma), operation as never, {
       output: {
         promptVersion: 'client-derivation-v2',
@@ -74,8 +76,9 @@ describe('ClientDerivationHandler', () => {
       },
     });
     expect(prisma.clientCategoryContent.upsert).toHaveBeenCalled();
-    expect(prisma.projectClientPublication.update).toHaveBeenCalledWith(
+    expect(prisma.projectClientPublication.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: expect.objectContaining({ currentReleaseId: null }),
         data: expect.objectContaining({ currentReleaseId: releaseId }),
       }),
     );
@@ -93,9 +96,9 @@ describe('ClientDerivationHandler', () => {
       status: 'preparing',
       entries: [{}],
     });
-    prisma.projectClientPublication.findUnique.mockResolvedValue({
-      currentReleaseId: 'newer',
-    });
+    // The swap finds the head already moved on: this release was built from a
+    // version of the truth that is no longer current.
+    prisma.projectClientPublication.updateMany.mockResolvedValue({ count: 0 });
     await handler.apply(asPrismaService(prisma), operation as never, {
       output: {
         promptVersion: 'client-derivation-v2',
@@ -107,7 +110,11 @@ describe('ClientDerivationHandler', () => {
     expect(prisma.clientContentRelease.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: 'superseded' } }),
     );
-    expect(prisma.projectClientPublication.update).not.toHaveBeenCalled();
+    expect(prisma.clientContentRelease.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'published' }),
+      }),
+    );
   });
   it('rejects missing links, mismatches, and lost open points', async () => {
     const { prisma, handler, reference, operation } = setup();

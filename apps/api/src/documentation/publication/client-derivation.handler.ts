@@ -195,10 +195,21 @@ export class ClientDerivationHandler
     )
       return;
     if (release.entries.length >= release.expectedCategoryCount) {
-      const current = await tx.projectClientPublication.findUnique({
-        where: { projectId: operation.projectId },
+      // Claim the head first, and only on the base this release was built
+      // from. Read then write, four categories accepted within seconds of each
+      // other each saw the same head, and two of them published: the client was
+      // left with two live releases between them covering half the categories.
+      // The condition is what makes the swap a swap.
+      const claimed = await tx.projectClientPublication.updateMany({
+        where: {
+          projectId: operation.projectId,
+          currentReleaseId: release.baseReleaseId,
+        },
+        data: { currentReleaseId: release.id, version: { increment: 1 } },
       });
-      if (release.baseReleaseId !== current?.currentReleaseId) {
+      if (claimed.count !== 1) {
+        // Someone else moved the head. This release was built on a version of
+        // the truth that is no longer current, so it never goes live.
         await tx.clientContentRelease.update({
           where: { id: release.id },
           data: { status: 'superseded' },
@@ -213,10 +224,11 @@ export class ClientDerivationHandler
           publishedAt: new Date(),
         },
       });
-      await tx.projectClientPublication.update({
-        where: { projectId: operation.projectId },
-        data: { currentReleaseId: release.id, version: { increment: 1 } },
-      });
+      if (release.baseReleaseId)
+        await tx.clientContentRelease.updateMany({
+          where: { id: release.baseReleaseId, status: 'published' },
+          data: { status: 'superseded' },
+        });
     }
   }
 }

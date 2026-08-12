@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Interval } from '@nestjs/schedule';
 import type {
   DocumentationCategoryReference,
   EditorialProfileRevision,
@@ -11,12 +12,72 @@ import {
   CLIENT_DERIVATION_PROMPT_VERSION,
 } from './prompts/client-derivation.prompt';
 
+// How often to look for a category a contributor accepted that never reached
+// the client, and how long a dropped release must sit before it counts as
+// forgotten rather than as a swap still being resolved.
+const DROPPED_ACCEPTANCE_SWEEP_MS = 30_000;
+const DROPPED_ACCEPTANCE_AFTER_MS = 120_000;
+
 @Injectable()
 export class ClientPublicationService {
+  private readonly logger = new Logger(ClientPublicationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly generation: GenerationService,
   ) {}
+
+  // A release that loses the swap for the head is dropped, and its category
+  // goes with it — accepted by the contributor, never seen by the client. The
+  // swap is what stops two half-releases going live; this is what stops the
+  // losing half from being forgotten. Coverage is judged by category, so a
+  // category showing older content than the reference that was accepted is not
+  // caught here.
+  @Interval(DROPPED_ACCEPTANCE_SWEEP_MS)
+  async recoverDroppedAcceptances(): Promise<void> {
+    const settledBefore = new Date(Date.now() - DROPPED_ACCEPTANCE_AFTER_MS);
+    const dropped = await this.prisma.clientContentRelease.findMany({
+      where: {
+        status: 'superseded',
+        publishedAt: null,
+        updatedAt: { lt: settledBefore },
+      },
+      include: { initiatingReference: true },
+    });
+    for (const release of dropped) {
+      const reference = release.initiatingReference;
+      if (!reference) continue;
+      // A release still being assembled *is* a publication attempt. Without
+      // this the sweep queued another one every thirty seconds — thirteen
+      // releases and twelve generation calls before I stopped it — because the
+      // category it was recovering could not appear until the attempt already
+      // running had finished.
+      const inFlight = await this.prisma.clientContentRelease.count({
+        where: { projectId: release.projectId, status: 'preparing' },
+      });
+      if (inFlight > 0) continue;
+      const publication = await this.prisma.projectClientPublication.findUnique(
+        {
+          where: { projectId: release.projectId },
+          include: { currentRelease: { include: { entries: true } } },
+        },
+      );
+      const covered = publication?.currentRelease?.entries.some(
+        (entry) => entry.categoryKey === reference.categoryKey,
+      );
+      if (covered) continue;
+      try {
+        await this.queueAcceptedReference(
+          reference,
+          reference.acceptedByUserId,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Could not re-publish ${reference.categoryKey}: ${String(error)}`,
+        );
+      }
+    }
+  }
 
   async queueAcceptedReference(
     reference: DocumentationCategoryReference,

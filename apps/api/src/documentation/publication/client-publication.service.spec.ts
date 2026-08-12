@@ -152,4 +152,84 @@ describe('ClientPublicationService', () => {
       categories: [],
     });
   });
+  // A release that loses the swap for the head is dropped, and its category
+  // goes with it: accepted by the contributor, never seen by the client.
+  it('re-publishes a category whose release was dropped before going live', async () => {
+    const { prisma, service } = setup();
+    prisma.clientContentRelease.findMany.mockResolvedValue([
+      {
+        id: 'dropped',
+        projectId: 'project',
+        initiatingReference: {
+          ...reference,
+          categoryKey: 'planning',
+          acceptedByUserId: 'user',
+        },
+      },
+    ] as never);
+    prisma.projectClientPublication.findUnique.mockResolvedValue({
+      currentRelease: { entries: [{ categoryKey: 'overview' }] },
+    });
+    const queue = jest
+      .spyOn(service, 'queueAcceptedReference')
+      .mockResolvedValue('release');
+
+    await service.recoverDroppedAcceptances();
+
+    expect(queue).toHaveBeenCalledWith(
+      expect.objectContaining({ categoryKey: 'planning' }),
+      'user',
+    );
+  });
+
+  it('leaves a category the client already has alone', async () => {
+    const { prisma, service } = setup();
+    prisma.clientContentRelease.findMany.mockResolvedValue([
+      {
+        id: 'dropped',
+        projectId: 'project',
+        initiatingReference: {
+          ...reference,
+          categoryKey: 'overview',
+          acceptedByUserId: 'user',
+        },
+      },
+    ] as never);
+    prisma.projectClientPublication.findUnique.mockResolvedValue({
+      currentRelease: { entries: [{ categoryKey: 'overview' }] },
+    });
+    const queue = jest
+      .spyOn(service, 'queueAcceptedReference')
+      .mockResolvedValue('release');
+
+    await service.recoverDroppedAcceptances();
+
+    expect(queue).not.toHaveBeenCalled();
+  });
+  // A release still being assembled is a publication attempt. Without this the
+  // sweep queued another every thirty seconds — thirteen releases and twelve
+  // generation calls — because the category could not appear until the attempt
+  // already running had finished.
+  it('waits for an attempt in flight instead of starting another', async () => {
+    const { prisma, service } = setup();
+    prisma.clientContentRelease.findMany.mockResolvedValue([
+      {
+        id: 'dropped',
+        projectId: 'project',
+        initiatingReference: {
+          ...reference,
+          categoryKey: 'planning',
+          acceptedByUserId: 'user',
+        },
+      },
+    ] as never);
+    prisma.clientContentRelease.count.mockResolvedValue(1);
+    const queue = jest
+      .spyOn(service, 'queueAcceptedReference')
+      .mockResolvedValue('release');
+
+    await service.recoverDroppedAcceptances();
+
+    expect(queue).not.toHaveBeenCalled();
+  });
 });
