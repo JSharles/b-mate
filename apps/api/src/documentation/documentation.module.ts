@@ -15,6 +15,8 @@ import { CanonicalSourceController } from './controllers/canonical-source.contro
 import { SourceCorrectionService } from './source/source-correction.service';
 import { ClarificationService } from './source/clarification.service';
 import { ClarificationsController } from './controllers/clarifications.controller';
+import { SectionsController } from './controllers/sections.controller';
+import { ClientSectionService } from './sections/client-section.service';
 import { CategoryReviewController } from './controllers/category-review.controller';
 import { ClientContentController } from './controllers/client-content.controller';
 import { FactualDraftHandler } from './review/factual-draft.handler';
@@ -47,6 +49,7 @@ import { DocumentationOperationsController } from './controllers/documentation-o
     EditorialProfileController,
     DocumentationWorkspaceController,
     DocumentationOperationsController,
+    SectionsController,
   ],
   providers: [
     ImageNormalizer,
@@ -68,6 +71,7 @@ import { DocumentationOperationsController } from './controllers/documentation-o
     EditorialProfileService,
     DocumentationWorkspaceService,
     DocumentRemovalService,
+    ClientSectionService,
   ],
   exports: [SourceDocumentService, SourceRevisionService],
 })

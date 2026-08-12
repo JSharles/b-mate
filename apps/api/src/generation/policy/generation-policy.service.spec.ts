@@ -11,6 +11,7 @@ const stageModels = {
   editorial_preview: 'preview-v1',
   client_derivation: 'derive-v1',
   output_validation: 'validate-v1',
+  section_composition: 'compose-v1',
 } as const;
 
 function route(
@@ -57,10 +58,15 @@ function service(
 }
 
 describe('GenerationPolicyService', () => {
-  it('requires independently configurable routes for all six stages', () => {
+  it('requires independently configurable routes for every stage', () => {
     const configured = service();
 
-    expect(GENERATION_OPERATION_TYPES).toHaveLength(6);
+    // Deliberately asserted against the fixture rather than a literal count:
+    // a stage added to the enum without a route here should fail loudly, and
+    // a hardcoded number turns that into a puzzle about which number is right.
+    expect(GENERATION_OPERATION_TYPES).toHaveLength(
+      Object.keys(stageModels).length,
+    );
     for (const stage of GENERATION_OPERATION_TYPES) {
       expect(configured.snapshotFor(stage).routes[0]?.model).toBe(
         stageModels[stage],

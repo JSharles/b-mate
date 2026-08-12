@@ -78,6 +78,11 @@ const DELEGATE_NAMES = [
   // Durable generation delegates.
   'generationOperation',
   'generationAttempt',
+  // Author-defined client sections (specs/017-documentation-review-journey).
+  'clientSection',
+  'sectionProposal',
+  'sectionQuestion',
+  'sectionQuestionItem',
 ] as const;
 
 type DelegateName = (typeof DELEGATE_NAMES)[number];

@@ -7,6 +7,11 @@ export const GENERATION_POLICY_STAGE_KEYS = [
   'editorial_preview',
   'client_derivation',
   'output_validation',
+  // Composes one author-defined section from the canonical source
+  // (specs/017-documentation-review-journey). `stages` is strict and every key
+  // is required, so adding this here obliges every deployment's
+  // GENERATION_POLICY_JSON to declare a route for it before the API will boot.
+  'section_composition',
 ] as const;
 
 export const GenerationPolicyStageKeySchema = z.enum(
