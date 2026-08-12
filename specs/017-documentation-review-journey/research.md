@@ -199,23 +199,25 @@ reader in `apps/api/src`.
 
 ---
 
-## Decision 9 — Migration keeps every client reading
+## Decision 9 — ~~Migration keeps every client reading~~ — VOID (2026-08-13)
 
-**Decision**: For each project holding published content, create one section per
-category that has content, in the current fixed order, named as in Decision 7, with
-the current project editorial profile copied onto each. Re-point existing approved
-reference content and client content at the new sections. Publish nothing new.
+**Decision**: There is no migration. Every project starts blank under the new model,
+and the category machinery is deleted rather than converted.
 
-**Rationale**: A client reading their documentation must not lose it because the
-product changed its internal model. The published set stays byte-identical; only what
-it hangs off changes.
+**Why this decision was reversed**: it rested on a premise nobody had checked — that
+the product has clients reading published documentation today. It does not. b-mate
+has never been deployed to production. There is no live content, so "the published
+set stays byte-identical" protects nothing, and the conversion work, the dual-keyed
+columns it implied, and the slice ordering built around it were all cost with no
+beneficiary.
 
-**Alternatives rejected**:
+**What this changes downstream**: publication is re-keyed on sections directly rather
+than carrying `categoryKey` and `sectionId` side by side; the removal stops being a
+final slice and becomes part of the change that replaces what it removes.
 
-- *Start every project blank.* Rejected: it silently unpublishes live client
-  documentation.
-- *Reprocess documents under the new model.* Rejected: expensive, and it would put
-  content the contributor already approved back in the review queue.
+**When it comes back**: the day this product has real users, a schema change touching
+their content needs exactly the care this decision described. Re-read it then. Until
+then, assume nothing in the database is worth preserving.
 
 ---
 

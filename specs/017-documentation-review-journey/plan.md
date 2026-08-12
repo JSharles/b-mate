@@ -138,30 +138,33 @@ already there.
 
 ## Implementation Sequence
 
-The spec's user stories are independently shippable and should ship in order. Each
-slice ends with a working product, not a half-migration.
+**Revised 2026-08-13.** The original sequence added sections beside the four
+categories and removed nothing until a final migration slice, so that no client would
+lose what they could read. The product has never been deployed and has no clients, so
+that ordering protected nobody while obliging every layer in between to work two ways
+at once. The removal moves into the change that replaces what it removes.
 
-**Slice 1 — the section exists and composes (US1).** Add `ClientSection` and
-`SectionProposal` alongside the existing categories without removing anything. Add the
-composition stage reading the whole canonical source. A contributor can create a
-section and publish it. The four fixed categories still work, untouched, in parallel.
-This is the slice that proves the model, and it proves it without a migration.
+**Slice 1 — the section exists and composes (US1).** `ClientSection` and
+`SectionProposal`, and the composition stage reading the whole canonical source.
+*Shipped.*
 
-**Slice 2 — corrections (US2).** Add `SectionExclusion` and wire the factual
-correction path through from the proposal review. Both corrections available where the
+**Slice 2 — the replacement completes (US1, US4, FR-024).** Publication is re-keyed on
+sections, and everything the four categories existed to serve is deleted in the same
+change: the enum, the classification tables, the per-category projection and draft
+models, the editorial profile machinery, their routes, their screens, their translated
+strings, their tests — and the four models from features 013 and 014 that already had
+no reader. Verified by `pnpm knip`, `pnpm i18n:orphans`, and a schema pass for models
+with no reader in `apps/api/src`.
+
+**Slice 3 — corrections (US2).** `SectionExclusion`, and the factual correction path
+wired through from the proposal review. Both corrections available where the
 contributor reads.
 
-**Slice 3 — refresh (US3).** Mark sections when the canonical head moves; let the
+**Slice 4 — refresh (US3).** Mark sections when the canonical head moves; let the
 contributor trigger. Retire `SourceRevisionImpact`.
 
-**Slice 4 — the removal (US4 and FR-024).** Migrate existing projects' four categories
-into sections, then delete the enum, the classification tables, the editorial profile
-machinery, the retired routes and screens, and the four models that were already dead.
-This is deliberately last: nothing is removed until its replacement has been used.
-
-Slice 4 is where the risk concentrates, and it is the one to review most carefully —
-it is a migration against live client-visible content, and the spec's rule is that a
-client must not lose what they can currently read.
+The risk that concentrated in the old Slice 4 is gone with the migration. What remains
+is ordinary: a schema change in a database whose contents nobody depends on.
 
 ## Risks
 
@@ -173,9 +176,8 @@ only place the product gets to show what a usable instruction looks like — and
 by shipping Slice 1 early and learning from real sections rather than designing further
 in advance.
 
-**The migration touches published client content.** Slice 4 re-points live releases at
-new sections. The published set must stay byte-identical through it. This is the one
-place where getting it wrong is visible to someone who is not the contributor.
+~~**The migration touches published client content.**~~ **Retired 2026-08-13**: there
+is no published client content and no migration. See research Decision 9.
 
 **Removing the editorial profile removes a built feature.** Four models, one generation
 stage, one screen. It is the right call — a project-wide register stops meaning

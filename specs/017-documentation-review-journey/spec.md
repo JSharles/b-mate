@@ -197,7 +197,7 @@ The contributor renames a section whose title did not land, changes the order th
 - The ingestion pipeline delivered by feature 016 — canonical source, provenance, duplicate merging, contradiction surfacing, clarifications, atomic publication — is kept. What is removed from it is category assignment, not its substance.
 - Tone becomes a property of a section, since the contributor names it as part of creating one. A project-level tone is no longer meaningful when each section can want its own register.
 - Section order is chosen by the contributor. There is no natural order once the list is not fixed.
-- Existing projects carry their four categories forward as four ordinary sections, with their current names, so nothing published to a client disappears at migration. They become editable and deletable like any other.
+- ~~Existing projects carry their four categories forward as four ordinary sections~~ — **void as of 2026-08-13**. The product has never been deployed and has no real clients, so there is no published content to preserve and no migration to perform. The four categories and everything serving them are deleted outright.
 - A section is a view of the canonical source, not an exclusive bucket. The same statement may legitimately serve two sections.
 - The client's tabbed presentation is kept; its tabs become the contributor's published sections in their chosen order.
 - Composition cost grows with the number of sections a contributor creates. No limit is imposed, and none is assumed necessary at this stage.

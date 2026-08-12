@@ -22,7 +22,9 @@ Monorepo: `apps/api/src/…` (NestJS), `apps/web/…` (Next.js App Router), `pac
 
 ## Sequencing note
 
-The plan's slices ship in order, and **nothing existing is removed until its replacement has been used**. Phases 3–6 add sections alongside the four fixed categories, which keep working untouched. Phase 7 migrates and deletes. That ordering is deliberate: it means every phase before the last can be abandoned without leaving the product broken.
+**Revised 2026-08-13.** The original note promised that nothing would be removed until its replacement had been used, so that no client would lose what they could read. The product has never been deployed and has no clients, so that ordering protected nobody while obliging publication, the workspace and the client view to work two ways at once.
+
+The removal is no longer a final phase. It happens in Phase 7 below, which now runs immediately after Phase 3 and before the remaining user stories, and it deletes rather than migrates.
 
 ---
 
@@ -149,17 +151,17 @@ The plan's slices ship in order, and **nothing existing is removed until its rep
 
 ---
 
-## Phase 7: Migration and Removal (Cross-Cutting)
+## Phase 7: Removal (runs immediately after Phase 3)
 
-**Purpose**: Move existing projects onto sections, then delete everything the fixed list required. This phase is last on purpose: nothing is removed until its replacement has been used in anger.
+**Purpose**: Delete everything the fixed list required, and re-key publication on sections. Runs before Phases 4–6 rather than after them, so no later work is built on a surface that is about to disappear.
 
-**⚠️ This phase touches live client-visible content.** The published set must stay byte-identical through it (plan, Risks).
+**No migration.** T057–T059 were a data migration preserving published client content; the product has never been deployed and has none. Removed rather than deferred — see research Decision 9.
 
-### Migration
+### Publication moves onto sections
 
-- [ ] T057 Write the data migration in `apps/api/prisma/migrations/` creating one section per category that holds content, in the current order, named per research Decision 7, with the project's current editorial profile copied onto each
-- [ ] T058 Re-point existing approved reference content and client content at the new sections in the same `apps/api/prisma/migrations/` migration, publishing nothing new
-- [ ] T059 Write `apps/api/src/documentation/sections/section-migration.spec.ts` proving, against a seeded database, that a project's published set is unchanged before and after and that its client reads exactly what they read before
+- [ ] T057 Re-key `ClientContentReleaseEntry` and `ClientCategoryContent` on `sectionId`, replacing `categoryKey` outright rather than carrying both
+- [ ] T058 Rework `apps/api/src/documentation/publication/client-publication.service.ts` and `client-derivation.handler.ts` to derive from an approved `SectionProposal`, taking register from the section rather than from a project editorial profile
+- [ ] T059 Update the publication tests, keeping the conditional-swap proof: two approvals seconds apart leave exactly one published set holding both sections
 
 ### Ingestion stops classifying
 
