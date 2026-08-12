@@ -9,7 +9,6 @@ const baseObservation = {
   originalExcerpt: 'Le lancement est prévu le 4 avril.',
   normalizedContent: 'Le lancement est prévu le 4 avril.',
   normalizedLanguage: 'fr',
-  categories: ['planning'],
 };
 
 describe('ExtractionOutputSchema', () => {
@@ -24,7 +23,7 @@ describe('ExtractionOutputSchema', () => {
     { type: 'notion_block', blockId: 'block-1', position: 4 },
   ])('accepts attributable $type observations', (locator) => {
     const output = parseExtractionOutput({
-      promptVersion: 'document-extraction-v2',
+      promptVersion: 'document-extraction-v3',
       inputChunkCount: 1,
       observations: [{ ...baseObservation, locator }],
       accounting: { outputObservationCount: 1, rejectedClaimCount: 0 },
@@ -35,7 +34,7 @@ describe('ExtractionOutputSchema', () => {
 
   it('rejects accounting that does not match the observations', () => {
     const parsed = ExtractionOutputSchema.safeParse({
-      promptVersion: 'document-extraction-v2',
+      promptVersion: 'document-extraction-v3',
       inputChunkCount: 2,
       observations: [
         {
@@ -51,7 +50,7 @@ describe('ExtractionOutputSchema', () => {
 
   it('rejects duplicate sequence numbers and unsupported categories', () => {
     const parsed = ExtractionOutputSchema.safeParse({
-      promptVersion: 'document-extraction-v2',
+      promptVersion: 'document-extraction-v3',
       inputChunkCount: 1,
       observations: [
         {
@@ -60,7 +59,6 @@ describe('ExtractionOutputSchema', () => {
         },
         {
           ...baseObservation,
-          categories: ['invented'],
           locator: { type: 'pdf_page', page: 1, excerpt: 'B' },
         },
       ],
@@ -73,7 +71,7 @@ describe('ExtractionOutputSchema', () => {
   it('rejects a claim without an exact original excerpt', () => {
     expect(() =>
       parseExtractionOutput({
-        promptVersion: 'document-extraction-v2',
+        promptVersion: 'document-extraction-v3',
         inputChunkCount: 1,
         observations: [
           {

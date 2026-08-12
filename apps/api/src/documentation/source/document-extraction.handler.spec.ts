@@ -44,7 +44,7 @@ const document = {
 } as SourceDocument;
 
 const output = {
-  promptVersion: 'document-extraction-v2',
+  promptVersion: 'document-extraction-v3',
   inputChunkCount: 0,
   observations: [
     {
@@ -53,7 +53,6 @@ const output = {
       originalExcerpt: 'Sessions serveur révocables.',
       normalizedContent: "L'authentification utilise des sessions révocables.",
       normalizedLanguage: 'fr',
-      categories: ['how_it_works'],
       locator: {
         type: 'pdf_page',
         page: 2,
@@ -163,7 +162,6 @@ describe('DocumentExtractionHandler', () => {
         sourceDocumentId: documentId,
         sequence: 0,
         locator: output.observations[0].locator,
-        categories: { create: [{ categoryKey: 'how_it_works' }] },
       }),
     });
     expect(prisma.generationOperation.upsert).toHaveBeenCalledWith(

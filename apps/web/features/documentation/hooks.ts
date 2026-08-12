@@ -8,7 +8,6 @@ import {
 } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
 import type {
-  EditorialProfileValues,
   GuidedCorrectionRequest,
   SourceDocument,
 } from "schemas";
@@ -25,17 +24,9 @@ import {
   ClarificationOptions,
   listClarifications,
   resolveClarifications,
-  cancelEditorialProfile,
-  confirmEditorialProfile,
-  correctCategoryDraft,
-  getCategoryDraft,
   getClientContentPreview,
-  getPublicClientCategories,
+  getPublicClientSections,
   getDocumentationWorkspace,
-  getEditorialProfile,
-  listCategoryDrafts,
-  proposeEditorialProfile,
-  reviewCategoryDraft,
   confirmDocumentRemoval,
   previewDocumentRemoval,
   retryDocumentRemoval,
@@ -79,7 +70,6 @@ export const clarificationsKey = (
     ...documentationKey(projectId),
     "clarifications",
     options.status ?? null,
-    options.categoryKey ?? null,
   ] as const;
 
 // Cursor pages, read to the end. Every one of these endpoints returns a
@@ -314,14 +304,10 @@ export function useResolveClarifications(projectId: string) {
 
 export const workspaceKey = (projectId: string) =>
   [...documentationKey(projectId), "workspace"] as const;
-export const categoryDraftsKey = (projectId: string) =>
-  [...documentationKey(projectId), "category-drafts"] as const;
 export const clientPreviewKey = (projectId: string) =>
   [...documentationKey(projectId), "client-preview"] as const;
-export const publicClientCategoriesKey = (projectId: string) =>
-  [...documentationKey(projectId), "public-client-categories"] as const;
-export const editorialProfileKey = (projectId: string) =>
-  [...documentationKey(projectId), "editorial-profile"] as const;
+export const publicClientSectionsKey = (projectId: string) =>
+  [...documentationKey(projectId), "public-client-sections"] as const;
 
 export function useDocumentationWorkspace(projectId: string) {
   return useQuery({
@@ -335,26 +321,6 @@ export function useDocumentationWorkspace(projectId: string) {
   });
 }
 
-export function useCategoryDrafts(projectId: string) {
-  return useQuery({
-    queryKey: categoryDraftsKey(projectId),
-    queryFn: () => listCategoryDrafts(projectId),
-    // A draft with no summary yet is still being generated. Without this it
-    // showed "Génération en cours" and then stayed frozen on that text until
-    // the contributor thought to reload the page by hand.
-    refetchInterval: (query) =>
-      query.state.data?.some((state) => state.activeDraft?.changeSummary == null)
-        ? 5_000
-        : false,
-  });
-}
-export function useCategoryDraft(projectId: string, draftId: string | null) {
-  return useQuery({
-    queryKey: [...categoryDraftsKey(projectId), draftId],
-    queryFn: () => getCategoryDraft(projectId, draftId!),
-    enabled: Boolean(draftId),
-  });
-}
 
 function useInvalidateDocumentation(projectId: string) {
   const queryClient = useQueryClient();
@@ -363,107 +329,16 @@ function useInvalidateDocumentation(projectId: string) {
     queryClient.invalidateQueries({ queryKey: clientPreviewKey(projectId) });
   };
 }
-export function useReviewCategoryDraft(projectId: string) {
-  const invalidate = useInvalidateDocumentation(projectId);
-  return useMutation({
-    mutationFn: (input: {
-      draftId: string;
-      action: "accept" | "discard";
-      expectedVersion: number;
-    }) =>
-      reviewCategoryDraft(
-        projectId,
-        input.draftId,
-        input.action,
-        input.expectedVersion,
-      ),
-    onSuccess: invalidate,
-    meta: { skipGlobalErrorToast: true },
-  });
-}
-export function useCorrectCategoryDraft(projectId: string) {
-  const t = useTranslations("Projects.DocumentationNew.Toasts");
-  const invalidate = useInvalidateDocumentation(projectId);
-  return useMutation({
-    mutationFn: (input: {
-      draftId: string;
-      expectedVersion: number;
-      instruction: string;
-    }) =>
-      correctCategoryDraft(
-        projectId,
-        input.draftId,
-        input.expectedVersion,
-        input.instruction,
-      ),
-    onSuccess: invalidate,
-    meta: { skipGlobalErrorToast: true, successMessage: t("correctionSent") },
-  });
-}
 export function useClientContentPreview(projectId: string) {
   return useQuery({
     queryKey: clientPreviewKey(projectId),
     queryFn: () => getClientContentPreview(projectId),
   });
 }
-export function usePublicClientCategories(projectId: string) {
+export function usePublicClientSections(projectId: string) {
   return useQuery({
-    queryKey: publicClientCategoriesKey(projectId),
-    queryFn: () => getPublicClientCategories(projectId),
-  });
-}
-export function useEditorialProfile(projectId: string) {
-  return useQuery({
-    queryKey: editorialProfileKey(projectId),
-    queryFn: () => getEditorialProfile(projectId),
-    refetchInterval: (query) =>
-      query.state.data?.proposal?.status === "preview_pending" ? 5_000 : false,
-  });
-}
-export function useProposeEditorialProfile(projectId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      expectedVersion: number;
-      values: EditorialProfileValues;
-    }) =>
-      proposeEditorialProfile(projectId, input.expectedVersion, input.values),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: editorialProfileKey(projectId),
-      }),
-    meta: { skipGlobalErrorToast: true },
-  });
-}
-export function useConfirmEditorialProfile(projectId: string) {
-  const t = useTranslations("Projects.DocumentationNew.Toasts");
-  const invalidate = useInvalidateDocumentation(projectId);
-  return useMutation({
-    mutationFn: (input: { proposalId: string; expectedVersion: number }) =>
-      confirmEditorialProfile(
-        projectId,
-        input.proposalId,
-        input.expectedVersion,
-      ),
-    onSuccess: invalidate,
-    meta: { skipGlobalErrorToast: true, successMessage: t("editorialConfirmed") },
-  });
-}
-export function useCancelEditorialProfile(projectId: string) {
-  const t = useTranslations("Projects.DocumentationNew.Toasts");
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { proposalId: string; expectedVersion: number }) =>
-      cancelEditorialProfile(
-        projectId,
-        input.proposalId,
-        input.expectedVersion,
-      ),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: editorialProfileKey(projectId),
-      }),
-    meta: { skipGlobalErrorToast: true, successMessage: t("editorialCancelled") },
+    queryKey: publicClientSectionsKey(projectId),
+    queryFn: () => getPublicClientSections(projectId),
   });
 }
 

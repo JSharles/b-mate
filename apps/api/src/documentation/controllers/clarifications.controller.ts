@@ -27,14 +27,9 @@ export class ClarificationsController {
     @CurrentUser() user: User,
     @Param('projectId') projectId: string,
     @Query('status') status?: ClarificationQueryDto['status'],
-    @Query('categoryKey') categoryKey?: ClarificationQueryDto['categoryKey'],
     @Query('cursor') cursor?: string,
   ) {
-    return this.clarifications.list(user.id, projectId, {
-      status,
-      categoryKey,
-      cursor,
-    });
+    return this.clarifications.list(user.id, projectId, { status, cursor });
   }
 
   @Post('resolutions')

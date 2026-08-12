@@ -1,4 +1,3 @@
-import { DOCUMENTATION_CATEGORY_KEYS } from '../../documentation-categories';
 import { DOCUMENT_EXTRACTION_PROMPT_VERSION } from '../extraction-output.schema';
 
 export { DOCUMENT_EXTRACTION_PROMPT_VERSION };
@@ -12,7 +11,6 @@ export function buildDocumentExtractionPrompt(input: {
   return [
     `Prompt version: ${DOCUMENT_EXTRACTION_PROMPT_VERSION}`,
     `Input chunk count: ${input.inputChunkCount}`,
-    `Allowed categories: ${DOCUMENTATION_CATEGORY_KEYS.join(', ')}`,
     '',
     'Extract only material, atomic information explicitly supported by the supplied document.',
     'Never infer, complete, reconcile, or invent missing facts.',

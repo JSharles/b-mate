@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import type {
-  DocumentationCategoryReference,
-  EditorialProfileRevision,
-} from '@prisma/client';
+import type { SectionProposal } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { GenerationService } from '../../generation/generation.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -12,7 +9,7 @@ import {
   CLIENT_DERIVATION_PROMPT_VERSION,
 } from './prompts/client-derivation.prompt';
 
-// How often to look for a category a contributor accepted that never reached
+// How often to look for a section a contributor approved that never reached
 // the client, and how long a dropped release must sit before it counts as
 // forgotten rather than as a swap still being resolved.
 const DROPPED_ACCEPTANCE_SWEEP_MS = 30_000;
@@ -27,12 +24,11 @@ export class ClientPublicationService {
     private readonly generation: GenerationService,
   ) {}
 
-  // A release that loses the swap for the head is dropped, and its category
-  // goes with it — accepted by the contributor, never seen by the client. The
-  // swap is what stops two half-releases going live; this is what stops the
-  // losing half from being forgotten. Coverage is judged by category, so a
-  // category showing older content than the reference that was accepted is not
-  // caught here.
+  // A release that loses the swap for the head is dropped, and its section goes
+  // with it — approved by the contributor, never seen by the client. The swap is
+  // what stops two half-releases going live; this is what stops the losing half
+  // from being forgotten. Coverage is judged by section, so a section showing
+  // older content than the proposal that was approved is not caught here.
   @Interval(DROPPED_ACCEPTANCE_SWEEP_MS)
   async recoverDroppedAcceptances(): Promise<void> {
     const settledBefore = new Date(Date.now() - DROPPED_ACCEPTANCE_AFTER_MS);
@@ -42,15 +38,15 @@ export class ClientPublicationService {
         publishedAt: null,
         updatedAt: { lt: settledBefore },
       },
-      include: { initiatingReference: true },
+      include: { initiatingProposal: true },
     });
     for (const release of dropped) {
-      const reference = release.initiatingReference;
-      if (!reference) continue;
+      const proposal = release.initiatingProposal;
+      if (!proposal?.approvedByUserId) continue;
       // A release still being assembled *is* a publication attempt. Without
       // this the sweep queued another one every thirty seconds — thirteen
       // releases and twelve generation calls before I stopped it — because the
-      // category it was recovering could not appear until the attempt already
+      // section it was recovering could not appear until the attempt already
       // running had finished.
       const inFlight = await this.prisma.clientContentRelease.count({
         where: { projectId: release.projectId, status: 'preparing' },
@@ -63,174 +59,84 @@ export class ClientPublicationService {
         },
       );
       const covered = publication?.currentRelease?.entries.some(
-        (entry) => entry.categoryKey === reference.categoryKey,
+        (entry) => entry.sectionId === proposal.sectionId,
       );
       if (covered) continue;
       try {
-        await this.queueAcceptedReference(
-          reference,
-          reference.acceptedByUserId,
-        );
+        await this.queueApprovedProposal(proposal);
       } catch (error) {
         this.logger.warn(
-          `Could not re-publish ${reference.categoryKey}: ${String(error)}`,
+          `Could not re-publish section ${proposal.sectionId}: ${String(error)}`,
         );
       }
     }
   }
 
-  async queueAcceptedReference(
-    reference: DocumentationCategoryReference,
-    userId: string,
-  ): Promise<string> {
+  // Approving a section queues one release carrying every section the client
+  // already reads plus this one, so the swap below replaces a complete set with
+  // a complete set. FR-022: the client never reads a mixture.
+  async queueApprovedProposal(proposal: SectionProposal): Promise<string> {
     return this.prisma.$transaction(
       async (tx) => {
-        const settings = await tx.projectEditorialSettings.upsert({
-          where: { projectId: reference.projectId },
-          update: {},
-          create: { projectId: reference.projectId },
+        const section = await tx.clientSection.findUnique({
+          where: { id: proposal.sectionId },
+          select: { projectId: true },
         });
-        let profileId = settings.currentProfileRevisionId;
-        if (!profileId) {
-          const profile = await tx.editorialProfileRevision.create({
-            data: {
-              projectId: reference.projectId,
-              sequence: settings.nextSequence,
-              length: 'balanced',
-              pedagogy: 'guided',
-              technicalFamiliarity: 'novice',
-              tone: 'reassuring',
-              confirmedByUserId: userId,
-            },
-          });
-          await tx.projectEditorialSettings.update({
-            where: { projectId: reference.projectId },
-            data: {
-              currentProfileRevisionId: profile.id,
-              nextSequence: { increment: 1 },
-              version: { increment: 1 },
-            },
-          });
-          profileId = profile.id;
-        }
+        if (!section) throw new Error('CLIENT_PUBLICATION_SECTION_MISSING');
+        const projectId = section.projectId;
+
         const publication = await tx.projectClientPublication.upsert({
-          where: { projectId: reference.projectId },
+          where: { projectId },
           update: {},
-          create: { projectId: reference.projectId },
+          create: { projectId },
         });
         const baseEntries = publication.currentReleaseId
           ? await tx.clientContentReleaseEntry.findMany({
               where: { releaseId: publication.currentReleaseId },
             })
           : [];
+        // The section being approved is rebuilt from its new proposal; every
+        // other section is carried across by reference, so nothing already
+        // published is re-derived or re-billed.
         const kept = baseEntries.filter(
-          (entry) => entry.categoryKey !== reference.categoryKey,
+          (entry) => entry.sectionId !== proposal.sectionId,
         );
         const release = await tx.clientContentRelease.create({
           data: {
-            projectId: reference.projectId,
+            projectId,
             sequence: publication.nextSequence,
             baseReleaseId: publication.currentReleaseId,
-            profileRevisionId: profileId,
-            reason: 'category_acceptance',
+            reason: 'section_approval',
             status: 'preparing',
-            expectedCategoryCount: kept.length + 1,
-            initiatingReferenceId: reference.id,
+            expectedSectionCount: kept.length + 1,
+            initiatingProposalId: proposal.id,
             entries: {
               create: kept.map((entry) => ({
-                categoryKey: entry.categoryKey,
+                sectionId: entry.sectionId,
                 locale: entry.locale,
-                clientCategoryContentId: entry.clientCategoryContentId,
+                clientSectionContentId: entry.clientSectionContentId,
               })),
             },
           },
         });
         await tx.projectClientPublication.update({
-          where: { projectId: reference.projectId },
+          where: { projectId },
           data: { nextSequence: { increment: 1 }, version: { increment: 1 } },
         });
         const inputFingerprint = createHash('sha256')
-          .update(
-            JSON.stringify({
-              referenceId: reference.id,
-              profileId,
-              locale: 'fr',
-            }),
-          )
+          .update(JSON.stringify({ proposalId: proposal.id, locale: 'fr' }))
           .digest('hex');
         await this.generation.createInTransaction(tx, {
-          projectId: reference.projectId,
+          projectId,
           type: 'client_derivation',
-          deduplicationKey: `client:${release.id}:${reference.categoryKey}:fr`,
+          deduplicationKey: `client:${release.id}:${proposal.sectionId}:fr`,
           inputFingerprint,
           promptVersion: CLIENT_DERIVATION_PROMPT_VERSION,
           outputContractVersion: CLIENT_DERIVATION_OUTPUT_CONTRACT,
-          sourceRevisionId: reference.sourceRevisionId,
-          categoryReferenceId: reference.id,
-          profileRevisionId: profileId,
+          sourceRevisionId: proposal.sourceRevisionId,
+          sectionProposalId: proposal.id,
           clientReleaseId: release.id,
         });
-        return release.id;
-      },
-      { isolationLevel: 'Serializable' },
-    );
-  }
-
-  async queueEditorialProfile(
-    profile: EditorialProfileRevision,
-  ): Promise<string | null> {
-    return this.prisma.$transaction(
-      async (tx) => {
-        const publication = await tx.projectClientPublication.findUnique({
-          where: { projectId: profile.projectId },
-          include: {
-            currentRelease: {
-              include: {
-                entries: { include: { clientCategoryContent: true } },
-              },
-            },
-          },
-        });
-        const entries = publication?.currentRelease?.entries ?? [];
-        if (!publication?.currentReleaseId || entries.length === 0) return null;
-        const release = await tx.clientContentRelease.create({
-          data: {
-            projectId: profile.projectId,
-            sequence: publication.nextSequence,
-            baseReleaseId: publication.currentReleaseId,
-            profileRevisionId: profile.id,
-            reason: 'editorial_profile_change',
-            status: 'preparing',
-            expectedCategoryCount: entries.length,
-          },
-        });
-        await tx.projectClientPublication.update({
-          where: { projectId: profile.projectId },
-          data: { nextSequence: { increment: 1 }, version: { increment: 1 } },
-        });
-        for (const entry of entries) {
-          const reference = entry.clientCategoryContent;
-          const inputFingerprint = createHash('sha256')
-            .update(
-              JSON.stringify({
-                referenceId: reference.categoryReferenceId,
-                profileId: profile.id,
-                locale: entry.locale,
-              }),
-            )
-            .digest('hex');
-          await this.generation.createInTransaction(tx, {
-            projectId: profile.projectId,
-            type: 'client_derivation',
-            deduplicationKey: `client:${release.id}:${entry.categoryKey}:${entry.locale}`,
-            inputFingerprint,
-            promptVersion: CLIENT_DERIVATION_PROMPT_VERSION,
-            outputContractVersion: CLIENT_DERIVATION_OUTPUT_CONTRACT,
-            categoryReferenceId: reference.categoryReferenceId,
-            profileRevisionId: profile.id,
-            clientReleaseId: release.id,
-          });
-        }
         return release.id;
       },
       { isolationLevel: 'Serializable' },
@@ -242,7 +148,11 @@ export class ClientPublicationService {
       where: { projectId },
       include: {
         currentRelease: {
-          include: { entries: { include: { clientCategoryContent: true } } },
+          include: {
+            entries: {
+              include: { clientSectionContent: true, section: true },
+            },
+          },
         },
       },
     });
@@ -252,22 +162,28 @@ export class ClientPublicationService {
       sequence: release?.sequence ?? 0,
       status: release?.status ?? null,
       visibleToClient: Boolean(release),
-      readyCategoryCount: release?.entries.length ?? 0,
-      expectedCategoryCount: release?.expectedCategoryCount ?? 0,
-      categories:
-        release?.entries.map((entry) => ({
-          categoryKey: entry.categoryKey,
-          blocks: entry.clientCategoryContent.structuredContent,
-        })) ?? [],
+      readySectionCount: release?.entries.length ?? 0,
+      expectedSectionCount: release?.expectedSectionCount ?? 0,
+      // FR-023: an archived section stops being readable without republishing,
+      // and the contributor's order is what the client reads.
+      sections:
+        release?.entries
+          .filter((entry) => !entry.section.archivedAt)
+          .sort((a, b) => a.section.sortOrder - b.section.sortOrder)
+          .map((entry) => ({
+            id: entry.sectionId,
+            name: entry.section.name,
+            blocks: entry.clientSectionContent.structuredContent,
+          })) ?? [],
       publishedAt: release?.publishedAt?.toISOString() ?? null,
     };
   }
 
-  async readPublicCategories(projectId: string): Promise<unknown[]> {
+  async readPublicSections(projectId: string): Promise<unknown[]> {
     const view = (await this.readCurrent(projectId)) as {
-      categories: Array<{ categoryKey: string; blocks: unknown }>;
+      sections: Array<{ id: string; name: string; blocks: unknown }>;
     };
-    return view.categories;
+    return view.sections;
   }
 
   async readPreview(projectId: string): Promise<unknown> {
@@ -278,7 +194,9 @@ export class ClientPublicationService {
         status: { in: ['queued', 'preparing', 'validating', 'ready'] },
       },
       orderBy: { sequence: 'desc' },
-      include: { entries: { include: { clientCategoryContent: true } } },
+      include: {
+        entries: { include: { clientSectionContent: true, section: true } },
+      },
     });
     return {
       current,
@@ -288,11 +206,12 @@ export class ClientPublicationService {
             sequence: pending.sequence,
             status: pending.status,
             visibleToClient: false,
-            readyCategoryCount: pending.entries.length,
-            expectedCategoryCount: pending.expectedCategoryCount,
-            categories: pending.entries.map((entry) => ({
-              categoryKey: entry.categoryKey,
-              blocks: entry.clientCategoryContent.structuredContent,
+            readySectionCount: pending.entries.length,
+            expectedSectionCount: pending.expectedSectionCount,
+            sections: pending.entries.map((entry) => ({
+              id: entry.sectionId,
+              name: entry.section.name,
+              blocks: entry.clientSectionContent.structuredContent,
             })),
             publishedAt: null,
           }

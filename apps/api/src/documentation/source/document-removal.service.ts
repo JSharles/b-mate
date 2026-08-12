@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
-import type { DocumentationCategoryKey } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
@@ -35,7 +34,7 @@ export class DocumentRemovalService {
         status: { notIn: ['removed', 'removal_pending'] },
       },
       include: {
-        observations: { include: { categories: true } },
+        observations: true,
         project: { include: { projectSource: true } },
       },
     });
@@ -72,18 +71,10 @@ export class DocumentRemovalService {
       });
       if (otherSupports === 0) soleSupportItemCount += 1;
     }
-    const affectedCategories = [
-      ...new Set(
-        document.observations.flatMap((observation) =>
-          observation.categories.map((category) => category.categoryKey),
-        ),
-      ),
-    ].sort();
     return {
       documentId,
       documentVersion: document.version,
       sourceRevisionId: revisionId,
-      affectedCategories,
       observationCount: document.observations.length,
       supportedItemCount: itemIds.length,
       soleSupportItemCount,
@@ -283,7 +274,6 @@ export class DocumentRemovalService {
               include: {
                 items: {
                   include: {
-                    categories: true,
                     provenanceLinks: { include: { documentObservation: true } },
                   },
                 },
@@ -293,7 +283,6 @@ export class DocumentRemovalService {
         });
         if (!source?.currentRevision)
           throw new ConflictException({ code: 'SOURCE_REVISION_UNAVAILABLE' });
-        const affected = new Set<DocumentationCategoryKey>();
         const planned: Array<{
           current: (typeof source.currentRevision.items)[number];
           replacement: (typeof source.currentRevision.items)[number] | null;
@@ -337,7 +326,6 @@ export class DocumentRemovalService {
             },
             orderBy: { sourceRevision: { sequence: 'desc' } },
             include: {
-              categories: true,
               provenanceLinks: { include: { documentObservation: true } },
             },
           });
@@ -351,12 +339,6 @@ export class DocumentRemovalService {
             replacement: previous,
             links: previousLinks,
           });
-          item.categories.forEach((category) =>
-            affected.add(category.categoryKey),
-          );
-          previous?.categories.forEach((category) =>
-            affected.add(category.categoryKey),
-          );
         }
         const revision = await tx.sourceRevision.create({
           data: {
@@ -394,11 +376,6 @@ export class DocumentRemovalService {
               state: plan.replacement.state,
               content: plan.replacement.content,
               sortOrder: plan.current.sortOrder,
-              categories: {
-                create: plan.replacement.categories.map((category) => ({
-                  categoryKey: category.categoryKey,
-                })),
-              },
               provenanceLinks: {
                 create: plan.links.map((link) => ({
                   documentObservationId: link.documentObservationId,
@@ -422,27 +399,14 @@ export class DocumentRemovalService {
               },
             });
         }
-        if (affected.size > 0)
-          await tx.sourceRevisionImpact.createMany({
-            data: [...affected].map((categoryKey) => ({
-              sourceRevisionId: revision.id,
-              categoryKey,
-              reason: 'Document removal changed surviving provenance.',
-            })),
-          });
-        for (const categoryKey of affected)
-          await tx.categoryProjectionState.upsert({
-            where: { projectId_categoryKey: { projectId, categoryKey } },
-            update: {
-              targetSourceRevisionId: revision.id,
-              version: { increment: 1 },
-            },
-            create: {
-              projectId,
-              categoryKey,
-              targetSourceRevisionId: revision.id,
-            },
-          });
+        // FR-018: the source moved, so every live section may now be out of
+        // date. They are marked, never recomposed — the contributor decides
+        // which ones are worth refreshing, and the client keeps reading what
+        // was approved until they do.
+        await tx.clientSection.updateMany({
+          where: { projectId, archivedAt: null, refreshNeeded: false },
+          data: { refreshNeeded: true, version: { increment: 1 } },
+        });
         await tx.projectSource.update({
           where: { id: source.id },
           data: {

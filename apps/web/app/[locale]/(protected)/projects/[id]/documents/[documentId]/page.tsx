@@ -122,23 +122,6 @@ export default function SourceDocumentPage({
                 {t("roleDescription")}
               </p>
             </div>
-            {item.affectedCategories.length > 0 && (
-              <div>
-                <h2 className="text-sm font-semibold">
-                  {t("affectedCategories")}
-                </h2>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {item.affectedCategories.map((category) => (
-                    <span
-                      key={category}
-                      className="rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground"
-                    >
-                      {t(`category_${category}`)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
             {/* A stop is not an incident. Reported through the failure block
                 the page contradicted its own status line — "Traitement arrêté"
                 above, "le traitement n'a pas abouti" in red below — and

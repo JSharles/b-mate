@@ -9,11 +9,10 @@ describe('createPrismaMock', () => {
     expect(typeof prisma.sourceRevision.create).toBe('function');
     expect(typeof prisma.provenanceLink.createMany).toBe('function');
     expect(typeof prisma.clarification.updateMany).toBe('function');
-    expect(typeof prisma.categoryProjectionState.upsert).toBe('function');
-    expect(typeof prisma.documentationCategoryReferenceDraft.findMany).toBe(
-      'function',
-    );
-    expect(typeof prisma.editorialProfileProposal.update).toBe('function');
+    expect(typeof prisma.clientSection.upsert).toBe('function');
+    expect(typeof prisma.sectionProposal.findMany).toBe('function');
+    expect(typeof prisma.sectionQuestion.create).toBe('function');
+    expect(typeof prisma.clientSectionContent.upsert).toBe('function');
     expect(typeof prisma.clientContentReleaseEntry.createMany).toBe('function');
     expect(typeof prisma.generationOperation.findFirst).toBe('function');
     expect(typeof prisma.generationAttempt.updateMany).toBe('function');

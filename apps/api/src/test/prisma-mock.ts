@@ -33,56 +33,33 @@ const DELEGATE_NAMES = [
   'vulgarizedTask',
   'taskProgress',
   'notionConnection',
-  // Reset-empty legacy documentary delegates retained until T117.
-  'resource',
-  'categoryExtract',
-  'categoryReference',
-  'categoryReferenceDraft',
-  'categoryContent',
-  'referenceQuestion',
-  // Transition and reset audit delegates.
-  'documentaryTransitionState',
-  'documentaryResetRun',
-  'documentaryResetItem',
   // Canonical source and provenance delegates.
   'projectSource',
   'sourceRevision',
-  'sourceRevisionImpact',
   'informationItem',
   'sourceRevisionItem',
-  'sourceRevisionItemCategory',
   'sourceRevisionChange',
   'sourceDocument',
   'documentObservation',
-  'documentObservationCategory',
   'contributorAssertion',
-  'sourceLanguageProposal',
   'provenanceLink',
   'clarification',
   'clarificationItem',
   'clarificationEvidence',
   'clarificationResolution',
-  // Factual projection and editorial/publication delegates.
-  'categoryProjectionState',
-  'documentationCategoryReferenceDraft',
-  'categoryDraftReview',
-  'documentationCategoryReference',
-  'projectEditorialSettings',
-  'editorialProfileRevision',
-  'editorialProfileProposal',
-  'editorialPreview',
-  'clientCategoryContent',
+  // Author-defined client sections and their composition.
+  'clientSection',
+  'sectionProposal',
+  'sectionQuestion',
+  'sectionQuestionItem',
+  // Publication delegates.
+  'clientSectionContent',
   'clientContentRelease',
   'clientContentReleaseEntry',
   'projectClientPublication',
   // Durable generation delegates.
   'generationOperation',
   'generationAttempt',
-  // Author-defined client sections (specs/017-documentation-review-journey).
-  'clientSection',
-  'sectionProposal',
-  'sectionQuestion',
-  'sectionQuestionItem',
 ] as const;
 
 type DelegateName = (typeof DELEGATE_NAMES)[number];

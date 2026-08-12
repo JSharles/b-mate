@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { GenerationService } from '../../generation/generation.service';
+import { ClientPublicationService } from '../publication/client-publication.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
 import { asPrismaService, createPrismaMock } from '../../test/prisma-mock';
 import { SectionProposalService } from './section-proposal.service';
@@ -40,14 +41,19 @@ describe('SectionProposalService', () => {
     const generation = {
       createInTransaction: jest.fn().mockResolvedValue({ id: operationId }),
     };
+    const publication = {
+      queueApprovedProposal: jest.fn().mockResolvedValue('release-1'),
+    };
     return {
       prisma,
       access,
       generation,
+      publication,
       service: new SectionProposalService(
         asPrismaService(prisma),
         access as unknown as ProjectAccessService,
         generation as unknown as GenerationService,
+        publication as unknown as ClientPublicationService,
       ),
     };
   }
@@ -247,10 +253,15 @@ describe('SectionProposalService', () => {
       });
       prisma.sectionProposal.updateMany.mockResolvedValue({ count: 1 });
       prisma.clientSection.updateMany.mockResolvedValue({ count: 1 });
+      prisma.sectionProposal.findUnique.mockResolvedValue({ id: proposalId });
 
       await expect(
         service.approve(userId, projectId, sectionId, 2),
-      ).resolves.toEqual({ proposalId, approved: true });
+      ).resolves.toEqual({
+        proposalId,
+        releaseId: 'release-1',
+        approved: true,
+      });
 
       expect(prisma.sectionProposal.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({

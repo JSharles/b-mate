@@ -347,21 +347,12 @@ describe('SourceDocumentService', () => {
 
     prisma.sourceDocument.findFirst.mockResolvedValue({
       ...sourceDocument({ status: 'removed', storedObjectKey: null }),
-      observations: [
-        {
-          categories: [
-            { categoryKey: 'planning' },
-            { categoryKey: 'overview' },
-            { categoryKey: 'planning' },
-          ],
-        },
-      ],
+      observations: [{}],
     });
     await expect(
       service.detail(userId, projectId, documentId),
     ).resolves.toMatchObject({
       originalDownloadUrl: null,
-      affectedCategories: ['overview', 'planning'],
     });
     expect(storage.getDownloadUrl).not.toHaveBeenCalled();
   });

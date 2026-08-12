@@ -10,7 +10,6 @@ import { BoardConnectionsModule } from './board-connections/board-connections.mo
 import { CurrentTaskModule } from './current-task/current-task.module';
 import { TaskVulgarizationModule } from './task-vulgarization/task-vulgarization.module';
 import { NotionConnectionModule } from './notion-connection/notion-connection.module';
-import { DocumentaryResetModule } from './documentation/reset/documentary-reset.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { GenerationModule } from './generation/generation.module';
 import { DocumentationModule } from './documentation/documentation.module';
@@ -27,7 +26,6 @@ import { DocumentationModule } from './documentation/documentation.module';
     TaskVulgarizationModule,
     CurrentTaskModule,
     NotionConnectionModule,
-    DocumentaryResetModule,
     GenerationModule,
     DocumentationModule,
   ],

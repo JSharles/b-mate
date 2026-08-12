@@ -16,7 +16,6 @@ describe('clarification flow corpus', () => {
         evidenceObservationRefs: [`o${10 + index}`, `o${30 + index}`],
         relatedItemRefs: [`i${50 + index}`],
         openPointContent: `Point ${index + 1} à clarifier.`,
-        categories: [index % 2 ? 'overview' : 'planning'],
       })),
       clarificationCount: 7,
     });

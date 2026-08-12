@@ -52,8 +52,8 @@ export class DocumentationWorkspaceService {
           status: { in: ['open', 'left_open'] },
         },
       }),
-      this.prisma.documentationCategoryReferenceDraft.count({
-        where: { projectId, status: 'pending_review' },
+      this.prisma.sectionProposal.count({
+        where: { section: { projectId }, status: 'pending_review' },
       }),
       this.prisma.projectClientPublication.findUnique({
         where: { projectId },
@@ -95,7 +95,7 @@ export class DocumentationWorkspaceService {
       releaseProgress: pendingRelease
         ? {
             ready: pendingRelease.entries.length,
-            expected: pendingRelease.expectedCategoryCount,
+            expected: pendingRelease.expectedSectionCount,
           }
         : null,
       clientVisibility,

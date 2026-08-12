@@ -10,9 +10,9 @@ const emptyRelease = {
   sequence: 0,
   status: null,
   visibleToClient: false,
-  readyCategoryCount: 0,
-  expectedCategoryCount: 0,
-  categories: [],
+  readySectionCount: 0,
+  expectedSectionCount: 0,
+  sections: [],
   publishedAt: null,
 };
 
@@ -63,9 +63,10 @@ describe("ClientContentPreview", () => {
         current: {
           ...emptyRelease,
           releaseId: "00000000-0000-4000-8000-000000000001",
-          categories: [
+          sections: [
             {
-              categoryKey: "overview",
+              id: "00000000-0000-4000-8000-000000000009",
+              name: "Le projet",
               blocks: [{ type: "paragraph", text: "Visible client text" }],
             },
           ],
@@ -75,7 +76,7 @@ describe("ClientContentPreview", () => {
     } as never);
     render(<ClientContentPreview projectId="project-1" />);
     expect(screen.getByText("previousVisible")).toBeVisible();
-    expect(screen.getByText("category_overview")).toBeVisible();
+    expect(screen.getByText("Le projet")).toBeVisible();
     expect(screen.getByText("Visible client text")).toBeVisible();
   });
 });

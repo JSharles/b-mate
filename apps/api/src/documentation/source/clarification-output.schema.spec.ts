@@ -16,7 +16,6 @@ describe('ClarificationOutputSchema', () => {
     evidenceObservationRefs: [obs(1), obs(2)],
     relatedItemRefs: [item(3)],
     openPointContent: 'La date de lancement reste à confirmer.',
-    categories: ['planning'],
   };
 
   it('accepts all ranked material conflicts without a numerical cap', () => {

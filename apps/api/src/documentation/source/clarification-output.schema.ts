@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { DOCUMENTATION_CATEGORY_KEYS } from '../documentation-categories';
 import {
   ITEM_REF_JSON_SCHEMA,
   ItemRefSchema,
@@ -26,7 +25,6 @@ export const ClarificationCandidateSchema = z
     evidenceObservationRefs: z.array(ObservationRefSchema).min(2),
     relatedItemRefs: z.array(ItemRefSchema),
     openPointContent: z.string().trim().min(1).max(10_000),
-    categories: z.array(z.enum(DOCUMENTATION_CATEGORY_KEYS)).min(1),
   })
   .strict()
   .refine(
@@ -85,7 +83,6 @@ export const CLARIFICATION_JSON_SCHEMA: Record<string, unknown> = {
       'evidenceObservationRefs',
       'relatedItemRefs',
       'openPointContent',
-      'categories',
     ],
     properties: {
       conflictObservationRef: OBSERVATION_REF_JSON_SCHEMA,
@@ -105,11 +102,6 @@ export const CLARIFICATION_JSON_SCHEMA: Record<string, unknown> = {
         items: ITEM_REF_JSON_SCHEMA,
       },
       openPointContent: { type: 'string', minLength: 1 },
-      categories: {
-        type: 'array',
-        minItems: 1,
-        items: { enum: [...DOCUMENTATION_CATEGORY_KEYS] },
-      },
     },
   },
 };

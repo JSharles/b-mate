@@ -81,7 +81,6 @@ export interface SourceDocumentDetail extends SourceDocumentSummary {
   originalSizeBytes: number | null;
   originalDownloadUrl: string | null;
   externalUrl: string | null;
-  affectedCategories: string[];
 }
 
 export interface SourceDocumentAcknowledgement {
@@ -253,18 +252,9 @@ export class SourceDocumentService {
     await this.access.requireContributor(userId, projectId);
     const document = await this.prisma.sourceDocument.findFirst({
       where: { id: documentId, projectId },
-      include: {
-        observations: { select: { categories: true } },
-      },
     });
     if (!document) {
       throw new NotFoundException(HIDDEN_NOT_FOUND);
-    }
-    const categories = new Set<string>();
-    for (const observation of document.observations ?? []) {
-      for (const category of observation.categories ?? []) {
-        categories.add(category.categoryKey);
-      }
     }
     const originalDownloadUrl =
       document.storedObjectKey && document.status !== 'removed'
@@ -280,7 +270,6 @@ export class SourceDocumentService {
       originalSizeBytes: document.originalSizeBytes,
       originalDownloadUrl,
       externalUrl: document.externalUrl,
-      affectedCategories: [...categories].sort(),
     };
   }
 

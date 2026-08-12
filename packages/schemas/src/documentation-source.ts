@@ -5,7 +5,6 @@ import {
   DocumentationUuidSchema,
   createCursorPageSchema,
 } from "./documentation-common";
-import { DocumentationCategoryKeySchema } from "./documentation-category";
 
 export const SourceDocumentKindSchema = z.enum(["upload", "notion"]);
 export const SourceDocumentStatusSchema = z.enum([
@@ -44,7 +43,6 @@ export const SourceDocumentDetailSchema = SourceDocumentSchema.extend({
   originalSizeBytes: z.number().int().nonnegative().nullable(),
   originalDownloadUrl: z.url().nullable(),
   externalUrl: z.url().nullable(),
-  affectedCategories: z.array(DocumentationCategoryKeySchema),
 }).strict();
 
 export const SourceDocumentPageSchema = createCursorPageSchema(
@@ -117,7 +115,6 @@ export const SourceRevisionSummarySchema = z
     // contributor does not read English.
     summary: z.string().trim().min(1),
     triggerDocumentTitle: z.string().nullable(),
-    impactedCategories: z.array(DocumentationCategoryKeySchema),
     createdAt: z.iso.datetime(),
   })
   .strict();
@@ -169,7 +166,6 @@ export const CanonicalItemSchema = z
     kind: InformationItemKindSchema,
     state: InformationItemStateSchema,
     content: z.string().trim().min(1),
-    categories: z.array(DocumentationCategoryKeySchema).min(1),
     provenanceCount: z.number().int().positive(),
     clarificationIds: z.array(DocumentationUuidSchema).default([]),
   })

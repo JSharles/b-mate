@@ -1,9 +1,7 @@
 import { z } from 'zod';
-import { DOCUMENTATION_CATEGORY_KEYS } from '../documentation-categories';
 
-export const DOCUMENT_EXTRACTION_PROMPT_VERSION = 'document-extraction-v2';
+export const DOCUMENT_EXTRACTION_PROMPT_VERSION = 'document-extraction-v3';
 
-const CategoryKeySchema = z.enum(DOCUMENTATION_CATEGORY_KEYS);
 const ObservationKindSchema = z.enum([
   'fact',
   'decision',
@@ -54,7 +52,6 @@ export const ExtractedObservationSchema = z
     originalExcerpt: z.string().trim().min(1).max(4_000),
     normalizedContent: z.string().trim().min(1).max(20_000),
     normalizedLanguage: z.string().trim().min(2).max(35),
-    categories: z.array(CategoryKeySchema).min(1),
     locator: ExtractionSourceLocatorSchema,
   })
   .strict();
@@ -113,7 +110,6 @@ export const DOCUMENT_EXTRACTION_JSON_SCHEMA: Record<string, unknown> = {
           'originalExcerpt',
           'normalizedContent',
           'normalizedLanguage',
-          'categories',
           'locator',
         ],
         properties: {
@@ -132,11 +128,6 @@ export const DOCUMENT_EXTRACTION_JSON_SCHEMA: Record<string, unknown> = {
           originalExcerpt: { type: 'string', minLength: 1 },
           normalizedContent: { type: 'string', minLength: 1 },
           normalizedLanguage: { type: 'string', minLength: 2 },
-          categories: {
-            type: 'array',
-            minItems: 1,
-            items: { enum: [...DOCUMENTATION_CATEGORY_KEYS] },
-          },
           locator: {
             oneOf: [
               {

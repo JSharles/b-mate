@@ -1,4 +1,3 @@
-import { DOCUMENTATION_CATEGORY_KEYS } from '../../documentation-categories';
 import { buildClarificationInstructions } from './clarification.prompt';
 
 export const SOURCE_CONSOLIDATION_PROMPT_VERSION = 'source-consolidation-v3';
@@ -24,7 +23,6 @@ export function buildSourceConsolidationPrompt(input: {
       : [
           `Item refs run from i0 to i${input.currentItemCount - 1}. Never write one outside that range.`,
         ]),
-    `Categories: ${DOCUMENTATION_CATEGORY_KEYS.join(', ')}`,
     '',
     // Asked for one record per observation plus counts that had to tally, the
     // model kept losing its place on a long page — a different bookkeeping slip
@@ -39,7 +37,7 @@ export function buildSourceConsolidationPrompt(input: {
     'List exclude only for non-material content, with a concrete reason.',
     'Every conflict and every open you list needs exactly one clarification naming that same observation. If you cannot write the question, do not list the conflict.',
     'Refer to observations and items only by the short ref given in the input, such as o12 or i3. Copy it exactly; never invent one and never write an identifier.',
-    'Never emit a claim, ref, or category absent from the input.',
+    'Never emit a claim or ref absent from the input.',
     'Do not rewrite current facts for style. Preserve stable item identity.',
     'Write every canonical value in English; it is the one form the client-facing rewrite reads.',
     buildClarificationInstructions(),

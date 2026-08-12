@@ -12,10 +12,9 @@ describe('ClarificationsController', () => {
     );
     const user = { id: 'user-1' } as never;
 
-    await controller.list(user, 'project-1', 'open', 'planning', 'cursor');
+    await controller.list(user, 'project-1', 'open', 'cursor');
     expect(service.list).toHaveBeenCalledWith('user-1', 'project-1', {
       status: 'open',
-      categoryKey: 'planning',
       cursor: 'cursor',
     });
 

@@ -2,28 +2,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/shared/lib/api-client";
 import {
   addNotionDocument,
-  cancelEditorialProfile,
   confirmDocumentRemoval,
-  confirmEditorialProfile,
-  correctCategoryDraft,
   correctSourceItem,
-  getCategoryDraft,
   getCanonicalSource,
   getClientContentPreview,
   getDocument,
   getDocumentationWorkspace,
-  getEditorialProfile,
   getItemProvenance,
-  listCategoryDrafts,
   listClarifications,
   listDocuments,
   listSourceRevisions,
   previewDocumentRemoval,
-  proposeEditorialProfile,
   resolveClarifications,
   retryDocumentRemoval,
   retryDocumentProcessing,
-  reviewCategoryDraft,
   uploadDocument,
 } from "./api";
 
@@ -112,36 +104,13 @@ describe("documentation api", () => {
   it("owns the complete contributor review, publication preview, editorial, and removal API surface", async () => {
     mockedApiFetch.mockResolvedValue({});
     await listSourceRevisions("project-1", "next");
-    await listClarifications("project-1", {
-      status: "open",
-      categoryKey: "overview",
-      cursor: "next",
-    });
+    await listClarifications("project-1", { status: "open", cursor: "next" });
     await resolveClarifications("project-1", {
       expectedSourceRevisionId: "00000000-0000-4000-8000-000000000001",
       resolutions: [],
     });
     await getDocumentationWorkspace("project-1");
-    await listCategoryDrafts("project-1");
-    await getCategoryDraft("project-1", "draft-1");
-    await reviewCategoryDraft("project-1", "draft-1", "accept", 2);
-    await correctCategoryDraft(
-      "project-1",
-      "draft-1",
-      2,
-      "Correct the launch date",
-    );
     await getClientContentPreview("project-1");
-    await getEditorialProfile("project-1");
-    await proposeEditorialProfile("project-1", 2, {
-      length: "concise",
-      pedagogy: "guided",
-      technicalFamiliarity: "novice",
-      tone: "reassuring",
-      guidance: null,
-    });
-    await confirmEditorialProfile("project-1", "proposal-1", 3);
-    await cancelEditorialProfile("project-1", "proposal-1", 3);
     await previewDocumentRemoval("project-1", "document-1");
     await confirmDocumentRemoval("project-1", "document-1", {
       expectedDocumentVersion: 2,

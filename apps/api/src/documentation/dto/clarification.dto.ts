@@ -20,10 +20,6 @@ export class ClarificationQueryDto {
   status?: 'open' | 'left_open' | 'answered' | 'superseded';
 
   @IsOptional()
-  @IsIn(['overview', 'how_it_works', 'planning', 'other'])
-  categoryKey?: 'overview' | 'how_it_works' | 'planning' | 'other';
-
-  @IsOptional()
   @IsString()
   @MaxLength(2048)
   cursor?: string;

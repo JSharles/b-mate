@@ -4,14 +4,13 @@ import { SourceRevisionService } from './source-revision.service';
 const projectId = '00000000-0000-4000-8000-000000000001';
 const sourceId = '00000000-0000-4000-8000-000000000002';
 const revisionId = '00000000-0000-4000-8000-000000000003';
-const item = (id: string, categoryKey = 'overview') => ({
+const item = (id: string) => ({
   id: `${id}-revision`,
   informationItemId: id,
   kind: 'fact',
   state: 'point_to_clarify',
   content: `content-${id}`,
   sortOrder: 0,
-  categories: [{ categoryKey }],
   provenanceLinks: [
     {
       documentObservationId: 'observation',
@@ -38,7 +37,7 @@ describe('SourceRevisionService flows', () => {
     prisma.projectSource.findUniqueOrThrow.mockResolvedValue(source);
     prisma.sourceRevisionItem.findMany.mockResolvedValue([
       item('item-1'),
-      item('item-2', 'planning'),
+      item('item-2'),
     ]);
     prisma.sourceRevision.create.mockResolvedValue({ id: 'new-revision' });
     prisma.sourceRevisionItem.create
@@ -143,7 +142,7 @@ describe('SourceRevisionService flows', () => {
       }),
     ).resolves.toEqual({ status: 'committed', revisionId: 'new-revision' });
     expect(prisma.sourceRevisionChange.create).toHaveBeenCalledTimes(1);
-    expect(prisma.categoryProjectionState.upsert).toHaveBeenCalled();
+    expect(prisma.clientSection.updateMany).toHaveBeenCalled();
   });
   // A failure pinned to the outgoing head cannot be acted on — its base is
   // gone. It stayed in `needs_attention` regardless, so the project's alarm

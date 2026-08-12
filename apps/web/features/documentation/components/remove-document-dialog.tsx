@@ -68,7 +68,6 @@ export function RemoveDocumentDialog({
                 : t("impact", {
                     items: preview.data.supportedItemCount,
                     sole: preview.data.soleSupportItemCount,
-                    categories: preview.data.affectedCategories.length,
                   })}
             </p>
             <p className="mt-2 text-muted-foreground">{t("clientSafety")}</p>

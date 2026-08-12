@@ -115,7 +115,6 @@ describe('ClarificationService', () => {
     prisma.clarification.findMany.mockResolvedValue(rows);
 
     const page = await service.list(id(1), id(8), {
-      categoryKey: 'overview',
       cursor: id(90),
     });
 

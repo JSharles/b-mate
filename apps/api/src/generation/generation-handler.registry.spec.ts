@@ -14,7 +14,7 @@ describe('GenerationHandlerRegistry', () => {
   it('fails closed when no domain handler is registered', () => {
     const registry = new GenerationHandlerRegistry();
 
-    expect(() => registry.get('output_validation')).toThrow(
+    expect(() => registry.get('client_derivation')).toThrow(
       'No generation handler',
     );
   });

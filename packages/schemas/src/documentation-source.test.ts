@@ -35,7 +35,6 @@ describe('documentation source contracts', () => {
         originalSizeBytes: 1024,
         originalDownloadUrl: 'https://example.test/original',
         externalUrl: null,
-        affectedCategories: ['overview'],
       }),
     ).toBeDefined();
     expect(
@@ -78,7 +77,6 @@ describe('documentation source contracts', () => {
       // The server keeps an English summary for support; the interface writes
       // the sentence a contributor reads from the trigger and this title.
       triggerDocumentTitle: 'Cadrage',
-      impactedCategories: ['overview'],
       createdAt: '2026-08-11T12:00:00.000Z',
     });
     expect(
@@ -99,7 +97,6 @@ describe('documentation source contracts', () => {
             kind: 'date',
             state: 'confirmed',
             content: 'Le lancement est prévu le 15 octobre.',
-            categories: ['planning'],
             provenanceCount: 1,
             clarificationIds: [],
           },

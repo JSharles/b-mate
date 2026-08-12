@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
 import { GenerationService } from '../../generation/generation.service';
+import { ClientPublicationService } from '../publication/client-publication.service';
 import {
   SECTION_COMPOSITION_OUTPUT_CONTRACT,
   SECTION_COMPOSITION_PROMPT_VERSION,
@@ -26,6 +27,7 @@ export class SectionProposalService {
     private readonly prisma: PrismaService,
     private readonly access: ProjectAccessService,
     private readonly generation: GenerationService,
+    private readonly publication: ClientPublicationService,
   ) {}
 
   async compose(userId: string, projectId: string, sectionId: string) {
@@ -108,6 +110,23 @@ export class SectionProposalService {
       }
       return { proposalId: proposal.id, operationId: operation.id };
     });
+  }
+
+  // A proposal is owned by its section, not by the operation that happened to
+  // produce it. Re-running the dead operation would make a second one with no
+  // proposal behind it, which could only fail — so a retry goes through the
+  // section, which knows what still needs composing.
+  async retryComposition(
+    userId: string,
+    projectId: string,
+    operationId: string,
+  ) {
+    const proposal = await this.prisma.sectionProposal.findFirst({
+      where: { generationOperationId: operationId, section: { projectId } },
+      select: { sectionId: true },
+    });
+    if (!proposal) return null;
+    return this.compose(userId, projectId, proposal.sectionId);
   }
 
   async current(userId: string, projectId: string, sectionId: string) {
@@ -194,6 +213,18 @@ export class SectionProposalService {
       data: { activeProposalId: null, version: { increment: 1 } },
     });
 
-    return { proposalId: section.activeProposalId, approved: true as const };
+    const approved = await this.prisma.sectionProposal.findUnique({
+      where: { id: section.activeProposalId },
+    });
+    if (!approved) throw new NotFoundException({ code: 'NOT_FOUND' });
+    // FR-022: publication replaces the whole set, so the client never reads a
+    // mixture of approved and unapproved sections.
+    const releaseId = await this.publication.queueApprovedProposal(approved);
+
+    return {
+      proposalId: section.activeProposalId,
+      releaseId,
+      approved: true as const,
+    };
   }
 }

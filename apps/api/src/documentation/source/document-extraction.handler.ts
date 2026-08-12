@@ -156,11 +156,6 @@ export class DocumentExtractionHandler
           exactContentHash: createHash('sha256')
             .update(observation.normalizedContent)
             .digest('hex'),
-          categories: {
-            create: observation.categories.map((categoryKey) => ({
-              categoryKey,
-            })),
-          },
         },
       });
     }

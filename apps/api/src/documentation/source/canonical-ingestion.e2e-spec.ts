@@ -54,9 +54,6 @@ describe('canonical document ingestion (mocked service chain)', () => {
       trigger: 'document_added';
       summary: string;
       createdAt: Date;
-      impacts: Array<{
-        categoryKey: 'overview' | 'how_it_works' | 'planning' | 'other';
-      }>;
     }> = [];
     const history: Array<{
       informationItemId: string;
@@ -128,7 +125,6 @@ describe('canonical document ingestion (mocked service chain)', () => {
         sourceLanguage: data.sourceLanguage,
         originalExcerpt: data.originalExcerpt,
         locator: data.locator,
-        categories: data.categories.create,
       };
       observations.set(id, observation);
       return Promise.resolve(observation);
@@ -291,19 +287,16 @@ describe('canonical document ingestion (mocked service chain)', () => {
       const facts = normalized[index];
       await extraction.apply(prisma as never, operation, {
         output: {
-          promptVersion: 'document-extraction-v2',
+          promptVersion: 'document-extraction-v3',
           inputChunkCount: 1,
-          observations: facts.map(
-            ([kind, content, category, excerpt], sequence) => ({
-              sequence,
-              kind,
-              originalExcerpt: excerpt,
-              normalizedContent: content,
-              normalizedLanguage: 'fr',
-              categories: [category],
-              locator: { type: 'pdf_page', page: 1, excerpt },
-            }),
-          ),
+          observations: facts.map(([kind, content, , excerpt], sequence) => ({
+            sequence,
+            kind,
+            originalExcerpt: excerpt,
+            normalizedContent: content,
+            normalizedLanguage: 'fr',
+            locator: { type: 'pdf_page', page: 1, excerpt },
+          })),
           accounting: {
             outputObservationCount: facts.length,
             rejectedClaimCount: 0,
@@ -333,7 +326,6 @@ describe('canonical document ingestion (mocked service chain)', () => {
               normalizedContent: item.normalizedContent,
               exactContentHash: item.exactContentHash,
               sourceLanguage: item.sourceLanguage,
-              categories: item.categories.map(({ categoryKey }) => categoryKey),
             }));
           const plan = buildConsolidationPlan(
             canonicalItems,
@@ -350,7 +342,6 @@ describe('canonical document ingestion (mocked service chain)', () => {
             state: item.state,
             content: item.content,
             sortOrder: item.sortOrder,
-            categories: item.categories,
             provenance: item.provenance,
           }));
           for (const change of plan.changes) {
@@ -378,9 +369,6 @@ describe('canonical document ingestion (mocked service chain)', () => {
             trigger: 'document_added',
             summary: `Document incorporated: ${documents.get(operation.sourceDocumentId!)!.title}`,
             createdAt: new Date(`2026-08-11T1${sequence}:00:00.000Z`),
-            impacts: plan.impactedCategories.map((categoryKey) => ({
-              categoryKey,
-            })),
           });
           currentRevisionId = revisionId;
           return { status: 'committed' as const, revisionId };
@@ -477,7 +465,6 @@ describe('canonical document ingestion (mocked service chain)', () => {
         state: item.state,
         content: item.content,
         sortOrder: item.sortOrder,
-        categories: item.categories.map((categoryKey) => ({ categoryKey })),
         provenanceLinks: item.provenance.map((origin, index) => ({
           id: `${origin.documentObservationId}-${index}`,
         })),

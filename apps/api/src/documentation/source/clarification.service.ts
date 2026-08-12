@@ -3,11 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type {
-  ClarificationStatus,
-  DocumentationCategoryKey,
-  Prisma,
-} from '@prisma/client';
+import type { ClarificationStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
 import { ResolveClarificationsDto } from '../dto/clarification.dto';
@@ -26,7 +22,6 @@ export class ClarificationService {
     projectId: string,
     options: {
       status?: ClarificationStatus;
-      categoryKey?: DocumentationCategoryKey;
       cursor?: string;
     },
   ) {
@@ -38,24 +33,6 @@ export class ClarificationService {
     const where: Prisma.ClarificationWhereInput = {
       projectSourceId: source.id,
       ...(options.status ? { status: options.status } : {}),
-      ...(options.categoryKey
-        ? {
-            items: {
-              some: {
-                informationItem: {
-                  revisionItems: {
-                    some: {
-                      sourceRevisionId: source.currentRevisionId ?? undefined,
-                      categories: {
-                        some: { categoryKey: options.categoryKey },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          }
-        : {}),
     };
     const pageSize = 50;
     const [total, rows] = await Promise.all([

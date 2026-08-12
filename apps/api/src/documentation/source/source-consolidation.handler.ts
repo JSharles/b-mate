@@ -180,17 +180,13 @@ export class SourceConsolidationHandler
       include: {
         currentRevision: {
           include: {
-            items: {
-              include: { categories: true },
-              orderBy: { sortOrder: 'asc' },
-            },
+            items: { orderBy: { sortOrder: 'asc' } },
           },
         },
       },
     });
     const observations = await this.prisma.documentObservation.findMany({
       where: { sourceDocumentId: document.id },
-      include: { categories: true },
       orderBy: { sequence: 'asc' },
     });
     return {
@@ -214,18 +210,12 @@ export class SourceConsolidationHandler
                 kind: item.kind,
                 state: item.state,
                 content: item.content,
-                categories: item.categories.map(
-                  (category) => category.categoryKey,
-                ),
               })) ?? [],
             observations: observations.map((observation, index) => ({
               ref: observationRef(index),
               kind: observation.kind,
               content: observation.normalizedContent,
               exactContentHash: observation.exactContentHash,
-              categories: observation.categories.map(
-                (category) => category.categoryKey,
-              ),
             })),
           },
         },

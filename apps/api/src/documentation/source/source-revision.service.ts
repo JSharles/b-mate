@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type {
-  DocumentationCategoryKey,
   GenerationOperation,
   InformationItemKind,
   InformationItemState,
@@ -25,7 +24,6 @@ export interface CurrentCanonicalItem {
   state: InformationItemState;
   content: string;
   sortOrder: number;
-  categories: DocumentationCategoryKey[];
   provenance: CanonicalProvenance[];
 }
 
@@ -35,7 +33,6 @@ export interface ConsolidationObservation {
   normalizedContent: string;
   exactContentHash: string;
   sourceLanguage?: string | null;
-  categories: DocumentationCategoryKey[];
 }
 
 export interface ConsolidationDisposition {
@@ -53,7 +50,6 @@ export interface PlannedCanonicalItem {
   state: InformationItemState;
   content: string;
   sortOrder: number;
-  categories: DocumentationCategoryKey[];
   provenance: CanonicalProvenance[];
 }
 
@@ -68,7 +64,6 @@ export interface PlannedRevisionChange {
 export interface ConsolidationPlan {
   items: PlannedCanonicalItem[];
   changes: PlannedRevisionChange[];
-  impactedCategories: DocumentationCategoryKey[];
 }
 
 export type SourceRevisionCommitResult =
@@ -121,7 +116,6 @@ export function buildConsolidationPlan(
     state: item.state,
     content: item.content,
     sortOrder: item.sortOrder,
-    categories: uniqueCategories(item.categories),
     provenance: item.provenance.map((origin) => ({ ...origin })),
   }));
   const itemsByInformationId = new Map(
@@ -131,7 +125,6 @@ export function buildConsolidationPlan(
     currentItems.map((item) => [item.informationItemId, item]),
   );
   const changes: PlannedRevisionChange[] = [];
-  const impacts = new Set<DocumentationCategoryKey>();
 
   for (const disposition of dispositions) {
     const observation = observationsById.get(disposition.observationId)!;
@@ -146,10 +139,8 @@ export function buildConsolidationPlan(
         state: disposition.action === 'open' ? 'point_to_clarify' : 'confirmed',
         content: observation.normalizedContent,
         sortOrder: items.length,
-        categories: uniqueCategories(observation.categories),
         provenance: [provenance(observation, 'supports')],
       });
-      observation.categories.forEach((category) => impacts.add(category));
       changes.push({
         informationItemId: null,
         kind: disposition.action === 'open' ? 'marked_open' : 'added',
@@ -203,10 +194,7 @@ export function buildConsolidationPlan(
       target.kind = observation.kind;
       target.state = 'confirmed';
       target.content = observation.normalizedContent;
-      target.categories = uniqueCategories(observation.categories);
       target.provenance.push(provenance(observation, 'supersedes'));
-      previous.categories.forEach((category) => impacts.add(category));
-      observation.categories.forEach((category) => impacts.add(category));
       changes.push({
         informationItemId: target.informationItemId,
         kind: 'superseded',
@@ -219,13 +207,6 @@ export function buildConsolidationPlan(
 
     target.state = 'point_to_clarify';
     target.provenance.push(provenance(observation, 'conflicts'));
-    uniqueCategories([...target.categories, ...observation.categories]).forEach(
-      (category) => impacts.add(category),
-    );
-    target.categories = uniqueCategories([
-      ...target.categories,
-      ...observation.categories,
-    ]);
     changes.push({
       informationItemId: target.informationItemId,
       kind: 'marked_open',
@@ -238,7 +219,6 @@ export function buildConsolidationPlan(
   return {
     items,
     changes,
-    impactedCategories: [...impacts].sort(),
   };
 }
 
@@ -267,7 +247,7 @@ export class SourceRevisionService {
     }
     const revision = await this.prisma.sourceRevision.findFirst({
       where: { id: revisionId, projectSourceId: source.id },
-      include: { impacts: true, triggerDocument: { select: { title: true } } },
+      include: { triggerDocument: { select: { title: true } } },
     });
     if (!revision) {
       this.hideNotFound();
@@ -279,7 +259,6 @@ export class SourceRevisionService {
       this.prisma.sourceRevisionItem.findMany({
         where,
         include: {
-          categories: true,
           provenanceLinks: { select: { id: true } },
           informationItem: {
             include: { clarificationItems: true },
@@ -299,7 +278,6 @@ export class SourceRevisionService {
         kind: item.kind,
         state: item.state,
         content: item.content,
-        categories: item.categories.map((entry) => entry.categoryKey),
         provenanceCount: item.provenanceLinks.length,
         clarificationIds: item.informationItem.clarificationItems.map(
           (entry) => entry.clarificationId,
@@ -325,7 +303,6 @@ export class SourceRevisionService {
       this.prisma.sourceRevision.findMany({
         where,
         include: {
-          impacts: true,
           triggerDocument: { select: { title: true } },
         },
         orderBy: [{ sequence: 'desc' }, { id: 'desc' }],
@@ -483,7 +460,6 @@ export class SourceRevisionService {
         summary: `${input.answers.length} clarification answer(s) applied.`,
       },
     });
-    const impacts = new Set<DocumentationCategoryKey>();
     for (const item of items) {
       const answer = answerByItem.get(item.informationItemId);
       const created = await tx.sourceRevisionItem.create({
@@ -495,9 +471,6 @@ export class SourceRevisionService {
           state: answer ? 'confirmed' : item.state,
           content: answer?.content ?? item.content,
           sortOrder: item.sortOrder,
-          categories: {
-            create: item.categories.map(({ categoryKey }) => ({ categoryKey })),
-          },
           provenanceLinks: {
             create: [
               ...item.provenanceLinks.map((link) => ({
@@ -518,7 +491,6 @@ export class SourceRevisionService {
         },
       });
       if (answer) {
-        item.categories.forEach(({ categoryKey }) => impacts.add(categoryKey));
         await tx.sourceRevisionChange.create({
           data: {
             sourceRevisionId: revision.id,
@@ -532,13 +504,7 @@ export class SourceRevisionService {
         });
       }
     }
-    await this.writeImpactsAndTargets(
-      tx,
-      input.projectId,
-      revision.id,
-      [...impacts],
-      'Contributor resolved a clarification.',
-    );
+    await this.markSectionsForRefresh(tx, input.projectId);
     for (const answer of input.answers) {
       await tx.contributorAssertion.update({
         where: { id: answer.assertionId },
@@ -583,16 +549,7 @@ export class SourceRevisionService {
       content: input.correctedContent,
       assertionId: input.assertionId,
     });
-    const targetCategories = target.categories.map(
-      ({ categoryKey }) => categoryKey,
-    );
-    await this.writeImpactsAndTargets(
-      tx,
-      input.projectId,
-      revision.id,
-      targetCategories,
-      'Contributor corrected a canonical fact.',
-    );
+    await this.markSectionsForRefresh(tx, input.projectId);
     await tx.sourceRevisionChange.create({
       data: {
         sourceRevisionId: revision.id,
@@ -655,14 +612,12 @@ export class SourceRevisionService {
 
     const observations = await tx.documentObservation.findMany({
       where: { sourceDocumentId: document.id },
-      include: { categories: true },
       orderBy: { sequence: 'asc' },
     });
     const currentRows = lockedSource.currentRevisionId
       ? await tx.sourceRevisionItem.findMany({
           where: { sourceRevisionId: lockedSource.currentRevisionId },
           include: {
-            categories: true,
             provenanceLinks: {
               include: { documentObservation: true },
             },
@@ -677,7 +632,6 @@ export class SourceRevisionService {
       state: item.state,
       content: item.content,
       sortOrder: item.sortOrder,
-      categories: item.categories.map((category) => category.categoryKey),
       provenance: item.provenanceLinks.flatMap((link) =>
         link.documentObservationId && link.documentObservation
           ? [
@@ -698,9 +652,6 @@ export class SourceRevisionService {
         normalizedContent: observation.normalizedContent,
         exactContentHash: observation.exactContentHash,
         sourceLanguage: observation.sourceLanguage,
-        categories: observation.categories.map(
-          (category) => category.categoryKey,
-        ),
       })),
       dispositions,
     );
@@ -737,9 +688,6 @@ export class SourceRevisionService {
           state: item.state,
           content: item.content,
           sortOrder: item.sortOrder,
-          categories: {
-            create: item.categories.map((categoryKey) => ({ categoryKey })),
-          },
           provenanceLinks: {
             create: item.provenance.map((origin) => ({
               documentObservationId: origin.documentObservationId,
@@ -763,15 +711,6 @@ export class SourceRevisionService {
         }
       }
     }
-    if (plan.impactedCategories.length > 0) {
-      await tx.sourceRevisionImpact.createMany({
-        data: plan.impactedCategories.map((categoryKey) => ({
-          sourceRevisionId: revision.id,
-          categoryKey,
-          reason: 'Canonical source changed after document incorporation.',
-        })),
-      });
-    }
     for (const change of plan.changes) {
       if (!change.informationItemId) {
         throw new Error('Revision change could not be linked to an item.');
@@ -788,25 +727,17 @@ export class SourceRevisionService {
         },
       });
     }
-    for (const categoryKey of plan.impactedCategories) {
-      await tx.categoryProjectionState.upsert({
-        where: {
-          projectId_categoryKey: {
-            projectId: operation.projectId,
-            categoryKey,
-          },
-        },
-        update: {
-          targetSourceRevisionId: revision.id,
-          version: { increment: 1 },
-        },
-        create: {
-          projectId: operation.projectId,
-          categoryKey,
-          targetSourceRevisionId: revision.id,
-        },
-      });
-    }
+    // FR-018: the canonical source moved, so every live section may now be out
+    // of date. They are marked, never recomposed — the contributor decides what
+    // is worth refreshing, and the client keeps reading what was approved.
+    await tx.clientSection.updateMany({
+      where: {
+        projectId: operation.projectId,
+        archivedAt: null,
+        refreshNeeded: false,
+      },
+      data: { refreshNeeded: true, version: { increment: 1 } },
+    });
     const advanced = await tx.projectSource.updateMany({
       where: {
         id: lockedSource.id,
@@ -853,7 +784,7 @@ export class SourceRevisionService {
   ) {
     return tx.sourceRevisionItem.findMany({
       where: { sourceRevisionId: revisionId },
-      include: { categories: true, provenanceLinks: true },
+      include: { provenanceLinks: true },
       orderBy: { sortOrder: 'asc' },
     });
   }
@@ -884,9 +815,6 @@ export class SourceRevisionService {
             translations?.get(item.informationItemId) ??
             (isCorrection ? correction.content : item.content),
           sortOrder: item.sortOrder,
-          categories: {
-            create: item.categories.map(({ categoryKey }) => ({ categoryKey })),
-          },
           provenanceLinks: {
             create: [
               ...item.provenanceLinks.map((link) => ({
@@ -911,32 +839,22 @@ export class SourceRevisionService {
     return created;
   }
 
-  private async writeImpactsAndTargets(
+  // FR-018: the canonical source moved, so every live section may now be out of
+  // date. They are marked, never recomposed — the contributor decides which are
+  // worth refreshing, and the client keeps reading what was approved until then.
+  //
+  // Every section is marked rather than the ones a model judges affected:
+  // working out real impact without categories means one extra call per section
+  // per change, with its own failure surface, to save a decision the contributor
+  // is making anyway (research Decision 4).
+  private async markSectionsForRefresh(
     tx: Prisma.TransactionClient,
     projectId: string,
-    revisionId: string,
-    categories: DocumentationCategoryKey[],
-    reason: string,
   ): Promise<void> {
-    if (categories.length > 0) {
-      await tx.sourceRevisionImpact.createMany({
-        data: categories.map((categoryKey) => ({
-          sourceRevisionId: revisionId,
-          categoryKey,
-          reason,
-        })),
-      });
-    }
-    for (const categoryKey of categories) {
-      await tx.categoryProjectionState.upsert({
-        where: { projectId_categoryKey: { projectId, categoryKey } },
-        update: {
-          targetSourceRevisionId: revisionId,
-          version: { increment: 1 },
-        },
-        create: { projectId, categoryKey, targetSourceRevisionId: revisionId },
-      });
-    }
+    await tx.clientSection.updateMany({
+      where: { projectId, archivedAt: null, refreshNeeded: false },
+      data: { refreshNeeded: true, version: { increment: 1 } },
+    });
   }
 
   private async advanceSource(
@@ -1004,12 +922,6 @@ function provenance(
   };
 }
 
-function uniqueCategories(
-  categories: readonly DocumentationCategoryKey[],
-): DocumentationCategoryKey[] {
-  return [...new Set(categories)].sort();
-}
-
 function revisionSummary(revision: {
   id: string;
   sequence: number;
@@ -1017,7 +929,6 @@ function revisionSummary(revision: {
   summary: string;
   createdAt: Date;
   triggerDocument?: { title: string } | null;
-  impacts: Array<{ categoryKey: DocumentationCategoryKey }>;
 }) {
   return {
     id: revision.id,
@@ -1025,7 +936,6 @@ function revisionSummary(revision: {
     trigger: revision.trigger,
     summary: revision.summary,
     triggerDocumentTitle: revision.triggerDocument?.title ?? null,
-    impactedCategories: revision.impacts.map((impact) => impact.categoryKey),
     createdAt: revision.createdAt.toISOString(),
   };
 }

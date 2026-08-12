@@ -1,12 +1,10 @@
 import { z } from "zod";
-import { DocumentationCategoryKeySchema } from "./documentation-category";
 import { DocumentationUuidSchema } from "./documentation-common";
 export const DocumentRemovalPreviewSchema = z
   .object({
     documentId: DocumentationUuidSchema,
     documentVersion: z.number().int().positive(),
     sourceRevisionId: DocumentationUuidSchema.nullable(),
-    affectedCategories: z.array(DocumentationCategoryKeySchema),
     observationCount: z.number().int().nonnegative(),
     supportedItemCount: z.number().int().nonnegative(),
     soleSupportItemCount: z.number().int().nonnegative(),

@@ -1,7 +1,7 @@
 "use client";
 import { AlertCircle, Eye, LockKeyhole } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { ClientCategoryView } from "@/shared/components/client-category-view";
+import { ClientSectionView } from "@/shared/components/client-section-view";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useClientContentPreview } from "../hooks";
@@ -71,22 +71,21 @@ export function ClientContentPreview({ projectId }: { projectId: string }) {
         <Eye className="size-4 shrink-0" />
         {preview.data.pending ? t("previousVisible") : t("exactVisible")}
       </p>
-      {preview.data.current.categories.length === 0 ? (
+      {preview.data.current.sections.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-6 text-sm text-muted-foreground">
           <LockKeyhole className="mb-2 size-5" aria-hidden />
           {t("empty")}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {preview.data.current.categories.map((category) => (
+          {preview.data.current.sections.map((section) => (
             <article
-              key={category.categoryKey}
+              key={section.id}
               className="rounded-xl border border-border bg-card p-5"
             >
-              <h3 className="mb-4 font-semibold">
-                {t(`category_${category.categoryKey}`)}
-              </h3>
-              <ClientCategoryView category={category} />
+              {/* The heading is the contributor's own words, shown as written. */}
+              <h3 className="mb-4 font-semibold">{section.name}</h3>
+              <ClientSectionView section={section} />
             </article>
           ))}
         </div>

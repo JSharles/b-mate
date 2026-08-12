@@ -19,17 +19,9 @@ import { SectionsController } from './controllers/sections.controller';
 import { ClientSectionService } from './sections/client-section.service';
 import { SectionCompositionHandler } from './composition/section-composition.handler';
 import { SectionProposalService } from './composition/section-proposal.service';
-import { CategoryReviewController } from './controllers/category-review.controller';
 import { ClientContentController } from './controllers/client-content.controller';
-import { FactualDraftHandler } from './review/factual-draft.handler';
-import { CategoryProjectionService } from './review/category-projection.service';
-import { CategoryReviewService } from './review/category-review.service';
-import { EditorialIntentService } from './review/editorial-intent.service';
 import { ClientPublicationService } from './publication/client-publication.service';
 import { ClientDerivationHandler } from './publication/client-derivation.handler';
-import { EditorialPreviewHandler } from './editorial/editorial-preview.handler';
-import { EditorialProfileService } from './editorial/editorial-profile.service';
-import { EditorialProfileController } from './controllers/editorial-profile.controller';
 import { DocumentationWorkspaceController } from './controllers/documentation-workspace.controller';
 import { DocumentationWorkspaceService } from './workspace/documentation-workspace.service';
 import { DocumentRemovalService } from './source/document-removal.service';
@@ -46,9 +38,7 @@ import { DocumentationOperationsController } from './controllers/documentation-o
     SourceDocumentsController,
     CanonicalSourceController,
     ClarificationsController,
-    CategoryReviewController,
     ClientContentController,
-    EditorialProfileController,
     DocumentationWorkspaceController,
     DocumentationOperationsController,
     SectionsController,
@@ -63,14 +53,8 @@ import { DocumentationOperationsController } from './controllers/documentation-o
     ClarificationService,
     DocumentExtractionHandler,
     SourceConsolidationHandler,
-    FactualDraftHandler,
     ClientDerivationHandler,
-    EditorialPreviewHandler,
-    CategoryProjectionService,
-    CategoryReviewService,
-    EditorialIntentService,
     ClientPublicationService,
-    EditorialProfileService,
     DocumentationWorkspaceService,
     DocumentRemovalService,
     ClientSectionService,

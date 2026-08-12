@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { DocumentationCategoryKeySchema } from "./documentation-category";
 import { DocumentationUuidSchema } from "./documentation-common";
 
 export const PublicClientBlockSchema = z.object({
@@ -8,8 +7,11 @@ export const PublicClientBlockSchema = z.object({
   openPointId: z.string().trim().min(1).max(128).nullable().optional(),
 }).strict();
 
-export const PublicClientCategorySchema = z.object({
-  categoryKey: DocumentationCategoryKeySchema,
+export const PublicClientSectionSchema = z.object({
+  id: DocumentationUuidSchema,
+  // Authored by the contributor and shown to the client as written: the system
+  // cannot translate a heading it did not choose (specs/017 Decision 7).
+  name: z.string().trim().min(1).max(120),
   blocks: z.array(PublicClientBlockSchema),
 }).strict();
 
@@ -20,9 +22,9 @@ export const ClientReleaseViewSchema = z.object({
   sequence: z.number().int().nonnegative(),
   status: ClientReleaseStatusSchema.nullable(),
   visibleToClient: z.boolean(),
-  readyCategoryCount: z.number().int().nonnegative(),
-  expectedCategoryCount: z.number().int().nonnegative(),
-  categories: z.array(PublicClientCategorySchema),
+  readySectionCount: z.number().int().nonnegative(),
+  expectedSectionCount: z.number().int().nonnegative(),
+  sections: z.array(PublicClientSectionSchema),
   publishedAt: z.iso.datetime().nullable(),
 }).strict();
 
@@ -32,6 +34,6 @@ export const ClientContentPreviewSchema = z.object({
 }).strict();
 
 export type PublicClientBlock = z.infer<typeof PublicClientBlockSchema>;
-export type PublicClientCategory = z.infer<typeof PublicClientCategorySchema>;
+export type PublicClientSection = z.infer<typeof PublicClientSectionSchema>;
 export type ClientReleaseView = z.infer<typeof ClientReleaseViewSchema>;
 export type ClientContentPreview = z.infer<typeof ClientContentPreviewSchema>;

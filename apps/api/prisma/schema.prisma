@@ -48,21 +48,6 @@ enum AccountKind {
   client
 }
 
-// specs/011-project-resources.
-enum ResourceSource {
-  upload
-  notion
-}
-
-// specs/015: `ready_for_review` and `published` served a per-document
-// publication step that no longer exists — validating a category's reference
-// content is now the only act that makes anything client-visible (Q3).
-enum ResourceStatus {
-  pending
-  absorbed
-  failed
-}
-
 // A developer can juggle clients in several countries at once — this is a
 // per-project preference (not a per-user one) so a French client and a US
 // client on two different projects each see dates formatted the way they
@@ -84,35 +69,6 @@ enum ProjectLanguage {
 // specs/016-canonical-document-workflow. This state is deliberately a
 // database singleton: the migration constrains its id to
 // `documentary-transition` and seeds the row before guarded code can run.
-enum DocumentaryTransitionMode {
-  legacy
-  resetting
-  canonical
-}
-
-enum DocumentaryResetStatus {
-  inventoried
-  storage_deleting
-  storage_failed
-  database_purging
-  database_failed
-  clean
-}
-
-enum DocumentaryResetItemStatus {
-  pending
-  deleted
-  already_absent
-  failed
-}
-
-enum DocumentationCategoryKey {
-  overview
-  how_it_works
-  planning
-  other
-}
-
 enum SourceDocumentKind {
   upload
   notion
@@ -189,31 +145,6 @@ enum ClarificationResolutionKind {
   leave_open
 }
 
-enum CategoryDraftStatus {
-  generating
-  pending_review
-  correction_generating
-  accepted
-  discarded
-  failed
-  superseded
-}
-
-enum CategoryDraftTrigger {
-  document_added
-  document_removed
-  clarification
-  guided_correction
-  catch_up
-  factual_correction
-}
-
-enum CategoryDraftReviewKind {
-  accept
-  discard
-  correction_requested
-}
-
 enum EditorialLength {
   concise
   balanced
@@ -239,20 +170,9 @@ enum EditorialTone {
   formal
 }
 
-enum EditorialProposalStatus {
-  preview_pending
-  preview_ready
-  confirmed
-  cancelled
-  failed
-  expired
-  saved_without_preview
-}
-
 enum ClientReleaseReason {
-  category_acceptance
-  editorial_profile_change
-  category_removal
+  section_approval
+  section_removal
 }
 
 enum ClientReleaseStatus {
@@ -268,15 +188,8 @@ enum ClientReleaseStatus {
 enum GenerationOperationType {
   document_extraction
   source_consolidation
-  factual_drafting
-  editorial_preview
-  client_derivation
-  output_validation
-  // Composes one author-defined section from the canonical source
-  // (specs/017-documentation-review-journey). Added here rather than in a
-  // later migration so the section models and the operation that fills them
-  // arrive together.
   section_composition
+  client_derivation
 }
 
 enum GenerationOperationStatus {
@@ -354,21 +267,16 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  memberships    ProjectMember[]
-  assignedTasks  Task[]
-  sessions       Session[]
-  addedResources Resource[]
+  memberships   ProjectMember[]
+  assignedTasks Task[]
+  sessions      Session[]
 
-  sourceDocuments            SourceDocument[]                 @relation("SourceDocumentAuthor")
-  createdSourceRevisions     SourceRevision[]                 @relation("SourceRevisionCreator")
-  contributorAssertions      ContributorAssertion[]           @relation("ContributorAssertionAuthor")
-  clarificationResolutions   ClarificationResolution[]        @relation("ClarificationResolver")
-  categoryDraftReviews       CategoryDraftReview[]            @relation("CategoryDraftReviewer")
-  acceptedCategoryReferences DocumentationCategoryReference[] @relation("CategoryReferenceAcceptor")
-  confirmedEditorialProfiles EditorialProfileRevision[]       @relation("EditorialProfileConfirmer")
-  editorialProfileProposals  EditorialProfileProposal[]       @relation("EditorialProposalCreator")
-  authoredClientSections     ClientSection[]                  @relation("ClientSectionAuthor")
-  approvedSectionProposals   SectionProposal[]                @relation("SectionProposalApprover")
+  sourceDocuments          SourceDocument[]          @relation("SourceDocumentAuthor")
+  createdSourceRevisions   SourceRevision[]          @relation("SourceRevisionCreator")
+  contributorAssertions    ContributorAssertion[]    @relation("ContributorAssertionAuthor")
+  clarificationResolutions ClarificationResolution[] @relation("ClarificationResolver")
+  authoredClientSections   ClientSection[]           @relation("ClientSectionAuthor")
+  approvedSectionProposals SectionProposal[]         @relation("SectionProposalApprover")
 
   @@map("users")
 }
@@ -408,30 +316,21 @@ model Project {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  members            ProjectMember[]
-  invitations        Invitation[]
-  tasks              Task[]
-  boardConnection    BoardConnection?
-  vulgarizedTasks    VulgarizedTask[]
-  taskProgress       TaskProgress[]
-  resources          Resource[]
-  notionConnection   NotionConnection?
-  categoryReferences CategoryReference[]
-  categoryDrafts     CategoryReferenceDraft[]
-  categoryContents   CategoryContent[]
+  members          ProjectMember[]
+  invitations      Invitation[]
+  tasks            Task[]
+  boardConnection  BoardConnection?
+  vulgarizedTasks  VulgarizedTask[]
+  taskProgress     TaskProgress[]
+  notionConnection NotionConnection?
 
-  projectSource                   ProjectSource?
-  sourceDocuments                 SourceDocument[]
-  categoryProjectionStates        CategoryProjectionState[]
-  documentationCategoryDrafts     DocumentationCategoryReferenceDraft[]
-  documentationCategoryReferences DocumentationCategoryReference[]
-  editorialSettings               ProjectEditorialSettings?
-  editorialProfileProposals       EditorialProfileProposal[]
-  clientCategoryContents          ClientCategoryContent[]
-  clientContentReleases           ClientContentRelease[]
-  clientPublication               ProjectClientPublication?
-  generationOperations            GenerationOperation[]
-  clientSections                  ClientSection[]
+  projectSource         ProjectSource?
+  sourceDocuments       SourceDocument[]
+  clientContentReleases ClientContentRelease[]
+  clientPublication     ProjectClientPublication?
+  generationOperations  GenerationOperation[]
+  clientSections        ClientSection[]
+  clientSectionContents ClientSectionContent[]
 
   @@map("projects")
 }
@@ -530,56 +429,6 @@ model BoardConnection {
   @@map("board_connections")
 }
 
-// Frozen legacy table retained for the separately approved post-drain drop.
-// The application runtime no longer reads or writes this model. New
-// contributions are represented by SourceDocument and the canonical source
-// aggregate below (specs/016-canonical-document-workflow).
-model Resource {
-  id        String  @id @default(uuid()) @db.Uuid
-  projectId String  @map("project_id") @db.Uuid
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  source ResourceSource
-  status ResourceStatus @default(pending)
-
-  // Uploaded filename (minus extension) or the Notion page's title — shown
-  // on the tile immediately, before/regardless of processing completing.
-  title String
-
-  // source: upload only.
-  originalFileKey       String? @map("original_file_key")
-  originalFileName      String? @map("original_file_name")
-  originalFileMimeType  String? @map("original_file_mime_type")
-  originalFileSizeBytes Int?    @map("original_file_size_bytes")
-
-  // source: notion only — the "original" link for a resource with no
-  // uploaded file (FR-007/FR-008's Notion equivalent).
-  notionPageUrl String? @map("notion_page_url")
-
-  // Set only when status: failed (FR-011) — a short, developer-facing note,
-  // never shown to a client.
-  failureReason String? @map("failure_reason")
-
-  // The Claude Batch API request ID this resource's processing was
-  // submitted under (research.md Decision 4), read by
-  // ResourceBatchSweepService. Cleared once terminal.
-  //
-  // specs/014-category-sections research.md Decision 1: the batch now holds
-  // a single request producing every section in both locales at once, where
-  // 013 submitted three (one per locale, plus category detection).
-  anthropicBatchId String? @map("anthropic_batch_id")
-
-  addedByUserId String @map("added_by_user_id") @db.Uuid
-  addedByUser   User   @relation(fields: [addedByUserId], references: [id])
-
-  extracts CategoryExtract[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("resources")
-}
-
 // specs/015-document-reference-layer data-model.md. What one document
 // contributes to one category, in reference register. Never shown to anyone:
 // it exists so a category can be rebuilt from the documents that remain when
@@ -590,23 +439,6 @@ model Resource {
 // deletion, or asking a model to subtract one document's contribution from
 // merged prose — which it cannot do, having no idea which sentence came from
 // where.
-model CategoryExtract {
-  id         String   @id @default(uuid()) @db.Uuid
-  resourceId String   @map("resource_id") @db.Uuid
-  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-
-  categoryKey ResourceCategoryKey @map("category_key")
-
-  // Written once at ingestion and never rewritten — merging happens
-  // downstream, into CategoryReference.
-  content String
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@unique([resourceId, categoryKey])
-  @@map("category_extracts")
-}
-
 // The contributor's own documentation: organised, structured, exhaustive,
 // in ordinary professional language. Explicitly NOT vulgarized — the client
 // layer below is derived from it.
@@ -616,28 +448,6 @@ model CategoryExtract {
 //
 // No status column — existing means live. A category with no validated
 // version simply has no row.
-model CategoryReference {
-  id        String  @id @default(uuid()) @db.Uuid
-  projectId String  @map("project_id") @db.Uuid
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  categoryKey ResourceCategoryKey @map("category_key")
-
-  content String
-
-  // Set while the client-facing version is being derived from this content,
-  // cleared when it lands. Until then the client keeps reading the previous
-  // CategoryContent — which is why derivation writes to its own row rather
-  // than rendering this one directly.
-  derivationBatchId String? @map("derivation_batch_id")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([projectId, categoryKey])
-  @@map("category_references")
-}
-
 // A regeneration awaiting the contributor's validation, kept apart from the
 // live row so a client keeps reading the validated version throughout
 // (FR-017) — structural rather than a filter every read has to remember.
@@ -645,55 +455,6 @@ model CategoryReference {
 // The unique constraint does a second job: it serialises two documents
 // ingested at once. The second cannot open a competing draft for the same
 // category, so its material waits instead of racing.
-model CategoryReferenceDraft {
-  id        String  @id @default(uuid()) @db.Uuid
-  projectId String  @map("project_id") @db.Uuid
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  categoryKey ResourceCategoryKey  @map("category_key")
-  status      ReferenceDraftStatus @default(pending_review)
-
-  content String
-
-  // Why this draft exists, surfaced in the review queue so a contributor
-  // knows what they are looking at before opening it.
-  trigger           DraftTrigger
-  triggerResourceId String?      @map("trigger_resource_id") @db.Uuid
-
-  // The review loop (research.md Decision 4). Counting per draft rather than
-  // per category is what makes "three attempts at THIS correction" mean
-  // something; accepting or discarding deletes the row and resets it.
-  attempt         Int     @default(1)
-  lastInstruction String? @map("last_instruction")
-
-  // Set while a rebuild is in flight, cleared when it lands. Regeneration
-  // rides the same durable batch + sweep path as ingestion rather than a
-  // fire-and-forget promise, which would not survive a restart.
-  anthropicBatchId String? @map("anthropic_batch_id")
-
-  questions ReferenceQuestion[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([projectId, categoryKey])
-  @@map("category_reference_drafts")
-}
-
-enum ReferenceDraftStatus {
-  // A rebuild is in flight. The contributor sees the draft marked as such;
-  // the client is unaffected either way, since drafts never reach them.
-  generating
-  pending_review
-  awaiting_answers
-}
-
-enum DraftTrigger {
-  document_added
-  document_removed
-  regeneration_requested
-}
-
 // What a client reads: one continuous plain-language text per category,
 // derived from validated reference content and NEVER from a previous version
 // of itself (FR-010) — which is what stops detail eroding across successive
@@ -703,106 +464,13 @@ enum DraftTrigger {
 // which is what guarantees they say the same thing. No review state —
 // validating the reference above is the only gate (FR-014), so existing here
 // means visible.
-model CategoryContent {
-  id        String  @id @default(uuid()) @db.Uuid
-  projectId String  @map("project_id") @db.Uuid
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  categoryKey ResourceCategoryKey @map("category_key")
-
-  contentEn String @map("content_en")
-  contentFr String @map("content_fr")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([projectId, categoryKey])
-  @@map("category_contents")
-}
-
 // specs/015 US5. Raised against a pending draft when two documents contradict
 // each other, or when a gap would change what the client is told. Answerable
 // or skippable — an unanswered question never blocks validation, it becomes a
 // point explicitly marked in the reference content (FR-023).
-model ReferenceQuestion {
-  id      String                 @id @default(uuid()) @db.Uuid
-  draftId String                 @map("draft_id") @db.Uuid
-  draft   CategoryReferenceDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
-
-  question String
-  answer   String?
-  // Lower is more consequential — FR-022 orders by how much the answer
-  // changes what the client will read.
-  rank     Int
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@map("reference_questions")
-}
-
 // Narrow transition/audit domain for the development reset required by
 // specs/016. It intentionally has no relation to Project: the reset is one
 // feature-wide boundary and must not cascade with business data.
-model DocumentaryTransitionState {
-  id String @id @db.VarChar(64)
-
-  mode    DocumentaryTransitionMode @default(legacy)
-  version Int                       @default(1)
-
-  activeResetRunId        String?   @map("active_reset_run_id") @db.Uuid
-  approvedInventoryDigest String?   @map("approved_inventory_digest") @db.VarChar(64)
-  writeFreezeAt           DateTime? @map("write_freeze_at")
-  canonicalizedAt         DateTime? @map("canonicalized_at")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("documentary_transition_states")
-}
-
-model DocumentaryResetRun {
-  id String @id @default(uuid()) @db.Uuid
-
-  featureKey              String                 @unique @map("feature_key")
-  status                  DocumentaryResetStatus @default(inventoried)
-  approvedInventoryDigest String                 @map("approved_inventory_digest") @db.VarChar(64)
-
-  storageExpectedCount Int @default(0) @map("storage_expected_count")
-  storageDeletedCount  Int @default(0) @map("storage_deleted_count")
-  storageFailedCount   Int @default(0) @map("storage_failed_count")
-  databaseExpectedRows Int @default(0) @map("database_expected_rows")
-  databaseDeletedRows  Int @default(0) @map("database_deleted_rows")
-
-  confirmedAt DateTime  @default(now()) @map("confirmed_at")
-  completedAt DateTime? @map("completed_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  items DocumentaryResetItem[]
-
-  @@map("documentary_reset_runs")
-}
-
-model DocumentaryResetItem {
-  id String @id @default(uuid()) @db.Uuid
-
-  resetRunId       String                     @map("reset_run_id") @db.Uuid
-  legacyResourceId String                     @map("legacy_resource_id") @db.Uuid
-  objectKey        String?                    @map("object_key")
-  status           DocumentaryResetItemStatus @default(pending)
-  diagnostic       String?                    @db.VarChar(1000)
-  attemptCount     Int                        @default(0) @map("attempt_count")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  resetRun DocumentaryResetRun @relation(fields: [resetRunId], references: [id], onDelete: Cascade)
-
-  @@unique([resetRunId, legacyResourceId])
-  @@index([resetRunId, status])
-  @@map("documentary_reset_items")
-}
-
 model ProjectSource {
   id                String   @id @default(uuid()) @db.Uuid
   projectId         String   @unique @map("project_id") @db.Uuid
@@ -835,45 +503,29 @@ model SourceRevision {
   summary                String
   createdAt              DateTime              @default(now()) @map("created_at")
 
-  projectSource              ProjectSource                         @relation("SourceRevisions", fields: [projectSourceId], references: [id], onDelete: Cascade)
-  currentForSource           ProjectSource?                        @relation("CurrentSourceRevision")
-  parentRevision             SourceRevision?                       @relation("SourceRevisionParent", fields: [parentRevisionId], references: [id], onDelete: Restrict)
-  childRevisions             SourceRevision[]                      @relation("SourceRevisionParent")
-  triggerDocument            SourceDocument?                       @relation("RevisionTriggerDocument", fields: [triggerDocumentId], references: [id], onDelete: Restrict)
-  triggerClarification       Clarification?                        @relation("RevisionTriggerClarification", fields: [triggerClarificationId], references: [id], onDelete: Restrict)
-  triggerAssertion           ContributorAssertion?                 @relation("RevisionTriggerAssertion", fields: [triggerAssertionId], references: [id], onDelete: Restrict)
-  createdByUser              User?                                 @relation("SourceRevisionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  impacts                    SourceRevisionImpact[]
+  projectSource              ProjectSource          @relation("SourceRevisions", fields: [projectSourceId], references: [id], onDelete: Cascade)
+  currentForSource           ProjectSource?         @relation("CurrentSourceRevision")
+  parentRevision             SourceRevision?        @relation("SourceRevisionParent", fields: [parentRevisionId], references: [id], onDelete: Restrict)
+  childRevisions             SourceRevision[]       @relation("SourceRevisionParent")
+  triggerDocument            SourceDocument?        @relation("RevisionTriggerDocument", fields: [triggerDocumentId], references: [id], onDelete: Restrict)
+  triggerClarification       Clarification?         @relation("RevisionTriggerClarification", fields: [triggerClarificationId], references: [id], onDelete: Restrict)
+  triggerAssertion           ContributorAssertion?  @relation("RevisionTriggerAssertion", fields: [triggerAssertionId], references: [id], onDelete: Restrict)
+  createdByUser              User?                  @relation("SourceRevisionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   items                      SourceRevisionItem[]
   changes                    SourceRevisionChange[]
-  createdInformationItems    InformationItem[]                     @relation("InformationItemCreation")
-  incorporatedDocuments      SourceDocument[]                      @relation("DocumentIncorporatedRevision")
-  removedDocuments           SourceDocument[]                      @relation("DocumentRemovedRevision")
-  detectedClarifications     Clarification[]                       @relation("ClarificationDetectedRevision")
-  resolvedClarifications     Clarification[]                       @relation("ClarificationResolvedRevision")
-  appliedAssertions          ContributorAssertion[]                @relation("AssertionAppliedRevision")
-  projectionTargets          CategoryProjectionState[]             @relation("ProjectionTargetRevision")
-  projectionReviews          CategoryProjectionState[]             @relation("ProjectionReviewedRevision")
-  categoryDrafts             DocumentationCategoryReferenceDraft[]
-  categoryReferences         DocumentationCategoryReference[]
-  generationBaseOperations   GenerationOperation[]                 @relation("GenerationBaseRevision")
-  generationSourceOperations GenerationOperation[]                 @relation("GenerationSourceRevision")
-  sectionProposals           SectionProposal[]                     @relation("SectionProposalRevision")
+  createdInformationItems    InformationItem[]      @relation("InformationItemCreation")
+  incorporatedDocuments      SourceDocument[]       @relation("DocumentIncorporatedRevision")
+  removedDocuments           SourceDocument[]       @relation("DocumentRemovedRevision")
+  detectedClarifications     Clarification[]        @relation("ClarificationDetectedRevision")
+  resolvedClarifications     Clarification[]        @relation("ClarificationResolvedRevision")
+  appliedAssertions          ContributorAssertion[] @relation("AssertionAppliedRevision")
+  generationBaseOperations   GenerationOperation[]  @relation("GenerationBaseRevision")
+  generationSourceOperations GenerationOperation[]  @relation("GenerationSourceRevision")
+  sectionProposals           SectionProposal[]      @relation("SectionProposalRevision")
 
   @@unique([projectSourceId, sequence])
   @@index([projectSourceId, createdAt])
   @@map("source_revisions")
-}
-
-model SourceRevisionImpact {
-  sourceRevisionId String                   @map("source_revision_id") @db.Uuid
-  categoryKey      DocumentationCategoryKey @map("category_key")
-  reason           String
-
-  sourceRevision SourceRevision @relation(fields: [sourceRevisionId], references: [id], onDelete: Cascade)
-
-  @@id([sourceRevisionId, categoryKey])
-  @@map("source_revision_impacts")
 }
 
 model InformationItem {
@@ -905,28 +557,17 @@ model SourceRevisionItem {
   content                String
   sortOrder              Int                  @map("sort_order")
 
-  sourceRevision       SourceRevision               @relation(fields: [sourceRevisionId], references: [id], onDelete: Cascade)
-  informationItem      InformationItem              @relation(fields: [informationItemId], references: [id], onDelete: Restrict)
-  previousRevisionItem SourceRevisionItem?          @relation("PreviousRevisionItem", fields: [previousRevisionItemId], references: [id], onDelete: Restrict)
-  nextRevisionItems    SourceRevisionItem[]         @relation("PreviousRevisionItem")
-  categories           SourceRevisionItemCategory[]
+  sourceRevision       SourceRevision         @relation(fields: [sourceRevisionId], references: [id], onDelete: Cascade)
+  informationItem      InformationItem        @relation(fields: [informationItemId], references: [id], onDelete: Restrict)
+  previousRevisionItem SourceRevisionItem?    @relation("PreviousRevisionItem", fields: [previousRevisionItemId], references: [id], onDelete: Restrict)
+  nextRevisionItems    SourceRevisionItem[]   @relation("PreviousRevisionItem")
   provenanceLinks      ProvenanceLink[]
-  beforeChanges        SourceRevisionChange[]       @relation("ChangeBeforeItem")
-  afterChanges         SourceRevisionChange[]       @relation("ChangeAfterItem")
+  beforeChanges        SourceRevisionChange[] @relation("ChangeBeforeItem")
+  afterChanges         SourceRevisionChange[] @relation("ChangeAfterItem")
 
   @@unique([sourceRevisionId, informationItemId])
   @@index([sourceRevisionId, sortOrder])
   @@map("source_revision_items")
-}
-
-model SourceRevisionItemCategory {
-  sourceRevisionItemId String                   @map("source_revision_item_id") @db.Uuid
-  categoryKey          DocumentationCategoryKey @map("category_key")
-
-  sourceRevisionItem SourceRevisionItem @relation(fields: [sourceRevisionItemId], references: [id], onDelete: Cascade)
-
-  @@id([sourceRevisionItemId, categoryKey])
-  @@map("source_revision_item_categories")
 }
 
 model SourceRevisionChange {
@@ -1002,24 +643,13 @@ model DocumentObservation {
   exactContentHash  String              @map("exact_content_hash") @db.VarChar(64)
   createdAt         DateTime            @default(now()) @map("created_at")
 
-  sourceDocument        SourceDocument                @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
-  categories            DocumentObservationCategory[]
+  sourceDocument        SourceDocument          @relation(fields: [sourceDocumentId], references: [id], onDelete: Cascade)
   provenanceLinks       ProvenanceLink[]
   clarificationEvidence ClarificationEvidence[]
 
   @@unique([sourceDocumentId, sequence])
   @@index([exactContentHash])
   @@map("document_observations")
-}
-
-model DocumentObservationCategory {
-  documentObservationId String                   @map("document_observation_id") @db.Uuid
-  categoryKey           DocumentationCategoryKey @map("category_key")
-
-  documentObservation DocumentObservation @relation(fields: [documentObservationId], references: [id], onDelete: Cascade)
-
-  @@id([documentObservationId, categoryKey])
-  @@map("document_observation_categories")
 }
 
 model ContributorAssertion {
@@ -1130,106 +760,11 @@ model ClarificationResolution {
   @@map("clarification_resolutions")
 }
 
-model CategoryProjectionState {
-  projectId                    String                   @map("project_id") @db.Uuid
-  categoryKey                  DocumentationCategoryKey @map("category_key")
-  targetSourceRevisionId       String?                  @map("target_source_revision_id") @db.Uuid
-  activeDraftId                String?                  @unique @map("active_draft_id") @db.Uuid
-  validatedReferenceId         String?                  @unique @map("validated_reference_id") @db.Uuid
-  lastReviewedSourceRevisionId String?                  @map("last_reviewed_source_revision_id") @db.Uuid
-  version                      Int                      @default(1)
-  createdAt                    DateTime                 @default(now()) @map("created_at")
-  updatedAt                    DateTime                 @updatedAt @map("updated_at")
-
-  project                    Project                              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  targetSourceRevision       SourceRevision?                      @relation("ProjectionTargetRevision", fields: [targetSourceRevisionId], references: [id], onDelete: Restrict)
-  activeDraft                DocumentationCategoryReferenceDraft? @relation("ProjectionActiveDraft", fields: [activeDraftId], references: [id], onDelete: SetNull)
-  validatedReference         DocumentationCategoryReference?      @relation("ProjectionValidatedReference", fields: [validatedReferenceId], references: [id], onDelete: SetNull)
-  lastReviewedSourceRevision SourceRevision?                      @relation("ProjectionReviewedRevision", fields: [lastReviewedSourceRevisionId], references: [id], onDelete: Restrict)
-
-  @@id([projectId, categoryKey])
-  @@map("category_projection_states")
-}
-
-model DocumentationCategoryReferenceDraft {
-  id                    String                   @id @default(uuid()) @db.Uuid
-  projectId             String                   @map("project_id") @db.Uuid
-  categoryKey           DocumentationCategoryKey @map("category_key")
-  sourceRevisionId      String                   @map("source_revision_id") @db.Uuid
-  parentDraftId         String?                  @map("parent_draft_id") @db.Uuid
-  generationOperationId String                   @unique @map("generation_operation_id") @db.Uuid
-  status                CategoryDraftStatus      @default(generating)
-  trigger               CategoryDraftTrigger
-  structuredContent     Json?                    @map("structured_content")
-  changeSummary         String?                  @map("change_summary")
-  provenanceSummary     Json?                    @map("provenance_summary")
-  failureCode           String?                  @map("failure_code") @db.VarChar(128)
-  version               Int                      @default(1)
-  reviewedAt            DateTime?                @map("reviewed_at")
-  reviewedByUserId      String?                  @map("reviewed_by_user_id") @db.Uuid
-  createdAt             DateTime                 @default(now()) @map("created_at")
-  updatedAt             DateTime                 @updatedAt @map("updated_at")
-
-  project             Project                               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sourceRevision      SourceRevision                        @relation(fields: [sourceRevisionId], references: [id], onDelete: Restrict)
-  parentDraft         DocumentationCategoryReferenceDraft?  @relation("CategoryDraftParent", fields: [parentDraftId], references: [id], onDelete: Restrict)
-  childDrafts         DocumentationCategoryReferenceDraft[] @relation("CategoryDraftParent")
-  generationOperation GenerationOperation                   @relation("CategoryDraftGenerationOperation", fields: [generationOperationId], references: [id], onDelete: Restrict)
-  activeForProjection CategoryProjectionState?              @relation("ProjectionActiveDraft")
-  reviews             CategoryDraftReview[]
-  acceptedReference   DocumentationCategoryReference?
-
-  @@index([projectId, categoryKey, status, createdAt])
-  @@map("documentation_category_reference_drafts")
-}
-
-model CategoryDraftReview {
-  id               String                  @id @default(uuid()) @db.Uuid
-  draftId          String                  @map("draft_id") @db.Uuid
-  kind             CategoryDraftReviewKind
-  instruction      String?
-  routingCode      String?                 @map("routing_code") @db.VarChar(128)
-  reviewedByUserId String                  @map("reviewed_by_user_id") @db.Uuid
-  createdAt        DateTime                @default(now()) @map("created_at")
-
-  draft          DocumentationCategoryReferenceDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
-  reviewedByUser User                                @relation("CategoryDraftReviewer", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
-
-  @@index([draftId, createdAt])
-  @@map("category_draft_reviews")
-}
-
-model DocumentationCategoryReference {
-  id                String                   @id @default(uuid()) @db.Uuid
-  projectId         String                   @map("project_id") @db.Uuid
-  categoryKey       DocumentationCategoryKey @map("category_key")
-  sourceRevisionId  String                   @map("source_revision_id") @db.Uuid
-  acceptedDraftId   String                   @unique @map("accepted_draft_id") @db.Uuid
-  structuredContent Json                     @map("structured_content")
-  acceptedByUserId  String                   @map("accepted_by_user_id") @db.Uuid
-  acceptedAt        DateTime                 @default(now()) @map("accepted_at")
-
-  project                Project                             @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sourceRevision         SourceRevision                      @relation(fields: [sourceRevisionId], references: [id], onDelete: Restrict)
-  acceptedDraft          DocumentationCategoryReferenceDraft @relation(fields: [acceptedDraftId], references: [id], onDelete: Restrict)
-  acceptedByUser         User                                @relation("CategoryReferenceAcceptor", fields: [acceptedByUserId], references: [id], onDelete: Restrict)
-  validatedForProjection CategoryProjectionState?            @relation("ProjectionValidatedReference")
-  clientContents         ClientCategoryContent[]
-  initiatingReleases     ClientContentRelease[]              @relation("ReleaseInitiatingReference")
-  editorialProposals     EditorialProfileProposal[]          @relation("ProposalRepresentativeReference")
-  generationOperations   GenerationOperation[]               @relation("GenerationCategoryReference")
-
-  @@index([projectId, categoryKey, acceptedAt])
-  @@map("documentation_category_references")
-}
-
 // ─── Author-defined client sections (specs/017-documentation-review-journey) ───
 //
 // A section is a heading its contributor created, not one the product chose.
-// Nothing below references DocumentationCategoryKey: sections are added beside
-// the four fixed categories and the two run in parallel until every project has
-// migrated (plan.md, Slice 4). Removing the categories is that slice's job, not
-// this one's.
+// The four fixed categories this replaced are gone, along with everything that
+// existed to serve them.
 
 enum SectionProposalStatus {
   composing
@@ -1270,18 +805,19 @@ model ClientSection {
   archivedAt           DateTime?                  @map("archived_at")
   // FR-013 made structural rather than conventional: at most one non-terminal
   // proposal per section, guaranteed by the unique constraint instead of by a
-  // check the next caller might forget. Same procedure as
-  // CategoryProjectionState.activeDraftId.
+  // check the next caller might forget.
   activeProposalId     String?                    @unique @map("active_proposal_id") @db.Uuid
   createdByUserId      String                     @map("created_by_user_id") @db.Uuid
   version              Int                        @default(1)
   createdAt            DateTime                   @default(now()) @map("created_at")
   updatedAt            DateTime                   @updatedAt @map("updated_at")
 
-  project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdByUser  User              @relation("ClientSectionAuthor", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  activeProposal SectionProposal?  @relation("SectionActiveProposal", fields: [activeProposalId], references: [id], onDelete: SetNull)
-  proposals      SectionProposal[] @relation("SectionProposals")
+  project        Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdByUser  User                        @relation("ClientSectionAuthor", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  activeProposal SectionProposal?            @relation("SectionActiveProposal", fields: [activeProposalId], references: [id], onDelete: SetNull)
+  proposals      SectionProposal[]           @relation("SectionProposals")
+  clientContents ClientSectionContent[]
+  releaseEntries ClientContentReleaseEntry[]
 
   @@index([projectId, archivedAt, sortOrder])
   @@map("client_sections")
@@ -1306,12 +842,15 @@ model SectionProposal {
   createdAt             DateTime                @default(now()) @map("created_at")
   updatedAt             DateTime                @updatedAt @map("updated_at")
 
-  section             ClientSection       @relation("SectionProposals", fields: [sectionId], references: [id], onDelete: Cascade)
-  activeForSection    ClientSection?      @relation("SectionActiveProposal")
-  sourceRevision      SourceRevision      @relation("SectionProposalRevision", fields: [sourceRevisionId], references: [id], onDelete: Restrict)
-  generationOperation GenerationOperation @relation("SectionProposalGenerationOperation", fields: [generationOperationId], references: [id], onDelete: Restrict)
-  approvedByUser      User?               @relation("SectionProposalApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
-  questions           SectionQuestion[]
+  section              ClientSection          @relation("SectionProposals", fields: [sectionId], references: [id], onDelete: Cascade)
+  activeForSection     ClientSection?         @relation("SectionActiveProposal")
+  sourceRevision       SourceRevision         @relation("SectionProposalRevision", fields: [sourceRevisionId], references: [id], onDelete: Restrict)
+  generationOperation  GenerationOperation    @relation("SectionProposalGenerationOperation", fields: [generationOperationId], references: [id], onDelete: Restrict)
+  approvedByUser       User?                  @relation("SectionProposalApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  questions            SectionQuestion[]
+  clientContents       ClientSectionContent[]
+  initiatingReleases   ClientContentRelease[] @relation("ReleaseInitiatingProposal")
+  derivationOperations GenerationOperation[]  @relation("GenerationSectionProposal")
 
   @@index([sectionId, status, createdAt])
   @@map("section_proposals")
@@ -1352,147 +891,49 @@ model SectionQuestionItem {
   @@map("section_question_items")
 }
 
-model ProjectEditorialSettings {
-  projectId                String   @id @map("project_id") @db.Uuid
-  currentProfileRevisionId String?  @unique @map("current_profile_revision_id") @db.Uuid
-  activeProposalId         String?  @unique @map("active_proposal_id") @db.Uuid
-  nextSequence             Int      @default(1) @map("next_sequence")
-  version                  Int      @default(1)
-  createdAt                DateTime @default(now()) @map("created_at")
-  updatedAt                DateTime @updatedAt @map("updated_at")
-
-  project                Project                    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  currentProfileRevision EditorialProfileRevision?  @relation("CurrentEditorialProfile", fields: [currentProfileRevisionId], references: [id], onDelete: SetNull)
-  activeProposal         EditorialProfileProposal?  @relation("ActiveEditorialProposal", fields: [activeProposalId], references: [id], onDelete: SetNull)
-  profileRevisions       EditorialProfileRevision[] @relation("EditorialProfileRevisions")
-  proposals              EditorialProfileProposal[] @relation("EditorialSettingsProposals")
-
-  @@map("project_editorial_settings")
-}
-
-model EditorialProfileRevision {
-  id                   String                     @id @default(uuid()) @db.Uuid
-  projectId            String                     @map("project_id") @db.Uuid
-  sequence             Int
-  length               EditorialLength
-  pedagogy             EditorialPedagogy
-  technicalFamiliarity ClientTechnicalFamiliarity @map("technical_familiarity")
-  tone                 EditorialTone
-  guidance             String?
-  confirmedByUserId    String                     @map("confirmed_by_user_id") @db.Uuid
-  confirmedAt          DateTime                   @default(now()) @map("confirmed_at")
-
-  settings             ProjectEditorialSettings   @relation("EditorialProfileRevisions", fields: [projectId], references: [projectId], onDelete: Cascade)
-  currentForSettings   ProjectEditorialSettings?  @relation("CurrentEditorialProfile")
-  confirmedByUser      User                       @relation("EditorialProfileConfirmer", fields: [confirmedByUserId], references: [id], onDelete: Restrict)
-  basedProposals       EditorialProfileProposal[] @relation("ProposalBaseProfile")
-  clientContents       ClientCategoryContent[]
-  releases             ClientContentRelease[]
-  generationOperations GenerationOperation[]      @relation("GenerationProfileRevision")
-
-  @@unique([projectId, sequence])
-  @@map("editorial_profile_revisions")
-}
-
-model EditorialProfileProposal {
-  id                                String                     @id @default(uuid()) @db.Uuid
-  projectId                         String                     @map("project_id") @db.Uuid
-  baseProfileRevisionId             String?                    @map("base_profile_revision_id") @db.Uuid
-  status                            EditorialProposalStatus    @default(preview_pending)
-  length                            EditorialLength
-  pedagogy                          EditorialPedagogy
-  technicalFamiliarity              ClientTechnicalFamiliarity @map("technical_familiarity")
-  tone                              EditorialTone
-  guidance                          String?
-  representativeCategoryReferenceId String?                    @map("representative_category_reference_id") @db.Uuid
-  version                           Int                        @default(1)
-  expiresAt                         DateTime?                  @map("expires_at")
-  createdByUserId                   String                     @map("created_by_user_id") @db.Uuid
-  createdAt                         DateTime                   @default(now()) @map("created_at")
-  updatedAt                         DateTime                   @updatedAt @map("updated_at")
-
-  project                         Project                         @relation(fields: [projectId], references: [id], onDelete: Cascade, map: "editorial_profile_proposals_project_fkey")
-  settings                        ProjectEditorialSettings        @relation("EditorialSettingsProposals", fields: [projectId], references: [projectId], onDelete: Cascade, map: "editorial_profile_proposals_settings_fkey")
-  activeForSettings               ProjectEditorialSettings?       @relation("ActiveEditorialProposal")
-  baseProfileRevision             EditorialProfileRevision?       @relation("ProposalBaseProfile", fields: [baseProfileRevisionId], references: [id], onDelete: Restrict)
-  representativeCategoryReference DocumentationCategoryReference? @relation("ProposalRepresentativeReference", fields: [representativeCategoryReferenceId], references: [id], onDelete: Restrict)
-  createdByUser                   User                            @relation("EditorialProposalCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  preview                         EditorialPreview?
-  generationOperations            GenerationOperation[]           @relation("GenerationProfileProposal")
-
-  @@index([projectId, status, createdAt])
-  @@map("editorial_profile_proposals")
-}
-
-model EditorialPreview {
+model ClientSectionContent {
   id                    String   @id @default(uuid()) @db.Uuid
-  proposalId            String   @unique @map("proposal_id") @db.Uuid
-  beforeContentId       String?  @map("before_content_id") @db.Uuid
-  afterContentId        String?  @unique @map("after_content_id") @db.Uuid
-  generationOperationId String   @unique @map("generation_operation_id") @db.Uuid
-  beforeContentJson     Json?    @map("before_content_json")
-  afterContentJson      Json?    @map("after_content_json")
+  projectId             String   @map("project_id") @db.Uuid
+  sectionId             String   @map("section_id") @db.Uuid
+  sectionProposalId     String   @map("section_proposal_id") @db.Uuid
+  locale                String   @db.VarChar(16)
+  outputContractVersion String   @map("output_contract_version") @db.VarChar(64)
+  structuredContent     Json     @map("structured_content")
   createdAt             DateTime @default(now()) @map("created_at")
 
-  proposal            EditorialProfileProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  beforeContent       ClientCategoryContent?   @relation("EditorialPreviewBefore", fields: [beforeContentId], references: [id], onDelete: Restrict)
-  afterContent        ClientCategoryContent?   @relation("EditorialPreviewAfter", fields: [afterContentId], references: [id], onDelete: Restrict)
-  generationOperation GenerationOperation      @relation("EditorialPreviewGenerationOperation", fields: [generationOperationId], references: [id], onDelete: Restrict)
+  project              Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  section              ClientSection               @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  sectionProposal      SectionProposal             @relation(fields: [sectionProposalId], references: [id], onDelete: Restrict)
+  releaseEntries       ClientContentReleaseEntry[]
+  generationOperations GenerationOperation[]       @relation("GenerationClientContent")
 
-  @@map("editorial_previews")
-}
-
-model ClientCategoryContent {
-  id                         String                   @id @default(uuid()) @db.Uuid
-  projectId                  String                   @map("project_id") @db.Uuid
-  categoryKey                DocumentationCategoryKey @map("category_key")
-  categoryReferenceId        String                   @map("category_reference_id") @db.Uuid
-  editorialProfileRevisionId String                   @map("editorial_profile_revision_id") @db.Uuid
-  locale                     String                   @db.VarChar(16)
-  outputContractVersion      String                   @map("output_contract_version") @db.VarChar(64)
-  structuredContent          Json                     @map("structured_content")
-  validationOperationId      String?                  @unique @map("validation_operation_id") @db.Uuid
-  validationResult           Json?                    @map("validation_result")
-  createdAt                  DateTime                 @default(now()) @map("created_at")
-
-  project                  Project                        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  categoryReference        DocumentationCategoryReference @relation(fields: [categoryReferenceId], references: [id], onDelete: Restrict)
-  editorialProfileRevision EditorialProfileRevision       @relation(fields: [editorialProfileRevisionId], references: [id], onDelete: Restrict)
-  validationOperation      GenerationOperation?           @relation("ContentValidationOperation", fields: [validationOperationId], references: [id], onDelete: Restrict)
-  releaseEntries           ClientContentReleaseEntry[]
-  previewedBefore          EditorialPreview[]             @relation("EditorialPreviewBefore")
-  previewedAfter           EditorialPreview?              @relation("EditorialPreviewAfter")
-  generationOperations     GenerationOperation[]          @relation("GenerationClientContent")
-
-  @@unique([categoryReferenceId, editorialProfileRevisionId, locale, outputContractVersion])
-  @@index([projectId, categoryKey, locale])
-  @@map("client_category_contents")
+  @@unique([sectionProposalId, locale, outputContractVersion])
+  @@index([projectId, sectionId, locale])
+  @@map("client_section_contents")
 }
 
 model ClientContentRelease {
-  id                    String              @id @default(uuid()) @db.Uuid
-  projectId             String              @map("project_id") @db.Uuid
-  sequence              Int
-  baseReleaseId         String?             @map("base_release_id") @db.Uuid
-  profileRevisionId     String              @map("profile_revision_id") @db.Uuid
-  reason                ClientReleaseReason
-  status                ClientReleaseStatus @default(queued)
-  expectedCategoryCount Int                 @map("expected_category_count")
-  initiatingReferenceId String?             @map("initiating_reference_id") @db.Uuid
-  readyAt               DateTime?           @map("ready_at")
-  publishedAt           DateTime?           @map("published_at")
-  failedAt              DateTime?           @map("failed_at")
-  createdAt             DateTime            @default(now()) @map("created_at")
-  updatedAt             DateTime            @updatedAt @map("updated_at")
+  id                   String              @id @default(uuid()) @db.Uuid
+  projectId            String              @map("project_id") @db.Uuid
+  sequence             Int
+  baseReleaseId        String?             @map("base_release_id") @db.Uuid
+  reason               ClientReleaseReason
+  status               ClientReleaseStatus @default(queued)
+  expectedSectionCount Int                 @map("expected_section_count")
+  initiatingProposalId String?             @map("initiating_proposal_id") @db.Uuid
+  readyAt              DateTime?           @map("ready_at")
+  publishedAt          DateTime?           @map("published_at")
+  failedAt             DateTime?           @map("failed_at")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
 
-  project               Project                         @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  baseRelease           ClientContentRelease?           @relation("ReleaseBase", fields: [baseReleaseId], references: [id], onDelete: Restrict)
-  derivedReleases       ClientContentRelease[]          @relation("ReleaseBase")
-  profileRevision       EditorialProfileRevision        @relation(fields: [profileRevisionId], references: [id], onDelete: Restrict)
-  initiatingReference   DocumentationCategoryReference? @relation("ReleaseInitiatingReference", fields: [initiatingReferenceId], references: [id], onDelete: Restrict)
+  project               Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  baseRelease           ClientContentRelease?       @relation("ReleaseBase", fields: [baseReleaseId], references: [id], onDelete: Restrict)
+  derivedReleases       ClientContentRelease[]      @relation("ReleaseBase")
+  initiatingProposal    SectionProposal?            @relation("ReleaseInitiatingProposal", fields: [initiatingProposalId], references: [id], onDelete: Restrict)
   entries               ClientContentReleaseEntry[]
-  currentForPublication ProjectClientPublication?       @relation("CurrentClientRelease")
-  generationOperations  GenerationOperation[]           @relation("GenerationClientRelease")
+  currentForPublication ProjectClientPublication?   @relation("CurrentClientRelease")
+  generationOperations  GenerationOperation[]       @relation("GenerationClientRelease")
 
   @@unique([projectId, sequence])
   @@index([projectId, status, createdAt])
@@ -1500,15 +941,16 @@ model ClientContentRelease {
 }
 
 model ClientContentReleaseEntry {
-  releaseId               String                   @map("release_id") @db.Uuid
-  categoryKey             DocumentationCategoryKey @map("category_key")
-  locale                  String                   @db.VarChar(16)
-  clientCategoryContentId String                   @map("client_category_content_id") @db.Uuid
+  releaseId              String @map("release_id") @db.Uuid
+  sectionId              String @map("section_id") @db.Uuid
+  locale                 String @db.VarChar(16)
+  clientSectionContentId String @map("client_section_content_id") @db.Uuid
 
-  release               ClientContentRelease  @relation(fields: [releaseId], references: [id], onDelete: Cascade)
-  clientCategoryContent ClientCategoryContent @relation(fields: [clientCategoryContentId], references: [id], onDelete: Restrict)
+  release              ClientContentRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  section              ClientSection        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  clientSectionContent ClientSectionContent @relation(fields: [clientSectionContentId], references: [id], onDelete: Restrict)
 
-  @@id([releaseId, categoryKey, locale])
+  @@id([releaseId, sectionId, locale])
   @@map("client_content_release_entries")
 }
 
@@ -1527,53 +969,46 @@ model ProjectClientPublication {
 }
 
 model GenerationOperation {
-  id                      String                    @id @default(uuid()) @db.Uuid
-  projectId               String                    @map("project_id") @db.Uuid
-  type                    GenerationOperationType
-  deduplicationKey        String                    @unique @map("deduplication_key")
-  inputFingerprint        String                    @map("input_fingerprint") @db.VarChar(64)
-  sourceDocumentId        String?                   @map("source_document_id") @db.Uuid
-  baseSourceRevisionId    String?                   @map("base_source_revision_id") @db.Uuid
-  sourceRevisionId        String?                   @map("source_revision_id") @db.Uuid
-  categoryReferenceId     String?                   @map("category_reference_id") @db.Uuid
-  profileProposalId       String?                   @map("profile_proposal_id") @db.Uuid
-  profileRevisionId       String?                   @map("profile_revision_id") @db.Uuid
-  clientReleaseId         String?                   @map("client_release_id") @db.Uuid
-  clientCategoryContentId String?                   @map("client_category_content_id") @db.Uuid
-  promptVersion           String                    @map("prompt_version") @db.VarChar(64)
-  outputContractVersion   String                    @map("output_contract_version") @db.VarChar(64)
-  policySnapshot          Json                      @map("policy_snapshot")
-  status                  GenerationOperationStatus @default(queued)
-  currentRouteIndex       Int                       @default(0) @map("current_route_index")
-  currentAttemptId        String?                   @unique @map("current_attempt_id") @db.Uuid
-  runAfter                DateTime                  @default(now()) @map("run_after")
-  leaseOwner              String?                   @map("lease_owner") @db.VarChar(128)
-  leaseExpiresAt          DateTime?                 @map("lease_expires_at")
-  terminalFailureCode     String?                   @map("terminal_failure_code") @db.VarChar(128)
-  replacesOperationId     String?                   @map("replaces_operation_id") @db.Uuid
-  cancelledAt             DateTime?                 @map("cancelled_at")
-  supersededAt            DateTime?                 @map("superseded_at")
-  completedAt             DateTime?                 @map("completed_at")
-  createdAt               DateTime                  @default(now()) @map("created_at")
-  updatedAt               DateTime                  @updatedAt @map("updated_at")
+  id                     String                    @id @default(uuid()) @db.Uuid
+  projectId              String                    @map("project_id") @db.Uuid
+  type                   GenerationOperationType
+  deduplicationKey       String                    @unique @map("deduplication_key")
+  inputFingerprint       String                    @map("input_fingerprint") @db.VarChar(64)
+  sourceDocumentId       String?                   @map("source_document_id") @db.Uuid
+  baseSourceRevisionId   String?                   @map("base_source_revision_id") @db.Uuid
+  sourceRevisionId       String?                   @map("source_revision_id") @db.Uuid
+  sectionProposalId      String?                   @map("section_proposal_id") @db.Uuid
+  clientReleaseId        String?                   @map("client_release_id") @db.Uuid
+  clientSectionContentId String?                   @map("client_section_content_id") @db.Uuid
+  promptVersion          String                    @map("prompt_version") @db.VarChar(64)
+  outputContractVersion  String                    @map("output_contract_version") @db.VarChar(64)
+  policySnapshot         Json                      @map("policy_snapshot")
+  status                 GenerationOperationStatus @default(queued)
+  currentRouteIndex      Int                       @default(0) @map("current_route_index")
+  currentAttemptId       String?                   @unique @map("current_attempt_id") @db.Uuid
+  runAfter               DateTime                  @default(now()) @map("run_after")
+  leaseOwner             String?                   @map("lease_owner") @db.VarChar(128)
+  leaseExpiresAt         DateTime?                 @map("lease_expires_at")
+  terminalFailureCode    String?                   @map("terminal_failure_code") @db.VarChar(128)
+  replacesOperationId    String?                   @map("replaces_operation_id") @db.Uuid
+  cancelledAt            DateTime?                 @map("cancelled_at")
+  supersededAt           DateTime?                 @map("superseded_at")
+  completedAt            DateTime?                 @map("completed_at")
+  createdAt              DateTime                  @default(now()) @map("created_at")
+  updatedAt              DateTime                  @updatedAt @map("updated_at")
 
-  project               Project                              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sourceDocument        SourceDocument?                      @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
-  baseSourceRevision    SourceRevision?                      @relation("GenerationBaseRevision", fields: [baseSourceRevisionId], references: [id], onDelete: Restrict)
-  sourceRevision        SourceRevision?                      @relation("GenerationSourceRevision", fields: [sourceRevisionId], references: [id], onDelete: Restrict)
-  categoryReference     DocumentationCategoryReference?      @relation("GenerationCategoryReference", fields: [categoryReferenceId], references: [id], onDelete: Restrict)
-  profileProposal       EditorialProfileProposal?            @relation("GenerationProfileProposal", fields: [profileProposalId], references: [id], onDelete: Restrict)
-  profileRevision       EditorialProfileRevision?            @relation("GenerationProfileRevision", fields: [profileRevisionId], references: [id], onDelete: Restrict)
-  clientRelease         ClientContentRelease?                @relation("GenerationClientRelease", fields: [clientReleaseId], references: [id], onDelete: Restrict)
-  clientCategoryContent ClientCategoryContent?               @relation("GenerationClientContent", fields: [clientCategoryContentId], references: [id], onDelete: Restrict)
-  currentAttempt        GenerationAttempt?                   @relation("CurrentGenerationAttempt", fields: [currentAttemptId], references: [id], onDelete: SetNull)
-  attempts              GenerationAttempt[]                  @relation("GenerationAttempts")
-  replacesOperation     GenerationOperation?                 @relation("GenerationReplacement", fields: [replacesOperationId], references: [id], onDelete: Restrict)
-  replacementOperations GenerationOperation[]                @relation("GenerationReplacement")
-  categoryDraft         DocumentationCategoryReferenceDraft? @relation("CategoryDraftGenerationOperation")
-  editorialPreview      EditorialPreview?                    @relation("EditorialPreviewGenerationOperation")
-  validatedContent      ClientCategoryContent?               @relation("ContentValidationOperation")
-  sectionProposal       SectionProposal?                     @relation("SectionProposalGenerationOperation")
+  project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceDocument        SourceDocument?       @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  baseSourceRevision    SourceRevision?       @relation("GenerationBaseRevision", fields: [baseSourceRevisionId], references: [id], onDelete: Restrict)
+  sourceRevision        SourceRevision?       @relation("GenerationSourceRevision", fields: [sourceRevisionId], references: [id], onDelete: Restrict)
+  derivedProposal       SectionProposal?      @relation("GenerationSectionProposal", fields: [sectionProposalId], references: [id], onDelete: Restrict)
+  clientRelease         ClientContentRelease? @relation("GenerationClientRelease", fields: [clientReleaseId], references: [id], onDelete: Restrict)
+  clientSectionContent  ClientSectionContent? @relation("GenerationClientContent", fields: [clientSectionContentId], references: [id], onDelete: Restrict)
+  currentAttempt        GenerationAttempt?    @relation("CurrentGenerationAttempt", fields: [currentAttemptId], references: [id], onDelete: SetNull)
+  attempts              GenerationAttempt[]   @relation("GenerationAttempts")
+  replacesOperation     GenerationOperation?  @relation("GenerationReplacement", fields: [replacesOperationId], references: [id], onDelete: Restrict)
+  replacementOperations GenerationOperation[] @relation("GenerationReplacement")
+  sectionProposal       SectionProposal?      @relation("SectionProposalGenerationOperation")
 
   @@index([status, runAfter, leaseExpiresAt])
   @@index([projectId, type, createdAt])
@@ -1617,18 +1052,6 @@ model GenerationAttempt {
   @@unique([operationId, ordinal])
   @@index([status, nextPollAt])
   @@map("generation_attempts")
-}
-
-// The frozen, product-wide category list (FR-001). Not a table: there is
-// nothing per-project to store, and a table is exactly what let 013's
-// taxonomy drift. This legacy enum is retained only while the frozen legacy
-// tables remain in the schema; active category keys live in the canonical
-// documentation contracts. A key is never shown directly to a user.
-enum ResourceCategoryKey {
-  overview
-  how_it_works
-  planning
-  other
 }
 
 // Frozen legacy relation retained for the separately approved post-drain

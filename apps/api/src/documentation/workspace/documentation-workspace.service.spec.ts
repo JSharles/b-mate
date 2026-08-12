@@ -14,7 +14,7 @@ describe('DocumentationWorkspaceService', () => {
         reviews: 1,
         active: 0,
         release: 'release-1',
-        pending: { id: 'pending', expectedCategoryCount: 2, entries: [{}] },
+        pending: { id: 'pending', expectedSectionCount: 2, entries: [{}] },
       },
       'needs_action',
       'previous_version_visible',
@@ -45,9 +45,7 @@ describe('DocumentationWorkspaceService', () => {
       .mockResolvedValueOnce(input.active)
       .mockResolvedValueOnce(input.failed);
     prisma.clarification.count.mockResolvedValue(2);
-    prisma.documentationCategoryReferenceDraft.count.mockResolvedValue(
-      input.reviews,
-    );
+    prisma.sectionProposal.count.mockResolvedValue(input.reviews);
     prisma.projectClientPublication.findUnique.mockResolvedValue({
       currentReleaseId: input.release,
     });

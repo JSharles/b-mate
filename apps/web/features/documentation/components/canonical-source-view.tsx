@@ -46,9 +46,6 @@ function SourceItem({
               {t("pointToClarify")}
             </span>
           )}
-          {item.categories.map((category) => (
-            <span key={category}>{t(`category_${category}`)}</span>
-          ))}
         </div>
         <p className="max-w-3xl text-sm leading-7 text-foreground">{item.content}</p>
         <div className="flex flex-wrap gap-1">

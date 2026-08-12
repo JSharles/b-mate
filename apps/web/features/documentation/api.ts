@@ -9,14 +9,11 @@ import type {
   Clarification,
   ResolveClarificationsRequest,
   ResolveClarificationsResponse,
-  CategoryDraftDetail,
-  CategoryProjection,
   ClientContentPreview,
   DocumentationWorkspace,
-  EditorialProfileValues,
-  PublicClientCategory,
   ConfirmDocumentRemoval,
   DocumentRemovalPreview,
+  PublicClientSection,
 } from "schemas";
 import { ApiError, apiFetch } from "@/shared/lib/api-client";
 
@@ -35,7 +32,6 @@ export interface CanonicalSourceOptions {
 
 export interface ClarificationOptions {
   status?: "open" | "left_open" | "answered" | "superseded";
-  categoryKey?: "overview" | "how_it_works" | "planning" | "other";
   cursor?: string;
 }
 
@@ -164,7 +160,6 @@ export function listClarifications(
   return apiFetch<CursorPage<Clarification>>(
     withQuery(`/projects/${projectId}/documentation/clarifications`, {
       status: options.status,
-      categoryKey: options.categoryKey,
       cursor: options.cursor,
     }),
   );
@@ -186,41 +181,9 @@ export function getDocumentationWorkspace(projectId: string) {
   );
 }
 
-export function listCategoryDrafts(projectId: string) {
-  return apiFetch<CategoryProjection[]>(
-    `/projects/${projectId}/documentation/category-drafts`,
-  );
-}
 
-export function getCategoryDraft(projectId: string, draftId: string) {
-  return apiFetch<CategoryDraftDetail>(
-    `/projects/${projectId}/documentation/category-drafts/${draftId}`,
-  );
-}
 
-export function reviewCategoryDraft(
-  projectId: string,
-  draftId: string,
-  action: "accept" | "discard",
-  expectedVersion: number,
-) {
-  return apiFetch<unknown>(
-    `/projects/${projectId}/documentation/category-drafts/${draftId}/${action}`,
-    { method: "POST", body: { expectedVersion } },
-  );
-}
 
-export function correctCategoryDraft(
-  projectId: string,
-  draftId: string,
-  expectedVersion: number,
-  instruction: string,
-) {
-  return apiFetch<{ routingCode: string; operationId: string | null }>(
-    `/projects/${projectId}/documentation/category-drafts/${draftId}/correct`,
-    { method: "POST", body: { expectedVersion, instruction } },
-  );
-}
 
 export function getClientContentPreview(projectId: string) {
   return apiFetch<ClientContentPreview>(
@@ -228,63 +191,16 @@ export function getClientContentPreview(projectId: string) {
   );
 }
 
-export function getPublicClientCategories(projectId: string) {
-  return apiFetch<PublicClientCategory[]>(
-    `/projects/${projectId}/categories/content`,
+export function getPublicClientSections(projectId: string) {
+  return apiFetch<PublicClientSection[]>(
+    `/projects/${projectId}/documentation/public-sections`,
   );
 }
 
-export interface EditorialProfileResponse extends EditorialProfileValues {
-  revisionId: string | null;
-  sequence: number;
-  version: number;
-  proposal: {
-    id: string;
-    status: string;
-    version: number;
-    before: PublicClientCategory | null;
-    after: PublicClientCategory | null;
-  } | null;
-}
 
-export function getEditorialProfile(projectId: string) {
-  return apiFetch<EditorialProfileResponse>(
-    `/projects/${projectId}/editorial-profile`,
-  );
-}
 
-export function proposeEditorialProfile(
-  projectId: string,
-  expectedVersion: number,
-  values: EditorialProfileValues,
-) {
-  return apiFetch<EditorialProfileResponse["proposal"]>(
-    `/projects/${projectId}/editorial-profile/proposals`,
-    { method: "POST", body: { expectedVersion, ...values } },
-  );
-}
 
-export function confirmEditorialProfile(
-  projectId: string,
-  proposalId: string,
-  expectedVersion: number,
-) {
-  return apiFetch<{ profileRevisionId: string; releaseId: string | null }>(
-    `/projects/${projectId}/editorial-profile/proposals/${proposalId}/confirm`,
-    { method: "POST", body: { expectedVersion, confirmed: true } },
-  );
-}
 
-export function cancelEditorialProfile(
-  projectId: string,
-  proposalId: string,
-  expectedVersion: number,
-) {
-  return apiFetch<{ cancelled: boolean }>(
-    `/projects/${projectId}/editorial-profile/proposals/${proposalId}/cancel`,
-    { method: "POST", body: { expectedVersion } },
-  );
-}
 
 export function previewDocumentRemoval(projectId: string, documentId: string) {
   return apiFetch<DocumentRemovalPreview>(

@@ -43,7 +43,6 @@ describe('DocumentRemovalService', () => {
       service.preview('user', projectId, documentId),
     ).resolves.toMatchObject({
       documentVersion: 2,
-      affectedCategories: ['overview', 'planning'],
       supportedItemCount: 2,
       soleSupportItemCount: 1,
       confirmationToken: expect.any(String),
@@ -192,7 +191,6 @@ describe('DocumentRemovalService', () => {
       state: 'confirmed',
       content: `current-${id}`,
       sortOrder: 1,
-      categories: [{ categoryKey: 'overview' }],
       provenanceLinks: links,
     });
     prisma.projectSource.findUnique.mockResolvedValue({

@@ -12,7 +12,6 @@ const budget: CurrentCanonicalItem = {
   state: 'confirmed',
   content: 'Le budget validé est de 10 000 €.',
   sortOrder: 0,
-  categories: ['overview'],
   provenance: [
     {
       documentObservationId: 'observation-budget-a',
@@ -29,7 +28,6 @@ const launch: CurrentCanonicalItem = {
   state: 'confirmed',
   content: 'Le lancement est prévu le 1er octobre 2026.',
   sortOrder: 1,
-  categories: ['planning'],
   provenance: [
     {
       documentObservationId: 'observation-launch-a',
@@ -47,7 +45,6 @@ function observation(
     kind: 'fact',
     normalizedContent: 'Une information.',
     exactContentHash: 'c'.repeat(64),
-    categories: ['other'],
     ...overrides,
   };
 }
@@ -71,7 +68,6 @@ describe('buildConsolidationPlan', () => {
         id: 'observation-budget-b',
         normalizedContent: budget.content,
         exactContentHash: match === 'exact' ? 'a'.repeat(64) : 'd'.repeat(64),
-        categories: ['overview'],
       });
 
       const plan = buildConsolidationPlan(
@@ -101,7 +97,6 @@ describe('buildConsolidationPlan', () => {
           }),
         ]),
       });
-      expect(plan.impactedCategories).toEqual([]);
       expect(plan.changes).toEqual([
         expect.objectContaining({ kind: 'provenance_added' }),
       ]);
@@ -113,7 +108,6 @@ describe('buildConsolidationPlan', () => {
       id: 'observation-launch-update',
       kind: 'date',
       normalizedContent: 'Le lancement est déplacé au 15 octobre 2026.',
-      categories: ['planning'],
     });
 
     const plan = buildConsolidationPlan(
@@ -139,7 +133,6 @@ describe('buildConsolidationPlan', () => {
         content: update.normalizedContent,
       }),
     ]);
-    expect(plan.impactedCategories).toEqual(['planning']);
     expect(plan.changes).toEqual([
       expect.objectContaining({
         informationItemId: launch.informationItemId,
@@ -154,7 +147,6 @@ describe('buildConsolidationPlan', () => {
       normalizedContent:
         'Une phase bêta interne de cinq jours précède le lancement.',
       sourceLanguage: 'en',
-      categories: ['planning'],
     });
 
     const plan = buildConsolidationPlan(
@@ -167,9 +159,7 @@ describe('buildConsolidationPlan', () => {
     expect(plan.items[2]).toMatchObject({
       informationItemId: null,
       content: translated.normalizedContent,
-      categories: ['planning'],
     });
-    expect(plan.impactedCategories).toEqual(['planning']);
   });
 
   it('rejects unknown, duplicate, or missing observation dispositions', () => {

@@ -17,7 +17,6 @@ import {
 export const ClientDerivationOutputSchema = z
   .object({
     promptVersion: z.literal(CLIENT_DERIVATION_PROMPT_VERSION),
-    categoryKey: z.enum(['overview', 'how_it_works', 'planning', 'other']),
     locale: z.string().min(2).max(16),
     blocks: z.array(
       z
@@ -34,10 +33,9 @@ export const ClientDerivationOutputSchema = z
 const CLIENT_DERIVATION_JSON_SCHEMA: Record<string, unknown> = {
   type: 'object',
   additionalProperties: false,
-  required: ['promptVersion', 'categoryKey', 'locale', 'blocks'],
+  required: ['promptVersion', 'locale', 'blocks'],
   properties: {
     promptVersion: { const: CLIENT_DERIVATION_PROMPT_VERSION },
-    categoryKey: { enum: ['overview', 'how_it_works', 'planning', 'other'] },
     locale: { type: 'string' },
     blocks: {
       type: 'array',
@@ -70,33 +68,28 @@ export class ClientDerivationHandler
   async buildRequest(
     operation: GenerationOperation,
   ): Promise<GenerationRequestInput> {
-    if (!operation.categoryReferenceId || !operation.profileRevisionId)
+    if (!operation.sectionProposalId)
       throw new Error('CLIENT_DERIVATION_LINKS_MISSING');
-    const [reference, profile] = await Promise.all([
-      this.prisma.documentationCategoryReference.findUnique({
-        where: { id: operation.categoryReferenceId },
-      }),
-      this.prisma.editorialProfileRevision.findUnique({
-        where: { id: operation.profileRevisionId },
-      }),
-    ]);
-    if (!reference || !profile)
+    const proposal = await this.prisma.sectionProposal.findUnique({
+      where: { id: operation.sectionProposalId },
+      include: { section: true },
+    });
+    if (!proposal || proposal.status !== 'approved')
       throw new Error('CLIENT_DERIVATION_INPUT_MISSING');
     return {
       parts: [
         {
           kind: 'text',
           text: buildClientDerivationPrompt({
-            categoryKey: reference.categoryKey,
+            sectionName: proposal.section.name,
             locale: 'fr',
-            profile: {
-              length: profile.length,
-              pedagogy: profile.pedagogy,
-              technicalFamiliarity: profile.technicalFamiliarity,
-              tone: profile.tone,
-              guidance: profile.guidance,
+            editorial: {
+              length: proposal.section.length,
+              pedagogy: proposal.section.pedagogy,
+              technicalFamiliarity: proposal.section.technicalFamiliarity,
+              tone: proposal.section.tone,
             },
-            blocks: reference.structuredContent,
+            blocks: proposal.structuredContent,
           }),
         },
       ],
@@ -115,18 +108,14 @@ export class ClientDerivationHandler
     // was submitted for, and applySuccessfulResult refuses an attempt that is
     // no longer the operation's current one. Copying 64 random characters back
     // verified nothing the plumbing did not already guarantee.
-    if (
-      !operation.categoryReferenceId ||
-      !operation.profileRevisionId ||
-      !operation.clientReleaseId
-    )
+    if (!operation.sectionProposalId || !operation.clientReleaseId)
       throw new Error('CLIENT_DERIVATION_OUTPUT_MISMATCH');
-    const reference = await tx.documentationCategoryReference.findUnique({
-      where: { id: operation.categoryReferenceId },
+    const proposal = await tx.sectionProposal.findUnique({
+      where: { id: operation.sectionProposalId },
+      select: { id: true, sectionId: true, structuredContent: true },
     });
-    if (!reference || reference.categoryKey !== output.categoryKey)
-      throw new Error('CLIENT_DERIVATION_CATEGORY_MISMATCH');
-    const sourceBlocks = reference.structuredContent as Array<{
+    if (!proposal) throw new Error('CLIENT_DERIVATION_INPUT_MISSING');
+    const sourceBlocks = proposal.structuredContent as Array<{
       type?: string;
       openPointId?: string | null;
     }>;
@@ -147,42 +136,38 @@ export class ClientDerivationHandler
       [...expectedOpen].some((id) => !actualOpen.has(id))
     )
       throw new Error('CLIENT_DERIVATION_OPEN_POINT_COVERAGE');
-    const content = await tx.clientCategoryContent.upsert({
+    const content = await tx.clientSectionContent.upsert({
       where: {
-        categoryReferenceId_editorialProfileRevisionId_locale_outputContractVersion:
-          {
-            categoryReferenceId: reference.id,
-            editorialProfileRevisionId: operation.profileRevisionId,
-            locale: output.locale,
-            outputContractVersion: CLIENT_DERIVATION_OUTPUT_CONTRACT,
-          },
+        sectionProposalId_locale_outputContractVersion: {
+          sectionProposalId: proposal.id,
+          locale: output.locale,
+          outputContractVersion: CLIENT_DERIVATION_OUTPUT_CONTRACT,
+        },
       },
       update: {},
       create: {
         projectId: operation.projectId,
-        categoryKey: reference.categoryKey,
-        categoryReferenceId: reference.id,
-        editorialProfileRevisionId: operation.profileRevisionId,
+        sectionId: proposal.sectionId,
+        sectionProposalId: proposal.id,
         locale: output.locale,
         outputContractVersion: CLIENT_DERIVATION_OUTPUT_CONTRACT,
         structuredContent: output.blocks,
-        validationResult: { valid: true },
       },
     });
     await tx.clientContentReleaseEntry.upsert({
       where: {
-        releaseId_categoryKey_locale: {
+        releaseId_sectionId_locale: {
           releaseId: operation.clientReleaseId,
-          categoryKey: reference.categoryKey,
+          sectionId: proposal.sectionId,
           locale: output.locale,
         },
       },
-      update: { clientCategoryContentId: content.id },
+      update: { clientSectionContentId: content.id },
       create: {
         releaseId: operation.clientReleaseId,
-        categoryKey: reference.categoryKey,
+        sectionId: proposal.sectionId,
         locale: output.locale,
-        clientCategoryContentId: content.id,
+        clientSectionContentId: content.id,
       },
     });
     const release = await tx.clientContentRelease.findUnique({
@@ -194,11 +179,11 @@ export class ClientDerivationHandler
       ['published', 'superseded', 'failed'].includes(release.status)
     )
       return;
-    if (release.entries.length >= release.expectedCategoryCount) {
+    if (release.entries.length >= release.expectedSectionCount) {
       // Claim the head first, and only on the base this release was built
-      // from. Read then write, four categories accepted within seconds of each
+      // from. Read then write, four sections approved within seconds of each
       // other each saw the same head, and two of them published: the client was
-      // left with two live releases between them covering half the categories.
+      // left with two live releases between them covering half the sections.
       // The condition is what makes the swap a swap.
       const claimed = await tx.projectClientPublication.updateMany({
         where: {

@@ -47,7 +47,6 @@ const baseDocument = {
   version: 2,
   title: "Architecture détaillée.pdf",
   failureCode: null,
-  affectedCategories: ["overview", "how_it_works"],
   originalDownloadUrl: "https://files.example/brief",
   originalFileName: "brief.pdf",
   externalUrl: null,
@@ -151,7 +150,6 @@ describe("SourceDocumentPage", () => {
     ).toBeVisible();
     expect(screen.getByText("uploadedDocument")).toBeVisible();
     expect(screen.getByText("statusIncorporated")).toBeVisible();
-    expect(screen.getByText("category_overview")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "downloadOriginal" }),
     ).toHaveAttribute("href", "https://files.example/brief");
@@ -166,7 +164,6 @@ describe("SourceDocumentPage", () => {
       data: {
         ...baseDocument,
         status,
-        affectedCategories: [],
         originalDownloadUrl: null,
       },
       isPending: false,
@@ -174,7 +171,6 @@ describe("SourceDocumentPage", () => {
     } as never);
     renderPage();
     expect(screen.getByText(label)).toBeVisible();
-    expect(screen.queryByText("affectedCategories")).not.toBeInTheDocument();
   });
 
   it("renders Notion provenance and a provider failure", () => {

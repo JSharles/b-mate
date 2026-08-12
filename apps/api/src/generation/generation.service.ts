@@ -41,11 +41,9 @@ export interface CreateGenerationOperationInput {
   sourceDocumentId?: string;
   baseSourceRevisionId?: string;
   sourceRevisionId?: string;
-  categoryReferenceId?: string;
-  profileProposalId?: string;
-  profileRevisionId?: string;
+  sectionProposalId?: string;
   clientReleaseId?: string;
-  clientCategoryContentId?: string;
+  clientSectionContentId?: string;
   replacesOperationId?: string;
 }
 
@@ -485,11 +483,9 @@ export class GenerationService {
       sourceDocumentId: previous.sourceDocumentId ?? undefined,
       baseSourceRevisionId: previous.baseSourceRevisionId ?? undefined,
       sourceRevisionId: previous.sourceRevisionId ?? undefined,
-      categoryReferenceId: previous.categoryReferenceId ?? undefined,
-      profileProposalId: previous.profileProposalId ?? undefined,
-      profileRevisionId: previous.profileRevisionId ?? undefined,
+      sectionProposalId: previous.sectionProposalId ?? undefined,
       clientReleaseId: previous.clientReleaseId ?? undefined,
-      clientCategoryContentId: previous.clientCategoryContentId ?? undefined,
+      clientSectionContentId: previous.clientSectionContentId ?? undefined,
       replacesOperationId: previous.id,
     });
 

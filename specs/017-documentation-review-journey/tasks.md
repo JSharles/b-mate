@@ -73,8 +73,8 @@ The removal is no longer a final phase. It happens in Phase 7 below, which now r
 - [x] T017 [US1] Add `section_composition` to the generation policy stages in `apps/api/.env.example`. **Pulled forward from Phase 3 by the compiler**: `GenerationPolicySchema.stages` is strict and requires a route for every value of `GenerationOperationType`, so adding the enum value in T004 made the API fail to build until the stage existed. Every deployment's `GENERATION_POLICY_JSON` must now declare it or the API will not boot
 - [x] T018 [US1] Create `apps/api/src/documentation/composition/section-proposal.service.ts`: trigger a composition (refusing a second while one runs, FR-013), read the current proposal, approve it
 - [x] T019 [US1] Write `apps/api/src/documentation/composition/section-proposal.service.spec.ts` covering the one-at-a-time rule and the approval path
-- [ ] T020 [US1] Extend `apps/api/src/documentation/publication/client-publication.service.ts` so an approved section proposal queues a client release keyed by section, reusing the conditional-swap publication built on 2026-08-12 unchanged
-- [ ] T021 [US1] Write the publication tests in `apps/api/src/documentation/publication/client-publication.service.spec.ts` proving two approvals seconds apart leave exactly one published set holding both sections
+- [x] T020 [US1] Extend `apps/api/src/documentation/publication/client-publication.service.ts` so an approved section proposal queues a client release keyed by section, reusing the conditional-swap publication built on 2026-08-12 unchanged
+- [x] T021 [US1] Write the publication tests in `apps/api/src/documentation/publication/client-publication.service.spec.ts` proving two approvals seconds apart leave exactly one published set holding both sections
 - [x] T022 [US1] Add the composition and approval routes to `apps/api/src/documentation/controllers/sections.controller.ts` with their tests
 
 ### Composition, web side
@@ -159,31 +159,31 @@ The removal is no longer a final phase. It happens in Phase 7 below, which now r
 
 ### Publication moves onto sections
 
-- [ ] T057 Re-key `ClientContentReleaseEntry` and `ClientCategoryContent` on `sectionId`, replacing `categoryKey` outright rather than carrying both
-- [ ] T058 Rework `apps/api/src/documentation/publication/client-publication.service.ts` and `client-derivation.handler.ts` to derive from an approved `SectionProposal`, taking register from the section rather than from a project editorial profile
-- [ ] T059 Update the publication tests, keeping the conditional-swap proof: two approvals seconds apart leave exactly one published set holding both sections
+- [x] T057 Re-key `ClientContentReleaseEntry` and `ClientCategoryContent` on `sectionId`, replacing `categoryKey` outright rather than carrying both
+- [x] T058 Rework `apps/api/src/documentation/publication/client-publication.service.ts` and `client-derivation.handler.ts` to derive from an approved `SectionProposal`, taking register from the section rather than from a project editorial profile
+- [x] T059 Update the publication tests, keeping the conditional-swap proof: two approvals seconds apart leave exactly one published set holding both sections
 
 ### Ingestion stops classifying
 
-- [ ] T060 Remove category assignment from `apps/api/src/documentation/source/prompts/extraction.prompt.ts` and `extraction-output.schema.ts`, bumping the contract version
-- [ ] T061 Remove category assignment from `apps/api/src/documentation/source/prompts/consolidation.prompt.ts` and the consolidation output contract, bumping its version
-- [ ] T062 Update `apps/api/src/documentation/source/extraction-output.schema.spec.ts`, `document-extraction.handler.spec.ts`, `source-consolidation.handler.spec.ts` and `canonical-ingestion.e2e-spec.ts` for the reduced contracts
-- [ ] T063 Drop `DocumentObservationCategory`, `SourceRevisionItemCategory` and `SourceRevisionImpact` from the schema and migrate
+- [x] T060 Remove category assignment from `apps/api/src/documentation/source/prompts/extraction.prompt.ts` and `extraction-output.schema.ts`, bumping the contract version
+- [x] T061 Remove category assignment from `apps/api/src/documentation/source/prompts/consolidation.prompt.ts` and the consolidation output contract, bumping its version
+- [x] T062 Update `apps/api/src/documentation/source/extraction-output.schema.spec.ts`, `document-extraction.handler.spec.ts`, `source-consolidation.handler.spec.ts` and `canonical-ingestion.e2e-spec.ts` for the reduced contracts
+- [x] T063 Drop `DocumentObservationCategory`, `SourceRevisionItemCategory` and `SourceRevisionImpact` from the schema and migrate
 
 ### The old journey goes
 
-- [ ] T064 Delete `apps/api/src/documentation/review/` and `apps/api/src/documentation/editorial/`, their controllers, their routes and their tests
-- [ ] T065 Drop `DocumentationCategoryReferenceDraft`, `CategoryProjectionState`, `EditorialProfileRevision`, `EditorialProfileProposal`, `EditorialPreview` and `ProjectEditorialSettings`, and migrate
-- [ ] T066 Drop `CategoryExtract`, `CategoryContent`, `CategoryReference` and `CategoryReferenceDraft` — measured at zero consumers before this feature began (research Decision 8)
-- [ ] T067 Drop the `DocumentationCategoryKey` enum and `apps/api/src/documentation/documentation-categories.ts`
-- [ ] T068 Delete `category-review-list.tsx`, `editorial-profile-settings.tsx` and the four-step scaffolding from `documentation-workspace.tsx`, with their tests
-- [ ] T069 Reshape `client-category-view.tsx` into `client-section-view.tsx` and update every caller
-- [ ] T070 Remove every translated string left without a call site from `apps/web/messages/fr.json` and `apps/web/messages/en.json`
+- [x] T064 Delete `apps/api/src/documentation/review/` and `apps/api/src/documentation/editorial/`, their controllers, their routes and their tests
+- [x] T065 Drop `DocumentationCategoryReferenceDraft`, `CategoryProjectionState`, `EditorialProfileRevision`, `EditorialProfileProposal`, `EditorialPreview` and `ProjectEditorialSettings`, and migrate
+- [x] T066 Drop `CategoryExtract`, `CategoryContent`, `CategoryReference` and `CategoryReferenceDraft` — measured at zero consumers before this feature began (research Decision 8)
+- [x] T067 Drop the `DocumentationCategoryKey` enum and `apps/api/src/documentation/documentation-categories.ts`
+- [x] T068 Delete `category-review-list.tsx`, `editorial-profile-settings.tsx` and the four-step scaffolding from `documentation-workspace.tsx`, with their tests
+- [x] T069 Reshape `client-category-view.tsx` into `client-section-view.tsx` and update every caller
+- [x] T070 Remove every translated string left without a call site from `apps/web/messages/fr.json` and `apps/web/messages/en.json`
 
 ### Verification
 
-- [ ] T071 Run `pnpm test:cov`, `pnpm lint`, `pnpm knip`, `pnpm i18n:orphans` and `pnpm design:check` — all green
-- [ ] T072 Verify by hand that no Prisma model remains without a reader in `apps/api/src`. The automated gates do not catch this, which is how four dead models survived from features 013 and 014 into this one (FR-024)
+- [x] T071 Run `pnpm test:cov`, `pnpm lint`, `pnpm knip`, `pnpm i18n:orphans` and `pnpm design:check` — all green
+- [x] T072 Verify by hand that no Prisma model remains without a reader in `apps/api/src`. The automated gates do not catch this, which is how four dead models survived from features 013 and 014 into this one (FR-024)
 - [ ] T073 Run the whole of `specs/017-documentation-review-journey/quickstart.md` against a migrated project, including its "what to watch" section
 
 ---

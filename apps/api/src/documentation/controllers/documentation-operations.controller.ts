@@ -12,7 +12,7 @@ import { SessionGuard } from '../../auth/session.guard';
 import { GenerationService } from '../../generation/generation.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
-import { CategoryProjectionService } from '../review/category-projection.service';
+import { SectionProposalService } from '../composition/section-proposal.service';
 
 @Controller('projects/:projectId/documentation/operations')
 @UseGuards(SessionGuard)
@@ -21,7 +21,7 @@ export class DocumentationOperationsController {
     private readonly prisma: PrismaService,
     private readonly access: ProjectAccessService,
     private readonly generation: GenerationService,
-    private readonly projections: CategoryProjectionService,
+    private readonly proposals: SectionProposalService,
   ) {}
   @Post(':operationId/retry')
   @HttpCode(202)
@@ -37,17 +37,23 @@ export class DocumentationOperationsController {
     });
     if (!operation) throw new NotFoundException({ code: 'NOT_FOUND' });
 
-    // A category draft is owned by its category, not by the operation that
-    // happened to produce it. Re-running the operation made a second one with
-    // no draft behind it, which could only fail — so this stage retries through
-    // the projection, which knows which category and which revision are due.
-    if (operation.type === 'factual_drafting') {
-      const draftId = await this.projections.retryDraft(
+    // A proposal is owned by its section, not by the operation that happened
+    // to produce it. Re-running the operation made a second one with no
+    // proposal behind it, which could only fail — so this stage retries through
+    // the section, which knows what still needs composing.
+    if (operation.type === 'section_composition') {
+      const retried = await this.proposals.retryComposition(
+        user.id,
         projectId,
         operation.id,
       );
-      if (!draftId) throw new NotFoundException({ code: 'NOT_FOUND' });
-      return { draftId, status: 'generating', actionCode: 'RETRY_QUEUED' };
+      if (!retried) throw new NotFoundException({ code: 'NOT_FOUND' });
+      return {
+        proposalId: retried.proposalId,
+        operationId: retried.operationId,
+        status: 'composing',
+        actionCode: 'RETRY_QUEUED',
+      };
     }
 
     const replacement = await this.generation.retry(operation.id);

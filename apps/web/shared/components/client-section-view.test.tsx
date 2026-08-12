@@ -1,13 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { ClientCategoryView } from "./client-category-view";
+import { ClientSectionView } from "./client-section-view";
 
-describe("ClientCategoryView", () => {
+describe("ClientSectionView", () => {
   it("renders paragraphs, bullets, and explicit open points", () => {
     render(
-      <ClientCategoryView
-        category={{
-          categoryKey: "overview",
+      <ClientSectionView
+        section={{
+          id: "00000000-0000-4000-8000-000000000001",
+          name: "Le projet",
           blocks: [
             { type: "paragraph", text: "A clear introduction" },
             { type: "bullet", text: "A concrete result" },

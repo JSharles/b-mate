@@ -10,19 +10,15 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useDocumentationWorkspace } from "../hooks";
 import { CanonicalSourceView } from "./canonical-source-view";
-import { CategoryReviewList } from "./category-review-list";
 import { ClientContentPreview } from "./client-content-preview";
-import { EditorialProfileSettings } from "./editorial-profile-settings";
 
-// The sections in the order a contributor actually works them: the facts, then
-// the decisions on those facts, then how they are worded, and finally what the
-// client ends up seeing. The client preview used to sit third of four, so the
-// page closed on a settings form — the last thing you saw was dropdowns rather
-// than the answer to the only question you came with.
+// What a contributor works, in order: the facts the documents contribute, then
+// what the client ends up reading. The two steps between — reviewing four fixed
+// categories and setting a project-wide tone — are gone with the categories
+// themselves (specs/017). Composing a section replaces them, and its screen is
+// the next thing built.
 const SECTIONS = [
   { id: "documentation-source", key: "navSource" },
-  { id: "documentation-review", key: "navReview" },
-  { id: "documentation-editorial", key: "navEditorial" },
   { id: "documentation-client", key: "navClient" },
 ] as const;
 
@@ -89,8 +85,8 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      {/* Four expanded sections on one unbounded scroll, with no way to see
-          what is on the page or jump to it. */}
+      {/* Expanded sections on one unbounded scroll, with no way to see what is
+          on the page or jump to it. */}
       <nav aria-label={t("navLabel")} className="mb-8">
         <ul className="flex flex-wrap gap-2">
           {SECTIONS.map((section) => (
@@ -112,12 +108,6 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
           document and the nav is worse than useless to a keyboard user. */}
       <div id="documentation-source" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <CanonicalSourceView projectId={projectId} />
-      </div>
-      <div id="documentation-review" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <CategoryReviewList projectId={projectId} />
-      </div>
-      <div id="documentation-editorial" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <EditorialProfileSettings projectId={projectId} />
       </div>
       <div id="documentation-client" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <ClientContentPreview projectId={projectId} />

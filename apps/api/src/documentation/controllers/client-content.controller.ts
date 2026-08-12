@@ -12,13 +12,13 @@ export class ClientContentController {
     private readonly access: ProjectAccessService,
     private readonly publication: ClientPublicationService,
   ) {}
-  @Get('categories/content')
+  @Get('documentation/public-sections')
   async current(
     @CurrentUser() user: User,
     @Param('projectId') projectId: string,
   ) {
     await this.access.requireMember(user.id, projectId);
-    return this.publication.readPublicCategories(projectId);
+    return this.publication.readPublicSections(projectId);
   }
   @Get('documentation/client-content')
   async preview(
