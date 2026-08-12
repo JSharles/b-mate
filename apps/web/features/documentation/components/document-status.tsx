@@ -30,12 +30,13 @@ export const CANCELLED_BY_CONTRIBUTOR = "CANCELLED_BY_CONTRIBUTOR";
 export function DocumentStatus({
   status,
   failureCode,
-  createdAt,
+  since: sinceIso,
   className,
 }: {
   status: SourceDocument["status"];
   failureCode?: string | null;
-  createdAt?: string;
+  /** When the run in progress began — reset by a restart, not the document's age. */
+  since?: string;
   className?: string;
 }) {
   const t = useTranslations("Projects.Documentation.Documents");
@@ -57,7 +58,16 @@ export function DocumentStatus({
   // is a promise of imminence, and holding one that long is what drives a
   // contributor to re-upload the same document. Elapsed time turns "is this
   // stuck?" into a question the row answers by itself.
-  const since = createdAt ? format.relativeTime(new Date(createdAt), now) : null;
+  // `now` only ticks once a minute, so a run that started seconds ago is ahead
+  // of it and the row read "dans 5 secondes" — a restart announced in the
+  // future tense. Never let the reference point fall behind the start.
+  const startedAt = sinceIso ? new Date(sinceIso) : null;
+  const since = startedAt
+    ? format.relativeTime(
+        startedAt,
+        new Date(Math.max(now.getTime(), startedAt.getTime())),
+      )
+    : null;
 
   if (PROCESSING_STATUSES.has(status)) {
     return (

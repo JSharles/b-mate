@@ -21,6 +21,24 @@ describe("DocumentStatus", () => {
     expect(Boolean(container.querySelector(".animate-spin"))).toBe(spins);
   });
 
+  // The elapsed time is about the run in progress. Fed the document's own age
+  // it read "processing for 10 hours" a second after a restart, counting the
+  // time already spent before the contributor stopped it.
+  it("counts from the run that is under way, not the document's age", () => {
+    render(<DocumentStatus status="extracting" since="2026-08-11T11:58:00Z" />);
+
+    expect(screen.getByText(/statusProcessingSince/)).toBeVisible();
+  });
+
+  // `now` ticks once a minute, so a run that started seconds ago sits ahead of
+  // it: the row announced a restart in the future tense, "dans 5 secondes".
+  it("never puts the start of a run in the future", () => {
+    // Later than the frozen `now` the shared next-intl mock returns.
+    render(<DocumentStatus status="extracting" since="2026-08-11T12:00:05Z" />);
+
+    expect(screen.queryByText(/relativeTimeInFuture/)).toBeNull();
+  });
+
   // A document a contributor stopped is parked in `failed`, because that is the
   // same halted state as far as removal and retry are concerned. Telling them
   // their own decision was a failure — in red, "action needed" — would be a

@@ -259,7 +259,7 @@ export function DocumentManagementPage({ projectId }: { projectId: string }) {
                     <DocumentStatus
                       status={document.status}
                       failureCode={document.failureCode}
-                      createdAt={document.createdAt}
+                      since={document.processingStartedAt}
                       className="mt-1"
                     />
                   </span>

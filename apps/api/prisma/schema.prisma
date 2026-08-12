@@ -959,6 +959,10 @@ model SourceDocument {
   incorporatedInRevisionId String?              @map("incorporated_in_revision_id") @db.Uuid
   removedInRevisionId      String?              @map("removed_in_revision_id") @db.Uuid
   failureCode              String?              @map("failure_code") @db.VarChar(128)
+  // When the run currently in progress began. Distinct from createdAt: the
+  // row showed "processing for 10 hours" after a restart, counting the time
+  // already spent before the contributor stopped it.
+  processingStartedAt      DateTime?            @map("processing_started_at")
   removedAt                DateTime?            @map("removed_at")
   createdAt                DateTime             @default(now()) @map("created_at")
   updatedAt                DateTime             @updatedAt @map("updated_at")

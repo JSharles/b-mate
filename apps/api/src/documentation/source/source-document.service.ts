@@ -71,6 +71,7 @@ export interface SourceDocumentSummary {
   title: string;
   failureCode: string | null;
   incorporatedInRevisionId: string | null;
+  processingStartedAt: string;
   createdAt: string;
 }
 
@@ -127,6 +128,7 @@ export class SourceDocumentService {
           projectId,
           kind: 'upload',
           status: 'received',
+          processingStartedAt: new Date(),
           title: stripExtension(file.originalname),
           originalFileName: file.originalname,
           originalMimeType: file.mimetype,
@@ -196,6 +198,7 @@ export class SourceDocumentService {
           projectId,
           kind: 'notion',
           status: 'received',
+          processingStartedAt: new Date(),
           title: page.title,
           originalMimeType: 'application/json',
           originalSizeBytes: snapshot.length,
@@ -381,6 +384,10 @@ export class SourceDocumentService {
       data: {
         status: RESUME_STATUS_BY_STAGE[failedOperation.type] ?? 'retrying',
         failureCode: null,
+        // A restart is a new run. Without this the row kept counting from the
+        // day the document was added: "processing for 10 hours" one second
+        // after the contributor restarted it.
+        processingStartedAt: new Date(),
         version: { increment: 1 },
       },
     });
@@ -448,6 +455,11 @@ export class SourceDocumentService {
       title: document.title,
       failureCode: document.failureCode,
       incorporatedInRevisionId: document.incorporatedInRevisionId,
+      // The run in progress, not the document's whole life. Falling back to
+      // createdAt covers the first run, where the two are the same.
+      processingStartedAt: (
+        document.processingStartedAt ?? document.createdAt
+      ).toISOString(),
       createdAt: document.createdAt.toISOString(),
     };
   }

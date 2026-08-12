@@ -23,6 +23,8 @@ describe('documentation source contracts', () => {
       title: 'Cadrage',
       failureCode: null,
       incorporatedInRevisionId: null,
+      // The run in progress, which a restart resets — not the document's age.
+      processingStartedAt: '2026-08-11T14:30:00.000Z',
       createdAt: '2026-08-11T12:00:00.000Z',
     });
     expect(

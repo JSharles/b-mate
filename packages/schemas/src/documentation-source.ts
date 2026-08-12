@@ -30,6 +30,10 @@ export const SourceDocumentSchema = z
     title: z.string().trim().min(1),
     failureCode: z.string().trim().min(1).max(128).nullable(),
     incorporatedInRevisionId: DocumentationUuidSchema.nullable(),
+    // When the run in progress began, which a restart resets. Distinct from
+    // createdAt: after a restart the row was still counting from the day the
+    // document was added.
+    processingStartedAt: z.iso.datetime(),
     createdAt: z.iso.datetime(),
   })
   .strict();

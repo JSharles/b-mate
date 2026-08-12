@@ -43,6 +43,7 @@ function sourceDocument(
     incorporatedInRevisionId: null,
     removedInRevisionId: null,
     failureCode: null,
+    processingStartedAt: new Date('2026-08-11T10:00:00.000Z'),
     removedAt: null,
     createdAt: new Date('2026-08-11T10:00:00.000Z'),
     updatedAt: new Date('2026-08-11T10:00:00.000Z'),
@@ -396,6 +397,10 @@ describe('SourceDocumentService', () => {
       data: {
         status: 'retrying',
         failureCode: null,
+        // A restart is a new run. Without this the row kept counting from the
+        // day the document was added: "processing for 10 hours" one second
+        // after the contributor restarted it.
+        processingStartedAt: expect.any(Date),
         version: { increment: 1 },
       },
     });
