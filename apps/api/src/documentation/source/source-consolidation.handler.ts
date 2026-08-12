@@ -33,17 +33,17 @@ import {
   resolveRef,
 } from './reference-token';
 
-const ConsolidationDispositionSchema = z
+// Only the observations that are *not* a plain addition. Asked instead for one
+// record per observation plus counts that had to tally, the model kept losing
+// its place: on a 61-observation page it miscounted, referenced an item that
+// did not exist, and flagged conflicts it then failed to explain — a different
+// bookkeeping slip on every run, none of them about judgement. Ledger-keeping
+// is our job. What only the model can decide is which handful of facts are not
+// simply new, and that is all it is asked for now.
+const ConsolidationExceptionSchema = z
   .object({
     observationRef: ObservationRefSchema,
-    action: z.enum([
-      'add',
-      'support',
-      'supersede',
-      'conflict',
-      'open',
-      'exclude',
-    ]),
+    action: z.enum(['support', 'supersede', 'conflict', 'open', 'exclude']),
     targetItemRef: ItemRefSchema.optional(),
     match: z.enum(['exact', 'semantic']).optional(),
     reason: z.string().trim().min(1).max(2_000),
@@ -66,29 +66,21 @@ export const SourceConsolidationOutputSchema = z
   .object({
     promptVersion: z.literal(SOURCE_CONSOLIDATION_PROMPT_VERSION),
     inputFingerprint: z.string().regex(/^[0-9a-f]{64}$/u),
-    dispositions: z.array(ConsolidationDispositionSchema),
+    exceptions: z.array(ConsolidationExceptionSchema),
     clarifications: z.array(ClarificationCandidateSchema),
-    accounting: z
-      .object({
-        inputObservationCount: z.number().int().nonnegative(),
-        dispositionCount: z.number().int().nonnegative(),
-        clarificationCount: z.number().int().nonnegative(),
-      })
-      .strict(),
   })
   .strict()
   .superRefine((value, context) => {
-    if (
-      value.accounting.dispositionCount !== value.dispositions.length ||
-      value.accounting.inputObservationCount !== value.dispositions.length ||
-      value.accounting.clarificationCount !== value.clarifications.length
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['accounting'],
-        message:
-          'Output accounting must cover every observation and clarification.',
-      });
+    const seen = new Set<string>();
+    for (const [index, exception] of value.exceptions.entries()) {
+      if (seen.has(exception.observationRef)) {
+        context.addIssue({
+          code: 'custom',
+          path: ['exceptions', index, 'observationRef'],
+          message: 'An observation can carry only one exception.',
+        });
+      }
+      seen.add(exception.observationRef);
     }
   });
 
@@ -98,15 +90,16 @@ export const SOURCE_CONSOLIDATION_JSON_SCHEMA: Record<string, unknown> = {
   required: [
     'promptVersion',
     'inputFingerprint',
-    'dispositions',
+    'exceptions',
     'clarifications',
-    'accounting',
   ],
   properties: {
     promptVersion: { const: SOURCE_CONSOLIDATION_PROMPT_VERSION },
     inputFingerprint: { type: 'string', pattern: '^[0-9a-f]{64}$' },
-    dispositions: {
+    exceptions: {
       type: 'array',
+      description:
+        'Only observations that are not plain additions. Anything left out is added.',
       items: {
         type: 'object',
         additionalProperties: false,
@@ -114,14 +107,7 @@ export const SOURCE_CONSOLIDATION_JSON_SCHEMA: Record<string, unknown> = {
         properties: {
           observationRef: OBSERVATION_REF_JSON_SCHEMA,
           action: {
-            enum: [
-              'add',
-              'support',
-              'supersede',
-              'conflict',
-              'open',
-              'exclude',
-            ],
+            enum: ['support', 'supersede', 'conflict', 'open', 'exclude'],
           },
           targetItemRef: ITEM_REF_JSON_SCHEMA,
           match: { enum: ['exact', 'semantic'] },
@@ -130,20 +116,6 @@ export const SOURCE_CONSOLIDATION_JSON_SCHEMA: Record<string, unknown> = {
       },
     },
     clarifications: CLARIFICATION_JSON_SCHEMA,
-    accounting: {
-      type: 'object',
-      additionalProperties: false,
-      required: [
-        'inputObservationCount',
-        'dispositionCount',
-        'clarificationCount',
-      ],
-      properties: {
-        inputObservationCount: { type: 'integer', minimum: 0 },
-        dispositionCount: { type: 'integer', minimum: 0 },
-        clarificationCount: { type: 'integer', minimum: 0 },
-      },
-    },
   },
 };
 
@@ -294,17 +266,36 @@ export class SourceConsolidationHandler
       operation.projectId,
       operation.sourceDocumentId,
     );
-    const dispositions = output.dispositions.map((disposition) => ({
-      ...disposition,
-      observationId: resolveRef(
-        observationIdByRef,
-        disposition.observationRef,
-        'observation',
-      ),
-      targetInformationItemId: disposition.targetItemRef
-        ? resolveRef(itemIdByRef, disposition.targetItemRef, 'item')
-        : undefined,
-    }));
+    // Every observation the model did not single out is a plain addition. It
+    // used to have to say so, once per observation, and count them.
+    const exceptionByObservation = new Map(
+      output.exceptions.map((exception) => [
+        resolveRef(observationIdByRef, exception.observationRef, 'observation'),
+        exception,
+      ]),
+    );
+    const dispositions = [...observationIdByRef.values()].map(
+      (observationId) => {
+        const exception = exceptionByObservation.get(observationId);
+        if (!exception) {
+          return {
+            observationId,
+            action: 'add' as const,
+            reason:
+              'New information with no counterpart in the canonical source.',
+          };
+        }
+        return {
+          observationId,
+          action: exception.action,
+          match: exception.match,
+          reason: exception.reason,
+          targetInformationItemId: exception.targetItemRef
+            ? resolveRef(itemIdByRef, exception.targetItemRef, 'item')
+            : undefined,
+        };
+      },
+    );
     const clarifications = output.clarifications.map((clarification) => ({
       ...clarification,
       conflictObservationId: resolveRef(
@@ -319,18 +310,6 @@ export class SourceConsolidationHandler
         resolveRef(itemIdByRef, ref, 'item'),
       ),
     }));
-
-    const known = new Set(observationIdByRef.values());
-    const seen = new Set<string>();
-    for (const disposition of dispositions) {
-      if (seen.has(disposition.observationId)) {
-        throw new Error('Every observation requires exactly one disposition.');
-      }
-      seen.add(disposition.observationId);
-    }
-    if (seen.size !== known.size) {
-      throw new Error('Every observation requires exactly one disposition.');
-    }
 
     const materialConflicts = new Set(
       dispositions

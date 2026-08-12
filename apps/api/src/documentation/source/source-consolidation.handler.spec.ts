@@ -15,31 +15,20 @@ const operation = {
   sourceDocumentId: '00000000-0000-4000-8000-000000000003',
   baseSourceRevisionId: '00000000-0000-4000-8000-000000000004',
   inputFingerprint: 'f'.repeat(64),
-  promptVersion: 'source-consolidation-v2',
-  outputContractVersion: 'diaphane.source-consolidation.v2',
+  promptVersion: 'source-consolidation-v3',
+  outputContractVersion: 'diaphane.source-consolidation.v3',
   policySnapshot: { version: 'policy-v1', routes: [] },
 } as unknown as GenerationOperation;
 
 const OBSERVATION_ID = '00000000-0000-4000-8000-000000000005';
 
 const output = {
-  promptVersion: 'source-consolidation-v2',
+  promptVersion: 'source-consolidation-v3',
   inputFingerprint: 'f'.repeat(64),
-  dispositions: [
-    {
-      // A short ref, not an identifier: the model is never asked to copy a
-      // UUID back — see reference-token.ts.
-      observationRef: 'o0',
-      action: 'add',
-      reason: 'New supported fact.',
-    },
-  ],
+  // Nothing to report: the single observation is a plain addition, and the
+  // model no longer restates those.
+  exceptions: [],
   clarifications: [],
-  accounting: {
-    inputObservationCount: 1,
-    dispositionCount: 1,
-    clarificationCount: 0,
-  },
 };
 
 describe('SourceConsolidationHandler', () => {
@@ -66,9 +55,56 @@ describe('SourceConsolidationHandler', () => {
     prisma.documentObservation.findMany.mockResolvedValue([]);
 
     await expect(
-      handler.apply(prisma as never, operation, { output }),
+      handler.apply(prisma as never, operation, {
+        output: {
+          ...output,
+          // A short ref, not an identifier: the model is never asked to copy a
+          // UUID back — see reference-token.ts.
+          exceptions: [
+            { observationRef: 'o0', action: 'exclude', reason: 'Boilerplate.' },
+          ],
+        },
+      }),
     ).rejects.toThrow('unknown observation');
     expect(registry.get('source_consolidation')).toBe(handler);
+  });
+
+  // The model used to have to emit one record per observation and counts that
+  // tallied. On a 61-observation page it miscounted, referenced an item that
+  // did not exist, and flagged conflicts it never explained — a different
+  // bookkeeping slip every run. Additions are now filled in on our side.
+  it('adds every observation the model did not single out', async () => {
+    prisma.documentObservation.findMany.mockResolvedValue([
+      { id: OBSERVATION_ID, sourceDocumentId: operation.sourceDocumentId },
+      { id: 'observation-2', sourceDocumentId: operation.sourceDocumentId },
+    ] as never);
+    revisions.commitFromConsolidation.mockResolvedValue({
+      status: 'committed',
+      revisionId: 'revision-1',
+    });
+
+    await handler.apply(prisma as never, operation, {
+      output: {
+        ...output,
+        exceptions: [
+          { observationRef: 'o1', action: 'exclude', reason: 'Boilerplate.' },
+        ],
+      },
+    });
+
+    const [, , dispositions] = revisions.commitFromConsolidation.mock
+      .calls[0] as [
+      unknown,
+      unknown,
+      { observationId: string; action: string }[],
+    ];
+    expect(dispositions).toEqual([
+      expect.objectContaining({ observationId: OBSERVATION_ID, action: 'add' }),
+      expect.objectContaining({
+        observationId: 'observation-2',
+        action: 'exclude',
+      }),
+    ]);
   });
 
   it('requeues against the current head when an otherwise valid result is stale', async () => {

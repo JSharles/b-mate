@@ -1,9 +1,9 @@
 import { DOCUMENTATION_CATEGORY_KEYS } from '../../documentation-categories';
 import { buildClarificationInstructions } from './clarification.prompt';
 
-export const SOURCE_CONSOLIDATION_PROMPT_VERSION = 'source-consolidation-v2';
+export const SOURCE_CONSOLIDATION_PROMPT_VERSION = 'source-consolidation-v3';
 export const SOURCE_CONSOLIDATION_OUTPUT_CONTRACT =
-  'diaphane.source-consolidation.v2';
+  'diaphane.source-consolidation.v3';
 
 export function buildSourceConsolidationPrompt(input: {
   inputFingerprint: string;
@@ -28,12 +28,18 @@ export function buildSourceConsolidationPrompt(input: {
         ]),
     `Categories: ${DOCUMENTATION_CATEGORY_KEYS.join(', ')}`,
     '',
-    'Assign exactly one disposition to every supplied observation.',
-    'Use support for exact or semantic duplicates and identify the stable target item.',
-    'Use supersede only when the new observation unambiguously replaces the target fact.',
-    'Use conflict when evidence is contradictory or materially ambiguous; never guess.',
-    'Use open for a material self-conflict that has no current canonical target.',
-    'Use exclude only for non-material content, with a concrete reason.',
+    // Asked for one record per observation plus counts that had to tally, the
+    // model kept losing its place on a long page — a different bookkeeping slip
+    // every run, never a mistake of judgement. It now reports only what it
+    // alone can decide; the ledger is rebuilt on our side.
+    'List only the observations that are NOT plain additions. Every observation you do not list is added to the canonical source as new information.',
+    'Do not restate additions, do not number anything, and do not report counts.',
+    'List support for exact or semantic duplicates, naming the target item.',
+    'List supersede only when the observation unambiguously replaces the target fact.',
+    'List conflict when evidence is contradictory or materially ambiguous; never guess.',
+    'List open for a material self-conflict that has no current canonical target.',
+    'List exclude only for non-material content, with a concrete reason.',
+    'Every conflict and every open you list needs exactly one clarification naming that same observation. If you cannot write the question, do not list the conflict.',
     'Refer to observations and items only by the short ref given in the input, such as o12 or i3. Copy it exactly; never invent one and never write an identifier.',
     'Never emit a claim, ref, or category absent from the input.',
     'Do not rewrite current facts for style. Preserve stable item identity.',

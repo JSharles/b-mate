@@ -424,19 +424,12 @@ describe('canonical document ingestion (mocked service chain)', () => {
       return `i${ordered.findIndex((item) => item.content === content)}`;
     };
     for (const [index, operation] of consolidationOperations.entries()) {
-      const incoming = [...observations.values()].filter(
-        ({ sourceDocumentId }) =>
-          sourceDocumentId === operation.sourceDocumentId,
-      );
       // The model answers in the short references it was given, never in
-      // identifiers — see reference-token.ts.
-      const dispositions =
+      // identifiers — see reference-token.ts — and only about what is not a
+      // plain addition. The first document is all new, so it reports nothing.
+      const exceptions =
         index === 0
-          ? incoming.map((_observation, position) => ({
-              observationRef: `o${position}`,
-              action: 'add' as const,
-              reason: 'New supported fact.',
-            }))
+          ? []
           : index === 1
             ? [
                 {
@@ -447,11 +440,6 @@ describe('canonical document ingestion (mocked service chain)', () => {
                   ),
                   match: 'exact' as const,
                   reason: 'Equivalent statement in another document.',
-                },
-                {
-                  observationRef: 'o1',
-                  action: 'add' as const,
-                  reason: 'New architecture decision.',
                 },
               ]
             : [
@@ -464,23 +452,13 @@ describe('canonical document ingestion (mocked service chain)', () => {
                   reason:
                     'The newer dated decision explicitly postpones launch.',
                 },
-                {
-                  observationRef: 'o1',
-                  action: 'add' as const,
-                  reason: 'New product constraint.',
-                },
               ];
       await consolidation.apply(prisma as never, operation, {
         output: {
-          promptVersion: 'source-consolidation-v2',
+          promptVersion: 'source-consolidation-v3',
           inputFingerprint: operation.inputFingerprint,
-          dispositions,
+          exceptions,
           clarifications: [],
-          accounting: {
-            inputObservationCount: dispositions.length,
-            dispositionCount: dispositions.length,
-            clarificationCount: 0,
-          },
         },
       });
     }
