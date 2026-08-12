@@ -183,4 +183,36 @@ describe('FactualDraftHandler', () => {
       }),
     ).rejects.toThrow('NOT_CURRENT');
   });
+  // A category holds one draft slot, and only a draft that reaches an end
+  // releases it. Nothing released it when the generation behind the draft died,
+  // so three categories sat on "generating" for a day, pinned to a revision
+  // that no longer existed, and every later revision found the slot taken.
+  it('releases the category when the generation behind its draft dies', async () => {
+    const { prisma, handler, operation } = setup();
+    prisma.documentationCategoryReferenceDraft.findFirst.mockResolvedValue({
+      id: 'draft',
+      projectId: 'project',
+      categoryKey: 'overview',
+    });
+
+    await handler.onTerminalFailure(
+      asPrismaService(prisma),
+      operation as never,
+      'GENERATION_PROVIDER_ERROR',
+    );
+
+    expect(
+      prisma.documentationCategoryReferenceDraft.update,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'failed' }),
+      }),
+    );
+    expect(prisma.categoryProjectionState.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ activeDraftId: 'draft' }),
+        data: expect.objectContaining({ activeDraftId: null }),
+      }),
+    );
+  });
 });

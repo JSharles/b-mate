@@ -142,4 +142,36 @@ export class FactualDraftHandler implements GenerationHandler, OnModuleInit {
       },
     });
   }
+
+  // A category holds one draft slot at a time, and only a draft that reaches an
+  // end releases it. Nothing released the slot when the generation behind the
+  // draft died, so the category was blocked for good: three of them sat on
+  // "generating" for a day, pinned to a revision that no longer existed, and
+  // every later revision found the slot taken and produced nothing to review.
+  async onTerminalFailure(
+    tx: Prisma.TransactionClient,
+    operation: GenerationOperation,
+    failureCode: string,
+  ): Promise<void> {
+    const draft = await tx.documentationCategoryReferenceDraft.findFirst({
+      where: {
+        generationOperationId: operation.id,
+        status: { in: ['generating', 'correction_generating'] },
+      },
+      select: { id: true, projectId: true, categoryKey: true },
+    });
+    if (!draft) return;
+    await tx.documentationCategoryReferenceDraft.update({
+      where: { id: draft.id },
+      data: { status: 'failed', failureCode, version: { increment: 1 } },
+    });
+    await tx.categoryProjectionState.updateMany({
+      where: {
+        projectId: draft.projectId,
+        categoryKey: draft.categoryKey,
+        activeDraftId: draft.id,
+      },
+      data: { activeDraftId: null, version: { increment: 1 } },
+    });
+  }
 }

@@ -24,6 +24,7 @@ describe('CategoryProjectionService', () => {
         },
       ],
     });
+    prisma.documentationCategoryReferenceDraft.findMany.mockResolvedValue([]);
     prisma.documentationCategoryReferenceDraft.create.mockResolvedValue({
       id: 'draft',
     });
@@ -105,6 +106,7 @@ describe('CategoryProjectionService', () => {
       targetSourceRevisionId: revisionId,
     });
     prisma.sourceRevision.findUnique.mockResolvedValue({ items: [] });
+    prisma.documentationCategoryReferenceDraft.findMany.mockResolvedValue([]);
     prisma.documentationCategoryReferenceDraft.create.mockResolvedValue({
       id: 'draft',
     });
@@ -127,6 +129,7 @@ describe('CategoryProjectionService', () => {
       targetSourceRevisionId: revisionId,
     });
     prisma.sourceRevision.findUnique.mockResolvedValue({ items: [] });
+    prisma.documentationCategoryReferenceDraft.findMany.mockResolvedValue([]);
     prisma.categoryDraftReview.findFirst.mockResolvedValue({
       instruction: 'La date correcte est le 12 septembre.',
     });
@@ -215,5 +218,69 @@ describe('CategoryProjectionService', () => {
       await service.catchUp(projectId, 'overview');
     }
     expect(queue).not.toHaveBeenCalled();
+  });
+  // Catching up only ever happened when a contributor accepted or discarded a
+  // draft. A category whose generation died was stranded: slot freed, revision
+  // undrafted, nobody left to ask — and every later revision found nothing to
+  // review under that tab.
+  it('re-queues a category left with nothing in flight and a revision to draft', async () => {
+    const prisma = createPrismaMock();
+    const generation = {
+      createInTransaction: jest.fn().mockResolvedValue({ id: 'operation' }),
+    };
+    prisma.categoryProjectionState.findMany.mockResolvedValue([
+      {
+        projectId,
+        categoryKey: 'overview',
+        activeDraftId: null,
+        targetSourceRevisionId: revisionId,
+        lastReviewedSourceRevisionId: null,
+      },
+    ]);
+    prisma.documentationCategoryReferenceDraft.count.mockResolvedValue(0);
+    prisma.categoryProjectionState.findUnique.mockResolvedValue({
+      activeDraftId: null,
+      targetSourceRevisionId: revisionId,
+      lastReviewedSourceRevisionId: null,
+    });
+    prisma.sourceRevision.findUnique.mockResolvedValue({ items: [] });
+    prisma.documentationCategoryReferenceDraft.findMany.mockResolvedValue([]);
+    prisma.documentationCategoryReferenceDraft.create.mockResolvedValue({
+      id: 'draft',
+    });
+    prisma.categoryProjectionState.updateMany.mockResolvedValue({ count: 1 });
+    const service = new CategoryProjectionService(
+      asPrismaService(prisma),
+      generation as unknown as GenerationService,
+    );
+
+    await service.recoverStrandedCategories();
+
+    expect(generation.createInTransaction).toHaveBeenCalled();
+  });
+
+  // A revision whose draft genuinely failed is the contributor's to act on,
+  // not something to re-run every thirty seconds.
+  it('leaves a revision alone once its draft has failed', async () => {
+    const prisma = createPrismaMock();
+    const generation = { createInTransaction: jest.fn() };
+    prisma.categoryProjectionState.findMany.mockResolvedValue([
+      {
+        projectId,
+        categoryKey: 'overview',
+        activeDraftId: null,
+        targetSourceRevisionId: revisionId,
+        lastReviewedSourceRevisionId: null,
+      },
+    ]);
+    prisma.documentationCategoryReferenceDraft.count.mockResolvedValue(1);
+    const service = new CategoryProjectionService(
+      asPrismaService(prisma),
+      generation as unknown as GenerationService,
+    );
+
+    await service.recoverStrandedCategories();
+
+    expect(generation.createInTransaction).not.toHaveBeenCalled();
   });
 });
