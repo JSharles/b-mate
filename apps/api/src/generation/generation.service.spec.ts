@@ -445,6 +445,11 @@ describe('GenerationService', () => {
       clientCategoryContentId: null,
       promptVersion: 'v1',
       outputContractVersion: 'v1',
+      currentAttempt: {
+        id: 'attempt-9',
+        provider: 'fake',
+        providerJobId: 'batch-9',
+      },
     };
     prisma.generationOperation.findUnique.mockResolvedValue(previous);
     prisma.generationOperation.upsert.mockResolvedValue({
@@ -463,6 +468,9 @@ describe('GenerationService', () => {
         supersededAt: expect.any(Date),
       }),
     });
+    // Retiring the record is not enough while the job it started is still out
+    // there: it keeps generating beside its own replacement, and both bill.
+    expect(provider.cancelRemote).toHaveBeenCalledWith('batch-9');
   });
 
   it('refuses to retry an operation that is still live', async () => {

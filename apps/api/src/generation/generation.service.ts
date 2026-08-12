@@ -466,6 +466,7 @@ export class GenerationService {
   async retry(operationId: string): Promise<GenerationOperation | null> {
     const previous = await this.prisma.generationOperation.findUnique({
       where: { id: operationId },
+      include: { currentAttempt: true },
     });
     // Cancelled counts alongside needs_attention: both are dead operations
     // whose inputs are still valid, and re-running one is the same act.
@@ -498,6 +499,11 @@ export class GenerationService {
     // not complete" banner right back, because the failure it named was the
     // one just superseded. `superseded` was modelled for exactly this and
     // never written by anything.
+    // Retiring the record is not enough when the job it started is still out
+    // there: it keeps generating beside its own replacement, and both bill.
+    if (previous.currentAttempt) {
+      await this.releaseRemoteJob(previous.currentAttempt);
+    }
     await this.prisma.generationOperation.updateMany({
       where: { id: previous.id, status: previous.status },
       data: {
