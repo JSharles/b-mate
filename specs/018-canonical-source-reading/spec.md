@@ -6,7 +6,7 @@
 
 **Status**: Draft — awaiting sign-off
 
-**Input**: "Pour le développeur, après avoir ajouté des documents, les infos utiles sont extraites, pour créer un nouveau document structuré qui servira de référence documentaire. Les ambiguïtés, contradictions ou manques seront levés en points à clarifier."
+**Input**: "Pour le développeur, après avoir ajouté des documents, les infos utiles sont extraites, pour créer un nouveau document structuré qui servira de référence documentaire. Les ambiguïtés, contradictions ou manques seront levés en points à clarifier." — plus, on review: "le service de traitement devra reconnaître un document qui n'a rien à voir avec le projet (en cas d'erreur d'upload) et lever le point au développeur. Le nouveau document de référence est consultable et téléchargeable."
 
 ## What This Is
 
@@ -50,7 +50,34 @@ Two documents disagree on the launch date. The reference document does not pick 
 
 ---
 
-### User Story 3 - Written in the developer's language (P2)
+### User Story 3 - A document that does not belong is caught, not absorbed (P1)
+
+The developer uploads the wrong file — a contract for another client. The system notices it has nothing to do with this project, holds it, and asks. The developer removes it. Nothing it said ever reached the reference document.
+
+**Acceptance Scenarios**:
+
+1. **Given** a project that already holds documents, **When** a document unrelated to them is added, **Then** the system raises it as a point to clarify instead of incorporating it.
+2. **Given** such a document is waiting, **When** the reference document is read, **Then** it contains nothing from that document.
+3. **Given** the developer confirms it does belong, **When** they answer, **Then** it is incorporated normally and is not asked about again.
+4. **Given** the developer confirms it does not belong, **When** they answer, **Then** it is removed and nothing it said is kept.
+5. **Given** it is the project's first document, **When** it is added, **Then** it is incorporated without this check — there is nothing yet to compare it against, and the system says nothing rather than guessing.
+6. **Given** a document on a genuinely new subject for the project, **When** it is added, **Then** being new is not by itself treated as being unrelated.
+
+---
+
+### User Story 4 - Take the document away with you (P2)
+
+The developer wants the reference document outside the app — to send it, to keep it, to read it on paper. They download it.
+
+**Acceptance Scenarios**:
+
+1. **Given** a reference document, **When** the developer downloads it, **Then** they get a file holding its full text and its parts.
+2. **Given** points left open, **When** the document is downloaded, **Then** they appear in it, marked as open, exactly as on screen.
+3. **Given** a document still being written, **When** the developer looks for the download, **Then** it is unavailable rather than producing a half-written file.
+
+---
+
+### User Story 5 - Written in the developer's language (P2)
 
 The developer works in French. Every question the system asks them is in French.
 
@@ -88,12 +115,26 @@ The developer works in French. Every question the system asks them is in French.
 - **FR-010**: Answering a point MUST feed the answer into the reference document.
 - **FR-011**: A point left open MUST be marked in the document where it applies, never hidden.
 
+### Documents that do not belong
+
+- **FR-012**: Processing MUST detect a document unrelated to what the project already holds, and MUST raise it as a point to clarify rather than incorporating it.
+- **FR-013**: A document waiting on that answer MUST contribute nothing to the reference document.
+- **FR-014**: The developer MUST be able to answer that it does belong, after which it is incorporated and not raised again.
+- **FR-015**: The developer MUST be able to answer that it does not, after which it is removed.
+- **FR-016**: The first document of a project MUST NOT be subject to this check. There is nothing to compare it against, and a guess here is worse than silence.
+- **FR-017**: Covering a subject the project has not seen before MUST NOT on its own count as unrelated.
+
+### Downloading
+
+- **FR-018**: The reference document MUST be downloadable, carrying its full text, its parts, and its open points as shown.
+- **FR-019**: The download MUST be unavailable while the document is being written, rather than producing a partial file.
+
 ### Language
 
-- **FR-012**: Points to clarify MUST be written in the language the developer is using the product in.
-- **FR-013**: The developer MUST NOT have to set that language.
-- **FR-014**: It MUST be resolvable when the system works in the background.
-- **FR-015**: An unknown language MUST fall back to English.
+- **FR-020**: Points to clarify MUST be written in the language the developer is using the product in.
+- **FR-021**: The developer MUST NOT have to set that language.
+- **FR-022**: It MUST be resolvable when the system works in the background.
+- **FR-023**: An unknown language MUST fall back to English.
 
 ## Success Criteria *(mandatory)*
 
@@ -102,15 +143,20 @@ The developer works in French. Every question the system asks them is in French.
 - **SC-003**: Nothing uncertain appears as a statement of fact.
 - **SC-004**: A developer reads every question the system asks them in their own language.
 - **SC-005**: Correcting a sentence takes no more steps than today.
+- **SC-006**: A document uploaded by mistake never contributes a sentence to the reference document.
+- **SC-007**: A developer can leave with the reference document as a file, and it says the same thing the screen does.
 
 ## Assumptions
 
 - What the system already extracts and merges stays as it is. This feature changes what the developer reads, not what is stored underneath: provenance, duplicate merging and attributable correction all keep working as built.
 - The reference document is for the developer. What the client reads is still the sections they compose, unchanged by this feature.
 - Writing it is one operation per project, run when the documents change — not one per statement.
+- Whether a document belongs is judged against what the project already holds. That makes the first document unjudgeable, which is why FR-016 exempts it rather than pretending otherwise.
+- Downloading is served first by a page laid out for paper plus a print action, so the browser produces the file. A server-generated PDF is the same requirement met more expensively, and is only worth it once something needs to send the file without a person present.
 
 ## Out of Scope
 
 - Any change to the sections a client reads.
 - Translating the reference document. It is written in one language; only the questions follow the developer's.
 - Validating the document sentence by sentence. The developer corrects what is wrong and answers what is open; they do not approve it line by line.
+- Judging a document's quality, or refusing a badly written one. The only judgement here is whether it concerns this project.
