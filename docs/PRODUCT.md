@@ -84,7 +84,8 @@ Full token-level detail (elevation, borders, semantic/status colors, component t
 - External integrations beyond GitHub Projects and Notion (Jira, Linear, Trello, etc.)
 - Billing, payments, quotes
 - Notifications other than the invitation email
-- Roadmap, milestones, Gantt charts
+- Gantt charts, dependencies between steps, durations, and any roadmap fed by
+  the task board rather than by the project's documents
 
 **No longer out of scope, already shipped** (this list previously said "Any AI feature" and "File or attachment management" were both excluded — both are stale as of 2026-08-09):
 
@@ -105,6 +106,44 @@ Full token-level detail (elevation, borders, semantic/status colors, component t
   **Uncertainty is published, not arbitrated.** What the documents leave unsettled is marked where it applies, carried into the rubrique that covers it, and shown to the client as unsettled. A document that has nothing to do with the project is named rather than woven in.
 
   **Publication is atomic, and approving is the only act that reaches the client.** A rubrique the developer approves is derived into the client's own language under its tone; the client keeps reading the current version until the new one is complete. Provider outages, exhausted credits, invalid output or a manual retry delay publication without overwriting what was validated.
+
+- **The roadmap rubrique** (`specs/020-roadmap-sections` — 2026-08-13). A
+  roadmap written as prose is a bad roadmap: order, dates and where the project
+  stands are spatial facts, and a paragraph hides all three.
+
+  **Choosing it removes controls rather than adding them.** A rubrique is prose
+  or a roadmap, decided once at creation. A roadmap has no brief — its brief is
+  fixed, what the documents say about sequence — and no register, because a
+  milestone date has no tone. The dialog collapses to a name, and the five
+  editorial columns are null rather than holding a default nobody chose.
+
+  **"When" is text, and it may be absent.** Documents say "Q3 2026", "après la
+  phase pilote", "mi-octobre". A date type would lose those or invent a
+  precision they never gave; requiring one at all made the developer invent a
+  date to get past a disabled button. Order is carried by the list.
+
+  **Two levels, and the ceiling is the type.** A milestone may carry sub-steps —
+  Feature 1, Feature 2 — because "Développement" is one word for three months
+  and the milestone a client looks at longest tells them least. A sub-step
+  carries none: no contract, validator or output schema can express a third
+  level, so none has to be forbidden.
+
+  **Where the project stands is the developer's word, and it moves on its own.**
+  It is a column on the rubrique, not part of what was published: it changes
+  weekly without a document changing, without composing, approving or
+  publishing, and the client sees it at once. It may name a sub-step — "Feature
+  2 of five" says what "Développement" cannot.
+
+  **The standard phases are offered to the developer, never handed to the
+  model.** Cadrage, Conception, Développement, Recette, Mise en ligne, Suivi
+  live inside the one control that adds a step. Giving the model an arc to fill
+  is how it ends up asserting a phase nobody planned; what the developer accepts
+  is their word, exactly like a note. A project holds one roadmap, and no two
+  live rubriques share a name.
+
+  **An empty roadmap is not published.** A composition that found no sequence is
+  a starting point, not something to approve: publishing it gave the client a tab
+  with nothing in it and no way to know why.
 
 ---
 

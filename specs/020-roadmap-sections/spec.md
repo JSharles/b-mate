@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-13
 
-**Status**: Draft — awaiting sign-off
+**Status**: Shipped — 2026-08-13
 
 **Input**: "Pour cette rubrique, j'aimerais un contenu plus visuel. Le choix de rubrique de type roadmap devra différer des autres en terme de réglage. Si le développeur choisit cette rubrique, alors les réglages ne sont plus éditables. Le service regarde si des infos de roadmap existent dans la doc, il propose les nodes, propose de la correction et de l'édition. Côté client on reçoit un tableau ou un objet qui permettra de construire la timeline."
 
