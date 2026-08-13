@@ -31,7 +31,7 @@ If the reference document ever became an input, the product would hold two accou
 | **I. Test-first coverage** | No exemption. The invariants are testable: a held document contributes nothing, a gap is marked rather than filled, a question is written in the developer's locale. |
 | **II. Type safety** | Contracts for the document, its parts and the relevance verdict go in `packages/schemas`. No `any` at the boundary. |
 | **III. Feature isolation** | API work stays in the `documentation` module. Web work stays in `features/documentation`; nothing here is client-facing, so nothing moves to `shared/`. |
-| **IV. Never resolve open product decisions** | Four questions were raised and answered in the spec's Clarifications. One remains open and is flagged below rather than decided. |
+| **IV. Never resolve open product decisions** | Five questions were raised and answered by the developer — four in the spec's Clarifications, and whether the reference document needs approval, answered 2026-08-13. None left open. |
 | **V. Security and privacy** | The reference document is contributor-only. It must never be reachable by a client, and the download inherits the same check as the screen — a file URL is not an authorisation. |
 | **VI. Spec before multi-screen** | Followed. Spec signed off 2026-08-13. |
 
