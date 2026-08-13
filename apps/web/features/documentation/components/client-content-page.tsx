@@ -4,10 +4,12 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowLeft,
-  BookOpenText,
   CheckCircle2,
+  FilePlus2,
   FileWarning,
+  Files,
   LoaderCircle,
+  Settings2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
@@ -19,15 +21,55 @@ import { useDocumentationWorkspace, useReferenceSummary } from "../hooks";
 import { ClientContentPreview } from "./client-content-preview";
 import { SectionList } from "./section-list";
 
-// What the client can see, and what is waiting for the developer. It used to
-// report on a pipeline in the pipeline's own words; it now reports on the one
-// thing this page is about.
-function ClientStateBanner({ projectId }: { projectId: string }) {
+// What this page draws on, stated in one line and kept out of the way. The
+// documents are not a feature sitting beside this one — they are what it runs
+// on, so they are a setting reached from here (specs/019).
+function SourceBar({ projectId }: { projectId: string }) {
+  const t = useTranslations("Projects.Documentation.Client");
+  const summary = useReferenceSummary(projectId);
+  const data = summary.data;
+  const status = data?.document?.status;
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        {status === "writing" ? (
+          <LoaderCircle className="size-4 shrink-0 animate-spin motion-reduce:animate-none" />
+        ) : (
+          <Files className="size-4 shrink-0" />
+        )}
+        {status === "writing"
+          ? t("sourceWriting")
+          : status === "ready"
+            ? t("sourceReady", { count: data?.documentCount ?? 0 })
+            : t("sourceNotReady", { count: data?.documentCount ?? 0 })}
+      </p>
+      <Button asChild variant="outline" size="sm">
+        <Link href={`/projects/${projectId}/documentation/sources`}>
+          <Settings2 />
+          {t("sourceManage")}
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+// Shown only when it has something the list below does not already say. It
+// used to announce "créez votre première section" above a section that existed
+// — a banner contradicting the page it sits on is worse than no banner.
+function StateBanner({ projectId }: { projectId: string }) {
   const t = useTranslations("Projects.Documentation.Client");
   const workspace = useDocumentationWorkspace(projectId);
   const state = workspace.data;
   const priority = state?.priority ?? "empty";
   const release = state?.releaseProgress;
+
+  const worthSaying =
+    (state?.failedOperationCount ?? 0) > 0 ||
+    (state?.pendingReviewCount ?? 0) > 0 ||
+    (state?.activeOperationCount ?? 0) > 0 ||
+    Boolean(state?.currentReleaseId);
+  if (!worthSaying) return null;
 
   return (
     <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4">
@@ -60,13 +102,13 @@ function ClientStateBanner({ projectId }: { projectId: string }) {
             {t("releaseAtomic")}
           </p>
         )}
-        {/* The failing write is not in this payload, but the base lists it with
-            its retry — so the banner carries the way there rather than naming a
-            problem the page offers nothing to act on. */}
+        {/* The failing write is not on this page, but the sources list it — so
+            the banner carries the way there rather than naming a problem this
+            page offers nothing to act on. */}
         {(state?.failedOperationCount ?? 0) > 0 && (
           <p className="mt-2 text-sm">
             <Link
-              href={`/projects/${projectId}/documents`}
+              href={`/projects/${projectId}/documentation/sources`}
               className="inline-flex items-center gap-1.5 rounded-md text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <FileWarning className="size-4" />
@@ -131,32 +173,35 @@ export function ClientContentPage({ projectId }: { projectId: string }) {
     </div>
   );
 
-  // A section is written from the reference document, so there is nothing to
-  // write before one exists. Said here rather than discovered by pressing a
-  // button that fails: the API refuses it too, and agreeing about it up front
-  // is the difference between an order and an error.
-  const referenceReady = summary.data?.document?.status === "ready";
   if (summary.isPending) {
     return (
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         {header}
         <Skeleton className="h-40 w-full rounded-xl" />
       </main>
     );
   }
+
+  // A section is written from the reference document, so a project without one
+  // has a first step rather than a locked door. Naming that step here — and
+  // taking the developer straight to it — is the difference between an order
+  // and a refusal.
+  const referenceReady = summary.data?.document?.status === "ready";
   if (!referenceReady) {
     return (
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         {header}
-        <div className="rounded-xl border border-dashed border-border p-6">
-          <p className="text-sm">{t("lockedTitle")}</p>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            {t("lockedDescription")}
+        <div className="rounded-xl border border-dashed border-border p-8">
+          <p className="font-medium">{t("startTitle")}</p>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+            {summary.data?.document?.status === "writing"
+              ? t("startWriting")
+              : t("startDescription")}
           </p>
-          <Button asChild className="mt-4">
-            <Link href={`/projects/${projectId}/documents`}>
-              <BookOpenText />
-              {t("lockedAction")}
+          <Button asChild className="mt-5">
+            <Link href={`/projects/${projectId}/documentation/sources`}>
+              <FilePlus2 />
+              {t("startAction")}
             </Link>
           </Button>
         </div>
@@ -165,9 +210,10 @@ export function ClientContentPage({ projectId }: { projectId: string }) {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-8">
       {header}
-      <ClientStateBanner projectId={projectId} />
+      <SourceBar projectId={projectId} />
+      <StateBanner projectId={projectId} />
       <SectionList projectId={projectId} />
       <ClientContentPreview projectId={projectId} />
     </main>

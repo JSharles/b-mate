@@ -245,17 +245,17 @@
       "Sections": {
         "loading": "Loading sections…",
         "emptyTitle": "No sections yet.",
-        "emptyDescription": "A section is a heading your client will read. You choose its name, its tone, and what Diaphane should look for in your documents.",
+        "emptyDescription": "A section is a part your client will read. You choose its title, its tone, and what Diaphane should put in it.",
         "createFirst": "Create my first section",
         "createAnother": "Add a section",
         "compose": "Write it",
         "refresh": "Refresh",
         "edit": "Edit",
         "delete": "Delete",
-        "state_never": "Never written",
+        "state_never": "To write",
         "state_composing": "Being written",
         "state_awaiting": "Awaiting your review",
-        "state_stale": "Needs a refresh",
+        "state_stale": "To update",
         "state_published": "Published",
         "Editor": {
           "createTitle": "Create a section",
@@ -332,7 +332,7 @@
           "error": "Deleting failed. Try again."
         },
         "listTitle": "Your sections",
-        "listDescription": "You name a section, you say what it should cover and for which kind of client. Diaphane writes it from your reference document."
+        "listDescription": "A section is a part your client will read. You give it a title, say what it should cover and for which kind of client; Diaphane writes it."
       },
       "Reference": {
         "title": "Reference document",
@@ -368,9 +368,9 @@
         "notWrittenYet": "Your {count, plural, one {# document has} other {# documents have}} not produced a reference document yet. Start it."
       },
       "Base": {
-        "back": "Back to the project",
-        "title": "Documentary base",
-        "description": "Your documents on one side, the text Diaphane draws from them on the other. This is your working base: your client does not read it.",
+        "back": "Back to the documentation",
+        "title": "My documents",
+        "description": "What Diaphane reads to write your client's documentation. Add or remove: the reference document is written again every time.",
         "loadError": "Could not load this project.",
         "retry": "Try again",
         "documentsTitle": "Your documents",
@@ -384,17 +384,14 @@
         "loadingMore": "Loading…",
         "referenceTitle": "Reference document",
         "referenceDescription": "What your documents say, brought together as one structured text. Answer the open points and correct anything wrong right inside it.",
-        "toClientContent": "Move on to what your client will read"
+        "toClientContent": "Back to the client documentation"
       },
       "Client": {
         "back": "Back to the project",
-        "title": "Client content",
-        "description": "You decide the chapters, Diaphane writes them from your documentary base, and nothing goes out without your approval.",
+        "title": "Client documentation",
+        "description": "What your client will read. You decide the sections, Diaphane writes them from your documents, and nothing is published without your approval.",
         "loadError": "Could not load this project.",
         "retry": "Try again",
-        "lockedTitle": "Your documentary base isn't ready yet.",
-        "lockedDescription": "A section is written from your reference document. Add your documents and let Diaphane write it; you can create your sections right after.",
-        "lockedAction": "Open the documentary base",
         "previewTitle": "Client preview",
         "previewDescription": "Exactly what your client sees today. It only changes when you approve a section, and never halfway.",
         "priority_needs_action": "A section is waiting for your review",
@@ -409,21 +406,25 @@
         "releaseProgress": "{ready, plural, one {# section ready} other {# sections ready}} of {expected} for the next publication.",
         "releaseAtomic": "Your client keeps the current version until the new one is complete.",
         "failedAction": "Open the documentary base",
-        "refreshDelayed": "The automatic refresh is delayed; what you see is a few moments old."
+        "refreshDelayed": "The automatic refresh is delayed; what you see is a few moments old.",
+        "sourceReady": "{count, plural, one {# document} other {# documents}} · reference document up to date",
+        "sourceNotReady": "{count, plural, =0 {No documents} one {# document} other {# documents}} · reference document still to write",
+        "sourceWriting": "Writing the reference document",
+        "sourceManage": "My documents",
+        "startTitle": "Start with your documents.",
+        "startDescription": "Diaphane has to read your project before it can write anything for your client. Add your documents: it draws a reference document from them, and you can create your sections right after.",
+        "startWriting": "Diaphane is reading your documents and writing the reference document. It takes a minute or two; you can create your sections after that.",
+        "startAction": "Add my documents"
       },
-      "Entries": {
-        "baseTitle": "Documentary base",
-        "baseEmpty": "No documents",
-        "baseWriting": "Writing in progress",
-        "baseFailed": "The write did not finish",
-        "baseNotWritten": "{count, plural, one {# document, not written yet} other {# documents, not written yet}}",
-        "baseReady": "{count, plural, one {# document} other {# documents}}, reference document up to date",
-        "clientTitle": "Client content",
-        "clientLocked": "Available once your reference document is written",
+      "Entry": {
+        "title": "Client documentation",
+        "stateNoDocuments": "No documents — start here",
+        "stateWriting": "Writing in progress",
+        "stateNotWritten": "Reference document still to write",
         "priority_needs_action": "A section is waiting for your review",
         "priority_processing": "Writing in progress",
         "priority_published": "Your client is reading the current version",
-        "priority_empty": "Add a first document",
+        "priority_empty": "No documents — start here",
         "priority_no_sections": "Create your first section",
         "priority_needs_attention": "A write did not finish"
       }

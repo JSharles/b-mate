@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useDocumentationDocuments, useReferenceSummary } from "../hooks";
 import { useProject } from "@/features/projects/hooks";
-import { DocumentaryBasePage } from "./documentary-base-page";
+import { DocumentarySourcesPage } from "./documentary-sources-page";
 
 vi.mock("../hooks", () => ({
   useDocumentationDocuments: vi.fn(),
@@ -43,7 +43,7 @@ function withSummary(data: Record<string, unknown>) {
   } as never);
 }
 
-describe("DocumentaryBasePage", () => {
+describe("DocumentarySourcesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useProject).mockReturnValue({
@@ -67,7 +67,7 @@ describe("DocumentaryBasePage", () => {
   // The documents and the document written from them are one job: a document is
   // added so that the reference changes, and adding one starts the write.
   it("puts the documents and the document written from them on one screen", () => {
-    render(<DocumentaryBasePage projectId="project-1" />);
+    render(<DocumentarySourcesPage projectId="project-1" />);
 
     expect(screen.getByRole("heading", { name: "title" })).toBeVisible();
     expect(screen.getByText("Cahier des charges")).toBeVisible();
@@ -75,7 +75,7 @@ describe("DocumentaryBasePage", () => {
   });
 
   it("opens addition and removal from the same page", () => {
-    render(<DocumentaryBasePage projectId="project-1" />);
+    render(<DocumentarySourcesPage projectId="project-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: "add" }));
     expect(screen.getByText("add-document-dialog")).toBeVisible();
@@ -91,25 +91,25 @@ describe("DocumentaryBasePage", () => {
     } as never);
     withSummary({ documentCount: 0, document: null });
 
-    render(<DocumentaryBasePage projectId="project-1" />);
+    render(<DocumentarySourcesPage projectId="project-1" />);
 
     expect(screen.getByText("emptyTitle")).toBeVisible();
   });
 
-  // Finishing the reference is exactly when the developer is ready for the next
-  // job, so the way there is offered here rather than only from the project.
-  it("points at the client content once the document is written", () => {
-    render(<DocumentaryBasePage projectId="project-1" />);
+  // Finishing the reference is exactly when the developer is ready for the job
+  // this page serves, so the way back is offered here.
+  it("points back at the documentation once the document is written", () => {
+    render(<DocumentarySourcesPage projectId="project-1" />);
 
     expect(
       screen.getByRole("link", { name: /toClientContent/ }),
-    ).toHaveAttribute("href", "/projects/project-1/client");
+    ).toHaveAttribute("href", "/projects/project-1/documentation");
   });
 
   it("does not point there while nothing has been written", () => {
     withSummary({ documentCount: 1, document: null });
 
-    render(<DocumentaryBasePage projectId="project-1" />);
+    render(<DocumentarySourcesPage projectId="project-1" />);
 
     expect(
       screen.queryByRole("link", { name: /toClientContent/ }),
@@ -124,7 +124,7 @@ describe("DocumentaryBasePage", () => {
       isError: true,
     } as never);
 
-    render(<DocumentaryBasePage projectId="project-1" />);
+    render(<DocumentarySourcesPage projectId="project-1" />);
 
     expect(screen.getByRole("alert")).toHaveTextContent("documentsLoadError");
     expect(screen.queryByText("emptyTitle")).not.toBeInTheDocument();
@@ -137,7 +137,7 @@ describe("DocumentaryBasePage", () => {
       isError: false,
     } as never);
 
-    render(<DocumentaryBasePage projectId="project-1" />);
+    render(<DocumentarySourcesPage projectId="project-1" />);
 
     expect(replace).toHaveBeenCalledWith("/projects/project-1");
     expect(screen.queryByText("Cahier des charges")).not.toBeInTheDocument();

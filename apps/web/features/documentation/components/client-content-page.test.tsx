@@ -32,7 +32,7 @@ vi.mock("@/i18n/navigation", () => ({
 
 function withReference(document: unknown, isPending = false) {
   vi.mocked(useReferenceSummary).mockReturnValue({
-    data: isPending ? undefined : { document },
+    data: isPending ? undefined : { document, documentCount: 2 },
     isPending,
     isError: false,
   } as never);
@@ -52,7 +52,9 @@ describe("ClientContentPage", () => {
         clientVisibility: "current_version_visible",
         releaseProgress: null,
         pendingReviewCount: 0,
+        activeOperationCount: 0,
         failedOperationCount: 0,
+        currentReleaseId: "release-1",
       },
       isPending: false,
       isError: false,
@@ -68,38 +70,53 @@ describe("ClientContentPage", () => {
     expect(screen.getByText("client-preview")).toBeVisible();
   });
 
-  // A section is written from the reference document, so there is nothing to
-  // write before one exists. Said up front rather than discovered by pressing a
-  // button that fails: the API refuses it too.
-  it("waits for the documentary base rather than offering work that would fail", () => {
+  // A section is written from the reference document, so a project without one
+  // has a first step rather than a locked door — and the step takes the
+  // developer straight to where it happens.
+  it("names the first step instead of refusing", () => {
     withReference(null);
 
     render(<ClientContentPage projectId="project-1" />);
 
-    expect(screen.getByText("lockedTitle")).toBeVisible();
+    expect(screen.getByText("startTitle")).toBeVisible();
+    expect(screen.getByText("startDescription")).toBeVisible();
     expect(screen.queryByText("section-list")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /lockedAction/ }),
-    ).toHaveAttribute("href", "/projects/project-1/documents");
+    expect(screen.getByRole("link", { name: /startAction/ })).toHaveAttribute(
+      "href",
+      "/projects/project-1/documentation/sources",
+    );
   });
 
-  it("still waits while the document is only being written", () => {
+  it("says the writing is under way rather than repeating the first step", () => {
     withReference({ status: "writing" });
 
     render(<ClientContentPage projectId="project-1" />);
 
-    expect(screen.getByText("lockedTitle")).toBeVisible();
+    expect(screen.getByText("startWriting")).toBeVisible();
+    expect(screen.queryByText("startDescription")).not.toBeInTheDocument();
   });
 
-  // Locking on a value that has not arrived yet would flash the locked state on
+  // Deciding on a value that has not arrived yet would flash the first step on
   // every load of a project that is perfectly ready.
   it("says nothing until it knows", () => {
     withReference(null, true);
 
     render(<ClientContentPage projectId="project-1" />);
 
-    expect(screen.queryByText("lockedTitle")).not.toBeInTheDocument();
+    expect(screen.queryByText("startTitle")).not.toBeInTheDocument();
     expect(screen.queryByText("section-list")).not.toBeInTheDocument();
+  });
+
+  // The documents are what this page runs on, so they are stated here and
+  // reached from here rather than sitting beside it in the navigation.
+  it("says what it runs on, and offers the way to change it", () => {
+    render(<ClientContentPage projectId="project-1" />);
+
+    expect(screen.getByText("sourceReady")).toBeVisible();
+    expect(screen.getByRole("link", { name: /sourceManage/ })).toHaveAttribute(
+      "href",
+      "/projects/project-1/documentation/sources",
+    );
   });
 
   it("says what the client can see, and what waits for the developer", () => {
@@ -107,6 +124,29 @@ describe("ClientContentPage", () => {
 
     expect(screen.getByText("priority_published")).toBeVisible();
     expect(screen.getByText("visibility_current_version_visible")).toBeVisible();
+  });
+
+  // It used to announce "create your first section" above a section that
+  // existed. A banner contradicting the page it sits on is worse than none.
+  it("stays quiet when it would only repeat the list below it", () => {
+    vi.mocked(useDocumentationWorkspace).mockReturnValue({
+      data: {
+        priority: "no_sections",
+        clientVisibility: "nothing_published",
+        releaseProgress: null,
+        pendingReviewCount: 0,
+        activeOperationCount: 0,
+        failedOperationCount: 0,
+        currentReleaseId: null,
+      },
+      isPending: false,
+      isError: false,
+    } as never);
+
+    render(<ClientContentPage projectId="project-1" />);
+
+    expect(screen.queryByText("priority_no_sections")).not.toBeInTheDocument();
+    expect(screen.getByText("section-list")).toBeVisible();
   });
 
   // The failing write is not on this page, but the base lists it — so the
@@ -128,7 +168,7 @@ describe("ClientContentPage", () => {
 
     expect(screen.getByRole("link", { name: /failedAction/ })).toHaveAttribute(
       "href",
-      "/projects/project-1/documents",
+      "/projects/project-1/documentation/sources",
     );
   });
 

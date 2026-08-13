@@ -66,7 +66,7 @@ const DYNAMIC_KEYS = [
   // client-content-page.tsx renders the aggregate's own state values, and
   // documentation-entry-cards.tsx renders its priority on the client card.
   /^Projects\.Documentation\.Client\.(priority|visibility)_\w+$/,
-  /^Projects\.Documentation\.Entries\.priority_\w+$/,
+  /^Projects\.Documentation\.Entry\.priority_\w+$/,
   // section-list.tsx derives one state per section from its flags.
   /^Projects\.Documentation\.Sections\.state_\w+$/,
   // section-editor-dialog.tsx maps over DIMENSIONS, building both the label and

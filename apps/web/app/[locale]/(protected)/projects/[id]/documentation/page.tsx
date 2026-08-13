@@ -1,7 +1,7 @@
 import { use } from "react";
 import { ClientContentPage } from "@/features/documentation/components/client-content-page";
 
-export default function ProjectClientContentPage({
+export default function ProjectDocumentationPage({
   params,
 }: {
   params: Promise<{ id: string }>;

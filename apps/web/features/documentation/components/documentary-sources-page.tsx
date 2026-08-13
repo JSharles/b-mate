@@ -50,12 +50,11 @@ function DocumentActions({
   );
 }
 
-// The whole documentary base on one screen, read top to bottom: the documents
-// the developer put in, then the document Diaphane wrote from them. They are
-// one job — a document is added so that the reference changes, and since
-// adding one starts the write, the effect is immediate and worth watching
-// (specs/019).
-export function DocumentaryBasePage({ projectId }: { projectId: string }) {
+// What the client-facing documentation runs on: the documents the developer
+// put in, and the document Diaphane wrote from them. It is reached from the
+// documentation rather than sitting beside it — feeding the machine is not the
+// same kind of thing as using it (specs/019).
+export function DocumentarySourcesPage({ projectId }: { projectId: string }) {
   const t = useTranslations("Projects.Documentation.Base");
   const project = useProject(projectId);
   const documents = useDocumentationDocuments(projectId);
@@ -97,7 +96,7 @@ export function DocumentaryBasePage({ projectId }: { projectId: string }) {
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-10">
       <div className="space-y-5 print:hidden">
         <Link
-          href={`/projects/${projectId}`}
+          href={`/projects/${projectId}/documentation`}
           className="inline-flex w-fit items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
@@ -164,7 +163,7 @@ export function DocumentaryBasePage({ projectId }: { projectId: string }) {
                         alone: the status used to sit inside the anchor, so the
                         link renamed itself on every poll. */}
                     <Link
-                      href={`/projects/${projectId}/documents/${document.id}`}
+                      href={`/projects/${projectId}/documentation/sources/${document.id}`}
                       title={document.title}
                       className="block truncate rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
@@ -214,12 +213,12 @@ export function DocumentaryBasePage({ projectId }: { projectId: string }) {
         </div>
       </section>
 
-      {/* Where the base leads once it holds something. Offered here rather than
-          only from the project, because finishing the reference is exactly when
-          the developer is ready for the next job. */}
+      {/* Where this leads once the document is written. Offered here because
+          finishing the reference is exactly when the developer is ready for the
+          job this one serves. */}
       {summary.data?.document?.status === "ready" && (
         <Link
-          href={`/projects/${projectId}/client`}
+          href={`/projects/${projectId}/documentation`}
           className="inline-flex w-fit items-center gap-2 rounded-md text-sm text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring print:hidden"
         >
           {t("toClientContent")}

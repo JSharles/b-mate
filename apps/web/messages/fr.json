@@ -245,17 +245,17 @@
       "Sections": {
         "loading": "Chargement des sections…",
         "emptyTitle": "Aucune section pour l’instant.",
-        "emptyDescription": "Une section est une tête de chapitre que votre client lira. Vous choisissez son nom, son ton, et ce que Diaphane doit aller chercher dans vos documents.",
+        "emptyDescription": "Une section est une partie que votre client lira. Vous choisissez son titre, son ton, et ce que Diaphane doit y mettre.",
         "createFirst": "Créer ma première section",
         "createAnother": "Ajouter une section",
         "compose": "Rédiger",
         "refresh": "Rafraîchir",
         "edit": "Modifier",
         "delete": "Supprimer",
-        "state_never": "Jamais rédigée",
+        "state_never": "À rédiger",
         "state_composing": "Rédaction en cours",
         "state_awaiting": "À relire",
-        "state_stale": "À rafraîchir",
+        "state_stale": "À mettre à jour",
         "state_published": "Publiée",
         "Editor": {
           "createTitle": "Créer une section",
@@ -332,7 +332,7 @@
           "error": "La suppression a échoué. Réessayez."
         },
         "listTitle": "Vos sections",
-        "listDescription": "Vous nommez une section, vous dites ce qu’elle doit couvrir et pour quel niveau de client. Diaphane la rédige depuis votre document de référence."
+        "listDescription": "Une section est une partie que votre client lira. Vous lui donnez un titre, vous dites ce qu’elle doit couvrir et pour quel niveau de client ; Diaphane la rédige."
       },
       "Reference": {
         "title": "Document de référence",
@@ -368,9 +368,9 @@
         "notWrittenYet": "Vos {count, plural, one {# document n’a} other {# documents n’ont}} pas encore donné de document de référence. Lancez la rédaction."
       },
       "Base": {
-        "back": "Retour au projet",
-        "title": "Base documentaire",
-        "description": "Vos documents d’un côté, le texte que Diaphane en tire de l’autre. C’est votre base de travail : votre client ne la lit pas.",
+        "back": "Retour à la documentation",
+        "title": "Mes documents",
+        "description": "Ce que Diaphane lit pour écrire la documentation de votre client. Ajoutez, retirez : le document de référence est réécrit à chaque fois.",
         "loadError": "Impossible de charger ce projet.",
         "retry": "Réessayer",
         "documentsTitle": "Vos documents",
@@ -384,17 +384,14 @@
         "loadingMore": "Chargement…",
         "referenceTitle": "Document de référence",
         "referenceDescription": "Ce que disent vos documents, réuni en un seul texte structuré. Répondez aux points à clarifier et corrigez les passages faux directement dedans.",
-        "toClientContent": "Passer au contenu que lira votre client"
+        "toClientContent": "Revenir à la documentation client"
       },
       "Client": {
         "back": "Retour au projet",
-        "title": "Contenu client",
-        "description": "Vous décidez des chapitres, Diaphane les rédige depuis votre base documentaire, et rien ne part sans votre accord.",
+        "title": "Documentation client",
+        "description": "Ce que votre client lira. Vous décidez des sections, Diaphane les rédige à partir de vos documents, et rien n’est publié sans votre accord.",
         "loadError": "Impossible de charger ce projet.",
         "retry": "Réessayer",
-        "lockedTitle": "Votre base documentaire n’est pas encore prête.",
-        "lockedDescription": "Une section est rédigée à partir de votre document de référence. Ajoutez vos documents et laissez Diaphane l’écrire ; vous pourrez créer vos sections juste après.",
-        "lockedAction": "Ouvrir la base documentaire",
         "previewTitle": "Aperçu client",
         "previewDescription": "Exactement ce que votre client voit aujourd’hui. Cela ne change que quand vous approuvez une section, et jamais à moitié.",
         "priority_needs_action": "Une section attend votre relecture",
@@ -409,21 +406,25 @@
         "releaseProgress": "{ready, plural, one {# section prête} other {# sections prêtes}} sur {expected} pour la prochaine publication.",
         "releaseAtomic": "Votre client garde la version actuelle tant que la nouvelle n’est pas complète.",
         "failedAction": "Voir la base documentaire",
-        "refreshDelayed": "La mise à jour automatique est retardée ; ce que vous voyez date de quelques instants."
+        "refreshDelayed": "La mise à jour automatique est retardée ; ce que vous voyez date de quelques instants.",
+        "sourceReady": "{count, plural, one {# document} other {# documents}} · document de référence à jour",
+        "sourceNotReady": "{count, plural, =0 {Aucun document} one {# document} other {# documents}} · document de référence à écrire",
+        "sourceWriting": "Rédaction du document de référence en cours",
+        "sourceManage": "Mes documents",
+        "startTitle": "Commencez par vos documents.",
+        "startDescription": "Diaphane a besoin de lire votre projet avant d’écrire quoi que ce soit pour votre client. Ajoutez vos documents : il en tire un document de référence, et vous pourrez créer vos sections juste après.",
+        "startWriting": "Diaphane lit vos documents et en écrit le document de référence. Ça prend une minute ou deux ; vous pourrez créer vos sections ensuite.",
+        "startAction": "Ajouter mes documents"
       },
-      "Entries": {
-        "baseTitle": "Base documentaire",
-        "baseEmpty": "Aucun document",
-        "baseWriting": "Rédaction en cours",
-        "baseFailed": "La rédaction n’a pas abouti",
-        "baseNotWritten": "{count, plural, one {# document, pas encore rédigé} other {# documents, pas encore rédigés}}",
-        "baseReady": "{count, plural, one {# document} other {# documents}}, document de référence à jour",
-        "clientTitle": "Contenu client",
-        "clientLocked": "Disponible dès que votre document de référence est écrit",
+      "Entry": {
+        "title": "Documentation client",
+        "stateNoDocuments": "Aucun document — à commencer",
+        "stateWriting": "Rédaction en cours",
+        "stateNotWritten": "Document de référence à écrire",
         "priority_needs_action": "Une section attend votre relecture",
         "priority_processing": "Rédaction en cours",
         "priority_published": "Votre client lit la version à jour",
-        "priority_empty": "Ajoutez un premier document",
+        "priority_empty": "Aucun document — à commencer",
         "priority_no_sections": "Créez votre première section",
         "priority_needs_attention": "Une rédaction n’a pas abouti"
       }

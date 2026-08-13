@@ -4,7 +4,7 @@ import { TriangleAlert, Video } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Suspense, use } from "react";
 import { BoardConnectionCard } from "@/features/board-connections/components/board-connection-card";
-import { DocumentationEntryCards } from "@/features/documentation/components/documentation-entry-cards";
+import { DocumentationSummaryCard } from "@/features/documentation/components/documentation-summary-card";
 import { NotionConnectionCard } from "@/features/notion-connection/components/notion-connection-card";
 import { MeetingCard } from "@/features/projects/components/meeting-card";
 import { MeetingLinkCard } from "@/features/projects/components/meeting-link-card";
@@ -84,7 +84,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         // supplies its own vertical rhythm via padding + border-b, so an
         // extra gap between them would just double up the spacing.
         <div className="flex flex-col">
-          <DocumentationEntryCards projectId={id} />
+          <DocumentationSummaryCard projectId={id} />
           <TeamSummaryCard projectId={id} isAdmin={project.isAdmin} />
 
           <div id="project-tools">
