@@ -48,7 +48,10 @@ function NoteComposer({
       <div
         className={
           quiet
-            ? "opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 print:hidden"
+            ? // Sits in the gap between two paragraphs rather than adding to
+              // it: in flow, an invisible control still reserved its height and
+              // pushed the paragraphs 55px apart where the rhythm called for 20.
+              "absolute -bottom-2 right-0 opacity-0 transition-opacity focus-within:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 print:hidden"
             : "print:hidden"
         }
       >
@@ -135,11 +138,11 @@ function Passage({
   // answered there. There is no second list of the same questions elsewhere.
   if (block.kind === "gap") {
     return (
-      <div className="space-y-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
+      <div className="space-y-3 rounded-lg border border-border bg-muted/40 px-5 py-4">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
           {t("openPoint")}
         </p>
-        <p className="text-sm leading-7">{block.text}</p>
+        <p className="text-base leading-[1.75]">{block.text}</p>
         {point && (
           <div className="space-y-1">
             <p className="text-sm font-medium leading-relaxed">
@@ -161,15 +164,13 @@ function Passage({
 
   return (
     <div className="group relative">
-      <p className="max-w-3xl text-sm leading-7">{block.text}</p>
-      <div className="mt-1">
-        <NoteComposer
-          projectId={projectId}
-          context={block.text}
-          label={t("correct")}
-          quiet
-        />
-      </div>
+      <p className="text-base leading-[1.75]">{block.text}</p>
+      <NoteComposer
+        projectId={projectId}
+        context={block.text}
+        label={t("correct")}
+        quiet
+      />
     </div>
   );
 }
@@ -189,10 +190,12 @@ function NoteList({ projectId, items }: { projectId: string; items: Note[] }) {
       aria-labelledby="notes-title"
       className="border-t border-border pt-7 print:hidden"
     >
-      <h2 id="notes-title" className="font-semibold">
+      <h2 id="notes-title" className="text-lg font-semibold tracking-tight">
         {t("notesTitle")}
       </h2>
-      <p className="mt-1 text-sm text-muted-foreground">{t("notesHint")}</p>
+      <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        {t("notesHint")}
+      </p>
       <ul className="mt-4 space-y-3">
         {items.map((note) => (
           <li
@@ -336,11 +339,15 @@ export function ReferenceDocumentView({ projectId }: { projectId: string }) {
 
   const parts = current.parts as ReferencePart[];
   const pointsById = new Map(current.points.map((point) => [point.id, point]));
+  // Under every heading, the same list of document names is furniture. It only
+  // tells the developer anything when the parts drew on different documents.
+  const provenanceVaries =
+    new Set(parts.map((part) => part.documentTitles.join("|"))).size > 1;
 
   return (
     <div className="space-y-10">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
           {t("writtenFrom", { count: parts.length })}
         </p>
         <div className="flex flex-wrap items-center gap-2">
@@ -374,22 +381,27 @@ export function ReferenceDocumentView({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      <article className="space-y-10" aria-live="polite">
+      {/* Set to a reading measure, not to the container. Everything else on
+          this page is a control; this is the one thing anyone reads end to
+          end. */}
+      <article className="max-w-[68ch] space-y-12" aria-live="polite">
         {parts.map((part, index) => (
-          <section key={index} className="space-y-4">
+          <section key={index} className="space-y-5">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">
+              <h3 className="text-lg font-semibold tracking-tight">
                 {part.title}
-              </h2>
+              </h3>
               {/* FR-004: which documents this part drew on. Coarser than the
-                  per-sentence provenance it replaces, and honest about it. */}
-              {part.documentTitles.length > 0 && (
-                <p className="mt-1 text-xs text-muted-foreground">
+                  per-sentence provenance it replaces, and honest about it —
+                  and only worth saying when the parts differ, otherwise it is
+                  the same line repeated under every heading. */}
+              {part.documentTitles.length > 0 && provenanceVaries && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
                   {t("drawnFrom", { documents: part.documentTitles.join(", ") })}
                 </p>
               )}
             </div>
-            <div className="space-y-4">
+            <div className="space-y-5">
               {part.blocks.map((block, blockIndex) => (
                 <Passage
                   key={blockIndex}

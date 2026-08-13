@@ -113,10 +113,13 @@ export function DocumentarySourcesPage({ projectId }: { projectId: string }) {
       <section aria-labelledby="documents-title" className="print:hidden">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 id="documents-title" className="font-semibold">
+            <h2
+              id="documents-title"
+              className="text-lg font-semibold tracking-tight"
+            >
               {t("documentsTitle")}
             </h2>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               {t("documentsDescription")}
             </p>
           </div>
@@ -201,10 +204,13 @@ export function DocumentarySourcesPage({ projectId }: { projectId: string }) {
 
       <section aria-labelledby="reference-title" className="border-t border-border pt-10">
         <div className="print:hidden">
-          <h2 id="reference-title" className="font-semibold">
+          <h2
+            id="reference-title"
+            className="text-lg font-semibold tracking-tight"
+          >
             {t("referenceTitle")}
           </h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
             {t("referenceDescription")}
           </p>
         </div>

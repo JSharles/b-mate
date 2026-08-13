@@ -111,9 +111,11 @@ export function SectionWorkspace({ projectId }: { projectId: string }) {
         <h2 id="sections-title" className="text-lg font-semibold tracking-tight">
           {t("listTitle")}
         </h2>
-        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          {t("listDescription")}
-        </p>
+        {rows.length === 0 && (
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            {t("listDescription")}
+          </p>
+        )}
       </div>
 
       {rows.length === 0 ? (
@@ -204,7 +206,7 @@ export function SectionWorkspace({ projectId }: { projectId: string }) {
 
                   <div className="mt-6 border-t border-border pt-6">
                     {state !== "composing" && (
-                      <div className="mb-5 flex justify-end">
+                      <div className="mb-5 flex max-w-[68ch] justify-end">
                         <Button
                           type="button"
                           variant="outline"

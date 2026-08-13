@@ -79,6 +79,14 @@ describe("SectionWorkspace", () => {
     expect(screen.queryByText("review:section-2")).not.toBeInTheDocument();
   });
 
+  it("stops explaining what a rubrique is once there are some", () => {
+    withSections([section()]);
+
+    render(<SectionWorkspace projectId="project-1" />);
+
+    expect(screen.queryByText("listDescription")).not.toBeInTheDocument();
+  });
+
   it("opens the rubrique whose tab is chosen", async () => {
     withSections([
       section(),
@@ -199,11 +207,14 @@ describe("SectionWorkspace", () => {
     expect(within(panel).getByRole("button", { name: /compose/ })).toBeVisible();
   });
 
+  // The description teaches what a rubrique is, which is worth saying to
+  // someone who has none and is noise to someone reading their third.
   it("invites a first rubrique when there are none", () => {
     withSections([]);
 
     render(<SectionWorkspace projectId="project-1" />);
 
+    expect(screen.getByText("listDescription")).toBeVisible();
     expect(screen.getByText("emptyTitle")).toBeVisible();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /createFirst/ }));

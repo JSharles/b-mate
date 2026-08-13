@@ -113,13 +113,37 @@ describe("ReferenceDocumentView", () => {
   });
 
   // FR-004: coarser than the per-sentence provenance it replaces, and honest
-  // about it.
-  it("says which documents a part drew on", () => {
+  // about it — and only worth saying when the parts differ. Repeated under
+  // every heading with the same names, it was furniture.
+  it("says which documents a part drew on when they differ", () => {
+    withDocument(
+      ready({
+        parts: [
+          {
+            title: "Le projet",
+            blocks: [paragraph],
+            documentTitles: ["Cahier des charges"],
+          },
+          {
+            title: "Planning",
+            blocks: [paragraph],
+            documentTitles: ["Compte rendu"],
+          },
+        ],
+      }),
+    );
+
+    render(<ReferenceDocumentView projectId="project-1" />);
+
+    expect(screen.getAllByText("drawnFrom")).toHaveLength(2);
+  });
+
+  it("says nothing when every part drew on the same documents", () => {
     withDocument(ready());
 
     render(<ReferenceDocumentView projectId="project-1" />);
 
-    expect(screen.getByText("drawnFrom")).toBeVisible();
+    expect(screen.queryByText("drawnFrom")).not.toBeInTheDocument();
   });
 
   // FR-016: what the documents never settled is marked where it applies, with

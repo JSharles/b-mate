@@ -86,7 +86,7 @@ export function SectionProposalReview({
       {/* Composition finishes by poll, not by user action, so the result
           appears with nothing to announce it. A screen reader user would
           otherwise have to go looking for a change they were not told about. */}
-      <div className="space-y-4" aria-live="polite">
+      <div className="max-w-[68ch] space-y-5" aria-live="polite">
         {current.blocks.map((block, index) =>
           // Something the reference document has not settled, kept unsettled
           // here rather than written around. The box alone said nothing: a
@@ -101,13 +101,13 @@ export function SectionProposalReview({
                 <CircleHelp className="size-3.5" />
                 {t("openPointLabel")}
               </p>
-              <p className="mt-2 text-sm leading-7">{block.text}</p>
+              <p className="mt-2 text-base leading-[1.75]">{block.text}</p>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 {t("openPointHint")}
               </p>
             </div>
           ) : (
-            <p key={index} className="max-w-3xl text-sm leading-7">
+            <p key={index} className="text-base leading-[1.75]">
               {block.text}
             </p>
           ),

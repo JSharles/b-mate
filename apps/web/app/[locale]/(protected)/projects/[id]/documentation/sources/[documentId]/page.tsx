@@ -60,7 +60,7 @@ export default function SourceDocumentPage({
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       <Link
-        href={`/projects/${id}/documents`}
+        href={`/projects/${id}/documentation/sources`}
         className="inline-flex w-fit items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
@@ -108,20 +108,9 @@ export default function SourceDocumentPage({
             )}
           </div>
 
+          {/* Removal last, and quiet: it was the first control on the page,
+              filled and destructive, above the two harmless ones. */}
           <div className="flex flex-col gap-2 sm:items-end">
-            {/* The only thing left to do with a document is take it back
-                out: it is read once at upload and then it is in. */}
-            {item.status !== "removed" && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full text-destructive hover:text-destructive sm:w-auto"
-                onClick={() => setRemoveOpen(true)}
-              >
-                <Trash2 />
-                {t("removeDocument")}
-              </Button>
-            )}
             {item.originalDownloadUrl && (
               <Button asChild variant="outline" className="w-full sm:w-auto">
                 <a
@@ -143,6 +132,17 @@ export default function SourceDocumentPage({
                   <ExternalLink />
                   {t("openOriginal")}
                 </a>
+              </Button>
+            )}
+            {item.status !== "removed" && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-muted-foreground hover:text-destructive sm:w-auto"
+                onClick={() => setRemoveOpen(true)}
+              >
+                <Trash2 />
+                {t("removeDocument")}
               </Button>
             )}
           </div>
