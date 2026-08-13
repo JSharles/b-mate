@@ -294,7 +294,14 @@ export function useArchiveSection(projectId: string) {
   return useMutation({
     mutationFn: (sectionId: string) => archiveSection(projectId, sectionId),
     meta: { skipGlobalErrorToast: true, successMessage: t("archived") },
-    onSuccess: () => {
+    onSuccess: (_result, sectionId) => {
+      // A rubrique's proposal key sits under the list's, so invalidating the
+      // list invalidates the deleted rubrique's proposal too — which refetched,
+      // 404'd, and raised a global "Not Found" on a deletion that had worked.
+      // Dropped rather than refreshed: there is nothing left to read.
+      queryClient.removeQueries({
+        queryKey: sectionProposalKey(projectId, sectionId),
+      });
       queryClient.invalidateQueries({ queryKey: sectionsKey(projectId) });
       queryClient.invalidateQueries({
         queryKey: publicClientSectionsKey(projectId),

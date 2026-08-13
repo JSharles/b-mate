@@ -267,6 +267,26 @@ describe("documentation hooks", () => {
       );
     });
 
+    // A rubrique's proposal key sits under the list's, so invalidating the
+    // list invalidated the deleted one's proposal too: it refetched, 404'd,
+    // and raised a global "Not Found" on a deletion that had worked.
+    it("drops the deleted rubrique's proposal rather than refetching it", async () => {
+      vi.mocked(archiveSection).mockResolvedValue({ archived: true });
+      const { queryClient, Wrapper } = wrapper();
+      const remove = vi.spyOn(queryClient, "removeQueries");
+      const { result } = renderHook(() => useArchiveSection("project-1"), {
+        wrapper: Wrapper,
+      });
+
+      await act(async () => {
+        await result.current.mutateAsync("section-1");
+      });
+
+      expect(remove).toHaveBeenCalledWith({
+        queryKey: sectionProposalKey("project-1", "section-1"),
+      });
+    });
+
     it("refreshes the list after creating, editing, archiving or composing", async () => {
       vi.mocked(createSection).mockResolvedValue({ id: "section-1" } as never);
       vi.mocked(updateSection).mockResolvedValue({} as never);
