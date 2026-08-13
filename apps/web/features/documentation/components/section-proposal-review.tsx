@@ -13,6 +13,7 @@ import type { SectionView } from "schemas";
 import { Button } from "@/shared/components/ui/button";
 import { ApiError } from "@/shared/lib/api-client";
 import { ClientSectionView } from "@/shared/components/client-section-view";
+import { RoadmapEditor } from "./roadmap-editor";
 import {
   useApproveSectionProposal,
   usePublicClientSections,
@@ -28,6 +29,12 @@ export function SectionProposalReview({
 }) {
   const t = useTranslations("Projects.Documentation.Sections.Review");
   const tToasts = useTranslations("Toasts");
+  function approveErrorText(error: unknown) {
+    if (error instanceof ApiError && error.status === 409) return t("staleError");
+    if (error instanceof ApiError) return error.message;
+    return tToasts("genericError");
+  }
+
   const proposal = useSectionProposal(projectId, section.id);
   const approve = useApproveSectionProposal(projectId, section.id);
   const published = usePublicClientSections(projectId);
@@ -69,6 +76,77 @@ export function SectionProposalReview({
   }
 
   const current = proposal.data;
+
+  // A roadmap is corrected where it is, so there is no "nothing matched" dead
+  // end and no separate review: what the developer edits is the timeline
+  // itself, and the phases every project runs through are already on the rail
+  // waiting to be taken.
+  if (section.kind === "roadmap") {
+    const pending = current?.status === "pending_review";
+    if (current?.status === "composing") {
+      return (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
+          {t("composing")}
+        </p>
+      );
+    }
+    if (current?.status === "failed") {
+      return (
+        <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
+          <p>{t("failed")}</p>
+        </div>
+      );
+    }
+    if (!pending && live?.kind !== "roadmap") {
+      return <p className="text-sm text-muted-foreground">{t("neverComposed")}</p>;
+    }
+    return (
+      <div className="space-y-5">
+        <p
+          className={`flex items-center gap-2 text-xs uppercase tracking-wide ${pending ? "text-primary" : "text-muted-foreground"}`}
+        >
+          {pending ? (
+            <CircleDashed className="size-3.5" />
+          ) : (
+            <Eye className="size-3.5" />
+          )}
+          {pending ? (live ? t("pendingOverLive") : t("pendingLabel")) : t("liveLabel")}
+        </p>
+        <RoadmapEditor
+          projectId={projectId}
+          section={section}
+          milestones={
+            pending
+              ? current.milestones
+              : live?.kind === "roadmap"
+                ? live.milestones
+                : []
+          }
+          proposalVersion={pending ? current.version : undefined}
+          editable={pending}
+        />
+        {pending && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              onClick={() => approve.mutate(current.version)}
+              disabled={approve.isPending}
+            >
+              {approve.isPending ? t("approving") : t("approve")}
+            </Button>
+          </div>
+        )}
+        {approve.isError && (
+          <p role="alert" className="text-sm text-destructive">
+            {approveErrorText(approve.error)}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   if (!current) {
     return live ? (
       publishedView()
@@ -112,12 +190,6 @@ export function SectionProposalReview({
     );
   }
 
-  const approveError =
-    approve.error instanceof ApiError && approve.error.status === 409
-      ? t("staleError")
-      : approve.error instanceof ApiError
-        ? approve.error.message
-        : tToasts("genericError");
 
   return (
     <div className="space-y-5">
@@ -176,7 +248,7 @@ export function SectionProposalReview({
 
       {approve.isError && (
         <p role="alert" className="text-sm text-destructive">
-          {approveError}
+          {approveErrorText(approve.error)}
         </p>
       )}
     </div>

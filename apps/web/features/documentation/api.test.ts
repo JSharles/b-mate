@@ -14,6 +14,8 @@ import {
   composeSection,
   getSectionProposal,
   approveSectionProposal,
+  replaceMilestones,
+  setCurrentMilestone,
   archiveSection,
   getReferenceSummary,
   getReferenceDocument,
@@ -123,6 +125,7 @@ describe("documentation api", () => {
     await listSections("project-1");
     await createSection("project-1", {
       name: "Le projet",
+      kind: "prose" as const,
       instructions: "Ce que le client a demandé.",
       editorial: {
         length: "balanced",
@@ -139,6 +142,16 @@ describe("documentation api", () => {
     await composeSection("project-1", "section-1");
     await getSectionProposal("project-1", "section-1");
     await approveSectionProposal("project-1", "section-1", 3);
+    await replaceMilestones("project-1", "section-1", {
+      milestones: [
+        { id: null, when: "Q3 2026", title: "Recette", description: null },
+      ],
+      expectedProposalVersion: 2,
+    });
+    await setCurrentMilestone("project-1", "section-1", {
+      milestoneId: null,
+      expectedVersion: 4,
+    });
     await archiveSection("project-1", "section-1");
     await getReferenceSummary("project-1");
     await getReferenceDocument("project-1");

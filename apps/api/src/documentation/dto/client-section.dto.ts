@@ -10,6 +10,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -31,19 +32,78 @@ export class SectionEditorialDto {
 }
 
 export class CreateClientSectionDto {
+  // Absent means prose: the kind arrived with roadmaps, and a body written
+  // before them still means what it meant.
+  @IsOptional()
+  @IsIn(['prose', 'roadmap'])
+  kind?: 'prose' | 'roadmap';
+
   @IsString()
   @MinLength(1)
   @MaxLength(120)
   name!: string;
 
+  // A roadmap has neither: its brief is fixed — what the documents say about
+  // sequence — and a milestone date has no tone. Choosing a roadmap removes
+  // controls rather than adding them (specs/020).
+  @ValidateIf((dto: CreateClientSectionDto) => dto.kind !== 'roadmap')
   @IsString()
   @MinLength(1)
   @MaxLength(4000)
   instructions!: string;
 
+  @ValidateIf((dto: CreateClientSectionDto) => dto.kind !== 'roadmap')
   @ValidateNested()
   @Type(() => SectionEditorialDto)
   editorial!: SectionEditorialDto;
+}
+
+// One milestone as the developer sends it back. An id only for one they kept,
+// so a new milestone is unambiguous and can never collide with an existing id.
+export class MilestoneDraftDto {
+  @IsOptional()
+  @IsUUID('4')
+  id?: string | null;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  when!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  title!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description?: string | null;
+}
+
+// The whole ordered set travels, so the result is never a function of what the
+// server already held — the same reason reordering carries every section id.
+export class ReplaceMilestonesDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MilestoneDraftDto)
+  milestones!: MilestoneDraftDto[];
+
+  @IsInt()
+  @Min(1)
+  expectedProposalVersion!: number;
+}
+
+// Null clears it: a plan with no position claimed is a real answer, and better
+// than one that defaults to its first step.
+export class SetCurrentMilestoneDto {
+  @IsOptional()
+  @IsUUID('4')
+  milestoneId?: string | null;
+
+  @IsInt()
+  @Min(1)
+  expectedVersion!: number;
 }
 
 // Every field optional so a rename, a retone and an instruction revision are the

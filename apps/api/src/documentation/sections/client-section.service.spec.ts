@@ -176,7 +176,7 @@ describe('ClientSectionService', () => {
           }),
         }),
       );
-      expect(view.editorial.tone).toBe('reassuring');
+      expect(view.editorial?.tone).toBe('reassuring');
     });
 
     // Defining a section is asking for it: making the contributor press
@@ -519,6 +519,183 @@ describe('ClientSectionService', () => {
         response: { code: 'SECTION_ORDER_INCOMPLETE' },
       });
       expect(prisma.clientSection.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // Choosing a roadmap removes controls rather than adding them: there is no
+  // brief to write and no register to strike.
+  describe('a roadmap section', () => {
+    const milestoneId = '00000000-0000-4000-8000-00000000000b';
+
+    it('is created with a name and nothing else', async () => {
+      const { prisma, service } = setup();
+      prisma.referenceDocument.count.mockResolvedValue(1);
+      prisma.clientSection.findFirst.mockResolvedValue({ sortOrder: 0 });
+      prisma.clientSection.create.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+        name: 'Roadmap',
+        instructions: null,
+        length: null,
+        pedagogy: null,
+        technicalFamiliarity: null,
+        tone: null,
+        currentMilestoneId: null,
+        sortOrder: 1,
+        refreshNeeded: true,
+        version: 1,
+        activeProposal: null,
+        proposals: [],
+      });
+
+      const view = await service.create(userId, projectId, {
+        kind: 'roadmap',
+        name: 'Roadmap',
+      } as never);
+
+      expect(prisma.clientSection.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ kind: 'roadmap', name: 'Roadmap' }),
+        }),
+      );
+      const written = prisma.clientSection.create.mock.calls[0][0] as {
+        data: Record<string, unknown>;
+      };
+      expect(written.data.instructions).toBeUndefined();
+      expect(written.data.tone).toBeUndefined();
+      // Null rather than a filled-in default: this is what lets the screen not
+      // ask for a register nobody chose.
+      expect(view.editorial).toBeNull();
+      expect(view.instructions).toBeNull();
+    });
+
+    it('refuses a roadmap that arrives with a brief', async () => {
+      const { prisma, service } = setup();
+      prisma.referenceDocument.count.mockResolvedValue(1);
+
+      await expect(
+        service.create(userId, projectId, {
+          kind: 'roadmap',
+          name: 'Roadmap',
+          instructions: 'Les jalons.',
+        } as never),
+      ).rejects.toMatchObject({
+        response: { code: 'SECTION_ROADMAP_HAS_NO_BRIEF' },
+      });
+    });
+
+    it('accepts a rename and refuses a retone', async () => {
+      const { prisma, service } = setup();
+      prisma.clientSection.findFirst.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+      });
+
+      await expect(
+        service.update(userId, projectId, sectionId, {
+          editorial: {
+            length: 'concise',
+            pedagogy: 'guided',
+            technicalFamiliarity: 'novice',
+            tone: 'formal',
+          },
+          expectedVersion: 1,
+        } as never),
+      ).rejects.toMatchObject({
+        response: { code: 'SECTION_ROADMAP_HAS_NO_BRIEF' },
+      });
+    });
+
+    // FR-007: the developer moves this weekly without a document changing, so
+    // nothing is composed, approved or published.
+    it('moves where the project stands without composing anything', async () => {
+      const { prisma, proposals, service } = setup();
+      prisma.clientSection.findFirst.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+      });
+      prisma.sectionProposal.findFirst.mockResolvedValue({
+        structuredContent: [{ id: milestoneId }],
+      });
+      prisma.clientSection.updateMany.mockResolvedValue({ count: 1 });
+      prisma.clientSection.findUnique.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+        name: 'Roadmap',
+        instructions: null,
+        length: null,
+        pedagogy: null,
+        technicalFamiliarity: null,
+        tone: null,
+        currentMilestoneId: milestoneId,
+        sortOrder: 0,
+        refreshNeeded: false,
+        version: 2,
+        activeProposal: null,
+        proposals: [],
+      });
+
+      const view = await service.setCurrentMilestone(
+        userId,
+        projectId,
+        sectionId,
+        { milestoneId, expectedVersion: 1 },
+      );
+
+      expect(view.currentMilestoneId).toBe(milestoneId);
+      expect(proposals.compose).not.toHaveBeenCalled();
+    });
+
+    // A position the timeline cannot render is not a position.
+    it('refuses a milestone the client could never see', async () => {
+      const { prisma, service } = setup();
+      prisma.clientSection.findFirst.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+      });
+      prisma.clientSectionContent.findFirst.mockResolvedValue(null);
+      prisma.sectionProposal.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.setCurrentMilestone(userId, projectId, sectionId, {
+          milestoneId,
+          expectedVersion: 1,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'MILESTONE_UNKNOWN' } });
+    });
+
+    it('claims no position at all when asked for none', async () => {
+      const { prisma, service } = setup();
+      prisma.clientSection.findFirst.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+      });
+      prisma.clientSection.updateMany.mockResolvedValue({ count: 1 });
+      prisma.clientSection.findUnique.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+        name: 'Roadmap',
+        instructions: null,
+        length: null,
+        pedagogy: null,
+        technicalFamiliarity: null,
+        tone: null,
+        currentMilestoneId: null,
+        sortOrder: 0,
+        refreshNeeded: false,
+        version: 2,
+        activeProposal: null,
+        proposals: [],
+      });
+
+      const view = await service.setCurrentMilestone(
+        userId,
+        projectId,
+        sectionId,
+        { milestoneId: null, expectedVersion: 1 },
+      );
+
+      expect(view.currentMilestoneId).toBeNull();
     });
   });
 });

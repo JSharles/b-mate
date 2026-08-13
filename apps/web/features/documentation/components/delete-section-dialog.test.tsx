@@ -13,7 +13,9 @@ function section(overrides: Partial<SectionView> = {}): SectionView {
   return {
     id: "00000000-0000-4000-8000-000000000001",
     name: "Planning",
+    kind: "prose" as const,
     instructions: "Les jalons.",
+    currentMilestoneId: null,
     editorial: {
       length: "balanced",
       pedagogy: "guided",

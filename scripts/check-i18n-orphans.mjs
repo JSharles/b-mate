@@ -76,6 +76,9 @@ const DYNAMIC_KEYS = [
   // section-editor-dialog.tsx maps over SECTION_SUGGESTION_IDS from
   // section-suggestions.ts, building `suggestion_<id>_name`/`_instructions`.
   /^Projects\.Documentation\.Sections\.Editor\.suggestion_\w+_(name|instructions)$/,
+  // roadmap-editor.tsx maps over ROADMAP_PHASE_IDS from roadmap-phases.ts,
+  // building the name of each phase it offers on the rail.
+  /^Projects\.Documentation\.Sections\.Roadmap\.phase_\w+$/,
 ];
 
 function escapeRegExp(value) {

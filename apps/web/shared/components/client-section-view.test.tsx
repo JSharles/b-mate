@@ -7,6 +7,7 @@ describe("ClientSectionView", () => {
     render(
       <ClientSectionView
         section={{
+          kind: "prose",
           id: "00000000-0000-4000-8000-000000000001",
           name: "Le projet",
           blocks: [

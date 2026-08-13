@@ -7,8 +7,10 @@ import type {
   DocumentRemovalPreview,
   PublicClientSection,
   CreateSectionRequest,
+  ReplaceMilestonesRequest,
   SectionProposalDetail,
   SectionView,
+  SetCurrentMilestoneRequest,
   UpdateSectionRequest,
   ReferenceDocumentView,
   ReferenceSummary,
@@ -180,6 +182,32 @@ export function getSectionProposal(projectId: string, sectionId: string) {
   return apiFetch<SectionProposalDetail | null>(
     `/projects/${projectId}/documentation/sections/${sectionId}/proposal`,
   ).then((proposal) => proposal ?? null);
+}
+
+// The whole ordered set travels, so the roadmap that results is never a
+// function of what the server already held.
+export function replaceMilestones(
+  projectId: string,
+  sectionId: string,
+  body: ReplaceMilestonesRequest,
+) {
+  return apiFetch<SectionProposalDetail>(
+    `/projects/${projectId}/documentation/sections/${sectionId}/proposal/milestones`,
+    { method: "PUT", body },
+  );
+}
+
+// Where the project stands moves on its own: nothing is composed, nothing is
+// approved, and the client sees it at once.
+export function setCurrentMilestone(
+  projectId: string,
+  sectionId: string,
+  body: SetCurrentMilestoneRequest,
+) {
+  return apiFetch<SectionView>(
+    `/projects/${projectId}/documentation/sections/${sectionId}/current-milestone`,
+    { method: "PUT", body },
+  );
 }
 
 export function approveSectionProposal(

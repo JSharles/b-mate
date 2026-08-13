@@ -4,9 +4,12 @@ import {
   CreateSectionRequestSchema,
   PublicSectionsViewSchema,
   ReorderSectionsRequestSchema,
+  MilestoneSchema,
+  ReplaceMilestonesRequestSchema,
   SectionContentBlockSchema,
   SectionProposalDetailSchema,
   SectionViewSchema,
+  SetCurrentMilestoneRequestSchema,
   UpdateSectionRequestSchema,
 } from "./documentation-sections";
 
@@ -23,18 +26,47 @@ const editorial = {
 describe("creating a section", () => {
   it("accepts a name, instructions and the four editorial dimensions", () => {
     const parsed = CreateSectionRequestSchema.parse({
+      kind: "prose",
       name: "  Ce que le client a demandé  ",
       instructions: "Tout ce qui concerne la demande initiale et ses contraintes.",
       editorial,
     });
 
     expect(parsed.name).toBe("Ce que le client a demandé");
-    expect(parsed.editorial.tone).toBe("reassuring");
+    expect(parsed.kind === "prose" && parsed.editorial.tone).toBe("reassuring");
+  });
+
+  // Choosing a roadmap removes controls rather than adding them: its brief is
+  // fixed — what the documents say about sequence — and a milestone date has no
+  // tone, so there is nothing left to ask for but a name.
+  it("accepts a roadmap carrying nothing but a name", () => {
+    expect(
+      CreateSectionRequestSchema.parse({ kind: "roadmap", name: "Roadmap" })
+        .name,
+    ).toBe("Roadmap");
+  });
+
+  it("refuses a roadmap that arrives with a brief or a register", () => {
+    expect(
+      CreateSectionRequestSchema.safeParse({
+        kind: "roadmap",
+        name: "Roadmap",
+        instructions: "Les jalons.",
+      }).success,
+    ).toBe(false);
+    expect(
+      CreateSectionRequestSchema.safeParse({
+        kind: "roadmap",
+        name: "Roadmap",
+        editorial,
+      }).success,
+    ).toBe(false);
   });
 
   it("refuses a section with no instructions, since instructions are what compose it", () => {
     expect(
       CreateSectionRequestSchema.safeParse({
+        kind: "prose",
         name: "Vue d'ensemble",
         instructions: "   ",
         editorial,
@@ -45,6 +77,7 @@ describe("creating a section", () => {
   it("refuses a category key or any other leftover taxonomy field", () => {
     expect(
       CreateSectionRequestSchema.safeParse({
+        kind: "prose",
         name: "Vue d'ensemble",
         instructions: "Ce que le projet est.",
         editorial,
@@ -112,6 +145,8 @@ describe("composed content", () => {
       createdAt: new Date().toISOString(),
       outcome: "composed",
       blocks: [{ kind: "paragraph", text: "Le lancement est prévu en octobre." }],
+      // One of the two is always empty: the section's kind decides which.
+      milestones: [],
       failureCode: null,
       ...overrides,
     };
@@ -169,9 +204,11 @@ describe("a section's state", () => {
   it("reports what the contributor needs to act on", () => {
     const view = SectionViewSchema.parse({
       id,
+      kind: "prose",
       name: "Ce que le client a demandé",
       instructions: "La demande initiale et ses contraintes.",
       editorial,
+      currentMilestoneId: null,
       sortOrder: 0,
       refreshNeeded: true,
       activeProposal: null,
@@ -181,6 +218,85 @@ describe("a section's state", () => {
 
     expect(view.refreshNeeded).toBe(true);
     expect(view.hasPublishedContent).toBe(false);
+  });
+
+  // Null rather than a filled-in default: a roadmap was never given a brief or
+  // a register, and saying so is what lets the screen not ask for one.
+  it("says a roadmap has no brief and no register, rather than inventing them", () => {
+    const view = SectionViewSchema.parse({
+      id,
+      kind: "roadmap",
+      name: "Roadmap",
+      instructions: null,
+      editorial: null,
+      currentMilestoneId: null,
+      sortOrder: 1,
+      refreshNeeded: false,
+      activeProposal: null,
+      hasPublishedContent: true,
+      version: 3,
+    });
+
+    expect(view.editorial).toBeNull();
+    expect(view.instructions).toBeNull();
+  });
+});
+
+describe("a roadmap's milestones", () => {
+  const milestone = {
+    id,
+    when: "Q3 2026",
+    title: "Recette",
+    description: null,
+    origin: "document",
+  };
+
+  // Documents say "Q3 2026", "après la phase pilote", "mi-octobre". A date type
+  // would either lose those or invent a precision they never gave.
+  it("keeps when as text, worded as the document worded it", () => {
+    expect(
+      MilestoneSchema.parse({ ...milestone, when: "après la phase pilote" })
+        .when,
+    ).toBe("après la phase pilote");
+  });
+
+  it("refuses a milestone with no title — a marker over nothing", () => {
+    expect(
+      MilestoneSchema.safeParse({ ...milestone, title: "  " }).success,
+    ).toBe(false);
+  });
+
+  // An id names a milestone being kept; its absence means a new one, which is
+  // why a new milestone can never collide with an existing id.
+  it("lets the developer send back a milestone that has no id yet", () => {
+    const parsed = ReplaceMilestonesRequestSchema.parse({
+      milestones: [
+        { id: null, when: "novembre", title: "Mise en ligne", description: null },
+      ],
+      expectedProposalVersion: 2,
+    });
+
+    expect(parsed.milestones[0].id).toBeNull();
+  });
+
+  it("refuses a set that names an origin the developer does not own", () => {
+    expect(
+      ReplaceMilestonesRequestSchema.safeParse({
+        milestones: [{ ...milestone, origin: "document" }],
+        expectedProposalVersion: 2,
+      }).success,
+    ).toBe(false);
+  });
+
+  // A plan with no position claimed is a real answer, and better than one
+  // defaulting to its first step.
+  it("accepts no position at all", () => {
+    expect(
+      SetCurrentMilestoneRequestSchema.parse({
+        milestoneId: null,
+        expectedVersion: 1,
+      }).milestoneId,
+    ).toBeNull();
   });
 });
 

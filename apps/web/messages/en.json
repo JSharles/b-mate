@@ -293,7 +293,9 @@
           "suggestion_audit_name": "Audit and scoping",
           "suggestion_audit_instructions": "What the existing system reveals: what works, what causes trouble, the risks found, and the recommendations that follow.",
           "startBlank": "Write my own title",
-          "backToSuggestions": "Back to the suggestions"
+          "backToSuggestions": "Back to the suggestions",
+          "startRoadmap": "A project timeline",
+          "roadmapName": "Roadmap"
         },
         "Review": {
           "loading": "Loading…",
@@ -317,7 +319,9 @@
           "updated": "Topic updated. Writing it again now…",
           "archived": "Topic deleted.",
           "composing": "Writing started.",
-          "approved": "Topic published."
+          "approved": "Topic published.",
+          "milestonesSaved": "Timeline saved.",
+          "positionMoved": "Position updated. Your client can already see it."
         },
         "loadError": "Could not load your topics. Reload the page — nothing was lost.",
         "Delete": {
@@ -331,7 +335,33 @@
         },
         "listTitle": "Your topics",
         "listDescription": "A topic is a part your client will read. You give it a title, say what it should cover and for which kind of client; Diaphane writes it.",
-        "recompose": "Write it again"
+        "recompose": "Write it again",
+        "Roadmap": {
+          "whenLabel": "When",
+          "whenPlaceholder": "Q3 2026, mid-October, after the pilot…",
+          "titleLabel": "Step",
+          "titlePlaceholder": "What happens",
+          "descriptionLabel": "Detail",
+          "descriptionPlaceholder": "What this step covers, in a sentence or two.",
+          "addStep": "Add a step",
+          "moveUp": "Move this step up",
+          "moveDown": "Move this step down",
+          "remove": "Remove this step",
+          "markPosition": "The project is here",
+          "clearPosition": "Stop claiming a position",
+          "save": "Save",
+          "saving": "Saving…",
+          "phase_framing": "Framing",
+          "phase_design": "Design",
+          "phase_build": "Build",
+          "phase_acceptance": "Acceptance",
+          "phase_launch": "Launch",
+          "phase_aftercare": "Aftercare",
+          "phase_contract": "Contract",
+          "phase_migration": "Data migration",
+          "phase_beta": "Beta",
+          "phase_training": "Training"
+        }
       },
       "Reference": {
         "title": "Reference document",

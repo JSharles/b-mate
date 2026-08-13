@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, GitCommitVertical } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import type { SectionEditorial, SectionView } from "schemas";
+import type { SectionEditorial, SectionKind, SectionView } from "schemas";
 import { Button } from "@/shared/components/ui/button";
 import {
   Dialog,
@@ -63,6 +63,7 @@ export function SectionEditorDialog({
   const update = useUpdateSection(projectId, section?.id ?? "");
   const mutation = section ? update : create;
 
+  const [kind, setKind] = useState<SectionKind>(section?.kind ?? "prose");
   const [name, setName] = useState(section?.name ?? "");
   const [instructions, setInstructions] = useState(section?.instructions ?? "");
   const [editorial, setEditorial] = useState<SectionEditorial>(
@@ -71,6 +72,7 @@ export function SectionEditorDialog({
   // A suggestion is only a way into the form. Once past it every field is
   // ordinary, and nothing remembers which one was picked.
   const [chosenStart, setChosenStart] = useState(Boolean(section));
+  const roadmap = kind === "roadmap";
 
   const error = mutation.error;
   const errorText =
@@ -82,13 +84,16 @@ export function SectionEditorDialog({
           ? error.message
           : tToasts("genericError");
 
-  const canSubmit = Boolean(name.trim() && instructions.trim());
+  // A roadmap has neither a brief nor a register: its brief is fixed, and a
+  // milestone date has no tone. So there is nothing left to ask for but a name.
+  const canSubmit = Boolean(name.trim()) && (roadmap || Boolean(instructions.trim()));
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
+          setKind(section?.kind ?? "prose");
           setName(section?.name ?? "");
           setInstructions(section?.instructions ?? "");
           setEditorial(section?.editorial ?? DEFAULT_EDITORIAL);
@@ -127,15 +132,28 @@ export function SectionEditorDialog({
                 </span>
               </button>
             ))}
-            {/* Not a fifth suggestion: it is the other way in. Separated so the
-                choice reads as "one of these, or your own words". */}
-            <div className="mt-2 border-t border-border pt-3">
+            {/* A roadmap is not a fifth suggestion — it is a different kind of
+                rubrique, so it sits below the line with the blank start rather
+                than among texts it has nothing in common with. */}
+            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border pt-3">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setChosenStart(true)}
               >
                 {t("startBlank")}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setKind("roadmap");
+                  setName(t("roadmapName"));
+                  setChosenStart(true);
+                }}
+              >
+                <GitCommitVertical />
+                {t("startRoadmap")}
               </Button>
             </div>
           </div>
@@ -144,14 +162,23 @@ export function SectionEditorDialog({
             className="flex flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
-              const body = {
-                name: name.trim(),
-                instructions: instructions.trim(),
-                editorial,
-              };
+              const body = roadmap
+                ? { kind: "roadmap" as const, name: name.trim() }
+                : {
+                    kind: "prose" as const,
+                    name: name.trim(),
+                    instructions: instructions.trim(),
+                    editorial,
+                  };
               if (section) {
                 update.mutate(
-                  { ...body, expectedVersion: section.version },
+                  {
+                    name: name.trim(),
+                    ...(roadmap
+                      ? {}
+                      : { instructions: instructions.trim(), editorial }),
+                    expectedVersion: section.version,
+                  },
                   { onSuccess: () => onOpenChange(false) },
                 );
               } else {
@@ -171,6 +198,7 @@ export function SectionEditorDialog({
                 size="sm"
                 className="-ml-2 w-fit text-muted-foreground"
                 onClick={() => {
+                  setKind("prose");
                   setName("");
                   setInstructions("");
                   setChosenStart(false);
@@ -195,6 +223,7 @@ export function SectionEditorDialog({
               </p>
             </div>
 
+            {!roadmap && (
             <div className="flex flex-col gap-2">
               <Label htmlFor="section-instructions">
                 {t("instructionsLabel")}
@@ -211,7 +240,9 @@ export function SectionEditorDialog({
                 {t("instructionsHint")}
               </p>
             </div>
+            )}
 
+            {!roadmap && (
             <div className="grid gap-3 sm:grid-cols-2">
               {DIMENSIONS.map(({ field, options }) => (
                 <div key={field} className="flex flex-col gap-2">
@@ -236,6 +267,7 @@ export function SectionEditorDialog({
                 </div>
               ))}
             </div>
+            )}
 
             {/* FR-020 made visible: revising what a section covers marks it for
                 refresh rather than recomposing behind the contributor's back. */}

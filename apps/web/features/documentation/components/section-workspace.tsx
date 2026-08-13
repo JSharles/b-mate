@@ -174,9 +174,13 @@ export function SectionWorkspace({ projectId }: { projectId: string }) {
                           {t(`state_${state}`)}
                         </span>
                       </div>
-                      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                        {section.instructions}
-                      </p>
+                      {/* A roadmap has no brief. There is nothing to show in
+                          its place — the timeline below says what it is. */}
+                      {section.instructions && (
+                        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                          {section.instructions}
+                        </p>
+                      )}
                     </div>
                     {/* These two act on what was asked for, so they sit with
                         it — the button that rewrites the text sits with the

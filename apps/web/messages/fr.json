@@ -293,7 +293,9 @@
           "suggestion_audit_name": "Audit et cadrage",
           "suggestion_audit_instructions": "Ce que l’existant révèle : ce qui fonctionne, ce qui pose problème, les risques identifiés, et les recommandations qui en découlent.",
           "startBlank": "Écrire mon propre titre",
-          "backToSuggestions": "Revenir aux propositions"
+          "backToSuggestions": "Revenir aux propositions",
+          "startRoadmap": "Une frise du projet",
+          "roadmapName": "Roadmap"
         },
         "Review": {
           "loading": "Chargement…",
@@ -317,7 +319,9 @@
           "updated": "Rubrique mise à jour. Réécriture en cours…",
           "archived": "Rubrique supprimée.",
           "composing": "Rédaction lancée.",
-          "approved": "Rubrique publiée."
+          "approved": "Rubrique publiée.",
+          "milestonesSaved": "Frise enregistrée.",
+          "positionMoved": "Position mise à jour. Votre client la voit déjà."
         },
         "loadError": "Impossible de charger vos rubriques. Rechargez la page — rien n’a été perdu.",
         "Delete": {
@@ -331,7 +335,33 @@
         },
         "listTitle": "Vos rubriques",
         "listDescription": "Une rubrique est une partie que votre client lira. Vous lui donnez un titre, vous dites ce qu’elle doit couvrir et pour quel niveau de client ; Diaphane la rédige.",
-        "recompose": "Rédiger à nouveau"
+        "recompose": "Rédiger à nouveau",
+        "Roadmap": {
+          "whenLabel": "Quand",
+          "whenPlaceholder": "Q3 2026, mi-octobre, après la phase pilote…",
+          "titleLabel": "Étape",
+          "titlePlaceholder": "Ce qui se passe",
+          "descriptionLabel": "Détail",
+          "descriptionPlaceholder": "Ce que cette étape couvre, en une phrase ou deux.",
+          "addStep": "Ajouter une étape",
+          "moveUp": "Remonter cette étape",
+          "moveDown": "Descendre cette étape",
+          "remove": "Retirer cette étape",
+          "markPosition": "Le projet en est là",
+          "clearPosition": "Ne plus indiquer de position",
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "phase_framing": "Cadrage",
+          "phase_design": "Conception",
+          "phase_build": "Développement",
+          "phase_acceptance": "Recette",
+          "phase_launch": "Mise en ligne",
+          "phase_aftercare": "Suivi",
+          "phase_contract": "Contractualisation",
+          "phase_migration": "Reprise de données",
+          "phase_beta": "Bêta",
+          "phase_training": "Formation"
+        }
       },
       "Reference": {
         "title": "Document de référence",

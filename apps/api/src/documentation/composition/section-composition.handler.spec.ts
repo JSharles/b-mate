@@ -29,6 +29,7 @@ const structuredContent = [
 
 const section = {
   id: sectionId,
+  kind: 'prose' as const,
   name: 'What the client asked for',
   instructions: 'Everything about the request and the constraints we found.',
   archivedAt: null,
@@ -41,6 +42,7 @@ function fingerprint(overrides: Record<string, unknown> = {}) {
   return compositionFingerprint({
     locale,
     sectionId,
+    sectionKind: section.kind,
     sectionName: section.name,
     instructions: section.instructions,
     referenceDocumentId: referenceId,
@@ -285,5 +287,87 @@ describe('SectionCompositionHandler', () => {
     handler.onModuleInit();
 
     expect(registry.get('section_composition')).toBe(handler);
+  });
+
+  // A roadmap runs on the same slot, lease and terminal-failure release; only
+  // what it asks for and what comes back differ.
+  describe('a roadmap section', () => {
+    const roadmapSection = {
+      ...section,
+      kind: 'roadmap' as const,
+      instructions: null,
+    };
+
+    function composingRoadmap() {
+      return {
+        id: proposalId,
+        sectionId,
+        referenceDocumentId: referenceId,
+        locale,
+        status: 'composing',
+        section: roadmapSection,
+        referenceDocument,
+      };
+    }
+
+    function roadmapOperation(): GenerationOperation {
+      return {
+        id: operationId,
+        inputFingerprint: fingerprint({
+          sectionKind: 'roadmap',
+          instructions: null,
+        }),
+      } as GenerationOperation;
+    }
+
+    it('asks for a timeline and never mentions a register', async () => {
+      const { prisma, handler } = setup();
+      prisma.sectionProposal.findUnique.mockResolvedValue(composingRoadmap());
+
+      const request = await handler.buildRequest(roadmapOperation());
+      const text = (request.parts[0] as { text: string }).text;
+
+      expect(request.outputContract).toBe('roadmap-composition-v1');
+      expect(text).toContain('timeline');
+      expect(text).toContain('The launch is planned for October.');
+      // The standard phases are offered to the developer, never handed to the
+      // model as an arc to fill.
+      expect(text).not.toContain('Recette');
+    });
+
+    // Ids have to survive the developer's edits and the derivation that
+    // follows, and a model copying a uuid back is the failure 45a13ac removed.
+    it('mints an id for every milestone rather than asking for one', async () => {
+      const { prisma, handler } = setup();
+      prisma.sectionProposal.findUnique.mockResolvedValue(composingRoadmap());
+      prisma.sectionProposal.update.mockResolvedValue({});
+      prisma.clientSection.update.mockResolvedValue({});
+
+      await handler.apply(asPrismaService(prisma), operation(), {
+        output: {
+          promptVersion: 'roadmap-composition-v1',
+          outcome: 'composed',
+          milestones: [
+            { when: 'Q3 2026', title: 'Recette', description: null },
+            {
+              when: 'après la recette',
+              title: 'Mise en ligne',
+              description: 'Go live.',
+            },
+          ],
+          changeSummary: 'First roadmap.',
+        },
+      });
+
+      const written = prisma.sectionProposal.update.mock.calls[0][0] as {
+        data: {
+          structuredContent: { id: string; origin: string; when: string }[];
+        };
+      };
+      expect(written.data.structuredContent).toHaveLength(2);
+      expect(written.data.structuredContent[0].id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(written.data.structuredContent[0].origin).toBe('document');
+      expect(written.data.structuredContent[1].when).toBe('après la recette');
+    });
   });
 });

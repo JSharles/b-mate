@@ -16,7 +16,9 @@ const update = { mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: fal
 const section: SectionView = {
   id: "00000000-0000-4000-8000-000000000001",
   name: "Ce que le client a demandé",
+  kind: "prose" as const,
   instructions: "La demande initiale et ses contraintes.",
+  currentMilestoneId: null,
   editorial: {
     length: "concise",
     pedagogy: "direct",
@@ -200,6 +202,78 @@ describe("SectionEditorDialog", () => {
         expect.objectContaining({ expectedVersion: 3 }),
         expect.anything(),
       );
+    });
+  });
+
+  // Choosing a roadmap removes controls rather than adding them: its brief is
+  // fixed and a milestone date has no tone, so nothing is left to ask for.
+  describe("a roadmap", () => {
+    it("collapses the form to a name", async () => {
+      const user = userEvent.setup();
+      render(
+        <SectionEditorDialog projectId="project-1" open onOpenChange={vi.fn()} />,
+      );
+
+      await user.click(screen.getByRole("button", { name: /startRoadmap/ }));
+
+      expect(screen.getByLabelText("nameLabel")).toHaveValue("roadmapName");
+      expect(screen.queryByLabelText("instructionsLabel")).toBeNull();
+      expect(screen.queryByLabelText("toneLabel")).toBeNull();
+    });
+
+    it("creates one carrying nothing but its name", async () => {
+      const user = userEvent.setup();
+      render(
+        <SectionEditorDialog projectId="project-1" open onOpenChange={vi.fn()} />,
+      );
+
+      await user.click(screen.getByRole("button", { name: /startRoadmap/ }));
+      await user.click(screen.getByRole("button", { name: "create" }));
+
+      expect(create.mutate).toHaveBeenCalledWith(
+        { kind: "roadmap", name: "roadmapName" },
+        expect.anything(),
+      );
+    });
+
+    it("accepts a rename and sends nothing else", async () => {
+      const user = userEvent.setup();
+      render(
+        <SectionEditorDialog
+          projectId="project-1"
+          section={{
+            ...section,
+            kind: "roadmap",
+            instructions: null,
+            editorial: null,
+          }}
+          open
+          onOpenChange={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByLabelText("instructionsLabel")).toBeNull();
+      await user.clear(screen.getByLabelText("nameLabel"));
+      await user.type(screen.getByLabelText("nameLabel"), "Étapes");
+      await user.click(screen.getByRole("button", { name: "save" }));
+
+      expect(update.mutate).toHaveBeenCalledWith(
+        { name: "Étapes", expectedVersion: 3 },
+        expect.anything(),
+      );
+    });
+
+    it("goes back to prose when the developer changes their mind", async () => {
+      const user = userEvent.setup();
+      render(
+        <SectionEditorDialog projectId="project-1" open onOpenChange={vi.fn()} />,
+      );
+
+      await user.click(screen.getByRole("button", { name: /startRoadmap/ }));
+      await user.click(screen.getByRole("button", { name: /backToSuggestions/ }));
+      await user.click(screen.getByRole("button", { name: /startBlank/ }));
+
+      expect(screen.getByLabelText("instructionsLabel")).toBeVisible();
     });
   });
 });

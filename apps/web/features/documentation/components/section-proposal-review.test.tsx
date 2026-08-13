@@ -13,6 +13,9 @@ vi.mock("../hooks", () => ({
   usePublicClientSections: vi.fn(),
   useSectionProposal: vi.fn(),
   useApproveSectionProposal: vi.fn(),
+  // Reached through the roadmap editor this component renders for a roadmap.
+  useReplaceMilestones: () => ({ mutate: vi.fn(), isPending: false }),
+  useSetCurrentMilestone: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 const approve = {
@@ -25,7 +28,9 @@ const approve = {
 const section: SectionView = {
   id: "00000000-0000-4000-8000-000000000001",
   name: "Ce que le client a demandé",
+  kind: "prose" as const,
   instructions: "La demande initiale et ses contraintes.",
+  currentMilestoneId: null,
   editorial: {
     length: "balanced",
     pedagogy: "guided",
@@ -240,5 +245,92 @@ describe("SectionProposalReview", () => {
     expect(
       screen.getByText("Le lancement est prévu en octobre.").closest("[aria-live]"),
     ).toHaveAttribute("aria-live", "polite");
+  });
+});
+
+// A roadmap has no separate review: what the developer edits is the timeline
+// itself, and there is no "nothing matched" dead end because the phases every
+// project runs through are already on the rail.
+describe("SectionProposalReview, on a roadmap", () => {
+  const roadmap: SectionView = {
+    ...section,
+    kind: "roadmap",
+    instructions: null,
+    editorial: null,
+  };
+  const milestone = {
+    id: "00000000-0000-4000-8000-00000000000a",
+    when: "Q3 2026",
+    title: "Recette",
+    description: null,
+    origin: "document" as const,
+  };
+
+  it("shows the timeline it is offering rather than paragraphs", () => {
+    withPublished(undefined);
+    withProposal({
+      status: "pending_review",
+      outcome: "composed",
+      version: 2,
+      blocks: [],
+      milestones: [milestone],
+    });
+
+    render(<SectionProposalReview projectId="project-1" section={roadmap} />);
+
+    expect(screen.getByDisplayValue("Recette")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "approve" })).toBeVisible();
+  });
+
+  // FR-009: a roadmap the documents said nothing about is a starting point, not
+  // a dead end.
+  it("offers the phases when the documents held no sequence at all", () => {
+    withPublished(undefined);
+    withProposal({
+      status: "pending_review",
+      outcome: "nothing_matched",
+      version: 2,
+      blocks: [],
+      milestones: [],
+    });
+
+    render(<SectionProposalReview projectId="project-1" section={roadmap} />);
+
+    expect(
+      screen.getByRole("button", { name: "phase_framing" }),
+    ).toBeInTheDocument();
+  });
+
+  // Nothing is waiting on the developer, so the rubrique shows the one timeline
+  // that still matters: the one their client is reading.
+  it("falls back to the published timeline once nothing is pending", () => {
+    withPublished({
+      kind: "roadmap",
+      id: roadmap.id,
+      name: roadmap.name,
+      milestones: [{ ...milestone, origin: undefined }],
+      currentMilestoneId: null,
+    });
+    withProposal({
+      status: "approved",
+      outcome: "composed",
+      version: 3,
+      blocks: [],
+      milestones: [milestone],
+    });
+
+    render(<SectionProposalReview projectId="project-1" section={roadmap} />);
+
+    expect(screen.getByText("Recette")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "approve" })).toBeNull();
+  });
+
+  it("says so when nothing has been written and nothing is published", () => {
+    withPublished(undefined);
+    withProposal(null);
+
+    render(<SectionProposalReview projectId="project-1" section={roadmap} />);
+
+    expect(screen.getByText("neverComposed")).toBeInTheDocument();
   });
 });

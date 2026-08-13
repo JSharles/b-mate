@@ -73,15 +73,28 @@ export class ClientSectionService {
       select: { sortOrder: true },
     });
 
+    // A roadmap has no brief and no register: its brief is fixed, and a
+    // milestone date has no tone. Refused rather than ignored — a body carrying
+    // both says one of the two sides has the wrong idea of what it is creating.
+    const kind = input.kind ?? 'prose';
+    if (kind === 'roadmap' && (input.instructions || input.editorial)) {
+      throw new BadRequestException({ code: 'SECTION_ROADMAP_HAS_NO_BRIEF' });
+    }
+
     const created = await this.prisma.clientSection.create({
       data: {
         projectId,
+        kind,
         name: input.name.trim(),
-        instructions: input.instructions.trim(),
-        length: input.editorial.length,
-        pedagogy: input.editorial.pedagogy,
-        technicalFamiliarity: input.editorial.technicalFamiliarity,
-        tone: input.editorial.tone,
+        ...(kind === 'roadmap'
+          ? {}
+          : {
+              instructions: input.instructions.trim(),
+              length: input.editorial.length,
+              pedagogy: input.editorial.pedagogy,
+              technicalFamiliarity: input.editorial.technicalFamiliarity,
+              tone: input.editorial.tone,
+            }),
         // Archived sections keep their slot, so a new section never lands on a
         // number an archived one still holds.
         sortOrder: (last?.sortOrder ?? -1) + 1,
@@ -105,7 +118,7 @@ export class ClientSectionService {
     locale: string | null = null,
   ) {
     await this.access.requireContributor(userId, projectId);
-    await this.requireSection(projectId, sectionId);
+    const existing = await this.requireSection(projectId, sectionId);
 
     const changesDefinition =
       input.name !== undefined ||
@@ -113,6 +126,14 @@ export class ClientSectionService {
       input.editorial !== undefined;
     if (!changesDefinition) {
       throw new BadRequestException({ code: 'SECTION_UPDATE_EMPTY' });
+    }
+    // A roadmap accepts a rename and nothing else. There is no brief to revise
+    // and no register to strike.
+    if (
+      existing.kind === 'roadmap' &&
+      (input.instructions !== undefined || input.editorial !== undefined)
+    ) {
+      throw new BadRequestException({ code: 'SECTION_ROADMAP_HAS_NO_BRIEF' });
     }
 
     // Revising what a section covers is the same act as defining it, so it is
@@ -244,10 +265,71 @@ export class ClientSectionService {
     return this.list(userId, projectId);
   }
 
+  // Moving where the project stands is not a revision: nothing is recomposed,
+  // nothing is approved, and the client sees it at once. It is the one thing the
+  // developer changes weekly without a document changing.
+  async setCurrentMilestone(
+    userId: string,
+    projectId: string,
+    sectionId: string,
+    input: { milestoneId?: string | null; expectedVersion: number },
+  ) {
+    await this.access.requireContributor(userId, projectId);
+    const section = await this.requireSection(projectId, sectionId);
+    if (section.kind !== 'roadmap') {
+      throw new BadRequestException({ code: 'SECTION_NOT_ROADMAP' });
+    }
+
+    const milestoneId = input.milestoneId ?? null;
+    if (milestoneId !== null) {
+      // The id has to name a milestone the client can actually see, or the
+      // timeline would claim a position that renders nowhere.
+      const published = await this.prisma.clientSectionContent.findFirst({
+        where: { sectionId, projectId },
+        orderBy: { createdAt: 'desc' },
+        select: { structuredContent: true },
+      });
+      const pending = await this.prisma.sectionProposal.findFirst({
+        where: { sectionId, status: { in: ['pending_review', 'approved'] } },
+        orderBy: { createdAt: 'desc' },
+        select: { structuredContent: true },
+      });
+      const known = new Set(
+        [published?.structuredContent, pending?.structuredContent].flatMap(
+          (content) =>
+            ((content ?? []) as { id?: string }[])
+              .map((milestone) => milestone.id)
+              .filter((id): id is string => typeof id === 'string'),
+        ),
+      );
+      if (!known.has(milestoneId)) {
+        throw new BadRequestException({ code: 'MILESTONE_UNKNOWN' });
+      }
+    }
+
+    const { count } = await this.prisma.clientSection.updateMany({
+      where: {
+        id: sectionId,
+        projectId,
+        archivedAt: null,
+        version: input.expectedVersion,
+      },
+      data: { currentMilestoneId: milestoneId, version: { increment: 1 } },
+    });
+    if (count === 0) throw new ConflictException({ code: 'SECTION_STALE' });
+
+    const row = await this.prisma.clientSection.findUnique({
+      where: { id: sectionId },
+      include: SECTION_INCLUDE,
+    });
+    if (!row) throw new NotFoundException({ code: 'NOT_FOUND' });
+    return this.toView(row);
+  }
+
   private async requireSection(projectId: string, sectionId: string) {
     const row = await this.prisma.clientSection.findFirst({
       where: { id: sectionId, projectId, archivedAt: null },
-      select: { id: true },
+      select: { id: true, kind: true },
     });
     // Principle V: a section in someone else's project is indistinguishable
     // from one that does not exist.
@@ -267,16 +349,25 @@ export class ClientSectionService {
   }
 
   private toView(row: SectionRow) {
+    // Null rather than a filled-in default: a roadmap was never given a brief or
+    // a register, and saying so is what lets the screen not ask for one.
+    const editorial =
+      row.length && row.pedagogy && row.technicalFamiliarity && row.tone
+        ? {
+            length: row.length,
+            pedagogy: row.pedagogy,
+            technicalFamiliarity: row.technicalFamiliarity,
+            tone: row.tone,
+          }
+        : null;
+
     return {
       id: row.id,
+      kind: row.kind,
       name: row.name,
       instructions: row.instructions,
-      editorial: {
-        length: row.length,
-        pedagogy: row.pedagogy,
-        technicalFamiliarity: row.technicalFamiliarity,
-        tone: row.tone,
-      },
+      editorial,
+      currentMilestoneId: row.currentMilestoneId,
       sortOrder: row.sortOrder,
       refreshNeeded: row.refreshNeeded,
       // Relevance corrections arrive in US2; until then no section has any.

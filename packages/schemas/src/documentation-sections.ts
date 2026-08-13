@@ -43,6 +43,55 @@ export const SectionEditorialSchema = z
   })
   .strict();
 
+// A section is prose or a roadmap, decided once at creation (FR-001). The kind
+// is not an editorial setting: it decides what the model is asked for and what
+// the client receives, which is why it cannot change under a published section.
+export const SectionKindSchema = z.enum(["prose", "roadmap"]);
+
+// A milestone carries when, what, and optionally why it matters.
+//
+// "When" is text, never a date. Documents say "Q3 2026", "après la phase
+// pilote", "mi-octobre". A date type would either lose those or invent a
+// precision the documents never gave, and order is carried by the list anyway.
+export const MilestoneSchema = z
+  .object({
+    id: DocumentationUuidSchema,
+    when: z.string().trim().min(1).max(120),
+    title: z.string().trim().min(1).max(200),
+    description: z.string().trim().min(1).max(2_000).nullable(),
+    // Whether it was read from the reference document or added by hand. The
+    // developer sees the difference — trusting a roadmap means knowing what
+    // came from where — and the client does not, because by then both are the
+    // developer's word.
+    origin: z.enum(["document", "developer"]),
+  })
+  .strict();
+
+// What the developer sends back after editing: ids only for milestones they
+// kept, so a new one is unambiguous and cannot collide with an existing id.
+export const MilestoneDraftSchema = MilestoneSchema.omit({
+  id: true,
+  origin: true,
+}).extend({ id: DocumentationUuidSchema.nullable() });
+
+// The whole ordered set travels, so the result is never a function of what the
+// server already held — the same reason reordering carries every id.
+export const ReplaceMilestonesRequestSchema = z
+  .object({
+    milestones: z.array(MilestoneDraftSchema),
+    expectedProposalVersion: z.number().int().positive(),
+  })
+  .strict();
+
+// Where the project stands. Null is a real answer: a plan with no position
+// claimed reads better than one defaulting to its first step.
+export const SetCurrentMilestoneRequestSchema = z
+  .object({
+    milestoneId: DocumentationUuidSchema.nullable(),
+    expectedVersion: z.number().int().positive(),
+  })
+  .strict();
+
 // The blocks composition produces. A section is a view of the reference
 // document, so its blocks are shaped like the document's: prose, and what the
 // document leaves open kept as its own kind.
@@ -80,18 +129,26 @@ export const SectionProposalSummarySchema = z
   })
   .strict();
 
+// A proposal carries prose blocks or milestones, never both: the section's kind
+// decides which, and it cannot change once the section exists.
 export const SectionProposalDetailSchema = SectionProposalSummarySchema.extend({
   outcome: SectionProposalOutcomeSchema.nullable(),
   blocks: z.array(SectionContentBlockSchema),
+  milestones: z.array(MilestoneSchema),
   failureCode: z.string().trim().min(1).max(128).nullable(),
 }).strict();
 
+// A roadmap has neither a brief nor a register: its brief is fixed, and a
+// milestone date has no tone. So the fields are absent rather than filled with
+// something nobody chose.
 export const SectionViewSchema = z
   .object({
     id: DocumentationUuidSchema,
+    kind: SectionKindSchema,
     name: SectionNameSchema,
-    instructions: SectionInstructionsSchema,
-    editorial: SectionEditorialSchema,
+    instructions: SectionInstructionsSchema.nullable(),
+    editorial: SectionEditorialSchema.nullable(),
+    currentMilestoneId: DocumentationUuidSchema.nullable(),
     sortOrder: z.number().int().nonnegative(),
     refreshNeeded: z.boolean(),
     activeProposal: SectionProposalSummarySchema.nullable(),
@@ -100,13 +157,19 @@ export const SectionViewSchema = z
   })
   .strict();
 
-export const CreateSectionRequestSchema = z
-  .object({
-    name: SectionNameSchema,
-    instructions: SectionInstructionsSchema,
-    editorial: SectionEditorialSchema,
-  })
-  .strict();
+// Choosing a roadmap does not add controls, it removes them: the request
+// collapses to a name.
+export const CreateSectionRequestSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("prose"),
+      name: SectionNameSchema,
+      instructions: SectionInstructionsSchema,
+      editorial: SectionEditorialSchema,
+    })
+    .strict(),
+  z.object({ kind: z.literal("roadmap"), name: SectionNameSchema }).strict(),
+]);
 
 // Every field optional so a rename, a retone and an instruction revision are the
 // same call; `expectedVersion` is what makes a concurrent edit a 409 rather than
@@ -152,11 +215,25 @@ export const PublicSectionSchema = z
   })
   .strict();
 
+export const PublicMilestoneSchema = MilestoneSchema.omit({
+  origin: true,
+}).strict();
+
 export const PublicSectionsViewSchema = z
   .object({ sections: z.array(PublicSectionSchema) })
   .strict();
 
 export type SectionEditorial = z.infer<typeof SectionEditorialSchema>;
+export type SectionKind = z.infer<typeof SectionKindSchema>;
+export type Milestone = z.infer<typeof MilestoneSchema>;
+export type MilestoneDraft = z.infer<typeof MilestoneDraftSchema>;
+export type PublicMilestone = z.infer<typeof PublicMilestoneSchema>;
+export type ReplaceMilestonesRequest = z.infer<
+  typeof ReplaceMilestonesRequestSchema
+>;
+export type SetCurrentMilestoneRequest = z.infer<
+  typeof SetCurrentMilestoneRequestSchema
+>;
 export type SectionContentBlock = z.infer<typeof SectionContentBlockSchema>;
 export type SectionProposalStatus = z.infer<typeof SectionProposalStatusSchema>;
 export type SectionProposalSummary = z.infer<
