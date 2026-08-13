@@ -150,6 +150,7 @@ The developer works in French. Every question the system asks them is in French.
 ### Language
 
 - **FR-022**: Points to clarify MUST be written in the language the developer is using the product in.
+- **FR-022a**: The reference document MUST be written in that same language. It is written for the developer, so leaving it in English would reproduce exactly the complaint that put FR-022 here.
 - **FR-023**: The developer MUST NOT have to set that language.
 - **FR-024**: It MUST be resolvable when the system works in the background.
 - **FR-025**: An unknown language MUST fall back to English.
@@ -176,6 +177,7 @@ The developer works in French. Every question the system asks them is in French.
 ## Out of Scope
 
 - Any change to the sections a client reads.
-- Translating the reference document. It is written in one language; only the questions follow the developer's.
+- Translating the reference document after the fact. It is written in the developer's language from the start (FR-022a); it is never produced in one language and translated into another.
+- Translating the canonical statements themselves. They stay English, as they have been since 2026-08-12 — they are the internal record, not something a person reads end to end.
 - Validating the document sentence by sentence. The developer corrects what is wrong and answers what is open; they do not approve it line by line.
 - Judging a document's quality, or refusing a badly written one. The only judgement here is whether it concerns this project.

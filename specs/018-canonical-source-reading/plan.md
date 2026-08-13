@@ -87,9 +87,9 @@ No new route, no PDF library. The reference document screen carries print rules 
 
 ## Implementation Sequence
 
-**Slice 1 — the document exists.** `ReferenceDocument`, the `reference_document` stage, its screen, and the working page reshaped around a summary. This alone answers the complaint that started the feature.
+**Slice 1 — the document exists.** `ReferenceDocument`, the `reference_document` stage, its screen, and the working page reshaped around a summary. The developer's locale is carried here rather than in slice 2, because the document is written for them and must be in their language (FR-022a). This alone answers the complaint that started the feature.
 
-**Slice 2 — the questions.** The clarification carousel, and the locale carried from the interface to the prompt.
+**Slice 2 — the questions.** The clarification carousel, and the same locale reaching the consolidation prompt.
 
 **Slice 3 — the guard.** `document_relevance`, the `awaiting_relevance` status, and the answering path.
 
