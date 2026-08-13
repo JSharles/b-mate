@@ -108,4 +108,19 @@ describe("ClientMainTabs", () => {
     expect(screen.queryAllByRole("tab")).toHaveLength(2);
     expect(screen.queryByRole("tab", { name: "Planning" })).not.toBeInTheDocument();
   });
+
+  // The developer names these tabs and there is one per published rubrique: a
+  // row that cannot wrap pushed five long titles out of the container.
+  it("lets the row of rubriques wrap rather than overflow", () => {
+    vi.mocked(usePublicClientSections).mockReturnValue({
+      data: [
+        { id: "s1", name: "Le projet", blocks: [] },
+        { id: "s2", name: "Planning et jalons", blocks: [] },
+      ],
+    } as never);
+
+    render(<ClientMainTabs projectId="project-1" />);
+
+    expect(screen.getByRole("tablist").className).toContain("flex-wrap");
+  });
 });

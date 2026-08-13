@@ -34,7 +34,10 @@ export function ClientMainTabs({
       className={cn("min-h-0", className)}
       aria-label={t("tabsLabel")}
     >
-      <TabsList className="w-fit shrink-0">
+      {/* The client gets one tab per published rubrique, and the developer
+          names them: a fixed row could not hold five long titles and pushed
+          them out of the container instead of onto a second line. */}
+      <TabsList className="h-auto w-fit shrink-0 flex-wrap justify-start">
         <TabsTrigger value={CURRENT_TASK_TAB_KEY}>{currentTaskLabel}</TabsTrigger>
         {(sections ?? []).map((section) => (
           <TabsTrigger key={section.id} value={section.id}>
@@ -42,14 +45,14 @@ export function ClientMainTabs({
           </TabsTrigger>
         ))}
       </TabsList>
-      <TabsContent value={CURRENT_TASK_TAB_KEY} className="min-h-0">
+      <TabsContent value={CURRENT_TASK_TAB_KEY} className="mt-6 min-h-0">
         <CurrentTaskCard projectId={projectId} />
       </TabsContent>
       {(sections ?? []).map((section) => (
         <TabsContent
           key={section.id}
           value={section.id}
-          className="min-h-0 overflow-y-auto"
+          className="mt-6 min-h-0 overflow-y-auto"
         >
           <ClientSectionView section={section} />
         </TabsContent>
