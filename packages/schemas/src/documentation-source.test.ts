@@ -1,155 +1,83 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
-  CanonicalSourcePageSchema,
+  CreateNotionSourceDocumentRequestSchema,
   DocumentAcknowledgementSchema,
-  ItemProvenanceSchema,
   SourceDocumentDetailSchema,
+  SourceDocumentPageSchema,
   SourceDocumentSchema,
-  SourceLocatorSchema,
-  SourceRevisionChangeSchema,
-  SourceRevisionSummarySchema,
-} from './documentation-source';
+  SourceDocumentStatusSchema,
+} from "./documentation-source";
 
-const UUID = '00000000-0000-4000-8000-000000000001';
-const UUID_2 = '00000000-0000-4000-8000-000000000002';
+const UUID = "00000000-0000-4000-8000-000000000001";
 
-describe('documentation source contracts', () => {
-  it('validates document lifecycle, detail, and durable acknowledgement', () => {
-    const document = SourceDocumentSchema.parse({
-      id: UUID,
-      kind: 'upload',
-      status: 'extracting',
-      version: 1,
-      title: 'Cadrage',
-      failureCode: null,
-      incorporatedInRevisionId: null,
-      // The run in progress, which a restart resets — not the document's age.
-      processingStartedAt: '2026-08-11T14:30:00.000Z',
-      createdAt: '2026-08-11T12:00:00.000Z',
-    });
+const document = {
+  id: UUID,
+  kind: "upload" as const,
+  status: "incorporated" as const,
+  version: 1,
+  title: "Cahier des charges",
+  failureCode: null,
+  createdAt: new Date().toISOString(),
+};
+
+describe("documentation source contracts", () => {
+  it("validates a document and its detail", () => {
+    expect(SourceDocumentSchema.parse(document).status).toBe("incorporated");
     expect(
       SourceDocumentDetailSchema.parse({
         ...document,
-        originalFileName: 'cadrage.pdf',
-        originalMimeType: 'application/pdf',
+        originalFileName: "cdc.pdf",
+        originalMimeType: "application/pdf",
         originalSizeBytes: 1024,
-        originalDownloadUrl: 'https://example.test/original',
+        originalDownloadUrl: "https://signed.example/cdc.pdf",
         externalUrl: null,
-      }),
-    ).toBeDefined();
+      }).originalFileName,
+    ).toBe("cdc.pdf");
+  });
+
+  // A document is stored, read once, and in. There is no pipeline behind it any
+  // more, so the states it used to pass through are not states it can be in.
+  it("knows only the four states a document can be in", () => {
+    expect(SourceDocumentStatusSchema.options).toEqual([
+      "received",
+      "incorporated",
+      "failed",
+      "removed",
+    ]);
+    expect(SourceDocumentStatusSchema.safeParse("extracting").success).toBe(
+      false,
+    );
+  });
+
+  // Adding a document no longer starts anything, so nothing is acknowledged
+  // beyond the document itself.
+  it("acknowledges the document and nothing else", () => {
     expect(
-      DocumentAcknowledgementSchema.parse({
+      DocumentAcknowledgementSchema.parse({ document }).document.id,
+    ).toBe(UUID);
+    expect(
+      DocumentAcknowledgementSchema.safeParse({
         document,
-        operation: { operationId: UUID_2, status: 'queued' },
-      }),
-    ).toBeDefined();
-  });
-
-  it.each([
-    { type: 'pdf_page', page: 2, excerpt: 'Date de lancement' },
-    { type: 'docx_heading', heading: 'Planning', paragraph: 1 },
-    { type: 'image_region', x: 80, y: 120, width: 880, height: 160 },
-    { type: 'notion_block', blockId: 'block-1', position: 2 },
-  ])('validates attributable locator $type', (locator) => {
-    expect(SourceLocatorSchema.parse(locator)).toEqual(locator);
-  });
-
-  it('rejects malformed locator coordinates and unknown locator variants', () => {
-    expect(
-      SourceLocatorSchema.safeParse({
-        type: 'pdf_page',
-        page: 0,
-        excerpt: 'invalid',
+        operation: { operationId: UUID, status: "queued" },
       }).success,
     ).toBe(false);
-    expect(
-      SourceLocatorSchema.safeParse({ type: 'url', href: 'https://x.test' })
-        .success,
-    ).toBe(false);
   });
 
-  it('validates revision headers, changes, canonical items, and cursor pages', () => {
-    const revision = SourceRevisionSummarySchema.parse({
-      id: UUID,
-      sequence: 2,
-      trigger: 'document_added',
-      summary: 'Document incorporated: Cadrage',
-      // The server keeps an English summary for support; the interface writes
-      // the sentence a contributor reads from the trigger and this title.
-      triggerDocumentTitle: 'Cadrage',
-      createdAt: '2026-08-11T12:00:00.000Z',
-    });
+  it("pages documents with an opaque cursor", () => {
     expect(
-      SourceRevisionChangeSchema.parse({
-        informationItemId: UUID_2,
-        kind: 'updated',
-        beforeRevisionItemId: UUID,
-        afterRevisionItemId: UUID_2,
-        explanation: 'La date explicite remplace la précédente.',
-      }),
-    ).toBeDefined();
-    expect(
-      CanonicalSourcePageSchema.parse({
-        revision,
-        items: [
-          {
-            id: UUID_2,
-            kind: 'date',
-            state: 'confirmed',
-            content: 'Le lancement est prévu le 15 octobre.',
-            provenanceCount: 1,
-            clarificationIds: [],
-          },
-        ],
+      SourceDocumentPageSchema.parse({
+        items: [document],
         total: 1,
         nextCursor: null,
-      }),
-    ).toBeDefined();
+      }).total,
+    ).toBe(1);
   });
 
-  it('validates provenance history without leaking storage keys', () => {
+  it("refuses a Notion page that is not a URL", () => {
     expect(
-      ItemProvenanceSchema.parse({
-        itemId: UUID,
-        revisionId: UUID_2,
-        origins: [
-          {
-            kind: 'document',
-            documentId: UUID,
-            label: 'Cadrage',
-            locator: { type: 'pdf_page', page: 1, excerpt: 'Budget' },
-            excerpt: 'Budget validé',
-            role: 'supports',
-          },
-        ],
-        history: [
-          {
-            revisionId: UUID_2,
-            revisionSequence: 2,
-            change: 'updated',
-            createdAt: '2026-08-11T12:00:00.000Z',
-          },
-        ],
-      }),
-    ).toBeDefined();
-    expect(
-      ItemProvenanceSchema.safeParse({
-        itemId: UUID,
-        revisionId: UUID_2,
-        origins: [
-          {
-            kind: 'document',
-            documentId: UUID,
-            label: 'Cadrage',
-            locator: null,
-            excerpt: null,
-            role: 'supports',
-            storedObjectKey: 'secret/path.pdf',
-          },
-        ],
-        history: [],
+      CreateNotionSourceDocumentRequestSchema.safeParse({
+        pageUrl: "notion.so/page",
       }).success,
     ).toBe(false);
   });
-
 });

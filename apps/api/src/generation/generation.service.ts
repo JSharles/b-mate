@@ -39,8 +39,6 @@ export interface CreateGenerationOperationInput {
   promptVersion: string;
   outputContractVersion: string;
   sourceDocumentId?: string;
-  baseSourceRevisionId?: string;
-  sourceRevisionId?: string;
   sectionProposalId?: string;
   clientReleaseId?: string;
   clientSectionContentId?: string;
@@ -481,8 +479,6 @@ export class GenerationService {
       promptVersion: previous.promptVersion,
       outputContractVersion: previous.outputContractVersion,
       sourceDocumentId: previous.sourceDocumentId ?? undefined,
-      baseSourceRevisionId: previous.baseSourceRevisionId ?? undefined,
-      sourceRevisionId: previous.sourceRevisionId ?? undefined,
       sectionProposalId: previous.sectionProposalId ?? undefined,
       clientReleaseId: previous.clientReleaseId ?? undefined,
       clientSectionContentId: previous.clientSectionContentId ?? undefined,

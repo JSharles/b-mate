@@ -7,13 +7,13 @@ import { GenerationWorkerService } from './generation-worker.service';
 const operation = {
   id: '00000000-0000-4000-8000-000000000001',
   projectId: '00000000-0000-4000-8000-000000000002',
-  type: 'document_extraction',
+  type: 'reference_document',
   status: 'running',
   currentRouteIndex: 0,
   currentAttemptId: null,
   policySnapshot: {
     version: 'test-v1',
-    stage: 'document_extraction',
+    stage: 'reference_document',
     crossProviderFallbackEnabled: false,
     routes: [
       {

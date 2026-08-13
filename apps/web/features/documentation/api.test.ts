@@ -2,9 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/shared/lib/api-client";
 import {
   addNotionDocument,
+  addNote,
   confirmDocumentRemoval,
-  correctSourceItem,
-  getCanonicalSource,
   getClientContentPreview,
   getDocument,
   getDocumentationWorkspace,
@@ -20,14 +19,10 @@ import {
   getReferenceSummary,
   getReferenceDocument,
   writeReferenceDocument,
-  getItemProvenance,
-  listClarifications,
+  listNotes,
+  removeNote,
   listDocuments,
-  listSourceRevisions,
   previewDocumentRemoval,
-  resolveClarifications,
-  retryDocumentRemoval,
-  retryDocumentProcessing,
   uploadDocument,
 } from "./api";
 
@@ -44,56 +39,65 @@ describe("documentation api", () => {
     mockedApiFetch.mockReset();
   });
 
-  it("uses cursor-safe document, detail, source and provenance routes", async () => {
+  it("uses cursor-safe document and detail routes", async () => {
     mockedApiFetch.mockResolvedValue({});
 
     await listDocuments("project-1", "cursor 1");
     await getDocument("project-1", "document-1");
-    await getCanonicalSource("project-1", {
-      revisionId: "revision-1",
-      cursor: "cursor 2",
-    });
-    await getItemProvenance("project-1", "item-1", "revision-1");
 
-    expect(mockedApiFetch).toHaveBeenNthCalledWith(
-      1,
+    expect(mockedApiFetch).toHaveBeenCalledWith(
       "/projects/project-1/documentation/documents?cursor=cursor+1",
     );
-    expect(mockedApiFetch).toHaveBeenNthCalledWith(
-      2,
+    expect(mockedApiFetch).toHaveBeenCalledWith(
       "/projects/project-1/documentation/documents/document-1",
-    );
-    expect(mockedApiFetch).toHaveBeenNthCalledWith(
-      3,
-      "/projects/project-1/documentation/source?revisionId=revision-1&cursor=cursor+2",
-    );
-    expect(mockedApiFetch).toHaveBeenNthCalledWith(
-      4,
-      "/projects/project-1/documentation/source/items/item-1/provenance?revisionId=revision-1",
     );
   });
 
-  it("posts a Notion page and a guided correction", async () => {
+  it("posts a Notion page", async () => {
     mockedApiFetch.mockResolvedValue({});
-    await addNotionDocument("project-1", { pageUrl: "https://notion.so/page" });
-    await correctSourceItem("project-1", "item-1", {
-      expectedSourceRevisionId: "revision-1",
-      correctedContent: "Correction",
+
+    await addNotionDocument("project-1", {
+      pageUrl: "https://notion.so/page",
     });
 
-    expect(mockedApiFetch).toHaveBeenLastCalledWith(
-      "/projects/project-1/documentation/source/items/item-1/corrections",
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/documentation/documents/notion",
+      { method: "POST", body: { pageUrl: "https://notion.so/page" } },
+    );
+  });
+
+  // FR-012: an answer and a correction are the same call, carrying what was on
+  // screen as the note's context.
+  it("records a note, lists them and takes one back", async () => {
+    mockedApiFetch.mockResolvedValue({});
+
+    await addNote("project-1", {
+      content: "Le lancement est en octobre.",
+      context: "Quelle date de lancement ?",
+    });
+    await listNotes("project-1");
+    await removeNote("project-1", "note-1");
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/documentation/reference/notes",
       {
         method: "POST",
         body: {
-          expectedSourceRevisionId: "revision-1",
-          correctedContent: "Correction",
+          content: "Le lancement est en octobre.",
+          context: "Quelle date de lancement ?",
         },
       },
     );
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/documentation/reference/notes",
+    );
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/documentation/reference/notes/note-1",
+      { method: "DELETE" },
+    );
   });
 
-  it("uploads multipart content to the canonical document endpoint", async () => {
+  it("uploads multipart content to the document endpoint", async () => {
     const file = new File(["data"], "brief.pdf", { type: "application/pdf" });
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -115,12 +119,6 @@ describe("documentation api", () => {
 
   it("owns the complete contributor review, publication preview, editorial, and removal API surface", async () => {
     mockedApiFetch.mockResolvedValue({});
-    await listSourceRevisions("project-1", "next");
-    await listClarifications("project-1", { status: "open", cursor: "next" });
-    await resolveClarifications("project-1", {
-      expectedSourceRevisionId: "00000000-0000-4000-8000-000000000001",
-      resolutions: [],
-    });
     await getDocumentationWorkspace("project-1");
     await getClientContentPreview("project-1");
     await getPublicClientSections("project-1");
@@ -150,16 +148,12 @@ describe("documentation api", () => {
     await previewDocumentRemoval("project-1", "document-1");
     await confirmDocumentRemoval("project-1", "document-1", {
       expectedDocumentVersion: 2,
-      expectedSourceRevisionId: "00000000-0000-4000-8000-000000000001",
-      confirmationToken: "a".repeat(64),
       confirmed: true,
     });
-    await retryDocumentRemoval("project-1", "document-1");
-    await retryDocumentProcessing("project-1", "document-1");
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
-      "/projects/project-1/documentation/documents/document-1/retry-processing",
-      { method: "POST" },
+      "/projects/project-1/documentation/documents/document-1/removal",
+      { method: "POST", body: { expectedDocumentVersion: 2, confirmed: true } },
     );
     expect(mockedApiFetch).toHaveBeenCalledWith(
       "/projects/project-1/documentation/sections/section-1/proposal/approve",
@@ -174,10 +168,6 @@ describe("documentation api", () => {
     );
     expect(mockedApiFetch).toHaveBeenCalledWith(
       "/projects/project-1/documentation/reference",
-      { method: "POST" },
-    );
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      "/projects/project-1/documentation/documents/document-1/removal/retry",
       { method: "POST" },
     );
   });

@@ -1,14 +1,14 @@
 import { createPrismaMock, PrismaMock } from './prisma-mock';
 
 describe('createPrismaMock', () => {
-  it('provides every canonical documentary and generation delegate', () => {
+  it('provides every documentary and generation delegate', () => {
     const prisma = createPrismaMock();
 
-    expect(typeof prisma.projectSource.findUnique).toBe('function');
+    expect(typeof prisma.referenceDocument.findFirst).toBe('function');
     expect(typeof prisma.sourceDocument.create).toBe('function');
-    expect(typeof prisma.sourceRevision.create).toBe('function');
-    expect(typeof prisma.provenanceLink.createMany).toBe('function');
-    expect(typeof prisma.clarification.updateMany).toBe('function');
+    expect(typeof prisma.note.create).toBe('function');
+    expect(typeof prisma.sectionProposal.updateMany).toBe('function');
+    expect(typeof prisma.sectionQuestion.create).toBe('function');
     expect(typeof prisma.clientSection.upsert).toBe('function');
     expect(typeof prisma.sectionProposal.findMany).toBe('function');
     expect(typeof prisma.sectionQuestion.create).toBe('function');

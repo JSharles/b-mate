@@ -209,7 +209,7 @@
         "back": "Retour au projet",
         "add": "Ajouter un document",
         "documentsTitle": "Documents source",
-        "documentsDescription": "Chaque document contribue à une même source consolidée et reste consultable pour la traçabilité.",
+        "documentsDescription": "Chaque document est relu à chaque réécriture du document de référence, et reste consultable pour la traçabilité.",
         "documentCount": "{count, plural, =0 {Aucun document} one {# document} other {# documents}}",
         "loadError": "Impossible de charger la documentation de ce projet.",
         "documentsLoadError": "Impossible de charger les documents source.",
@@ -217,11 +217,6 @@
         "emptyTitle": "Aucun document source",
         "emptyDescription": "Ajoutez un fichier ou une page Notion pour commencer à construire la source du projet.",
         "addFirst": "Ajouter le premier document",
-        "retryProcessing": "Relancer",
-        "cancelProcessing": "Arrêter",
-        "resumeRemoval": "Reprendre la suppression",
-        "retrying": "En cours…",
-        "cancelling": "Arrêt…",
         "remove": "Supprimer",
         "open": "Ouvrir {title}",
         "loadMore": "Afficher plus",
@@ -261,15 +256,10 @@
         "empty": "Aucun document ajouté pour le moment.",
         "loadError": "Impossible de charger les documents.",
         "statusIncorporated": "Intégré à la source",
-        "statusProcessing": "Intégration en cours",
         "statusFailed": "Action nécessaire",
-        "statusCancelled": "Traitement arrêté",
-        "statusRemoving": "Suppression en cours",
-        "statusRemovalFailed": "Suppression à reprendre",
         "statusRemoved": "Supprimé",
         "statusUnavailable": "Indisponible",
-        "remove": "Supprimer",
-        "statusProcessingSince": "Intégration en cours · {since}"
+        "remove": "Supprimer"
       },
       "DocumentDetail": {
         "back": "Retour au projet",
@@ -286,18 +276,10 @@
         "roleDescription": "Ce document est une contribution conservée pour la traçabilité. Les informations consolidées se lisent dans la source canonique du projet.",
         "failureCode": "Diagnostic : {code}",
         "processingFailureHelp": "Le traitement n’a pas abouti. Vous pouvez le relancer sans ajouter le document une seconde fois.",
-        "cancelledHelp": "Vous avez arrêté ce traitement. Relancez-le, ou supprimez le document.",
-        "removalFailureHelp": "La suppression n’a pas été finalisée. Vous pouvez la reprendre sans risque pour la version publiée.",
         "technicalDetails": "Détails techniques",
         "retryProcessing": "Relancer le traitement",
         "cancelProcessing": "Arrêter le traitement",
-        "retryingProcessing": "Relance en cours…",
-        "cancellingProcessing": "Arrêt en cours…",
-        "retryProcessingError": "Le traitement n’a pas pu être relancé. Réessayez dans quelques instants.",
         "removeDocument": "Supprimer le document",
-        "retryRemoval": "Réessayer la suppression",
-        "retryingRemoval": "Nouvelle tentative…",
-        "retryRemovalError": "La suppression n’a pas abouti. L’original et la source publiée restent protégés.",
         "downloadOriginal": "Télécharger l’original",
         "openOriginal": "Ouvrir la page d’origine"
       },
@@ -633,9 +615,8 @@
       },
       "Removal": {
         "title": "Supprimer ce document ?",
-        "description": "Diaphane supprimera définitivement l’original stocké. S’il a déjà alimenté la source, celle-ci sera reconstruite uniquement à partir des contributions restantes.",
-        "impact": "{items, plural, one {# information utilise} other {# informations utilisent}} ce document, dont {sole, plural, one {# sans autre support} other {# sans autre support}}. Vos sections publiées seront marquées à rafraîchir.",
-        "notIncorporatedImpact": "Ce document n’a jamais été intégré à la source. Sa suppression ne modifiera aucune information consolidée.",
+        "description": "Diaphane supprimera définitivement l’original stocké. Vos prochaines réécritures ne s’appuieront plus dessus.",
+        "impact": "{remaining, plural, =0 {Ce projet n’aurait plus aucun document : impossible d’écrire un document de référence.} one {Il resterait # document.} other {Il resterait # documents.}}",
         "clientSafety": "La version actuellement visible par le client reste inchangée jusqu’à votre prochaine validation.",
         "loadingImpact": "Vérification de l’impact…",
         "retryPreview": "Réessayer",
@@ -644,16 +625,12 @@
         "confirm": "Supprimer définitivement",
         "retryConfirm": "Réessayer la suppression",
         "removing": "Suppression…",
-        "error": "La suppression n’a pas pu être terminée. Fermez cette fenêtre ou réessayez ; la source publiée reste inchangée."
+        "error": "La suppression n’a pas pu être terminée. Fermez cette fenêtre ou réessayez ; la source publiée reste inchangée.",
+        "needsRewrite": "Votre document de référence reste lisible tel quel. Réécrivez-le pour qu’il cesse de s’appuyer sur ce document."
       },
       "Toasts": {
         "documentAdded": "Document ajouté. Son analyse est en file — la page se met à jour toute seule.",
-        "processingRetried": "Traitement relancé.",
-        "processingCancelled": "Traitement arrêté.",
-        "removalResumed": "Suppression reprise.",
-        "documentRemoved": "Document supprimé. La source a été reconstruite sans lui.",
-        "correctionSent": "Correction envoyée. Un nouveau brouillon est en préparation.",
-        "clarificationsAnswered": "Réponses enregistrées."
+        "documentRemoved": "Document supprimé. La source a été reconstruite sans lui."
       }
     }
   },

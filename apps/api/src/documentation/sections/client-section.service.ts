@@ -17,7 +17,7 @@ type SectionRow = ClientSection & {
   activeProposal: {
     id: string;
     sectionId: string;
-    sourceRevisionId: string;
+    referenceDocumentId: string;
     status: string;
     version: number;
     changeSummary: string | null;
@@ -62,7 +62,7 @@ export class ClientSectionService {
     await this.access.requireContributor(userId, projectId);
     // US1.8: a section composed from nothing is not worth queueing, and the
     // contributor is better told what is missing than shown an empty proposal.
-    await this.requireCanonicalContent(projectId);
+    await this.requireReferenceDocument(projectId);
 
     const last = await this.prisma.clientSection.findFirst({
       where: { projectId },
@@ -151,7 +151,7 @@ export class ClientSectionService {
     await this.requireSection(projectId, sectionId);
 
     // Archiving rather than deleting: the client stops reading it, and the
-    // proposals and provenance that fed it stay explicable (research Decision 1).
+    // proposals that fed it stay explicable (research Decision 1).
     // Releasing `activeProposalId` here is what lets a composition in flight be
     // cancelled without the section holding a dead pointer; cancelling the
     // remote work itself belongs to the composition service (US4.4, T018).
@@ -218,19 +218,14 @@ export class ClientSectionService {
     return row;
   }
 
-  private async requireCanonicalContent(projectId: string) {
-    const source = await this.prisma.projectSource.findUnique({
-      where: { projectId },
-      select: { currentRevisionId: true },
+  // A section is a view of the reference document, so there is nothing to
+  // define one against before one exists (plan, Decision 4).
+  private async requireReferenceDocument(projectId: string) {
+    const written = await this.prisma.referenceDocument.count({
+      where: { projectId, status: 'ready', outcome: 'written' },
     });
-    if (!source?.currentRevisionId) {
-      throw new BadRequestException({ code: 'NO_CANONICAL_CONTENT' });
-    }
-    const statements = await this.prisma.sourceRevisionItem.count({
-      where: { sourceRevisionId: source.currentRevisionId },
-    });
-    if (statements === 0) {
-      throw new BadRequestException({ code: 'NO_CANONICAL_CONTENT' });
+    if (written === 0) {
+      throw new BadRequestException({ code: 'NO_REFERENCE_DOCUMENT' });
     }
   }
 
@@ -253,7 +248,7 @@ export class ClientSectionService {
         ? {
             id: row.activeProposal.id,
             sectionId: row.activeProposal.sectionId,
-            sourceRevisionId: row.activeProposal.sourceRevisionId,
+            referenceDocumentId: row.activeProposal.referenceDocumentId,
             status: row.activeProposal.status,
             version: row.activeProposal.version,
             changeSummary: row.activeProposal.changeSummary,

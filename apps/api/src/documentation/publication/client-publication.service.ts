@@ -133,7 +133,6 @@ export class ClientPublicationService {
           inputFingerprint,
           promptVersion: CLIENT_DERIVATION_PROMPT_VERSION,
           outputContractVersion: CLIENT_DERIVATION_OUTPUT_CONTRACT,
-          sourceRevisionId: proposal.sourceRevisionId,
           sectionProposalId: proposal.id,
           clientReleaseId: release.id,
         });

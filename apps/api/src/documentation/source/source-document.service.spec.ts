@@ -11,7 +11,7 @@ import {
   createPrismaMock,
   PrismaMock,
 } from '../../test/prisma-mock';
-import { GenerationService } from '../../generation/generation.service';
+import { DocumentInputNormalizerService } from './document-input-normalizer.service';
 import { DocumentStorageClient } from './document-storage.client';
 import {
   parseNotionPageId,
@@ -21,7 +21,6 @@ import {
 const projectId = '00000000-0000-4000-8000-000000000001';
 const userId = '00000000-0000-4000-8000-000000000002';
 const documentId = '00000000-0000-4000-8000-000000000003';
-const operationId = '00000000-0000-4000-8000-000000000004';
 
 function sourceDocument(
   overrides: Partial<SourceDocument> = {},
@@ -30,7 +29,7 @@ function sourceDocument(
     id: documentId,
     projectId,
     kind: 'upload',
-    status: 'received',
+    status: 'incorporated',
     version: 1,
     title: 'Architecture',
     originalFileName: 'architecture.pdf',
@@ -40,10 +39,8 @@ function sourceDocument(
     externalUrl: null,
     contentSha256: 'a'.repeat(64),
     addedByUserId: userId,
-    incorporatedInRevisionId: null,
-    removedInRevisionId: null,
     failureCode: null,
-    processingStartedAt: new Date('2026-08-11T10:00:00.000Z'),
+    processingStartedAt: null,
     removedAt: null,
     createdAt: new Date('2026-08-11T10:00:00.000Z'),
     updatedAt: new Date('2026-08-11T10:00:00.000Z'),
@@ -54,8 +51,8 @@ function sourceDocument(
 describe('SourceDocumentService', () => {
   let prisma: PrismaMock;
   let storage: jest.Mocked<DocumentStorageClient>;
-  let generation: jest.Mocked<
-    Pick<GenerationService, 'create' | 'retry' | 'cancel'>
+  let normalizer: jest.Mocked<
+    Pick<DocumentInputNormalizerService, 'normalizeUpload'>
   >;
   let access: jest.Mocked<Pick<ProjectAccessService, 'requireContributor'>>;
   let notionClient: jest.Mocked<Pick<NotionClient, 'fetchPage'>>;
@@ -71,23 +68,22 @@ describe('SourceDocumentService', () => {
       delete: jest.fn(),
       getDownloadUrl: jest.fn(),
     } as unknown as jest.Mocked<DocumentStorageClient>;
-    generation = { create: jest.fn(), retry: jest.fn(), cancel: jest.fn() };
+    normalizer = {
+      normalizeUpload: jest.fn().mockResolvedValue({ parts: [] }),
+    };
     access = { requireContributor: jest.fn().mockResolvedValue({}) };
     notionClient = { fetchPage: jest.fn() };
     notionConnection = { getDecryptedToken: jest.fn() };
     service = new SourceDocumentService(
       asPrismaService(prisma),
       storage,
-      generation as unknown as GenerationService,
+      normalizer as unknown as DocumentInputNormalizerService,
       access as unknown as ProjectAccessService,
       notionClient as unknown as NotionClient,
       notionConnection as unknown as NotionConnectionService,
     );
     prisma.sourceDocument.create.mockResolvedValue(sourceDocument());
-    generation.create.mockResolvedValue({
-      id: operationId,
-      status: 'queued',
-    } as never);
+    prisma.project.update.mockResolvedValue({ id: projectId });
   });
 
   it('validates supported MIME types and the 25 MB limit before storage', async () => {
@@ -129,7 +125,7 @@ describe('SourceDocumentService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('preserves the original and immediately acknowledges document and operation', async () => {
+  it('preserves the original and takes the document into the corpus at once', async () => {
     const original = Buffer.from('%PDF-original');
     const result = await service.addUpload(userId, projectId, {
       buffer: original,
@@ -147,22 +143,46 @@ describe('SourceDocumentService', () => {
       original,
       'application/pdf',
     );
-    expect(generation.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        projectId,
-        type: 'document_extraction',
-        sourceDocumentId: documentId,
-        inputFingerprint: expect.stringMatching(/^[0-9a-f]{64}$/),
-      }),
-    );
     expect(result).toMatchObject({
-      document: { id: documentId, status: 'received' },
-      operation: { operationId, status: 'queued' },
+      document: { id: documentId, status: 'incorporated' },
     });
   });
 
-  it('compensates R2 and the document row when acknowledgement setup fails', async () => {
-    generation.create.mockRejectedValue(new Error('database unavailable'));
+  // A document arriving changes what the next write will read, so the reference
+  // document is owed a rewrite. It says so and waits (FR-006).
+  it('leaves the reference document owed a rewrite rather than writing one', async () => {
+    await service.addUpload(userId, projectId, {
+      buffer: Buffer.from('%PDF'),
+      originalname: 'a.pdf',
+      mimetype: 'application/pdf',
+      size: 4,
+    } as Express.Multer.File);
+
+    expect(prisma.project.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { referenceNeedsRewrite: true } }),
+    );
+    expect(prisma.referenceDocument.create).not.toHaveBeenCalled();
+  });
+
+  // Read once, at the door. An unreadable file that got in would fail the whole
+  // reference write later and take the project's document down with it.
+  it('refuses a file it cannot read, before storing anything', async () => {
+    normalizer.normalizeUpload.mockRejectedValue(new Error('corrupt pdf'));
+
+    await expect(
+      service.addUpload(userId, projectId, {
+        buffer: Buffer.from('not really a pdf'),
+        originalname: 'broken.pdf',
+        mimetype: 'application/pdf',
+        size: 16,
+      } as Express.Multer.File),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(storage.put).not.toHaveBeenCalled();
+    expect(prisma.sourceDocument.create).not.toHaveBeenCalled();
+  });
+
+  it('compensates R2 and the document row when the row cannot be finished', async () => {
+    prisma.project.update.mockRejectedValue(new Error('database unavailable'));
 
     await expect(
       service.addUpload(userId, projectId, {
@@ -174,7 +194,7 @@ describe('SourceDocumentService', () => {
     ).rejects.toThrow('database unavailable');
 
     expect(prisma.sourceDocument.deleteMany).toHaveBeenCalledWith({
-      where: { id: documentId, status: 'received' },
+      where: { id: documentId },
     });
     expect(storage.delete).toHaveBeenCalledWith(
       expect.stringMatching(new RegExp(`^documentation/${projectId}/`)),
@@ -193,34 +213,6 @@ describe('SourceDocumentService', () => {
     ).rejects.toThrow('insert failed');
     expect(prisma.sourceDocument.deleteMany).not.toHaveBeenCalled();
     expect(storage.delete).toHaveBeenCalled();
-  });
-
-  it('fails before queuing when the immutable hash is missing or the operation is inactive', async () => {
-    prisma.sourceDocument.create.mockResolvedValueOnce(
-      sourceDocument({ contentSha256: null }),
-    );
-    await expect(
-      service.addUpload(userId, projectId, {
-        buffer: Buffer.from('%PDF'),
-        originalname: '.pdf',
-        mimetype: 'application/pdf',
-        size: 4,
-      } as Express.Multer.File),
-    ).rejects.toThrow('without a hash');
-
-    prisma.sourceDocument.create.mockResolvedValueOnce(sourceDocument());
-    generation.create.mockResolvedValueOnce({
-      id: operationId,
-      status: 'completed',
-    } as never);
-    await expect(
-      service.addUpload(userId, projectId, {
-        buffer: Buffer.from('%PDF'),
-        originalname: '.pdf',
-        mimetype: 'application/pdf',
-        size: 4,
-      } as Express.Multer.File),
-    ).rejects.toThrow('active operation');
   });
 
   it('stores an immutable Notion snapshot instead of a live page reference only', async () => {
@@ -305,7 +297,9 @@ describe('SourceDocumentService', () => {
     storage.getDownloadUrl.mockResolvedValue('https://signed.example/file');
 
     await expect(service.list(userId, projectId)).resolves.toEqual({
-      items: [expect.objectContaining({ id: documentId, status: 'received' })],
+      items: [
+        expect.objectContaining({ id: documentId, status: 'incorporated' }),
+      ],
       total: 1,
       nextCursor: null,
     });
@@ -363,150 +357,6 @@ describe('SourceDocumentService', () => {
     await expect(service.detail(userId, projectId, documentId)).rejects.toEqual(
       new NotFoundException({ code: 'NOT_FOUND' }),
     );
-  });
-
-  it('queues a fresh extraction attempt and exposes retrying state for a failed document', async () => {
-    prisma.sourceDocument.findFirst.mockResolvedValue({
-      ...sourceDocument({ status: 'failed', failureCode: 'PROVIDER_DOWN' }),
-      generationOperations: [{ id: operationId, type: 'document_extraction' }],
-    });
-    generation.retry.mockResolvedValue({
-      id: '00000000-0000-4000-8000-000000000005',
-      status: 'queued',
-    } as never);
-    prisma.sourceDocument.updateMany.mockResolvedValue({ count: 1 });
-
-    await expect(
-      service.retryProcessing(userId, projectId, documentId),
-    ).resolves.toEqual({
-      operationId: '00000000-0000-4000-8000-000000000005',
-      status: 'queued',
-    });
-    expect(generation.retry).toHaveBeenCalledWith(operationId);
-    expect(prisma.sourceDocument.updateMany).toHaveBeenCalledWith({
-      where: { id: documentId, projectId, status: 'failed' },
-      data: {
-        status: 'retrying',
-        failureCode: null,
-        // A restart is a new run. Without this the row kept counting from the
-        // day the document was added: "processing for 10 hours" one second
-        // after the contributor restarted it.
-        processingStartedAt: expect.any(Date),
-        version: { increment: 1 },
-      },
-    });
-  });
-
-  // A document being worked on offered no action at all: a spinner, for a batch
-  // stage that runs minutes and can hang for hours. Stopping halts the remote
-  // work and parks the document where the removal and retry paths can reach it.
-  it('stops the remote work before releasing a document being processed', async () => {
-    prisma.sourceDocument.findFirst.mockResolvedValue({
-      ...sourceDocument({ status: 'extracting' }),
-      generationOperations: [{ id: operationId }, { id: 'operation-2' }],
-    });
-    generation.cancel.mockResolvedValue({
-      cancelled: true,
-      remoteAccepted: true,
-    });
-    prisma.sourceDocument.updateMany.mockResolvedValue({ count: 1 });
-
-    await expect(
-      service.cancelProcessing(userId, projectId, documentId),
-    ).resolves.toEqual({ cancelledOperationCount: 2 });
-
-    expect(generation.cancel).toHaveBeenCalledTimes(2);
-    // The order matters: released first, an in-flight result could still land
-    // and drag the document back into the pipeline just walked away from.
-    expect(generation.cancel.mock.invocationCallOrder[0]).toBeLessThan(
-      prisma.sourceDocument.updateMany.mock.invocationCallOrder[0],
-    );
-    expect(prisma.sourceDocument.updateMany).toHaveBeenCalledWith({
-      where: { id: documentId, projectId, version: 1 },
-      data: {
-        status: 'failed',
-        failureCode: 'CANCELLED_BY_CONTRIBUTOR',
-        version: { increment: 1 },
-      },
-    });
-  });
-
-  it('refuses to stop a document that is not being processed', async () => {
-    prisma.sourceDocument.findFirst.mockResolvedValue(null);
-
-    await expect(
-      service.cancelProcessing(userId, projectId, documentId),
-    ).rejects.toEqual(new NotFoundException({ code: 'NOT_FOUND' }));
-    expect(generation.cancel).not.toHaveBeenCalled();
-  });
-
-  // Restricted to extraction, retry restarted a stage that had already
-  // succeeded when it was the consolidation that stopped — and resolved to the
-  // finished operation, leaving the document "retrying" with no work behind it.
-  it('restarts whichever stage stopped, not always the first one', async () => {
-    prisma.sourceDocument.findFirst.mockResolvedValue({
-      ...sourceDocument({ status: 'failed' }),
-      generationOperations: [
-        { id: 'consolidation-1', type: 'source_consolidation' },
-      ],
-    });
-    generation.retry.mockResolvedValue({
-      id: 'consolidation-2',
-      status: 'queued',
-    } as never);
-    prisma.sourceDocument.updateMany.mockResolvedValue({ count: 1 });
-
-    await expect(
-      service.retryProcessing(userId, projectId, documentId),
-    ).resolves.toEqual({ operationId: 'consolidation-2', status: 'queued' });
-
-    // And it has to stand where that stage will pick it up. Every restart set
-    // `retrying`, which only extraction accepts, so a restarted consolidation
-    // was refused by its own handler and failed on the spot.
-    expect(prisma.sourceDocument.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ status: 'ready_to_consolidate' }),
-      }),
-    );
-
-    expect(prisma.sourceDocument.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        include: {
-          generationOperations: expect.objectContaining({
-            where: { status: { in: ['needs_attention', 'cancelled'] } },
-          }),
-        },
-      }),
-    );
-  });
-
-  it('refuses to announce a restart that queued nothing', async () => {
-    prisma.sourceDocument.findFirst.mockResolvedValue({
-      ...sourceDocument({ status: 'failed' }),
-      generationOperations: [{ id: operationId }],
-    });
-    // Deduplication can hand back the operation that already ran to completion.
-    generation.retry.mockResolvedValue({
-      id: operationId,
-      status: 'succeeded',
-    } as never);
-
-    await expect(
-      service.retryProcessing(userId, projectId, documentId),
-    ).rejects.toEqual(new NotFoundException({ code: 'NOT_FOUND' }));
-    expect(prisma.sourceDocument.updateMany).not.toHaveBeenCalled();
-  });
-
-  it('does not retry a document without a terminal extraction operation', async () => {
-    prisma.sourceDocument.findFirst.mockResolvedValue({
-      ...sourceDocument({ status: 'failed' }),
-      generationOperations: [],
-    });
-
-    await expect(
-      service.retryProcessing(userId, projectId, documentId),
-    ).rejects.toEqual(new NotFoundException({ code: 'NOT_FOUND' }));
-    expect(generation.retry).not.toHaveBeenCalled();
   });
 
   it('extracts Notion identifiers only from valid Notion URLs', () => {

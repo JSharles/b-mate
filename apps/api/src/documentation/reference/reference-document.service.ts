@@ -27,18 +27,16 @@ export class ReferenceDocumentService {
   async write(userId: string, projectId: string, locale: string | null) {
     await this.access.requireContributor(userId, projectId);
 
-    const source = await this.prisma.projectSource.upsert({
-      where: { projectId },
-      update: {},
-      create: { projectId },
+    const project = await this.prisma.project.findUniqueOrThrow({
+      where: { id: projectId },
       select: { id: true, activeReferenceDocumentId: true },
     });
 
     // One at a time. Checked here for a usable error, and refused again by the
     // unique constraint below if two callers get this far at once.
-    if (source.activeReferenceDocumentId) {
+    if (project.activeReferenceDocumentId) {
       const held = await this.prisma.referenceDocument.findFirst({
-        where: { id: source.activeReferenceDocumentId, status: 'writing' },
+        where: { id: project.activeReferenceDocumentId, status: 'writing' },
         select: { id: true },
       });
       if (held) throw new ConflictException({ code: 'REFERENCE_WRITING' });
@@ -88,10 +86,10 @@ export class ReferenceDocumentService {
           status: 'writing',
         },
       });
-      // Claiming the slot only from a source that holds none is what makes two
+      // Claiming the slot only from a project that holds none is what makes two
       // simultaneous triggers produce one document rather than two.
-      const claimed = await tx.projectSource.updateMany({
-        where: { id: source.id, activeReferenceDocumentId: null },
+      const claimed = await tx.project.updateMany({
+        where: { id: project.id, activeReferenceDocumentId: null },
         data: { activeReferenceDocumentId: document.id },
       });
       if (claimed.count !== 1) {
@@ -117,13 +115,13 @@ export class ReferenceDocumentService {
   async summary(userId: string, projectId: string) {
     await this.access.requireContributor(userId, projectId);
 
-    const [documentCount, noteCount, source, document] = await Promise.all([
+    const [documentCount, noteCount, project, document] = await Promise.all([
       this.prisma.sourceDocument.count({
         where: { projectId, status: 'incorporated' },
       }),
       this.prisma.note.count({ where: { projectId, archivedAt: null } }),
-      this.prisma.projectSource.findUnique({
-        where: { projectId },
+      this.prisma.project.findUnique({
+        where: { id: projectId },
         select: { referenceNeedsRewrite: true },
       }),
       this.current(userId, projectId),
@@ -133,7 +131,7 @@ export class ReferenceDocumentService {
       documentCount,
       noteCount,
       openPointCount: document?.points.length ?? 0,
-      needsRewrite: source?.referenceNeedsRewrite ?? true,
+      needsRewrite: project?.referenceNeedsRewrite ?? true,
       document,
     };
   }
@@ -157,8 +155,8 @@ export class ReferenceDocumentService {
     });
     // The document is written from the documents and the notes, so a new note
     // owes a rewrite — it never triggers one (FR-006).
-    await this.prisma.projectSource.updateMany({
-      where: { projectId },
+    await this.prisma.project.update({
+      where: { id: projectId },
       data: { referenceNeedsRewrite: true },
     });
     return this.toNoteView(note);
@@ -183,8 +181,8 @@ export class ReferenceDocumentService {
     // Hidden rather than deleted: a note is attributable, and the document it
     // shaped stays explicable.
     if (count === 0) throw new NotFoundException({ code: 'NOT_FOUND' });
-    await this.prisma.projectSource.updateMany({
-      where: { projectId },
+    await this.prisma.project.update({
+      where: { id: projectId },
       data: { referenceNeedsRewrite: true },
     });
     return { removed: true as const };

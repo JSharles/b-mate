@@ -91,7 +91,7 @@ export function SectionProposalReview({
           <p
             key={index}
             className={
-              block.type === "open_point"
+              block.kind === "open_point"
                 ? "rounded-lg border border-border bg-muted p-3 text-sm leading-7"
                 : "max-w-3xl text-sm leading-7"
             }

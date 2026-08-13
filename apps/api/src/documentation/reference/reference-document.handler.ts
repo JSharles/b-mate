@@ -188,18 +188,24 @@ export class ReferenceDocumentHandler
       data: {
         status: 'ready',
         outcome: output.outcome,
-        structuredContent: resolved.parts as unknown as Prisma.InputJsonValue,
-        points: resolved.points as unknown as Prisma.InputJsonValue,
-        unrelatedDocuments:
-          resolved.unrelatedDocumentTitles as unknown as Prisma.InputJsonValue,
+        structuredContent: resolved.parts,
+        points: resolved.points,
+        unrelatedDocuments: resolved.unrelatedDocumentTitles,
         failureCode: null,
         version: { increment: 1 },
       },
     });
 
-    await tx.projectSource.updateMany({
-      where: { projectId: document.projectId },
+    await tx.project.update({
+      where: { id: document.projectId },
       data: { activeReferenceDocumentId: null, referenceNeedsRewrite: false },
+    });
+
+    // FR-018: the truth moved, so every section written against the old one is
+    // owed a refresh. It says so and waits; it never recomposes itself.
+    await tx.clientSection.updateMany({
+      where: { projectId: document.projectId, archivedAt: null },
+      data: { refreshNeeded: true, version: { increment: 1 } },
     });
   }
 
@@ -222,9 +228,9 @@ export class ReferenceDocumentHandler
     });
     // The previous document stays readable and the project stays owed a
     // rewrite, so a failure costs a retry rather than the reference itself.
-    await tx.projectSource.updateMany({
+    await tx.project.updateMany({
       where: {
-        projectId: document.projectId,
+        id: document.projectId,
         activeReferenceDocumentId: document.id,
       },
       data: { activeReferenceDocumentId: null, referenceNeedsRewrite: true },

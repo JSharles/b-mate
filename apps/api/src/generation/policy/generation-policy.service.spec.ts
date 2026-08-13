@@ -5,8 +5,6 @@ import {
 } from './generation-policy.service';
 
 const stageModels = {
-  document_extraction: 'extract-v1',
-  source_consolidation: 'consolidate-v1',
   client_derivation: 'derive-v1',
   section_composition: 'compose-v1',
   reference_document: 'reference-v1',
@@ -88,13 +86,13 @@ describe('GenerationPolicyService', () => {
 
   it('preserves cross-provider order when enabled and denies it when disabled', () => {
     const enabled = policy();
-    enabled.stages.document_extraction.routes = [
+    enabled.stages.reference_document.routes = [
       route('anthropic', 'primary', 'batch'),
       route('openai', 'fallback', 'batch'),
     ];
     expect(
       service(enabled)
-        .availableRoutesFor('document_extraction')
+        .availableRoutesFor('reference_document')
         .map(({ provider }) => provider),
     ).toEqual(['anthropic', 'openai']);
 
@@ -104,24 +102,24 @@ describe('GenerationPolicyService', () => {
     };
     expect(
       service(disabled)
-        .availableRoutesFor('document_extraction')
+        .availableRoutesFor('reference_document')
         .map(({ provider }) => provider),
     ).toEqual(['anthropic']);
   });
 
   it('accepts both transports and enforces bounded explicit retries', () => {
     const value = policy();
-    value.stages.document_extraction.routes = [
+    value.stages.reference_document.routes = [
       route('anthropic', 'batch-model', 'batch'),
     ];
-    value.stages.reference_document.routes = [
+    value.stages.section_composition.routes = [
       route('anthropic', 'sync-model', 'sync'),
     ];
     expect(
-      service(value).snapshotFor('document_extraction').routes[0],
+      service(value).snapshotFor('reference_document').routes[0],
     ).toMatchObject({ transport: 'batch', maxAttempts: 2 });
     expect(
-      service(value).snapshotFor('reference_document').routes[0],
+      service(value).snapshotFor('section_composition').routes[0],
     ).toMatchObject({ transport: 'sync', maxAttempts: 2 });
 
     value.stages.reference_document.routes[0] = {
@@ -133,8 +131,8 @@ describe('GenerationPolicyService', () => {
 
   it('produces a secret-free snapshot and isolates later stage changes', () => {
     const configured = service();
-    const extractionBefore = configured.snapshotFor('document_extraction');
-    const snapshotText = JSON.stringify(extractionBefore);
+    const referenceBefore = configured.snapshotFor('reference_document');
+    const snapshotText = JSON.stringify(referenceBefore);
 
     expect(snapshotText).not.toContain('sk-ant-test');
     expect(snapshotText).not.toContain('sk-test');
@@ -144,15 +142,15 @@ describe('GenerationPolicyService', () => {
     );
 
     const changed = policy();
-    changed.stages.reference_document.routes = [
-      route('anthropic', 'reference-v2'),
+    changed.stages.section_composition.routes = [
+      route('anthropic', 'compose-v2'),
     ];
-    expect(service(changed).snapshotFor('document_extraction')).toEqual(
-      extractionBefore,
+    expect(service(changed).snapshotFor('reference_document')).toEqual(
+      referenceBefore,
     );
     expect(
-      service(changed).snapshotFor('reference_document').routes[0]?.model,
-    ).toBe('reference-v2');
+      service(changed).snapshotFor('section_composition').routes[0]?.model,
+    ).toBe('compose-v2');
   });
 
   it('fails startup for invalid JSON, missing stages, or missing primary credentials', () => {
@@ -187,14 +185,14 @@ describe('GenerationPolicyService', () => {
       OPENAI_API_KEY: undefined,
     });
     expect(
-      configured.isCurrentlyPermitted('document_extraction', {
+      configured.isCurrentlyPermitted('reference_document', {
         provider: 'fake',
-        model: 'fake-document_extraction',
+        model: 'fake-reference_document',
         transport: 'sync',
       }),
     ).toBe(true);
     expect(
-      configured.isCurrentlyPermitted('document_extraction', {
+      configured.isCurrentlyPermitted('reference_document', {
         provider: 'fake',
         model: 'wrong-model',
         transport: 'batch',
@@ -223,7 +221,7 @@ describe('GenerationPolicyService', () => {
 
   it('treats a configured fallback with missing credentials as unavailable', () => {
     const value = policy();
-    value.stages.source_consolidation.routes = [
+    value.stages.section_composition.routes = [
       route('anthropic', 'primary'),
       route('openai', 'fallback'),
     ];
@@ -235,10 +233,10 @@ describe('GenerationPolicyService', () => {
 
     expect(
       configured
-        .availableRoutesFor('source_consolidation')
+        .availableRoutesFor('section_composition')
         .map(({ provider }) => provider),
     ).toEqual(['anthropic']);
-    expect(configured.unavailableRoutesFor('source_consolidation')).toEqual([
+    expect(configured.unavailableRoutesFor('section_composition')).toEqual([
       expect.objectContaining({ provider: 'openai', model: 'fallback' }),
     ]);
   });

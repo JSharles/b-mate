@@ -12,16 +12,22 @@ export class DocumentationWorkspaceService {
   async get(userId: string, projectId: string) {
     await this.access.requireContributor(userId, projectId);
     const [
-      source,
+      project,
       documentCount,
       activeOperationCount,
       failedOperationCount,
-      openClarificationCount,
+      openPointCount,
       pendingReviewCount,
       publication,
       pendingRelease,
     ] = await Promise.all([
-      this.prisma.projectSource.findUnique({ where: { projectId } }),
+      this.prisma.project.findUnique({
+        where: { id: projectId },
+        select: {
+          referenceNeedsRewrite: true,
+          activeReferenceDocumentId: true,
+        },
+      }),
       this.prisma.sourceDocument.count({
         where: { projectId, status: { not: 'removed' } },
       }),
@@ -46,12 +52,15 @@ export class DocumentationWorkspaceService {
           ],
         },
       }),
-      this.prisma.clarification.count({
-        where: {
-          projectSource: { projectId },
-          status: { in: ['open', 'left_open'] },
-        },
-      }),
+      // Points live on the reference document, so this counts what the current
+      // one still leaves open rather than rows in a table of its own.
+      this.prisma.referenceDocument
+        .findFirst({
+          where: { projectId, status: 'ready' },
+          orderBy: { createdAt: 'desc' },
+          select: { points: true },
+        })
+        .then((document) => ((document?.points ?? []) as unknown[]).length),
       this.prisma.sectionProposal.count({
         where: { section: { projectId }, status: 'pending_review' },
       }),
@@ -92,11 +101,11 @@ export class DocumentationWorkspaceService {
     return {
       priority,
       activeOperationCount,
-      openClarificationCount,
+      openPointCount,
       pendingReviewCount,
       failedOperationCount,
       documentCount,
-      currentSourceRevisionId: source?.currentRevisionId ?? null,
+      referenceNeedsRewrite: project?.referenceNeedsRewrite ?? true,
       currentReleaseId: publication?.currentReleaseId ?? null,
       pendingReleaseId: pendingRelease?.id ?? null,
       releaseProgress: pendingRelease
@@ -107,7 +116,8 @@ export class DocumentationWorkspaceService {
         : null,
       clientVisibility,
       changeToken: [
-        source?.currentRevisionId ?? 'none',
+        project?.activeReferenceDocumentId ?? 'none',
+        String(project?.referenceNeedsRewrite ?? true),
         publication?.currentReleaseId ?? 'none',
         pendingRelease?.id ?? 'none',
         pendingReviewCount,

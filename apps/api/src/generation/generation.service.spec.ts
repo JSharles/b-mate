@@ -12,13 +12,13 @@ const now = new Date('2026-08-11T12:00:00.000Z');
 const operation = {
   id: '00000000-0000-4000-8000-000000000001',
   projectId: '00000000-0000-4000-8000-000000000002',
-  type: 'document_extraction',
+  type: 'reference_document',
   status: 'queued',
   deduplicationKey: 'document:1:extract:v1',
   inputFingerprint: 'a'.repeat(64),
   policySnapshot: {
     version: 'test-v1',
-    stage: 'document_extraction',
+    stage: 'reference_document',
     crossProviderFallbackEnabled: false,
     routes: [],
   },
@@ -63,7 +63,7 @@ describe('GenerationService', () => {
     await expect(
       service.create({
         projectId: operation.projectId,
-        type: 'document_extraction',
+        type: 'reference_document',
         deduplicationKey: operation.deduplicationKey,
         inputFingerprint: operation.inputFingerprint,
         promptVersion: 'extract-v1',
@@ -72,7 +72,7 @@ describe('GenerationService', () => {
       }),
     ).resolves.toEqual(operation);
 
-    expect(policy.snapshotFor).toHaveBeenCalledWith('document_extraction');
+    expect(policy.snapshotFor).toHaveBeenCalledWith('reference_document');
     const upsertCalls = prisma.generationOperation.upsert.mock
       .calls as unknown[][];
     expect(upsertCalls[0]?.[0]).toMatchObject({

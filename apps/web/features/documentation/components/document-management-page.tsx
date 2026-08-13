@@ -5,11 +5,8 @@ import {
   ArrowLeft,
   BookOpenText,
   ChevronRight,
-  CircleSlash,
   FilePlus2,
   FileText,
-  LoaderCircle,
-  RotateCcw,
   Trash2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -19,127 +16,41 @@ import { useProject } from "@/features/projects/hooks";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import {
-  useCancelDocumentProcessing,
-  useDocumentationDocuments,
-  useRetryDocumentProcessing,
-  useRetryDocumentRemoval,
-} from "../hooks";
+import { useDocumentationDocuments } from "../hooks";
 import { AddDocumentDialog } from "./add-document-dialog";
-import { DocumentStatus, PROCESSING_STATUSES } from "./document-status";
+import { DocumentStatus } from "./document-status";
 import { RemoveDocumentDialog } from "./remove-document-dialog";
 
+// A document is read once at upload and then it is in. There is nothing to
+// stop, nothing to retry and no removal to resume: the only thing left to do
+// with a document is take it back out (specs/018).
 function DocumentActions({
-  projectId,
   document,
   onRemove,
 }: {
-  projectId: string;
   document: SourceDocument;
   onRemove: () => void;
 }) {
   const t = useTranslations("Projects.Documentation.Page");
-  const retryProcessing = useRetryDocumentProcessing(projectId);
-  const retryRemoval = useRetryDocumentRemoval(projectId);
-  const cancelProcessing = useCancelDocumentProcessing(projectId);
 
-  // `removal_pending` is NOT recoverable by hand any more. A removal abandoned
-  // mid-flight is re-driven by the server's stall sweep, so offering "resume"
-  // here made the row assert two opposite things at once: a spinner saying it
-  // is working, beside a button saying it is stuck. Only a genuinely failed
-  // removal is the contributor's problem to act on.
-  const deletionNeedsRecovery = document.status === "removal_failed";
+  if (document.status === "removed") return null;
 
-  // One treatment per action, whatever the row's status: delete is always the
-  // same outline button carrying the same word. Previously the same action
-  // rendered as a destructive outline in one branch and a muted ghost icon in
-  // another, so it read as two different capabilities.
-  const removeButton = (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="text-destructive hover:text-destructive"
-      onClick={onRemove}
-    >
-      <Trash2 />
-      {t("remove")}
-    </Button>
-  );
-
-  // A document being worked on used to carry no action at all: a spinner and
-  // nothing else, for a stage that runs minutes and can hang for hours. Stopping
-  // is the way out — it leaves the document here, so it can then be retried or
-  // deleted like any other halted one.
-  if (PROCESSING_STATUSES.has(document.status)) {
-    return (
-      <div className="flex shrink-0 items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={cancelProcessing.isPending}
-          onClick={() => cancelProcessing.mutate(document.id)}
-        >
-          {cancelProcessing.isPending ? (
-            <LoaderCircle className="animate-spin motion-reduce:animate-none" />
-          ) : (
-            <CircleSlash />
-          )}
-          {t(cancelProcessing.isPending ? "cancelling" : "cancelProcessing")}
-        </Button>
-      </div>
-    );
-  }
-
-  if (document.status === "failed") {
-    return (
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-        <Button
-          type="button"
-          size="sm"
-          disabled={retryProcessing.isPending}
-          onClick={() => retryProcessing.mutate(document.id)}
-        >
-          {retryProcessing.isPending ? (
-            <LoaderCircle className="animate-spin motion-reduce:animate-none" />
-          ) : (
-            <RotateCcw />
-          )}
-          {t(retryProcessing.isPending ? "retrying" : "retryProcessing")}
-        </Button>
-        {removeButton}
-      </div>
-    );
-  }
-
-  if (deletionNeedsRecovery) {
-    return (
+  return (
+    <div className="flex shrink-0 items-center gap-2">
       <Button
         type="button"
         variant="outline"
         size="sm"
-        disabled={retryRemoval.isPending}
-        onClick={() => retryRemoval.mutate(document.id)}
+        className="text-destructive hover:text-destructive"
+        onClick={onRemove}
       >
-        {retryRemoval.isPending ? (
-          <LoaderCircle className="animate-spin motion-reduce:animate-none" />
-        ) : (
-          <RotateCcw />
-        )}
-        {t(retryRemoval.isPending ? "retrying" : "resumeRemoval")}
+        <Trash2 />
+        {t("remove")}
       </Button>
-    );
-  }
-
-  if (document.status === "incorporated") {
-    return <div className="flex shrink-0 items-center gap-2">{removeButton}</div>;
-  }
-
-  // Removing and removed rows carry no action — the row is still reachable
-  // through its own link, which is the one thing always available.
-  return null;
+    </div>
+  );
 }
+
 
 export function DocumentManagementPage({ projectId }: { projectId: string }) {
   const t = useTranslations("Projects.Documentation.Page");
@@ -256,15 +167,9 @@ export function DocumentManagementPage({ projectId }: { projectId: string }) {
                     >
                       {document.title}
                     </Link>
-                    <DocumentStatus
-                      status={document.status}
-                      failureCode={document.failureCode}
-                      since={document.processingStartedAt}
-                      className="mt-1"
-                    />
+                    <DocumentStatus status={document.status} className="mt-1" />
                   </span>
                   <DocumentActions
-                    projectId={projectId}
                     document={document}
                     onRemove={() => setRemovalDocumentId(document.id)}
                   />

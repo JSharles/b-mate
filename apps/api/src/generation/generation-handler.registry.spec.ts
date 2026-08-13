@@ -3,11 +3,11 @@ import { GenerationHandlerRegistry } from './generation-handler.registry';
 describe('GenerationHandlerRegistry', () => {
   it('registers and resolves one handler per operation type', () => {
     const registry = new GenerationHandlerRegistry();
-    const handler = { type: 'document_extraction' } as never;
+    const handler = { type: 'reference_document' } as never;
 
     registry.register(handler);
 
-    expect(registry.get('document_extraction')).toBe(handler);
+    expect(registry.get('reference_document')).toBe(handler);
     expect(() => registry.register(handler)).toThrow('already registered');
   });
 

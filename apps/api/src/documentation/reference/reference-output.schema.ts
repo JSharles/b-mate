@@ -3,9 +3,14 @@ import { z } from 'zod';
 export const REFERENCE_DOCUMENT_PROMPT_VERSION = 'reference-document-v2';
 export const REFERENCE_DOCUMENT_OUTPUT_CONTRACT = 'reference-document-v2';
 
-// The model never sees an identifier, only `d0` and `p0`. It was handed UUIDs
-// once, returned a hundred passages and mistyped one character of one of them,
-// losing the whole document — see source/reference-token.ts.
+// The model never sees an identifier, only `d0` and `p0`. Handing a model raw
+// UUIDs and asking for them back verbatim cost this codebase a whole stage:
+// 60 of 61 came back perfectly and the 61st had one character wrong
+// — `…79f40f44ef70` as `…79f44f44ef70` — which failed the run, twice, and left
+// the document integrating forever. Copying 36 random characters is not a task
+// worth asking of a language model, and the odds fall as documents accumulate.
+// A slip on `d3` lands on a ref that either does not exist or is obviously the
+// wrong kind, and is refused loudly.
 export const DocumentRefSchema = z.string().regex(/^d\d{1,4}$/u);
 export const PointRefSchema = z.string().regex(/^p\d{1,4}$/u);
 

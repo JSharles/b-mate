@@ -9,23 +9,15 @@ import {
 import type { InfiniteData } from "@tanstack/react-query";
 import type {
   CreateSectionRequest,
-  GuidedCorrectionRequest,
   SourceDocument,
   UpdateSectionRequest,
 } from "schemas";
 import {
   addNotionDocument,
-  CanonicalSourceOptions,
-  correctSourceItem,
   CursorPage,
-  getCanonicalSource,
   getDocument,
-  getItemProvenance,
   listDocuments,
   uploadDocument,
-  ClarificationOptions,
-  listClarifications,
-  resolveClarifications,
   getClientContentPreview,
   getPublicClientSections,
   approveSectionProposal,
@@ -44,11 +36,8 @@ import {
   getDocumentationWorkspace,
   confirmDocumentRemoval,
   previewDocumentRemoval,
-  retryDocumentRemoval,
-  cancelDocumentProcessing,
-  retryDocumentProcessing,
 } from "./api";
-import type { AddNoteRequest, ResolveClarificationsRequest } from "schemas";
+import type { AddNoteRequest } from "schemas";
 import { useTranslations } from "next-intl";
 
 export const documentationKey = (projectId: string) =>
@@ -57,36 +46,6 @@ export const documentsKey = (projectId: string) =>
   [...documentationKey(projectId), "documents"] as const;
 export const documentKey = (projectId: string, documentId: string) =>
   [...documentationKey(projectId), "documents", "detail", documentId] as const;
-export const canonicalSourceKey = (
-  projectId: string,
-  options: CanonicalSourceOptions,
-) =>
-  [
-    ...documentationKey(projectId),
-    "source",
-    options.revisionId ?? null,
-  ] as const;
-export const provenanceKey = (
-  projectId: string,
-  itemId: string,
-  revisionId?: string,
-) =>
-  [
-    ...documentationKey(projectId),
-    "provenance",
-    itemId,
-    revisionId ?? null,
-  ] as const;
-export const clarificationsKey = (
-  projectId: string,
-  options: ClarificationOptions = {},
-) =>
-  [
-    ...documentationKey(projectId),
-    "clarifications",
-    options.status ?? null,
-  ] as const;
-
 // Cursor pages, read to the end. Every one of these endpoints returns a
 // `nextCursor` that used to be discarded, so a project past its first page had
 // documents, source items and clarifications it simply could not reach — while
@@ -140,71 +99,6 @@ export function useSourceDocument(projectId: string, documentId: string) {
         ? 3_000
         : false;
     },
-  });
-}
-
-export function useCancelDocumentProcessing(projectId: string) {
-  const t = useTranslations("Projects.DocumentationNew.Toasts");
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (documentId: string) =>
-      cancelDocumentProcessing(projectId, documentId),
-    meta: {
-      skipGlobalErrorToast: true,
-      successMessage: t("processingCancelled"),
-    },
-    onSuccess: (_result, documentId) => {
-      queryClient.invalidateQueries({
-        queryKey: documentKey(projectId, documentId),
-      });
-      queryClient.invalidateQueries({ queryKey: documentsKey(projectId) });
-      queryClient.invalidateQueries({ queryKey: workspaceKey(projectId) });
-    },
-  });
-}
-
-export function useRetryDocumentProcessing(projectId: string) {
-  const t = useTranslations("Projects.DocumentationNew.Toasts");
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (documentId: string) =>
-      retryDocumentProcessing(projectId, documentId),
-    meta: { skipGlobalErrorToast: true, successMessage: t("processingRetried") },
-    onSuccess: (_result, documentId) => {
-      queryClient.invalidateQueries({
-        queryKey: documentKey(projectId, documentId),
-      });
-      queryClient.invalidateQueries({ queryKey: documentsKey(projectId) });
-      queryClient.invalidateQueries({ queryKey: workspaceKey(projectId) });
-    },
-  });
-}
-
-export function useCanonicalSource(
-  projectId: string,
-  options: CanonicalSourceOptions = {},
-) {
-  return useInfiniteQuery({
-    queryKey: canonicalSourceKey(projectId, options),
-    queryFn: ({ pageParam }) =>
-      getCanonicalSource(projectId, { ...options, cursor: pageParam }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (page) => page.nextCursor ?? undefined,
-    select: (data) => ({
-      ...data.pages[0],
-      items: data.pages.flatMap((page) => page.items),
-    }),
-  });
-}
-
-export function useSourceItemProvenance(
-  projectId: string,
-  itemId: string,
-  revisionId?: string,
-) {
-  return useQuery({
-    queryKey: provenanceKey(projectId, itemId, revisionId),
-    queryFn: () => getItemProvenance(projectId, itemId, revisionId),
   });
 }
 
@@ -264,59 +158,6 @@ export function useAddNotionDocument(projectId: string) {
   });
 }
 
-export function useSourceItemCorrection(projectId: string, itemId: string) {
-  const t = useTranslations("Projects.DocumentationNew.Toasts");
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: GuidedCorrectionRequest) =>
-      correctSourceItem(projectId, itemId, data),
-    meta: { skipGlobalErrorToast: true, successMessage: t("correctionSent") },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: canonicalSourceKey(projectId, {}),
-      });
-      queryClient.invalidateQueries({
-        queryKey: provenanceKey(projectId, itemId),
-      });
-    },
-  });
-}
-
-export function useClarifications(
-  projectId: string,
-  options: ClarificationOptions = {},
-) {
-  return useInfiniteQuery({
-    queryKey: clarificationsKey(projectId, options),
-    queryFn: ({ pageParam }) =>
-      listClarifications(projectId, { ...options, cursor: pageParam }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (page) => page.nextCursor ?? undefined,
-    select: (data) => ({
-      items: data.pages.flatMap((page) => page.items),
-      total: data.pages[0]?.total ?? 0,
-    }),
-  });
-}
-
-export function useResolveClarifications(projectId: string) {
-  const t = useTranslations("Projects.DocumentationNew.Toasts");
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: ResolveClarificationsRequest) =>
-      resolveClarifications(projectId, data),
-    meta: { skipGlobalErrorToast: true, successMessage: t("clarificationsAnswered") },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [...documentationKey(projectId), "clarifications"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: canonicalSourceKey(projectId, {}),
-      });
-    },
-  });
-}
-
 export const workspaceKey = (projectId: string) =>
   [...documentationKey(projectId), "workspace"] as const;
 export const clientPreviewKey = (projectId: string) =>
@@ -335,7 +176,6 @@ export function useDocumentationWorkspace(projectId: string) {
     refetchOnWindowFocus: true,
   });
 }
-
 
 function useInvalidateDocumentation(projectId: string) {
   const queryClient = useQueryClient();
@@ -379,17 +219,6 @@ export function useConfirmDocumentRemoval(projectId: string) {
     meta: { skipGlobalErrorToast: true, successMessage: t("documentRemoved") },
   });
 }
-export function useRetryDocumentRemoval(projectId: string) {
-  const t = useTranslations("Projects.DocumentationNew.Toasts");
-  const invalidate = useInvalidateDocumentation(projectId);
-  return useMutation({
-    mutationFn: (documentId: string) =>
-      retryDocumentRemoval(projectId, documentId),
-    onSuccess: invalidate,
-    meta: { skipGlobalErrorToast: true, successMessage: t("removalResumed") },
-  });
-}
-
 // ─── Author-defined client sections (specs/017) ───────────────────────────────
 
 export const sectionsKey = (projectId: string) =>

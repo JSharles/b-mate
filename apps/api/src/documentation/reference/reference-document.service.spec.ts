@@ -5,7 +5,6 @@ import { asPrismaService, createPrismaMock } from '../../test/prisma-mock';
 import { ReferenceDocumentService } from './reference-document.service';
 
 const projectId = '00000000-0000-4000-8000-000000000001';
-const sourceId = '00000000-0000-4000-8000-000000000002';
 const documentId = '00000000-0000-4000-8000-000000000004';
 const operationId = '00000000-0000-4000-8000-000000000005';
 
@@ -34,8 +33,8 @@ describe('ReferenceDocumentService', () => {
     prisma: ReturnType<typeof createPrismaMock>,
     overrides = {},
   ) {
-    prisma.projectSource.upsert.mockResolvedValue({
-      id: sourceId,
+    prisma.project.findUniqueOrThrow.mockResolvedValue({
+      id: projectId,
       activeReferenceDocumentId: null,
       ...overrides,
     });
@@ -43,7 +42,7 @@ describe('ReferenceDocumentService', () => {
     prisma.note.findMany.mockResolvedValue([{ id: 'note-1' }]);
     prisma.referenceDocument.count.mockResolvedValue(0);
     prisma.referenceDocument.create.mockResolvedValue({ id: documentId });
-    prisma.projectSource.updateMany.mockResolvedValue({ count: 1 });
+    prisma.project.updateMany.mockResolvedValue({ count: 1 });
   }
 
   it('hides a project the caller is not a contributor on', async () => {
@@ -125,7 +124,7 @@ describe('ReferenceDocumentService', () => {
     it('loses the race rather than writing twice', async () => {
       const { prisma, service } = setup();
       readyToWrite(prisma);
-      prisma.projectSource.updateMany.mockResolvedValue({ count: 0 });
+      prisma.project.updateMany.mockResolvedValue({ count: 0 });
 
       await expect(
         service.write('user', projectId, 'fr'),
@@ -144,7 +143,7 @@ describe('ReferenceDocumentService', () => {
         createdAt: new Date('2026-08-13T10:00:00.000Z'),
         author: { firstName: 'Jean-Charles', lastName: 'Barq' },
       });
-      prisma.projectSource.updateMany.mockResolvedValue({ count: 1 });
+      prisma.project.update.mockResolvedValue({ id: projectId });
     }
 
     // FR-012: an answer and a correction are the same thing.
@@ -171,7 +170,7 @@ describe('ReferenceDocumentService', () => {
 
       await service.addNote('user', projectId, { content: 'Octobre.' });
 
-      expect(prisma.projectSource.updateMany).toHaveBeenCalledWith(
+      expect(prisma.project.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: { referenceNeedsRewrite: true },
         }),
@@ -182,7 +181,7 @@ describe('ReferenceDocumentService', () => {
     it('hides a removed note rather than deleting it', async () => {
       const { prisma, service } = setup();
       prisma.note.updateMany.mockResolvedValue({ count: 1 });
-      prisma.projectSource.updateMany.mockResolvedValue({ count: 1 });
+      prisma.project.update.mockResolvedValue({ id: projectId });
 
       await expect(
         service.removeNote('user', projectId, 'note-1'),
@@ -241,7 +240,7 @@ describe('ReferenceDocumentService', () => {
       const { prisma, service } = setup();
       prisma.sourceDocument.count.mockResolvedValue(2);
       prisma.note.count.mockResolvedValue(3);
-      prisma.projectSource.findUnique.mockResolvedValue({
+      prisma.project.findUnique.mockResolvedValue({
         referenceNeedsRewrite: true,
       });
       prisma.referenceDocument.findFirst.mockResolvedValue({
@@ -268,7 +267,7 @@ describe('ReferenceDocumentService', () => {
       const { prisma, service } = setup();
       prisma.sourceDocument.count.mockResolvedValue(0);
       prisma.note.count.mockResolvedValue(0);
-      prisma.projectSource.findUnique.mockResolvedValue(null);
+      prisma.project.findUnique.mockResolvedValue(null);
       prisma.referenceDocument.findFirst.mockResolvedValue(null);
 
       await expect(service.summary('user', projectId)).resolves.toMatchObject({

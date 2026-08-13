@@ -62,14 +62,13 @@ export function RemoveDocumentDialog({
 
         {preview.data && (
           <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
-            <p>
-              {preview.data.sourceRevisionId === null
-                ? t("notIncorporatedImpact")
-                : t("impact", {
-                    items: preview.data.supportedItemCount,
-                    sole: preview.data.soleSupportItemCount,
-                  })}
-            </p>
+            {/* What the project is left with. Removing the last document leaves
+                one that cannot write a reference document at all, which is
+                worth knowing before confirming rather than after. */}
+            <p>{t("impact", { remaining: preview.data.remainingDocumentCount })}</p>
+            {preview.data.referenceNeedsRewrite && (
+              <p className="mt-2 text-muted-foreground">{t("needsRewrite")}</p>
+            )}
             <p className="mt-2 text-muted-foreground">{t("clientSafety")}</p>
           </div>
         )}
@@ -105,15 +104,13 @@ export function RemoveDocumentDialog({
                   documentId,
                   data: {
                     expectedDocumentVersion: preview.data.documentVersion,
-                    expectedSourceRevisionId: preview.data.sourceRevisionId,
-                    confirmationToken: preview.data.confirmationToken,
                     confirmed: true,
                   },
                 },
                 {
-                  onSuccess: (result) => {
+                  onSuccess: () => {
                     handleOpenChange(false);
-                    if (result.status === "completed") onRemoved?.();
+                    onRemoved?.();
                   },
                 },
               );

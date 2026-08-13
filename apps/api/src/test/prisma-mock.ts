@@ -33,27 +33,15 @@ const DELEGATE_NAMES = [
   'vulgarizedTask',
   'taskProgress',
   'notionConnection',
-  // Canonical source and provenance delegates.
-  'projectSource',
-  'sourceRevision',
-  'informationItem',
-  'sourceRevisionItem',
-  'sourceRevisionChange',
+  // The documents a project holds, and the reference document written from
+  // them together with the developer's notes.
   'sourceDocument',
-  'documentObservation',
-  'contributorAssertion',
-  'provenanceLink',
-  'clarification',
-  'clarificationItem',
-  'clarificationEvidence',
-  'clarificationResolution',
-  // Author-defined client sections and their composition.
   'referenceDocument',
   'note',
+  // Author-defined client sections and their composition.
   'clientSection',
   'sectionProposal',
   'sectionQuestion',
-  'sectionQuestionItem',
   // Publication delegates.
   'clientSectionContent',
   'clientContentRelease',

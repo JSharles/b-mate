@@ -6,7 +6,7 @@ import { ClientSectionService } from './client-section.service';
 const projectId = '00000000-0000-4000-8000-000000000001';
 const sectionId = '00000000-0000-4000-8000-000000000002';
 const otherSectionId = '00000000-0000-4000-8000-000000000003';
-const revisionId = '00000000-0000-4000-8000-000000000004';
+const referenceId = '00000000-0000-4000-8000-000000000004';
 const userId = 'user-1';
 
 const editorial = {
@@ -53,11 +53,8 @@ describe('ClientSectionService', () => {
     };
   }
 
-  function withCanonicalContent(prisma: ReturnType<typeof createPrismaMock>) {
-    prisma.projectSource.findUnique.mockResolvedValue({
-      currentRevisionId: revisionId,
-    });
-    prisma.sourceRevisionItem.count.mockResolvedValue(12);
+  function withReferenceDocument(prisma: ReturnType<typeof createPrismaMock>) {
+    prisma.referenceDocument.count.mockResolvedValue(1);
   }
 
   describe('access', () => {
@@ -85,17 +82,17 @@ describe('ClientSectionService', () => {
           editorial,
         }),
       ).rejects.toBeInstanceOf(NotFoundException);
-      expect(prisma.projectSource.findUnique).not.toHaveBeenCalled();
+      expect(prisma.referenceDocument.count).not.toHaveBeenCalled();
       expect(prisma.clientSection.create).not.toHaveBeenCalled();
     });
   });
 
   describe('creating', () => {
-    it('refuses a project whose canonical source holds nothing', async () => {
+    // Plan, Decision 4: a section is a view of the reference document, so
+    // there is nothing to define one against before one exists.
+    it('refuses a project with no reference document yet', async () => {
       const { prisma, service } = setup();
-      prisma.projectSource.findUnique.mockResolvedValue({
-        currentRevisionId: null,
-      });
+      prisma.referenceDocument.count.mockResolvedValue(0);
 
       await expect(
         service.create(userId, projectId, {
@@ -103,29 +100,13 @@ describe('ClientSectionService', () => {
           instructions: 'Les jalons.',
           editorial,
         }),
-      ).rejects.toMatchObject({ response: { code: 'NO_CANONICAL_CONTENT' } });
+      ).rejects.toMatchObject({ response: { code: 'NO_REFERENCE_DOCUMENT' } });
       expect(prisma.clientSection.create).not.toHaveBeenCalled();
-    });
-
-    it('refuses a source that exists but carries no statement', async () => {
-      const { prisma, service } = setup();
-      prisma.projectSource.findUnique.mockResolvedValue({
-        currentRevisionId: revisionId,
-      });
-      prisma.sourceRevisionItem.count.mockResolvedValue(0);
-
-      await expect(
-        service.create(userId, projectId, {
-          name: 'Planning',
-          instructions: 'Les jalons.',
-          editorial,
-        }),
-      ).rejects.toMatchObject({ response: { code: 'NO_CANONICAL_CONTENT' } });
     });
 
     it('appends after the last section rather than colliding with it', async () => {
       const { prisma, service } = setup();
-      withCanonicalContent(prisma);
+      withReferenceDocument(prisma);
       prisma.clientSection.findFirst.mockResolvedValue({ sortOrder: 4 });
       prisma.clientSection.create.mockResolvedValue(
         sectionRow({ sortOrder: 5 }),
@@ -146,7 +127,7 @@ describe('ClientSectionService', () => {
 
     it('starts the first section at zero', async () => {
       const { prisma, service } = setup();
-      withCanonicalContent(prisma);
+      withReferenceDocument(prisma);
       prisma.clientSection.findFirst.mockResolvedValue(null);
       prisma.clientSection.create.mockResolvedValue(sectionRow());
 
@@ -165,7 +146,7 @@ describe('ClientSectionService', () => {
 
     it('records the author and the editorial dimensions on the section itself', async () => {
       const { prisma, service } = setup();
-      withCanonicalContent(prisma);
+      withReferenceDocument(prisma);
       prisma.clientSection.findFirst.mockResolvedValue(null);
       prisma.clientSection.create.mockResolvedValue(sectionRow());
 
@@ -191,7 +172,7 @@ describe('ClientSectionService', () => {
 
     it('comes back needing a refresh, since it has never composed', async () => {
       const { prisma, service } = setup();
-      withCanonicalContent(prisma);
+      withReferenceDocument(prisma);
       prisma.clientSection.findFirst.mockResolvedValue(null);
       prisma.clientSection.create.mockResolvedValue(sectionRow());
 
@@ -247,7 +228,7 @@ describe('ClientSectionService', () => {
           activeProposal: {
             id: 'proposal-1',
             sectionId,
-            sourceRevisionId: revisionId,
+            referenceDocumentId: referenceId,
             status: 'composing',
             version: 1,
             changeSummary: null,

@@ -1,20 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  useCancelDocumentProcessing,
-  useDocumentationDocuments,
-  useRetryDocumentProcessing,
-  useRetryDocumentRemoval,
-} from "../hooks";
+import { useDocumentationDocuments } from "../hooks";
 import { useProject } from "@/features/projects/hooks";
 import { DocumentManagementPage } from "./document-management-page";
 
-vi.mock("../hooks", () => ({
-  useCancelDocumentProcessing: vi.fn(),
-  useDocumentationDocuments: vi.fn(),
-  useRetryDocumentProcessing: vi.fn(),
-  useRetryDocumentRemoval: vi.fn(),
-}));
+vi.mock("../hooks", () => ({ useDocumentationDocuments: vi.fn() }));
 vi.mock("@/features/projects/hooks", () => ({ useProject: vi.fn() }));
 vi.mock("./documentation-workspace", () => ({
   DocumentationWorkspace: () => <div>documentation-workspace</div>,
@@ -36,10 +26,6 @@ vi.mock("@/i18n/navigation", () => ({
   useRouter: () => ({ replace }),
 }));
 
-const retryProcessing = vi.fn();
-const retryRemoval = vi.fn();
-const cancelProcessing = vi.fn();
-
 describe("DocumentManagementPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -48,27 +34,18 @@ describe("DocumentManagementPage", () => {
       isPending: false,
       isError: false,
     } as never);
-    vi.mocked(useRetryDocumentProcessing).mockReturnValue({
-      mutate: retryProcessing,
-      isPending: false,
-    } as never);
-    vi.mocked(useRetryDocumentRemoval).mockReturnValue({
-      mutate: retryRemoval,
-      isPending: false,
-    } as never);
-    vi.mocked(useCancelDocumentProcessing).mockReturnValue({
-      mutate: cancelProcessing,
-      isPending: false,
-    } as never);
     vi.mocked(useDocumentationDocuments).mockReturnValue({
       data: {
         items: [
           { id: "failed", title: "Cadrage", status: "failed", kind: "notion" },
-          { id: "pending", title: "Architecture", status: "removal_pending", kind: "upload" },
-          { id: "stuck", title: "Ancien brief", status: "removal_failed", kind: "upload" },
-          { id: "working", title: "Product MD", status: "extracting", kind: "notion" },
+          {
+            id: "in",
+            title: "Architecture",
+            status: "incorporated",
+            kind: "upload",
+          },
         ],
-        total: 4,
+        total: 2,
         nextCursor: null,
       },
       isPending: false,
@@ -76,29 +53,30 @@ describe("DocumentManagementPage", () => {
     } as never);
   });
 
-  it("puts recovery actions beside documents that need them", () => {
+  it("lists the documents the project holds, with their state", () => {
     render(<DocumentManagementPage projectId="project-1" />);
 
-    // The page is the inventory now: its h1 names the list, and the pipeline
-    // lives on its own route.
-    expect(screen.getByRole("heading", { name: "documentsTitle" })).toBeVisible();
+    // The page is the inventory: its h1 names the list.
+    expect(
+      screen.getByRole("heading", { name: "documentsTitle" }),
+    ).toBeVisible();
     expect(screen.getByText("statusFailed")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "retryProcessing" }));
-    expect(retryProcessing).toHaveBeenCalledWith("failed");
-
-    // Only a removal that genuinely failed is the contributor's to resume.
-    fireEvent.click(screen.getByRole("button", { name: "resumeRemoval" }));
-    expect(retryRemoval).toHaveBeenCalledWith("stuck");
+    expect(screen.getByText("statusIncorporated")).toBeVisible();
   });
 
-  // A removal still in flight is recovered by the server's stall sweep, so
-  // offering "resume" beside its spinner made the row claim to be working and
-  // stuck at the same time.
-  it("offers no recovery beside a removal that is still running", () => {
+  // A document is read once at upload and then it is in. There is nothing to
+  // stop, nothing to retry and no removal to resume — offering any of it would
+  // promise a pipeline that no longer exists.
+  it("offers only removal, on every row", () => {
     render(<DocumentManagementPage projectId="project-1" />);
 
-    expect(screen.getByText("statusRemoving")).toBeVisible();
-    expect(screen.getAllByRole("button", { name: "resumeRemoval" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "remove" })).toHaveLength(2);
+    expect(
+      screen.queryByRole("button", { name: "retryProcessing" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "cancelProcessing" }),
+    ).not.toBeInTheDocument();
   });
 
   it("opens addition and confirmed deletion from the same page", () => {
@@ -106,7 +84,7 @@ describe("DocumentManagementPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "add" }));
     expect(screen.getByText("add-document-dialog")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "remove" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "remove" })[0]);
     expect(screen.getByText("remove-document-dialog")).toBeVisible();
   });
 
@@ -121,15 +99,5 @@ describe("DocumentManagementPage", () => {
 
     expect(replace).toHaveBeenCalledWith("/projects/project-1");
     expect(screen.queryByText("Cadrage")).not.toBeInTheDocument();
-  });
-  // A row being worked on used to carry no action at all — a spinner, for a
-  // batch stage that runs minutes and can hang for hours. There was no way to
-  // stop it and no way to delete it while it ran.
-  it("lets a contributor stop a document that is still being processed", () => {
-    render(<DocumentManagementPage projectId="project-1" />);
-
-    fireEvent.click(screen.getByRole("button", { name: "cancelProcessing" }));
-
-    expect(cancelProcessing).toHaveBeenCalledWith("working");
   });
 });

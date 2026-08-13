@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   ApproveSectionProposalRequestSchema,
-  CreateSectionExclusionRequestSchema,
   CreateSectionRequestSchema,
   PublicSectionsViewSchema,
   ReorderSectionsRequestSchema,
@@ -102,97 +101,86 @@ describe("reordering", () => {
 });
 
 describe("composed content", () => {
-  it("requires a stable identifier on an open point", () => {
+  function proposal(overrides: Record<string, unknown> = {}) {
+    return {
+      id,
+      sectionId: otherId,
+      referenceDocumentId: id,
+      status: "pending_review",
+      version: 1,
+      changeSummary: null,
+      createdAt: new Date().toISOString(),
+      outcome: "composed",
+      blocks: [{ kind: "paragraph", text: "Le lancement est prévu en octobre." }],
+      questions: [],
+      failureCode: null,
+      ...overrides,
+    };
+  }
+
+  // A section is a view of the reference document, so its blocks are shaped
+  // like the document's — and nothing asks a model to echo an identifier back.
+  it("carries prose, and no identifiers", () => {
+    expect(
+      SectionContentBlockSchema.parse({
+        kind: "paragraph",
+        text: "Le lancement est prévu en octobre.",
+      }).kind,
+    ).toBe("paragraph");
     expect(
       SectionContentBlockSchema.safeParse({
-        type: "open_point",
-        text: "À confirmer",
+        kind: "paragraph",
+        text: "Le lancement est prévu en octobre.",
         informationItemIds: [id],
       }).success,
     ).toBe(false);
   });
 
-  it("requires every block to name the statements it rests on", () => {
+  // What the reference document leaves unsettled stays unsettled here rather
+  // than being written around.
+  it("keeps an open point as its own kind of block", () => {
     expect(
-      SectionContentBlockSchema.safeParse({
-        type: "fact",
-        text: "Le lancement est prévu en octobre.",
-        informationItemIds: [],
-      }).success,
-    ).toBe(false);
+      SectionContentBlockSchema.parse({
+        kind: "open_point",
+        text: "La date n'est pas confirmée.",
+      }).kind,
+    ).toBe("open_point");
   });
 
-  it("keeps a proposal pinned to the canonical head it was composed from", () => {
-    const proposal = SectionProposalDetailSchema.parse({
+  it("keeps a proposal pinned to the reference document it was composed from", () => {
+    expect(SectionProposalDetailSchema.parse(proposal()).referenceDocumentId).toBe(
       id,
-      sectionId: otherId,
-      sourceRevisionId: id,
-      status: "pending_review",
-      version: 1,
-      changeSummary: null,
-      createdAt: new Date().toISOString(),
-      outcome: "composed",
-      blocks: [],
-      questions: [],
-      provenanceSummary: [],
-      failureCode: null,
-    });
-
-    expect(proposal.sourceRevisionId).toBe(id);
+    );
   });
 
-  it("can report that nothing in the source matched the instructions", () => {
-    const proposal = SectionProposalDetailSchema.parse({
-      id,
-      sectionId: otherId,
-      sourceRevisionId: id,
-      status: "pending_review",
-      version: 1,
-      changeSummary: null,
-      createdAt: new Date().toISOString(),
-      outcome: "nothing_matched",
-      blocks: [],
-      questions: [],
-      provenanceSummary: [],
-      failureCode: null,
-    });
+  // FR-011: a composition that matched nothing says so, rather than reaching
+  // for unrelated material to avoid returning an empty set.
+  it("can report that nothing in the document matched the instructions", () => {
+    const parsed = SectionProposalDetailSchema.parse(
+      proposal({ outcome: "nothing_matched", blocks: [] }),
+    );
 
-    expect(proposal.outcome).toBe("nothing_matched");
-    expect(proposal.blocks).toEqual([]);
+    expect(parsed.outcome).toBe("nothing_matched");
+    expect(parsed.blocks).toEqual([]);
   });
 
+  // FR-010: what composition could not resolve travels beside the proposal,
+  // never inside its content.
   it("carries unresolved questions beside the content, not inside it", () => {
-    const proposal = SectionProposalDetailSchema.parse({
-      id,
-      sectionId: otherId,
-      sourceRevisionId: id,
-      status: "pending_review",
-      version: 1,
-      changeSummary: null,
-      createdAt: new Date().toISOString(),
-      outcome: "composed",
-      blocks: [
-        {
-          type: "fact",
-          text: "Le lancement est prévu en octobre.",
-          informationItemIds: [id],
-        },
-      ],
-      questions: [
-        {
-          id,
-          question: "La date de lancement est-elle confirmée ?",
-          impactExplanation: "Le client lira une date que rien ne confirme.",
-          relatedInformationItemIds: [id],
-          answeredByAssertionId: null,
-        },
-      ],
-      provenanceSummary: [{ label: "Cahier des charges", itemCount: 4 }],
-      failureCode: null,
-    });
+    const parsed = SectionProposalDetailSchema.parse(
+      proposal({
+        questions: [
+          {
+            id,
+            question: "La date de lancement est-elle confirmée ?",
+            impactExplanation: "Le client lira une date que rien ne confirme.",
+          },
+        ],
+      }),
+    );
 
-    expect(proposal.questions).toHaveLength(1);
-    expect(proposal.blocks[0]?.text).toContain("octobre");
+    expect(parsed.questions).toHaveLength(1);
+    expect(parsed.blocks[0]?.text).toContain("octobre");
   });
 });
 
@@ -205,7 +193,6 @@ describe("a section's state", () => {
       editorial,
       sortOrder: 0,
       refreshNeeded: true,
-      exclusionCount: 2,
       activeProposal: null,
       hasPublishedContent: false,
       version: 1,
@@ -213,25 +200,6 @@ describe("a section's state", () => {
 
     expect(view.refreshNeeded).toBe(true);
     expect(view.hasPublishedContent).toBe(false);
-  });
-});
-
-describe("excluding a statement from one section", () => {
-  it("requires a reason", () => {
-    expect(
-      CreateSectionExclusionRequestSchema.safeParse({
-        informationItemId: id,
-      }).success,
-    ).toBe(false);
-  });
-
-  it("accepts a statement and why it does not belong here", () => {
-    expect(
-      CreateSectionExclusionRequestSchema.parse({
-        informationItemId: id,
-        reason: "Trop technique pour cette section.",
-      }).informationItemId,
-    ).toBe(id);
   });
 });
 

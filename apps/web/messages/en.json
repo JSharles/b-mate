@@ -209,7 +209,7 @@
         "back": "Back to project",
         "add": "Add a document",
         "documentsTitle": "Source documents",
-        "documentsDescription": "Every document contributes to one consolidated source and remains available for traceability.",
+        "documentsDescription": "Every document is read again on every rewrite of the reference document, and stays available for traceability.",
         "documentCount": "{count, plural, =0 {No documents} one {# document} other {# documents}}",
         "loadError": "This project's documentation couldn't be loaded.",
         "documentsLoadError": "The source documents couldn't be loaded.",
@@ -217,11 +217,6 @@
         "emptyTitle": "No source documents",
         "emptyDescription": "Add a file or Notion page to start building the project source.",
         "addFirst": "Add the first document",
-        "retryProcessing": "Retry",
-        "cancelProcessing": "Stop",
-        "resumeRemoval": "Resume deletion",
-        "retrying": "Working…",
-        "cancelling": "Stopping…",
         "remove": "Delete",
         "open": "Open {title}",
         "loadMore": "Show more",
@@ -261,15 +256,10 @@
         "empty": "No document has been added yet.",
         "loadError": "The documents couldn't be loaded.",
         "statusIncorporated": "Incorporated into the source",
-        "statusProcessing": "Being incorporated",
         "statusFailed": "Action needed",
-        "statusCancelled": "Processing stopped",
-        "statusRemoving": "Deletion in progress",
-        "statusRemovalFailed": "Deletion needs retrying",
         "statusRemoved": "Deleted",
         "statusUnavailable": "Unavailable",
-        "remove": "Delete",
-        "statusProcessingSince": "Being incorporated · {since}"
+        "remove": "Delete"
       },
       "DocumentDetail": {
         "back": "Back to project",
@@ -286,18 +276,10 @@
         "roleDescription": "This document is a preserved contribution for traceability. Read the consolidated information in the project's canonical source.",
         "failureCode": "Diagnostic: {code}",
         "processingFailureHelp": "Processing didn't complete. You can retry without adding the document again.",
-        "cancelledHelp": "You stopped this processing. Restart it, or delete the document.",
-        "removalFailureHelp": "Deletion wasn't finalized. You can safely resume it without changing the published version.",
         "technicalDetails": "Technical details",
         "retryProcessing": "Retry processing",
         "cancelProcessing": "Stop processing",
-        "retryingProcessing": "Retrying…",
-        "cancellingProcessing": "Stopping…",
-        "retryProcessingError": "Processing could not be restarted. Try again in a few moments.",
         "removeDocument": "Delete document",
-        "retryRemoval": "Retry deletion",
-        "retryingRemoval": "Retrying deletion…",
-        "retryRemovalError": "Deletion did not complete. The original and published source remain protected.",
         "downloadOriginal": "Download original",
         "openOriginal": "Open original page"
       },
@@ -633,9 +615,8 @@
       },
       "Removal": {
         "title": "Delete this document?",
-        "description": "Diaphane will permanently delete the stored original. If it already contributed to the source, the source will be rebuilt only from remaining contributions.",
-        "impact": "{items, plural, one {# item uses} other {# items use}} this document, {sole, plural, one {# of them with no other support} other {# of them with no other support}}. Your published sections will be marked as needing a refresh.",
-        "notIncorporatedImpact": "This document was never incorporated into the source. Deleting it will not change any consolidated information.",
+        "description": "Diaphane will permanently delete the stored original. Your next rewrites will no longer draw on it.",
+        "impact": "{remaining, plural, =0 {This project would hold no document at all: no reference document can be written.} one {# document would remain.} other {# documents would remain.}}",
         "clientSafety": "The version currently visible to the client remains unchanged until your next approval.",
         "loadingImpact": "Checking the impact…",
         "retryPreview": "Try again",
@@ -644,16 +625,12 @@
         "confirm": "Delete permanently",
         "retryConfirm": "Retry deletion",
         "removing": "Deleting…",
-        "error": "Deletion could not complete. Close this dialog or retry; published content remains unchanged."
+        "error": "Deletion could not complete. Close this dialog or retry; published content remains unchanged.",
+        "needsRewrite": "Your reference document stays readable as it is. Rewrite it so it stops drawing on this document."
       },
       "Toasts": {
         "documentAdded": "Document added. Its analysis is queued — this page updates itself.",
-        "processingRetried": "Processing restarted.",
-        "processingCancelled": "Processing stopped.",
-        "removalResumed": "Removal resumed.",
-        "documentRemoved": "Document removed. The source was rebuilt without it.",
-        "correctionSent": "Correction sent. A new draft is being prepared.",
-        "clarificationsAnswered": "Answers saved."
+        "documentRemoved": "Document removed. The source was rebuilt without it."
       }
     }
   },

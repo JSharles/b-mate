@@ -8,8 +8,9 @@ import {
 // as-is — never a translation key (research Decision 7).
 export const SectionNameSchema = z.string().trim().min(1).max(120);
 
-// The description of what composition should look for in the canonical source.
-// This is the field that decides a section's quality, hence the generous ceiling.
+// The description of what composition should look for in the reference
+// document. This is the field that decides a section's quality, hence the
+// generous ceiling.
 export const SectionInstructionsSchema = z.string().trim().min(1).max(4_000);
 
 // The four editorial dimensions, carried by the section rather than the project
@@ -42,34 +43,15 @@ export const SectionEditorialSchema = z
   })
   .strict();
 
-// The blocks composition produces. Structurally the same shape feature 016's
-// category drafts used; declared separately because `documentation-review` is
-// removed once every project has migrated off categories.
+// The blocks composition produces. A section is a view of the reference
+// document, so its blocks are shaped like the document's: prose, and what the
+// document leaves open kept as its own kind.
 export const SectionContentBlockSchema = z
   .object({
-    type: z.enum([
-      "fact",
-      "decision",
-      "date",
-      "figure",
-      "constraint",
-      "explanation",
-      "open_point",
-    ]),
+    kind: z.enum(["paragraph", "open_point"]),
     text: z.string().trim().min(1).max(20_000),
-    informationItemIds: z.array(DocumentationUuidSchema).min(1),
-    openPointId: DocumentationUuidSchema.nullable().optional(),
   })
-  .strict()
-  .superRefine((block, context) => {
-    if (block.type === "open_point" && !block.openPointId) {
-      context.addIssue({
-        code: "custom",
-        path: ["openPointId"],
-        message: "An open point requires a stable identifier.",
-      });
-    }
-  });
+  .strict();
 
 export const SectionProposalStatusSchema = z.enum([
   "composing",
@@ -90,7 +72,7 @@ export const SectionProposalSummarySchema = z
   .object({
     id: DocumentationUuidSchema,
     sectionId: DocumentationUuidSchema,
-    sourceRevisionId: DocumentationUuidSchema,
+    referenceDocumentId: DocumentationUuidSchema,
     status: SectionProposalStatusSchema,
     version: z.number().int().positive(),
     changeSummary: z.string().nullable(),
@@ -105,8 +87,6 @@ export const SectionQuestionSchema = z
     id: DocumentationUuidSchema,
     question: z.string().trim().min(1).max(2_000),
     impactExplanation: z.string().trim().min(1).max(2_000),
-    relatedInformationItemIds: z.array(DocumentationUuidSchema),
-    answeredByAssertionId: DocumentationUuidSchema.nullable(),
   })
   .strict();
 
@@ -114,14 +94,6 @@ export const SectionProposalDetailSchema = SectionProposalSummarySchema.extend({
   outcome: SectionProposalOutcomeSchema.nullable(),
   blocks: z.array(SectionContentBlockSchema),
   questions: z.array(SectionQuestionSchema),
-  provenanceSummary: z.array(
-    z
-      .object({
-        label: z.string().min(1),
-        itemCount: z.number().int().positive(),
-      })
-      .strict(),
-  ),
   failureCode: z.string().trim().min(1).max(128).nullable(),
 }).strict();
 
@@ -133,7 +105,6 @@ export const SectionViewSchema = z
     editorial: SectionEditorialSchema,
     sortOrder: z.number().int().nonnegative(),
     refreshNeeded: z.boolean(),
-    exclusionCount: z.number().int().nonnegative(),
     activeProposal: SectionProposalSummarySchema.nullable(),
     hasPublishedContent: z.boolean(),
     version: z.number().int().positive(),
@@ -178,31 +149,8 @@ export const ReorderSectionsRequestSchema = z
     { message: "A section may appear only once in the order." },
   );
 
-// FR-015: a relevance correction binds one statement to one section. The reason
-// is shown back to the contributor and never sent to the model — the exclusion
-// is enforced by filtering composition's input (research Decision 5).
-export const CreateSectionExclusionRequestSchema = z
-  .object({
-    informationItemId: DocumentationUuidSchema,
-    reason: z.string().trim().min(1).max(1_000),
-  })
-  .strict();
-
-export const SectionExclusionViewSchema = z
-  .object({
-    informationItemId: DocumentationUuidSchema,
-    reason: z.string().min(1),
-    excerpt: z.string().min(1),
-    createdAt: z.iso.datetime(),
-  })
-  .strict();
-
 export const ApproveSectionProposalRequestSchema = z
   .object({ expectedVersion: z.number().int().positive() })
-  .strict();
-
-export const AnswerSectionQuestionRequestSchema = z
-  .object({ answer: z.string().trim().min(1).max(4_000) })
   .strict();
 
 // What the client reads. FR-023: a section with no published content is absent
@@ -230,6 +178,5 @@ export type SectionQuestion = z.infer<typeof SectionQuestionSchema>;
 export type SectionView = z.infer<typeof SectionViewSchema>;
 export type CreateSectionRequest = z.infer<typeof CreateSectionRequestSchema>;
 export type UpdateSectionRequest = z.infer<typeof UpdateSectionRequestSchema>;
-export type SectionExclusionView = z.infer<typeof SectionExclusionViewSchema>;
 export type PublicSection = z.infer<typeof PublicSectionSchema>;
 export type PublicSectionsView = z.infer<typeof PublicSectionsViewSchema>;

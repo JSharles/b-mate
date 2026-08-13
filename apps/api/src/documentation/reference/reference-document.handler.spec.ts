@@ -187,9 +187,24 @@ describe('ReferenceDocumentHandler', () => {
           }),
         }),
       );
-      expect(prisma.projectSource.updateMany).toHaveBeenCalledWith(
+      expect(prisma.project.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ referenceNeedsRewrite: false }),
+        }),
+      );
+    });
+
+    // FR-018: the truth moved, so every section written against the old one is
+    // owed a refresh. It says so and waits; it never recomposes itself.
+    it('leaves every section owed a refresh', async () => {
+      const { prisma, handler } = setup();
+      applied(prisma);
+
+      await handler.apply(prisma as never, operation(), output());
+
+      expect(prisma.clientSection.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ refreshNeeded: true }),
         }),
       );
     });
@@ -309,7 +324,7 @@ describe('ReferenceDocumentHandler', () => {
           }),
         }),
       );
-      expect(prisma.projectSource.updateMany).toHaveBeenCalledWith(
+      expect(prisma.project.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ referenceNeedsRewrite: true }),
         }),

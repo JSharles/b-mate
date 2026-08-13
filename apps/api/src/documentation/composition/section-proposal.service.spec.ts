@@ -8,9 +8,8 @@ import { SectionProposalService } from './section-proposal.service';
 const projectId = '00000000-0000-4000-8000-000000000001';
 const sectionId = '00000000-0000-4000-8000-000000000002';
 const proposalId = '00000000-0000-4000-8000-000000000003';
-const revisionId = '00000000-0000-4000-8000-000000000004';
+const referenceId = '00000000-0000-4000-8000-000000000004';
 const operationId = '00000000-0000-4000-8000-000000000005';
-const itemA = '00000000-0000-4000-8000-00000000000a';
 const userId = 'user-1';
 
 const section = {
@@ -22,15 +21,7 @@ const section = {
   archivedAt: null,
 };
 
-const items = [
-  {
-    informationItemId: itemA,
-    kind: 'fact',
-    state: 'confirmed',
-    content: 'The launch is planned for October.',
-    sortOrder: 0,
-  },
-];
+const reference = { id: referenceId, version: 1 };
 
 describe('SectionProposalService', () => {
   function setup() {
@@ -66,10 +57,7 @@ describe('SectionProposalService', () => {
       ...section,
       ...overrides,
     });
-    prisma.projectSource.findUnique.mockResolvedValue({
-      currentRevisionId: revisionId,
-    });
-    prisma.sourceRevisionItem.findMany.mockResolvedValue(items);
+    prisma.referenceDocument.findFirst.mockResolvedValue(reference);
     prisma.sectionProposal.count.mockResolvedValue(0);
     prisma.sectionProposal.create.mockResolvedValue({ id: proposalId });
     prisma.clientSection.updateMany.mockResolvedValue({ count: 1 });
@@ -86,10 +74,7 @@ describe('SectionProposalService', () => {
 
       expect(generation.createInTransaction).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({
-          type: 'section_composition',
-          sourceRevisionId: revisionId,
-        }),
+        expect.objectContaining({ type: 'section_composition' }),
       );
       expect(prisma.clientSection.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -99,7 +84,7 @@ describe('SectionProposalService', () => {
       );
     });
 
-    it('pins the proposal to the canonical head it composes from', async () => {
+    it('pins the proposal to the reference document it composes from', async () => {
       const { prisma, service } = setup();
       readyToCompose(prisma);
 
@@ -108,7 +93,7 @@ describe('SectionProposalService', () => {
       expect(prisma.sectionProposal.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            sourceRevisionId: revisionId,
+            referenceDocumentId: referenceId,
             status: 'composing',
             generationOperationId: operationId,
           }),
@@ -151,17 +136,16 @@ describe('SectionProposalService', () => {
       ).rejects.toMatchObject({ response: { code: 'SECTION_COMPOSING' } });
     });
 
-    it('refuses to compose from an empty canonical source', async () => {
+    // Plan, Decision 4: a section is a view of the reference document, so this
+    // is a real ordering constraint rather than a failure.
+    it('refuses to compose before a reference document exists', async () => {
       const { prisma, service } = setup();
       prisma.clientSection.findFirst.mockResolvedValue(section);
-      prisma.projectSource.findUnique.mockResolvedValue({
-        currentRevisionId: revisionId,
-      });
-      prisma.sourceRevisionItem.findMany.mockResolvedValue([]);
+      prisma.referenceDocument.findFirst.mockResolvedValue(null);
 
       await expect(
         service.compose(userId, projectId, sectionId),
-      ).rejects.toMatchObject({ response: { code: 'NO_CANONICAL_CONTENT' } });
+      ).rejects.toMatchObject({ response: { code: 'NO_REFERENCE_DOCUMENT' } });
     });
 
     it('hides a section from another project', async () => {
@@ -181,14 +165,13 @@ describe('SectionProposalService', () => {
       prisma.sectionProposal.findFirst.mockResolvedValue({
         id: proposalId,
         sectionId,
-        sourceRevisionId: revisionId,
+        referenceDocumentId: referenceId,
         status: 'composing',
         outcome: null,
         version: 1,
         changeSummary: null,
         createdAt: new Date('2026-08-12T10:00:00.000Z'),
         structuredContent: null,
-        provenanceSummary: null,
         failureCode: null,
         questions: [],
       });
@@ -204,22 +187,19 @@ describe('SectionProposalService', () => {
       prisma.sectionProposal.findFirst.mockResolvedValue({
         id: proposalId,
         sectionId,
-        sourceRevisionId: revisionId,
+        referenceDocumentId: referenceId,
         status: 'pending_review',
         outcome: 'composed',
         version: 2,
         changeSummary: 'First composition.',
         createdAt: new Date('2026-08-12T10:00:00.000Z'),
         structuredContent: [{ type: 'fact', text: 'A fact.' }],
-        provenanceSummary: [{ label: 'Brief', itemCount: 1 }],
         failureCode: null,
         questions: [
           {
             id: 'question-1',
             question: 'Is the date confirmed?',
             impactExplanation: 'The client would read an unconfirmed date.',
-            answeredByAssertionId: null,
-            items: [{ informationItemId: itemA }],
           },
         ],
       });
@@ -229,7 +209,6 @@ describe('SectionProposalService', () => {
       expect(proposal?.blocks).toHaveLength(1);
       expect(proposal?.questions[0]).toMatchObject({
         question: 'Is the date confirmed?',
-        relatedInformationItemIds: [itemA],
       });
     });
 

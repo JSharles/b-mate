@@ -1,14 +1,7 @@
 import type {
-  CanonicalSourcePage,
   DocumentAcknowledgement,
-  GuidedCorrectionRequest,
-  ItemProvenance,
   SourceDocument,
   SourceDocumentDetail,
-  SourceRevisionSummary,
-  Clarification,
-  ResolveClarificationsRequest,
-  ResolveClarificationsResponse,
   ClientContentPreview,
   DocumentationWorkspace,
   ConfirmDocumentRemoval,
@@ -34,16 +27,6 @@ export interface CursorPage<T> {
   nextCursor: string | null;
 }
 
-export interface CanonicalSourceOptions {
-  revisionId?: string;
-  cursor?: string;
-}
-
-export interface ClarificationOptions {
-  status?: "open" | "left_open" | "answered" | "superseded";
-  cursor?: string;
-}
-
 function withQuery(path: string, query: Record<string, string | undefined>) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
@@ -62,20 +45,6 @@ export function listDocuments(projectId: string, cursor?: string) {
 export function getDocument(projectId: string, documentId: string) {
   return apiFetch<SourceDocumentDetail>(
     `/projects/${projectId}/documentation/documents/${documentId}`,
-  );
-}
-
-export function cancelDocumentProcessing(projectId: string, documentId: string) {
-  return apiFetch<{ cancelledOperationCount: number }>(
-    `/projects/${projectId}/documentation/documents/${documentId}/processing/cancel`,
-    { method: "POST" },
-  );
-}
-
-export function retryDocumentProcessing(projectId: string, documentId: string) {
-  return apiFetch<{ operationId: string; status: string }>(
-    `/projects/${projectId}/documentation/documents/${documentId}/retry-processing`,
-    { method: "POST" },
   );
 }
 
@@ -118,81 +87,11 @@ export async function uploadDocument(
   return JSON.parse(text) as DocumentAcknowledgement;
 }
 
-export function getCanonicalSource(
-  projectId: string,
-  options: CanonicalSourceOptions = {},
-) {
-  return apiFetch<CanonicalSourcePage>(
-    withQuery(`/projects/${projectId}/documentation/source`, {
-      revisionId: options.revisionId,
-      cursor: options.cursor,
-    }),
-  );
-}
-
-export function listSourceRevisions(projectId: string, cursor?: string) {
-  return apiFetch<CursorPage<SourceRevisionSummary>>(
-    withQuery(`/projects/${projectId}/documentation/source/revisions`, {
-      cursor,
-    }),
-  );
-}
-
-export function getItemProvenance(
-  projectId: string,
-  itemId: string,
-  revisionId?: string,
-) {
-  return apiFetch<ItemProvenance>(
-    withQuery(
-      `/projects/${projectId}/documentation/source/items/${itemId}/provenance`,
-      { revisionId },
-    ),
-  );
-}
-
-export function correctSourceItem(
-  projectId: string,
-  itemId: string,
-  data: GuidedCorrectionRequest,
-) {
-  return apiFetch<{ status: "completed"; revisionId: string }>(
-    `/projects/${projectId}/documentation/source/items/${itemId}/corrections`,
-    { method: "POST", body: data },
-  );
-}
-
-export function listClarifications(
-  projectId: string,
-  options: ClarificationOptions = {},
-) {
-  return apiFetch<CursorPage<Clarification>>(
-    withQuery(`/projects/${projectId}/documentation/clarifications`, {
-      status: options.status,
-      cursor: options.cursor,
-    }),
-  );
-}
-
-export function resolveClarifications(
-  projectId: string,
-  data: ResolveClarificationsRequest,
-) {
-  return apiFetch<ResolveClarificationsResponse>(
-    `/projects/${projectId}/documentation/clarifications/resolutions`,
-    { method: "POST", body: data },
-  );
-}
-
 export function getDocumentationWorkspace(projectId: string) {
   return apiFetch<DocumentationWorkspace>(
     `/projects/${projectId}/documentation`,
   );
 }
-
-
-
-
 
 export function getClientContentPreview(projectId: string) {
   return apiFetch<ClientContentPreview>(
@@ -206,37 +105,20 @@ export function getPublicClientSections(projectId: string) {
   );
 }
 
-
-
-
-
-
 export function previewDocumentRemoval(projectId: string, documentId: string) {
   return apiFetch<DocumentRemovalPreview>(
     `/projects/${projectId}/documentation/documents/${documentId}/removal-preview`,
   );
 }
+
 export function confirmDocumentRemoval(
   projectId: string,
   documentId: string,
   data: ConfirmDocumentRemoval,
 ) {
-  return apiFetch<{
-    status: "completed" | "needs_attention";
-    revisionId?: string;
-    code?: string;
-  }>(`/projects/${projectId}/documentation/documents/${documentId}/removal`, {
-    method: "POST",
-    body: data,
-  });
-}
-export function retryDocumentRemoval(projectId: string, documentId: string) {
-  return apiFetch<{
-    status: "completed" | "needs_attention";
-    revisionId?: string;
-  }>(
-    `/projects/${projectId}/documentation/documents/${documentId}/removal/retry`,
-    { method: "POST" },
+  return apiFetch<{ documentId: string; removed: true }>(
+    `/projects/${projectId}/documentation/documents/${documentId}/removal`,
+    { method: "POST", body: data },
   );
 }
 

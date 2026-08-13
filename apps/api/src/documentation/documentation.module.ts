@@ -4,17 +4,10 @@ import { GenerationModule } from '../generation/generation.module';
 import { NotionConnectionModule } from '../notion-connection/notion-connection.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { ImageNormalizer } from './source/image-normalizer';
-import { DocumentExtractionHandler } from './source/document-extraction.handler';
 import { DocumentInputNormalizerService } from './source/document-input-normalizer.service';
 import { DocumentStorageClient } from './source/document-storage.client';
-import { SourceConsolidationHandler } from './source/source-consolidation.handler';
 import { SourceDocumentService } from './source/source-document.service';
-import { SourceRevisionService } from './source/source-revision.service';
 import { SourceDocumentsController } from './controllers/source-documents.controller';
-import { CanonicalSourceController } from './controllers/canonical-source.controller';
-import { SourceCorrectionService } from './source/source-correction.service';
-import { ClarificationService } from './source/clarification.service';
-import { ClarificationsController } from './controllers/clarifications.controller';
 import { SectionsController } from './controllers/sections.controller';
 import { ReferenceDocumentController } from './controllers/reference-document.controller';
 import { ReferenceDocumentHandler } from './reference/reference-document.handler';
@@ -39,8 +32,6 @@ import { DocumentationOperationsController } from './controllers/documentation-o
   ],
   controllers: [
     SourceDocumentsController,
-    CanonicalSourceController,
-    ClarificationsController,
     ClientContentController,
     DocumentationWorkspaceController,
     DocumentationOperationsController,
@@ -52,11 +43,6 @@ import { DocumentationOperationsController } from './controllers/documentation-o
     DocumentInputNormalizerService,
     DocumentStorageClient,
     SourceDocumentService,
-    SourceRevisionService,
-    SourceCorrectionService,
-    ClarificationService,
-    DocumentExtractionHandler,
-    SourceConsolidationHandler,
     ClientDerivationHandler,
     ClientPublicationService,
     DocumentationWorkspaceService,
@@ -67,6 +53,6 @@ import { DocumentationOperationsController } from './controllers/documentation-o
     ReferenceDocumentHandler,
     ReferenceDocumentService,
   ],
-  exports: [SourceDocumentService, SourceRevisionService],
+  exports: [SourceDocumentService],
 })
 export class DocumentationModule {}

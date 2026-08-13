@@ -43,16 +43,12 @@ describe("RemoveDocumentDialog", () => {
       data: {
         documentId: "document-1",
         documentVersion: 3,
-        sourceRevisionId: "00000000-0000-4000-8000-000000000001",
-        observationCount: 2,
-        supportedItemCount: 2,
-        soleSupportItemCount: 1,
-        confirmationToken: "a".repeat(64),
+        title: "Cahier des charges",
+        remainingDocumentCount: 1,
+        referenceNeedsRewrite: true,
       },
     } as never);
-    mutate.mockImplementation((_input, options) =>
-      options.onSuccess({ status: "completed" }),
-    );
+    mutate.mockImplementation((_input, options) => options.onSuccess());
     render(
       <RemoveDocumentDialog
         projectId="project-1"
@@ -76,20 +72,22 @@ describe("RemoveDocumentDialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("explains a failed document can be deleted without rebuilding the source", () => {
+  // FR-006: the reference document already written stays readable — it is what
+  // the client-facing sections were composed against. It is simply owed a
+  // rewrite that no longer draws on this document.
+  it("says the reference document will be owed a rewrite", () => {
     vi.mocked(useDocumentRemovalPreview).mockReturnValue({
       isPending: false,
       isError: false,
       data: {
         documentId: "document-1",
         documentVersion: 1,
-        sourceRevisionId: null,
-        observationCount: 0,
-        supportedItemCount: 0,
-        soleSupportItemCount: 0,
-        confirmationToken: "a".repeat(64),
+        title: "Cahier des charges",
+        remainingDocumentCount: 2,
+        referenceNeedsRewrite: true,
       },
     } as never);
+
     render(
       <RemoveDocumentDialog
         projectId="project-1"
@@ -98,7 +96,34 @@ describe("RemoveDocumentDialog", () => {
         onOpenChange={vi.fn()}
       />,
     );
-    expect(screen.getByText("notIncorporatedImpact")).toBeVisible();
+
+    expect(screen.getByText("impact")).toBeVisible();
+    expect(screen.getByText("needsRewrite")).toBeVisible();
+  });
+
+  it("says nothing about a rewrite on a project that never wrote one", () => {
+    vi.mocked(useDocumentRemovalPreview).mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: {
+        documentId: "document-1",
+        documentVersion: 1,
+        title: "Cahier des charges",
+        remainingDocumentCount: 0,
+        referenceNeedsRewrite: false,
+      },
+    } as never);
+
+    render(
+      <RemoveDocumentDialog
+        projectId="project-1"
+        documentId="document-1"
+        open
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("needsRewrite")).not.toBeInTheDocument();
   });
 
   it("shows a recoverable error", () => {
@@ -140,8 +165,7 @@ describe("RemoveDocumentDialog", () => {
     expect(screen.getByRole("button", { name: "confirm" })).toBeDisabled();
   });
 
-  it("does not report removal while storage still needs attention", () => {
-    const onOpenChange = vi.fn();
+  it("tells the page the document is gone once it is", () => {
     const onRemoved = vi.fn();
     vi.mocked(useDocumentRemovalPreview).mockReturnValue({
       isPending: false,
@@ -149,29 +173,24 @@ describe("RemoveDocumentDialog", () => {
       data: {
         documentId: "document-1",
         documentVersion: 1,
-        sourceRevisionId: null,
-        observationCount: 0,
-        supportedItemCount: 0,
-        soleSupportItemCount: 0,
-        confirmationToken: "a".repeat(64),
+        title: "Cahier des charges",
+        remainingDocumentCount: 0,
+        referenceNeedsRewrite: false,
       },
     } as never);
-    mutate.mockImplementation((_input, options) =>
-      options.onSuccess({ status: "needs_attention" }),
-    );
+    mutate.mockImplementation((_input, options) => options.onSuccess());
+
     render(
       <RemoveDocumentDialog
         projectId="project-1"
         documentId="document-1"
         open
-        onOpenChange={onOpenChange}
+        onOpenChange={vi.fn()}
         onRemoved={onRemoved}
       />,
     );
-
     fireEvent.click(screen.getByRole("button", { name: "confirm" }));
 
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(onRemoved).not.toHaveBeenCalled();
+    expect(onRemoved).toHaveBeenCalled();
   });
 });

@@ -6,7 +6,6 @@ export * from "./board-connection";
 export * from "./current-task";
 export * from "./documentation-common";
 export * from "./documentation-source";
-export * from "./documentation-clarification";
 export * from "./documentation-sections";
 export * from "./reference-document";
 export * from "./client-release";

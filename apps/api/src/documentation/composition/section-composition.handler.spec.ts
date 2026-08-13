@@ -8,28 +8,22 @@ import {
 import {
   SectionCompositionHandler,
   compositionFingerprint,
-  selectCompositionStatements,
+  compositionParts,
 } from './section-composition.handler';
 
 const operationId = '00000000-0000-4000-8000-0000000000aa';
 const sectionId = '00000000-0000-4000-8000-000000000001';
 const proposalId = '00000000-0000-4000-8000-000000000002';
-const revisionId = '00000000-0000-4000-8000-000000000003';
-const itemA = '00000000-0000-4000-8000-00000000000a';
-const itemB = '00000000-0000-4000-8000-00000000000b';
+const referenceId = '00000000-0000-4000-8000-000000000003';
 
-const revisionItems = [
+const structuredContent = [
   {
-    informationItemId: itemA,
-    kind: 'fact' as const,
-    state: 'confirmed' as const,
-    content: 'The launch is planned for October.',
-  },
-  {
-    informationItemId: itemB,
-    kind: 'constraint' as const,
-    state: 'confirmed' as const,
-    content: 'The budget is capped at 40k.',
+    title: 'Scope',
+    documentTitles: ['Statement of work'],
+    blocks: [
+      { kind: 'paragraph', text: 'The launch is planned for October.' },
+      { kind: 'gap', text: 'The budget is not stated.', pointId: 'p0' },
+    ],
   },
 ];
 
@@ -40,23 +34,23 @@ const section = {
   archivedAt: null,
 };
 
-function fingerprint() {
+const referenceDocument = { id: referenceId, version: 2, structuredContent };
+
+function fingerprint(overrides: Record<string, unknown> = {}) {
   return compositionFingerprint({
     sectionId,
     sectionName: section.name,
     instructions: section.instructions,
-    sourceRevisionId: revisionId,
-    statements: selectCompositionStatements(revisionItems),
+    referenceDocumentId: referenceId,
+    referenceVersion: 2,
+    ...overrides,
   });
 }
 
-function operation(
-  overrides: Partial<GenerationOperation> = {},
-): GenerationOperation {
+function operation(): GenerationOperation {
   return {
     id: operationId,
     inputFingerprint: fingerprint(),
-    ...overrides,
   } as GenerationOperation;
 }
 
@@ -64,16 +58,9 @@ function output(overrides: Record<string, unknown> = {}) {
   return SectionCompositionOutputSchema.parse({
     promptVersion: SECTION_COMPOSITION_PROMPT_VERSION,
     outcome: 'composed',
-    blocks: [
-      {
-        type: 'fact',
-        text: 'The launch is planned for October.',
-        informationItemIds: [itemA],
-      },
-    ],
+    blocks: [{ kind: 'paragraph', text: 'The launch is planned for October.' }],
     questions: [],
     changeSummary: 'First composition.',
-    provenanceSummary: [{ label: 'Statement of work', itemCount: 1 }],
     ...overrides,
   });
 }
@@ -89,81 +76,52 @@ describe('SectionCompositionHandler', () => {
     };
   }
 
-  describe('selecting the input', () => {
-    it('sends every statement when nothing is excluded', () => {
-      expect(
-        selectCompositionStatements(revisionItems).map((s) => s.id),
-      ).toEqual([itemA, itemB]);
+  function composing(overrides: Record<string, unknown> = {}) {
+    return {
+      id: proposalId,
+      sectionId,
+      referenceDocumentId: referenceId,
+      status: 'composing',
+      section,
+      referenceDocument,
+      ...overrides,
+    };
+  }
+
+  describe('preparing the document for the model', () => {
+    // A gap keeps its own kind, so the section can carry it forward as an open
+    // point instead of quietly writing a sentence that reads as settled.
+    it('keeps a gap apart from a paragraph', () => {
+      expect(compositionParts(structuredContent)[0].blocks).toEqual([
+        { kind: 'paragraph', text: 'The launch is planned for October.' },
+        { kind: 'gap', text: 'The budget is not stated.' },
+      ]);
     });
 
-    it('removes an excluded statement before the model sees it', () => {
-      const selected = selectCompositionStatements(
-        revisionItems,
-        new Set([itemB]),
-      );
-
-      expect(selected.map((s) => s.id)).toEqual([itemA]);
+    it('answers for a document with no parts at all', () => {
+      expect(compositionParts(null)).toEqual([]);
     });
   });
 
   describe('building the request', () => {
-    it('carries the section brief and the statements', async () => {
+    it('carries the section brief and the reference document', async () => {
       const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue({
-        id: proposalId,
-        sectionId,
-        sourceRevisionId: revisionId,
-        status: 'composing',
-        section,
-        sourceRevision: { items: revisionItems },
-      });
+      prisma.sectionProposal.findUnique.mockResolvedValue(composing());
 
       const request = await handler.buildRequest(operation());
       const text = (request.parts[0] as { text: string }).text;
 
       expect(text).toContain('What the client asked for');
       expect(text).toContain('Everything about the request');
-      expect(text).toContain('The budget is capped at 40k.');
-      expect(request.outputContract).toBe('section-composition-v1');
-    });
-
-    // The fingerprint is taken over the statements in order. The service reads
-    // them sorted; an unsorted read here produced a different fingerprint and the
-    // stage refused its own input as drift — on the very first real run.
-    it('reads the statements in the order the service recorded them', async () => {
-      const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue({
-        id: proposalId,
-        sectionId,
-        sourceRevisionId: revisionId,
-        status: 'composing',
-        section,
-        sourceRevision: { items: revisionItems },
-      });
-
-      await handler.buildRequest(operation());
-
-      expect(prisma.sectionProposal.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({
-          include: expect.objectContaining({
-            sourceRevision: {
-              include: { items: { orderBy: { sortOrder: 'asc' } } },
-            },
-          }),
-        }),
-      );
+      expect(text).toContain('The launch is planned for October.');
+      expect(request.outputContract).toBe('section-composition-v2');
     });
 
     it('refuses a proposal that is no longer composing', async () => {
       const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue({
-        id: proposalId,
-        sectionId,
-        sourceRevisionId: revisionId,
-        status: 'superseded',
-        section,
-        sourceRevision: { items: revisionItems },
-      });
+      prisma.sectionProposal.findUnique.mockResolvedValue(
+        composing({ status: 'superseded' }),
+      );
 
       await expect(handler.buildRequest(operation())).rejects.toThrow(
         'SECTION_COMPOSITION_NOT_CURRENT',
@@ -172,30 +130,23 @@ describe('SectionCompositionHandler', () => {
 
     it('refuses to compose for a section archived while it waited', async () => {
       const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue({
-        id: proposalId,
-        sectionId,
-        sourceRevisionId: revisionId,
-        status: 'composing',
-        section: { ...section, archivedAt: new Date() },
-        sourceRevision: { items: revisionItems },
-      });
+      prisma.sectionProposal.findUnique.mockResolvedValue(
+        composing({ section: { ...section, archivedAt: new Date() } }),
+      );
 
       await expect(handler.buildRequest(operation())).rejects.toThrow(
         'SECTION_COMPOSITION_NOT_CURRENT',
       );
     });
 
-    it('refuses when the source moved under a queued composition', async () => {
+    // A rewrite between queueing and running changes what the section would be
+    // composed from, so the work is refused rather than done against a document
+    // nobody asked for.
+    it('refuses when the reference document was rewritten under it', async () => {
       const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue({
-        id: proposalId,
-        sectionId,
-        sourceRevisionId: revisionId,
-        status: 'composing',
-        section,
-        sourceRevision: { items: [revisionItems[0]] },
-      });
+      prisma.sectionProposal.findUnique.mockResolvedValue(
+        composing({ referenceDocument: { ...referenceDocument, version: 3 } }),
+      );
 
       await expect(handler.buildRequest(operation())).rejects.toThrow(
         'SECTION_COMPOSITION_INPUT_DRIFT',
@@ -204,14 +155,11 @@ describe('SectionCompositionHandler', () => {
 
     it('refuses when the section brief changed under a queued composition', async () => {
       const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue({
-        id: proposalId,
-        sectionId,
-        sourceRevisionId: revisionId,
-        status: 'composing',
-        section: { ...section, instructions: 'Something else entirely.' },
-        sourceRevision: { items: revisionItems },
-      });
+      prisma.sectionProposal.findUnique.mockResolvedValue(
+        composing({
+          section: { ...section, instructions: 'Something else entirely.' },
+        }),
+      );
 
       await expect(handler.buildRequest(operation())).rejects.toThrow(
         'SECTION_COMPOSITION_INPUT_DRIFT',
@@ -220,22 +168,11 @@ describe('SectionCompositionHandler', () => {
   });
 
   describe('applying a result', () => {
-    function composingProposal() {
-      return {
-        id: proposalId,
-        sectionId,
-        status: 'composing',
-        sourceRevision: { items: revisionItems },
-      };
-    }
-
     it('leaves the proposal awaiting review and clears the refresh mark', async () => {
       const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue(composingProposal());
+      prisma.sectionProposal.findUnique.mockResolvedValue(composing());
 
-      await handler.apply(prisma as never, operation(), {
-        output: output(),
-      });
+      await handler.apply(prisma as never, operation(), { output: output() });
 
       expect(prisma.sectionProposal.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -255,7 +192,7 @@ describe('SectionCompositionHandler', () => {
 
     it('records a composition that found nothing, without inventing content', async () => {
       const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue(composingProposal());
+      prisma.sectionProposal.findUnique.mockResolvedValue(composing());
 
       await handler.apply(prisma as never, operation(), {
         output: output({ outcome: 'nothing_matched', blocks: [] }),
@@ -271,9 +208,11 @@ describe('SectionCompositionHandler', () => {
       );
     });
 
+    // FR-010: read apart from what is proposed, so the contributor can act on
+    // one without touching the other.
     it('writes questions as rows beside the content', async () => {
       const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue(composingProposal());
+      prisma.sectionProposal.findUnique.mockResolvedValue(composing());
       prisma.sectionQuestion.create.mockResolvedValue({ id: 'question-1' });
 
       await handler.apply(prisma as never, operation(), {
@@ -282,7 +221,6 @@ describe('SectionCompositionHandler', () => {
             {
               question: 'Is the October date confirmed?',
               impactExplanation: 'The client would read an unconfirmed date.',
-              informationItemIds: [itemA],
             },
           ],
         }),
@@ -297,39 +235,16 @@ describe('SectionCompositionHandler', () => {
           }),
         }),
       );
-      expect(prisma.sectionQuestionItem.createMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: [{ questionId: 'question-1', informationItemId: itemA }],
-        }),
-      );
-    });
-
-    it('refuses a result citing a statement it was never given', async () => {
-      const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue({
-        ...composingProposal(),
-        sourceRevision: { items: [revisionItems[1]] },
-      });
-
-      await expect(
-        handler.apply(prisma as never, operation(), {
-          output: output(),
-        }),
-      ).rejects.toThrow('SECTION_COMPOSITION_UNKNOWN_REFERENCE');
-      expect(prisma.sectionProposal.update).not.toHaveBeenCalled();
     });
 
     it('refuses a result for a proposal that has moved on', async () => {
       const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue({
-        ...composingProposal(),
-        status: 'superseded',
-      });
+      prisma.sectionProposal.findUnique.mockResolvedValue(
+        composing({ status: 'superseded' }),
+      );
 
       await expect(
-        handler.apply(prisma as never, operation(), {
-          output: output(),
-        }),
+        handler.apply(prisma as never, operation(), { output: output() }),
       ).rejects.toThrow('SECTION_COMPOSITION_NOT_CURRENT');
     });
   });

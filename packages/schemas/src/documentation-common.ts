@@ -19,10 +19,6 @@ export const ExpectedVersionSchema = z
   .object({ expectedVersion: z.number().int().positive() })
   .strict();
 
-export const ExpectedSourceRevisionSchema = z
-  .object({ expectedSourceRevisionId: DocumentationUuidSchema.nullable() })
-  .strict();
-
 export const SafeErrorSchema = z
   .object({
     code: z
@@ -35,18 +31,15 @@ export const SafeErrorSchema = z
   })
   .strict();
 
-export const StructuredBlockKindSchema = z.enum([
-  "paragraph",
-  "heading",
-  "point_to_clarify",
-]);
+// A section's factual layer, shaped like the reference document it is a view
+// of: prose, and what the document leaves open kept as its own kind rather than
+// smoothed into a sentence that reads as settled.
+export const StructuredBlockKindSchema = z.enum(["paragraph", "open_point"]);
 
 export const StructuredContentBlockSchema = z
   .object({
     kind: StructuredBlockKindSchema,
     text: z.string().trim().min(1),
-    informationItemIds: z.array(DocumentationUuidSchema),
-    clarificationIds: z.array(DocumentationUuidSchema),
   })
   .strict();
 
@@ -67,9 +60,6 @@ export const PublicStructuredContentSchema = z
 
 export type Cursor = z.infer<typeof CursorSchema>;
 export type ExpectedVersion = z.infer<typeof ExpectedVersionSchema>;
-export type ExpectedSourceRevision = z.infer<
-  typeof ExpectedSourceRevisionSchema
->;
 export type SafeError = z.infer<typeof SafeErrorSchema>;
 export type StructuredContent = z.infer<typeof StructuredContentSchema>;
 export type PublicStructuredContent = z.infer<

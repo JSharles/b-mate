@@ -1,42 +1,25 @@
 import { z } from 'zod';
 
-export const SECTION_COMPOSITION_PROMPT_VERSION = 'section-composition-v1';
-export const SECTION_COMPOSITION_OUTPUT_CONTRACT = 'section-composition-v1';
+export const SECTION_COMPOSITION_PROMPT_VERSION = 'section-composition-v2';
+export const SECTION_COMPOSITION_OUTPUT_CONTRACT = 'section-composition-v2';
 
+// A section is a view of the reference document, so its blocks are shaped like
+// the document's: prose, and what the document leaves open carried as its own
+// kind rather than smoothed into a sentence that reads as settled.
 export const CompositionBlockSchema = z
   .object({
-    type: z.enum([
-      'fact',
-      'decision',
-      'date',
-      'figure',
-      'constraint',
-      'explanation',
-      'open_point',
-    ]),
+    kind: z.enum(['paragraph', 'open_point']),
     text: z.string().trim().min(1).max(20_000),
-    informationItemIds: z.array(z.uuid()).min(1),
-    openPointId: z.uuid().nullable().optional(),
   })
-  .strict()
-  .superRefine((block, context) => {
-    if (block.type === 'open_point' && !block.openPointId) {
-      context.addIssue({
-        code: 'custom',
-        path: ['openPointId'],
-        message: 'Open points require a stable id.',
-      });
-    }
-  });
+  .strict();
 
 // FR-010: what could not be resolved travels beside the content, never inside
-// it. The model supplies the question and why it matters; the identifiers it
-// cites are checked against what we sent, never trusted.
+// it. The model supplies the question and why it matters to what the client
+// will end up reading.
 export const CompositionQuestionSchema = z
   .object({
     question: z.string().trim().min(1).max(2_000),
     impactExplanation: z.string().trim().min(1).max(2_000),
-    informationItemIds: z.array(z.uuid()),
   })
   .strict();
 
@@ -52,14 +35,6 @@ export const SectionCompositionOutputSchema = z
     blocks: z.array(CompositionBlockSchema),
     questions: z.array(CompositionQuestionSchema),
     changeSummary: z.string().trim().min(1).max(2_000),
-    provenanceSummary: z.array(
-      z
-        .object({
-          label: z.string().trim().min(1),
-          itemCount: z.number().int().positive(),
-        })
-        .strict(),
-    ),
   })
   .strict()
   .superRefine((output, context) => {
@@ -90,7 +65,6 @@ export const SECTION_COMPOSITION_JSON_SCHEMA: Record<string, unknown> = {
     'blocks',
     'questions',
     'changeSummary',
-    'provenanceSummary',
   ],
   properties: {
     promptVersion: { const: SECTION_COMPOSITION_PROMPT_VERSION },
@@ -100,26 +74,10 @@ export const SECTION_COMPOSITION_JSON_SCHEMA: Record<string, unknown> = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['type', 'text', 'informationItemIds'],
+        required: ['kind', 'text'],
         properties: {
-          type: {
-            enum: [
-              'fact',
-              'decision',
-              'date',
-              'figure',
-              'constraint',
-              'explanation',
-              'open_point',
-            ],
-          },
+          kind: { enum: ['paragraph', 'open_point'] },
           text: { type: 'string' },
-          informationItemIds: {
-            type: 'array',
-            minItems: 1,
-            items: { type: 'string', format: 'uuid' },
-          },
-          openPointId: { type: ['string', 'null'], format: 'uuid' },
         },
       },
     },
@@ -128,50 +86,13 @@ export const SECTION_COMPOSITION_JSON_SCHEMA: Record<string, unknown> = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['question', 'impactExplanation', 'informationItemIds'],
+        required: ['question', 'impactExplanation'],
         properties: {
           question: { type: 'string' },
           impactExplanation: { type: 'string' },
-          informationItemIds: {
-            type: 'array',
-            items: { type: 'string', format: 'uuid' },
-          },
         },
       },
     },
     changeSummary: { type: 'string' },
-    provenanceSummary: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['label', 'itemCount'],
-        properties: {
-          label: { type: 'string' },
-          itemCount: { type: 'integer', minimum: 1 },
-        },
-      },
-    },
   },
 };
-
-// A section is a selection, so there is no coverage rule to enforce: leaving a
-// statement out is the whole point. What must hold is the other direction —
-// every citation names something we actually sent. An invented id is invented
-// provenance, and provenance is the one thing this product cannot fake.
-export function validateCompositionReferences(
-  output: z.infer<typeof SectionCompositionOutputSchema>,
-  allowedIds: readonly string[],
-): void {
-  const allowed = new Set(allowedIds);
-  const cited = [
-    ...output.blocks.flatMap((block) => block.informationItemIds),
-    ...output.blocks.flatMap((block) =>
-      block.openPointId ? [block.openPointId] : [],
-    ),
-    ...output.questions.flatMap((question) => question.informationItemIds),
-  ];
-  if (cited.some((id) => !allowed.has(id))) {
-    throw new Error('SECTION_COMPOSITION_UNKNOWN_REFERENCE');
-  }
-}

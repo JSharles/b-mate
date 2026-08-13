@@ -3,28 +3,16 @@
 import {
   AlertCircle,
   ArrowLeft,
-  CircleSlash,
   Download,
   ExternalLink,
   FileText,
-  LoaderCircle,
-  RotateCcw,
   Trash2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { use, useEffect, useState } from "react";
 import { RemoveDocumentDialog } from "@/features/documentation/components/remove-document-dialog";
-import {
-  CANCELLED_BY_CONTRIBUTOR,
-  DocumentStatus,
-  PROCESSING_STATUSES,
-} from "@/features/documentation/components/document-status";
-import {
-  useCancelDocumentProcessing,
-  useRetryDocumentProcessing,
-  useRetryDocumentRemoval,
-  useSourceDocument,
-} from "@/features/documentation/hooks";
+import { DocumentStatus } from "@/features/documentation/components/document-status";
+import { useSourceDocument } from "@/features/documentation/hooks";
 import { useProject } from "@/features/projects/hooks";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
@@ -39,9 +27,6 @@ export default function SourceDocumentPage({
   const t = useTranslations("Projects.Documentation.DocumentDetail");
   const project = useProject(id);
   const document = useSourceDocument(id, documentId);
-  const retryProcessing = useRetryDocumentProcessing(id);
-  const retryRemoval = useRetryDocumentRemoval(id);
-  const cancelProcessing = useCancelDocumentProcessing(id);
   const router = useRouter();
   const [removeOpen, setRemoveOpen] = useState(false);
   const isClient = project.data?.role === "client";
@@ -71,16 +56,6 @@ export default function SourceDocumentPage({
   }
 
   const item = document.data;
-  const removing = item.status === "removal_pending";
-  const processing = PROCESSING_STATUSES.has(item.status);
-  const cancelled = item.failureCode === CANCELLED_BY_CONTRIBUTOR;
-  const processingFailed = item.status === "failed";
-  const removalFailed = item.status === "removal_failed";
-  const actionError =
-    retryProcessing.isError ||
-    cancelProcessing.isError ||
-    retryRemoval.isError ||
-    retryRemoval.data?.status === "needs_attention";
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -107,11 +82,7 @@ export default function SourceDocumentPage({
               </p>
             </div>
           </div>
-          <DocumentStatus
-            status={item.status}
-            failureCode={item.failureCode}
-            className="text-sm"
-          />
+          <DocumentStatus status={item.status} className="text-sm" />
         </header>
 
         <div className="grid gap-8 px-6 py-6 sm:grid-cols-[1fr_auto]">
@@ -122,109 +93,33 @@ export default function SourceDocumentPage({
                 {t("roleDescription")}
               </p>
             </div>
-            {/* A stop is not an incident. Reported through the failure block
-                the page contradicted its own status line — "Traitement arrêté"
-                above, "le traitement n'a pas abouti" in red below — and
-                offered a technical code for something the contributor did on
-                purpose. */}
-            {cancelled && (
-              <p className="text-sm text-muted-foreground">
-                {t("cancelledHelp")}
-              </p>
-            )}
-            {item.failureCode && !cancelled && (
+            {item.failureCode && (
               <div role="alert" className="space-y-2 text-sm text-destructive">
-                <p>{t(processingFailed ? "processingFailureHelp" : "removalFailureHelp")}</p>
+                <p>{t("processingFailureHelp")}</p>
                 <details className="text-xs text-muted-foreground">
-                  <summary className="cursor-pointer">{t("technicalDetails")}</summary>
-                  <p className="mt-1">{t("failureCode", { code: item.failureCode })}</p>
+                  <summary className="cursor-pointer">
+                    {t("technicalDetails")}
+                  </summary>
+                  <p className="mt-1">
+                    {t("failureCode", { code: item.failureCode })}
+                  </p>
                 </details>
               </div>
-            )}
-            {actionError && (
-              <p role="alert" className="text-sm text-destructive">
-                {t(
-                  removalFailed ? "retryRemovalError" : "retryProcessingError",
-                )}
-              </p>
             )}
           </div>
 
           <div className="flex flex-col gap-2 sm:items-end">
-            {/* The list row offers this; the detail page did not, so opening a
-                document being processed was a dead end — the one place with
-                room to explain the wait had no way out of it. */}
-            {processing && (
+            {/* The only thing left to do with a document is take it back
+                out: it is read once at upload and then it is in. */}
+            {item.status !== "removed" && (
               <Button
                 type="button"
                 variant="outline"
-                className="w-full sm:w-auto"
-                disabled={cancelProcessing.isPending}
-                onClick={() => cancelProcessing.mutate(documentId)}
+                className="w-full text-destructive hover:text-destructive sm:w-auto"
+                onClick={() => setRemoveOpen(true)}
               >
-                {cancelProcessing.isPending ? (
-                  <LoaderCircle className="animate-spin motion-reduce:animate-none" />
-                ) : (
-                  <CircleSlash />
-                )}
-                {t(
-                  cancelProcessing.isPending
-                    ? "cancellingProcessing"
-                    : "cancelProcessing",
-                )}
-              </Button>
-            )}
-            {processingFailed && (
-              <>
-                <Button
-                  type="button"
-                  className="w-full sm:w-auto"
-                  disabled={retryProcessing.isPending}
-                  onClick={() => retryProcessing.mutate(documentId)}
-                >
-                  {retryProcessing.isPending ? (
-                    <LoaderCircle className="animate-spin motion-reduce:animate-none" />
-                  ) : (
-                    <RotateCcw />
-                  )}
-                  {t(
-                    retryProcessing.isPending
-                      ? "retryingProcessing"
-                      : "retryProcessing",
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full text-destructive hover:text-destructive sm:w-auto"
-                  onClick={() => setRemoveOpen(true)}
-                >
-                  <Trash2 />
-                  {t("removeDocument")}
-                </Button>
-              </>
-            )}
-            {(removalFailed || removing) && (
-              <Button
-                type="button"
-                className="w-full sm:w-auto"
-                disabled={retryRemoval.isPending}
-                onClick={() =>
-                  retryRemoval.mutate(documentId, {
-                    onSuccess: (result) => {
-                      if (result.status === "completed") {
-                        router.replace(`/projects/${id}/documents`);
-                      }
-                    },
-                  })
-                }
-              >
-                {retryRemoval.isPending ? (
-                  <LoaderCircle className="animate-spin motion-reduce:animate-none" />
-                ) : (
-                  <RotateCcw />
-                )}
-                {t(retryRemoval.isPending ? "retryingRemoval" : "retryRemoval")}
+                <Trash2 />
+                {t("removeDocument")}
               </Button>
             )}
             {item.originalDownloadUrl && (

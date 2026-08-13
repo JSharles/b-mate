@@ -59,15 +59,18 @@ describe('DocumentationWorkspaceService', () => {
   ])('maps aggregate state %#', async (input, priority, clientVisibility) => {
     const prisma = createPrismaMock();
     const access = { requireContributor: jest.fn() };
-    prisma.projectSource.findUnique.mockResolvedValue({
-      currentRevisionId: 'revision-1',
+    prisma.project.findUnique.mockResolvedValue({
+      referenceNeedsRewrite: false,
+      activeReferenceDocumentId: null,
     });
     const documents = (input as { documents?: number }).documents ?? 3;
     prisma.sourceDocument.count.mockResolvedValue(documents);
     prisma.generationOperation.count
       .mockResolvedValueOnce(input.active)
       .mockResolvedValueOnce(input.failed);
-    prisma.clarification.count.mockResolvedValue(2);
+    prisma.referenceDocument.findFirst.mockResolvedValue({
+      points: [{ id: 'p0' }, { id: 'p1' }],
+    });
     prisma.sectionProposal.count.mockResolvedValue(input.reviews);
     prisma.projectClientPublication.findUnique.mockResolvedValue({
       currentReleaseId: input.release,
@@ -81,7 +84,7 @@ describe('DocumentationWorkspaceService', () => {
       priority,
       clientVisibility,
       documentCount: documents,
-      openClarificationCount: 2,
+      openPointCount: 2,
       refreshAfterMs: input.active || input.pending ? 5_000 : 30_000,
     });
     expect(access.requireContributor).toHaveBeenCalled();

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   CursorSchema,
-  ExpectedSourceRevisionSchema,
   ExpectedVersionSchema,
   PublicStructuredContentSchema,
   SafeErrorSchema,
@@ -12,17 +11,10 @@ import {
 const UUID = "00000000-0000-4000-8000-000000000001";
 
 describe("documentation common contracts", () => {
-  it("validates attributable structured blocks", () => {
+  it("validates structured blocks", () => {
     expect(
       StructuredContentSchema.parse({
-        blocks: [
-          {
-            kind: "paragraph",
-            text: "Une contrainte confirmée.",
-            informationItemIds: [UUID],
-            clarificationIds: [],
-          },
-        ],
+        blocks: [{ kind: "paragraph", text: "Une contrainte confirmée." }],
       }),
     ).toBeDefined();
     expect(StructuredContentSchema.safeParse({ blocks: [] }).success).toBe(
@@ -30,16 +22,19 @@ describe("documentation common contracts", () => {
     );
     expect(
       StructuredContentSchema.safeParse({
-        blocks: [
-          {
-            kind: "paragraph",
-            text: "   ",
-            informationItemIds: [UUID],
-            clarificationIds: [],
-          },
-        ],
+        blocks: [{ kind: "paragraph", text: "   " }],
       }).success,
     ).toBe(false);
+  });
+
+  // What the reference document leaves unsettled stays unsettled in a section
+  // rather than being written around.
+  it("keeps an open point as its own kind of block", () => {
+    expect(
+      StructuredContentSchema.parse({
+        blocks: [{ kind: "open_point", text: "La date n'est pas fixée." }],
+      }).blocks[0].kind,
+    ).toBe("open_point");
   });
 
   it("keeps public blocks free of internal identifiers", () => {
@@ -82,8 +77,5 @@ describe("documentation common contracts", () => {
     expect(
       ExpectedVersionSchema.safeParse({ expectedVersion: 0 }).success,
     ).toBe(false);
-    expect(
-      ExpectedSourceRevisionSchema.parse({ expectedSourceRevisionId: null }),
-    ).toEqual({ expectedSourceRevisionId: null });
   });
 });

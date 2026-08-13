@@ -4,14 +4,9 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DocumentAcknowledgement } from "schemas";
 import {
-  correctSourceItem,
-  getCanonicalSource,
   getDocument,
-  getItemProvenance,
   listDocuments,
   uploadDocument,
-  listClarifications,
-  resolveClarifications,
   listSections,
   createSection,
   updateSection,
@@ -22,21 +17,15 @@ import {
   getReferenceSummary,
   getReferenceDocument,
   writeReferenceDocument,
+  addNote,
+  removeNote,
 } from "./api";
 import {
-  canonicalSourceKey,
   documentKey,
   documentsKey,
-  provenanceKey,
-  useCanonicalSource,
   useDocumentationDocuments,
   useSourceDocument,
-  useSourceItemCorrection,
-  useSourceItemProvenance,
   useUploadDocument,
-  clarificationsKey,
-  useClarifications,
-  useResolveClarifications,
   sectionsKey,
   sectionProposalKey,
   useSections,
@@ -51,6 +40,9 @@ import {
   useReferenceSummary,
   useReferenceDocument,
   useWriteReferenceDocument,
+  notesKey,
+  useAddNote,
+  useRemoveNote,
 } from "./hooks";
 
 vi.mock("./api", () => ({
@@ -58,13 +50,8 @@ vi.mock("./api", () => ({
   getDocument: vi.fn(),
   uploadDocument: vi.fn(),
   addNotionDocument: vi.fn(),
-  getCanonicalSource: vi.fn(),
-  getItemProvenance: vi.fn(),
-  correctSourceItem: vi.fn(),
   proposeWorkingLanguage: vi.fn(),
   confirmWorkingLanguage: vi.fn(),
-  listClarifications: vi.fn(),
-  resolveClarifications: vi.fn(),
   listSections: vi.fn(),
   createSection: vi.fn(),
   updateSection: vi.fn(),
@@ -75,6 +62,15 @@ vi.mock("./api", () => ({
   getReferenceSummary: vi.fn(),
   getReferenceDocument: vi.fn(),
   writeReferenceDocument: vi.fn(),
+  addNote: vi.fn(),
+  listNotes: vi.fn(),
+  removeNote: vi.fn(),
+  getDocumentationWorkspace: vi.fn(),
+  getClientContentPreview: vi.fn(),
+  getPublicClientSections: vi.fn(),
+  reorderSections: vi.fn(),
+  previewDocumentRemoval: vi.fn(),
+  confirmDocumentRemoval: vi.fn(),
 }));
 
 function wrapper() {
@@ -92,11 +88,13 @@ function wrapper() {
 describe("documentation hooks", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("loads document pages, detail, source and provenance with separate keys", async () => {
-    vi.mocked(listDocuments).mockResolvedValue({ items: [], total: 0, nextCursor: null });
+  it("loads document pages and detail with separate keys", async () => {
+    vi.mocked(listDocuments).mockResolvedValue({
+      items: [],
+      total: 0,
+      nextCursor: null,
+    });
     vi.mocked(getDocument).mockResolvedValue({} as never);
-    vi.mocked(getCanonicalSource).mockResolvedValue({} as never);
-    vi.mocked(getItemProvenance).mockResolvedValue({} as never);
     const { Wrapper } = wrapper();
 
     renderHook(() => useDocumentationDocuments("project-1"), {
@@ -105,18 +103,11 @@ describe("documentation hooks", () => {
     renderHook(() => useSourceDocument("project-1", "document-1"), {
       wrapper: Wrapper,
     });
-    renderHook(() => useCanonicalSource("project-1", {}), { wrapper: Wrapper });
-    renderHook(() => useSourceItemProvenance("project-1", "item-1"), {
-      wrapper: Wrapper,
-    });
 
     await waitFor(() => expect(vi.mocked(listDocuments)).toHaveBeenCalled());
     // One infinite query owns every page now, so the cursor is no longer part
     // of the key — it is a page param inside it.
     expect(documentsKey("project-1")).not.toEqual(documentKey("project-1", "d"));
-    expect(documentKey("project-1", "document-1")).not.toEqual(
-      canonicalSourceKey("project-1", {}),
-    );
   });
 
   it("merges an acknowledgement into the first document page immediately", async () => {
@@ -180,60 +171,43 @@ describe("documentation hooks", () => {
     expect(data.pages[1].items.map(({ id }) => id)).toEqual(["document-2"]);
   });
 
-  it("invalidates canonical source and provenance after correction", async () => {
-    vi.mocked(correctSourceItem).mockResolvedValue({} as never);
+  // FR-006: a note owes a rewrite, it never triggers one. Only the summary is
+  // refreshed, so the badge counts what is owed while the developer goes on
+  // answering.
+  it("refreshes what is owed after a note, and rewrites nothing", async () => {
+    vi.mocked(addNote).mockResolvedValue({} as never);
     const { Wrapper, queryClient } = wrapper();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-    const { result } = renderHook(
-      () => useSourceItemCorrection("project-1", "item-1"),
-      { wrapper: Wrapper },
-    );
+    const { result } = renderHook(() => useAddNote("project-1"), {
+      wrapper: Wrapper,
+    });
 
     await act(async () =>
-      result.current.mutateAsync({
-        expectedSourceRevisionId: "revision-1",
-        correctedContent: "Correction",
-      }),
+      result.current.mutateAsync({ content: "Le lancement est en octobre." }),
     );
 
     expect(invalidate).toHaveBeenCalledWith({
-      queryKey: canonicalSourceKey("project-1", {}),
+      queryKey: notesKey("project-1"),
     });
     expect(invalidate).toHaveBeenCalledWith({
-      queryKey: provenanceKey("project-1", "item-1"),
+      queryKey: referenceSummaryKey("project-1"),
     });
+    expect(writeReferenceDocument).not.toHaveBeenCalled();
   });
 
-  it("loads all clarification pages and invalidates source plus the clarification family after resolution", async () => {
-    vi.mocked(listClarifications).mockResolvedValue({ items: [], total: 7, nextCursor: null });
-    vi.mocked(resolveClarifications).mockResolvedValue({ items: [], sourceRevisionId: null });
+  it("refreshes what is owed after a note is taken back", async () => {
+    vi.mocked(removeNote).mockResolvedValue({} as never);
     const { Wrapper, queryClient } = wrapper();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
-    renderHook(() => useClarifications("project-1", { status: "open" }), { wrapper: Wrapper });
-    await waitFor(() =>
-      expect(listClarifications).toHaveBeenCalledWith("project-1", {
-        status: "open",
-        cursor: undefined,
-      }),
-    );
-    // The cursor is a page param inside one infinite query, not part of its
-    // key — filters still are, so a filtered list stays its own cache entry.
-    expect(clarificationsKey("project-1", { status: "open" })).not.toEqual(
-      clarificationsKey("project-1"),
-    );
-    const { result } = renderHook(() => useResolveClarifications("project-1"), { wrapper: Wrapper });
-    await act(async () => result.current.mutateAsync({
-      expectedSourceRevisionId: "00000000-0000-4000-8000-000000000001",
-      resolutions: [{
-        clarificationId: "00000000-0000-4000-8000-000000000002",
-        expectedVersion: 1,
-        action: "leave_open",
-      }],
-    }));
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: ["projects", "project-1", "documentation", "clarifications"],
+    const { result } = renderHook(() => useRemoveNote("project-1"), {
+      wrapper: Wrapper,
     });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: canonicalSourceKey("project-1", {}) });
+
+    await act(async () => result.current.mutateAsync("note-1"));
+
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: notesKey("project-1"),
+    });
   });
 
   // Every one of these endpoints returns a `nextCursor` that used to be
@@ -270,69 +244,6 @@ describe("documentation hooks", () => {
     // the whole corpus rather than what happens to be loaded.
     expect(result.current.data?.total).toBe(2);
     expect(result.current.hasNextPage).toBe(false);
-  });
-
-  it("reads a second page of the canonical source, keeping the revision header", async () => {
-    vi.mocked(getCanonicalSource)
-      .mockResolvedValueOnce({
-        revision: { id: "revision-1", sequence: 4 },
-        workingLanguage: "fr",
-        items: [{ id: "item-1" }],
-        nextCursor: "cursor-2",
-      } as never)
-      .mockResolvedValueOnce({
-        revision: { id: "revision-1", sequence: 4 },
-        workingLanguage: "fr",
-        items: [{ id: "item-2" }],
-        nextCursor: null,
-      } as never);
-    const { Wrapper } = wrapper();
-
-    const { result } = renderHook(() => useCanonicalSource("project-1", {}), {
-      wrapper: Wrapper,
-    });
-
-    await waitFor(() => expect(result.current.hasNextPage).toBe(true));
-    await act(async () => {
-      await result.current.fetchNextPage();
-    });
-
-    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
-    expect(result.current.data?.revision?.sequence).toBe(4);
-    expect(getCanonicalSource).toHaveBeenLastCalledWith("project-1", {
-      cursor: "cursor-2",
-    });
-  });
-
-  it("reads a second page of clarifications", async () => {
-    vi.mocked(listClarifications)
-      .mockResolvedValueOnce({
-        items: [{ id: "clarification-1" }],
-        total: 2,
-        nextCursor: "cursor-2",
-      } as never)
-      .mockResolvedValueOnce({
-        items: [{ id: "clarification-2" }],
-        total: 2,
-        nextCursor: null,
-      } as never);
-    const { Wrapper } = wrapper();
-
-    const { result } = renderHook(
-      () => useClarifications("project-1", { status: "open" }),
-      { wrapper: Wrapper },
-    );
-
-    await waitFor(() => expect(result.current.hasNextPage).toBe(true));
-    await act(async () => {
-      await result.current.fetchNextPage();
-    });
-
-    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
-    expect(listClarifications).toHaveBeenLastCalledWith("project-1", {
-      status: "open",
-      cursor: "cursor-2",
-    });
   });
 
   describe("sections", () => {
@@ -482,3 +393,4 @@ describe("documentation hooks", () => {
     });
   });
 });
+

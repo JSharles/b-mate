@@ -1,17 +1,15 @@
 import { z } from 'zod';
 
 export const GENERATION_POLICY_STAGE_KEYS = [
-  'document_extraction',
-  'source_consolidation',
-  // Writes the project's reference document from its canonical source
-  // (specs/018-canonical-source-reading).
+  // Writes the project's reference document from its documents and the
+  // developer's notes, in one call (specs/018-canonical-source-reading).
   'reference_document',
-  'client_derivation',
-  // Composes one author-defined section from the canonical source
+  // Composes one author-defined section from the reference document
   // (specs/017-documentation-review-journey). `stages` is strict and every key
-  // is required, so adding this here obliges every deployment's
+  // is required, so adding a key here obliges every deployment's
   // GENERATION_POLICY_JSON to declare a route for it before the API will boot.
   'section_composition',
+  'client_derivation',
 ] as const;
 
 export const GenerationPolicyStageKeySchema = z.enum(

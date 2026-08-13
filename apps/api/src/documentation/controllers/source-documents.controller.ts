@@ -79,26 +79,6 @@ export class SourceDocumentsController {
     return this.removal.preview(user.id, projectId, documentId);
   }
 
-  @Post(':documentId/processing/cancel')
-  @HttpCode(202)
-  cancelProcessing(
-    @CurrentUser() user: User,
-    @Param('projectId') projectId: string,
-    @Param('documentId') documentId: string,
-  ) {
-    return this.documents.cancelProcessing(user.id, projectId, documentId);
-  }
-
-  @Post(':documentId/retry-processing')
-  @HttpCode(202)
-  retryProcessing(
-    @CurrentUser() user: User,
-    @Param('projectId') projectId: string,
-    @Param('documentId') documentId: string,
-  ) {
-    return this.documents.retryProcessing(user.id, projectId, documentId);
-  }
-
   @Post(':documentId/removal')
   @HttpCode(202)
   confirmRemoval(
@@ -108,15 +88,5 @@ export class SourceDocumentsController {
     @Body() body: ConfirmSourceDocumentRemovalDto,
   ) {
     return this.removal.confirm(user.id, projectId, documentId, body);
-  }
-
-  @Post(':documentId/removal/retry')
-  @HttpCode(202)
-  retryRemoval(
-    @CurrentUser() user: User,
-    @Param('projectId') projectId: string,
-    @Param('documentId') documentId: string,
-  ) {
-    return this.removal.retry(user.id, projectId, documentId);
   }
 }

@@ -9,61 +9,45 @@ import type {
 import { GenerationHandlerRegistry } from '../../generation/generation-handler.registry';
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildCompositionPrompt } from '../sections/prompts/composition.prompt';
-import type { CompositionPromptStatement } from '../sections/prompts/composition.prompt';
+import type { CompositionPromptPart } from '../sections/prompts/composition.prompt';
 import {
   SECTION_COMPOSITION_JSON_SCHEMA,
   SECTION_COMPOSITION_OUTPUT_CONTRACT,
   SectionCompositionOutputSchema,
-  validateCompositionReferences,
 } from './composition-output.schema';
 
 export interface CompositionInput {
   sectionId: string;
   sectionName: string;
   instructions: string;
-  sourceRevisionId: string;
-  statements: CompositionPromptStatement[];
+  referenceDocumentId: string;
+  referenceVersion: number;
 }
 
 // One definition of what the input is, used both when the operation is queued
 // and when its request is built. Two hand-kept copies of this shape is exactly
 // how a stage starts refusing its own work for drift it invented itself.
 export function compositionFingerprint(input: CompositionInput): string {
-  return createHash('sha256')
-    .update(
-      JSON.stringify({
-        sectionId: input.sectionId,
-        sectionName: input.sectionName,
-        instructions: input.instructions,
-        sourceRevisionId: input.sourceRevisionId,
-        statements: input.statements,
-      }),
-    )
-    .digest('hex');
+  return createHash('sha256').update(JSON.stringify(input)).digest('hex');
 }
 
-// FR-015/FR-016 are enforced here rather than asked for in the prompt: an
-// excluded statement is removed from the input before the model sees it, so a
-// contributor's judgement cannot be forgotten by a model that never received
-// it. `excludedItemIds` is empty until US2 introduces exclusions; the filter
-// exists now so there is one place for it to arrive.
-export function selectCompositionStatements(
-  items: readonly {
-    informationItemId: string;
-    kind: CompositionPromptStatement['kind'];
-    state: CompositionPromptStatement['state'];
-    content: string;
-  }[],
-  excludedItemIds: ReadonlySet<string> = new Set(),
-): CompositionPromptStatement[] {
-  return items
-    .filter((item) => !excludedItemIds.has(item.informationItemId))
-    .map((item) => ({
-      id: item.informationItemId,
-      kind: item.kind,
-      state: item.state,
-      content: item.content,
-    }));
+// The document as the model should read it. A gap keeps its own kind, so the
+// section can carry it forward as an open point instead of quietly writing a
+// sentence that reads as settled.
+export function compositionParts(
+  structuredContent: unknown,
+): CompositionPromptPart[] {
+  const parts = (structuredContent ?? []) as {
+    title: string;
+    blocks: { kind: 'paragraph' | 'gap'; text: string }[];
+  }[];
+  return parts.map((part) => ({
+    title: part.title,
+    blocks: part.blocks.map((block) => ({
+      kind: block.kind,
+      text: block.text,
+    })),
+  }));
 }
 
 @Injectable()
@@ -86,15 +70,7 @@ export class SectionCompositionHandler
   ): Promise<GenerationRequestInput> {
     const proposal = await this.prisma.sectionProposal.findUnique({
       where: { generationOperationId: operation.id },
-      include: {
-        section: true,
-        // Ordered the same way the proposal service ordered them when it
-        // queued the work: an unordered read makes the fingerprint differ from
-        // the one recorded, and the stage refuses its own input as drift.
-        sourceRevision: {
-          include: { items: { orderBy: { sortOrder: 'asc' } } },
-        },
-      },
+      include: { section: true, referenceDocument: true },
     });
     if (!proposal || proposal.status !== 'composing') {
       throw new Error('SECTION_COMPOSITION_NOT_CURRENT');
@@ -105,22 +81,30 @@ export class SectionCompositionHandler
       throw new Error('SECTION_COMPOSITION_NOT_CURRENT');
     }
 
-    const statements = selectCompositionStatements(
-      proposal.sourceRevision.items,
-    );
     const input: CompositionInput = {
       sectionId: proposal.sectionId,
       sectionName: proposal.section.name,
       instructions: proposal.section.instructions,
-      sourceRevisionId: proposal.sourceRevisionId,
-      statements,
+      referenceDocumentId: proposal.referenceDocumentId,
+      referenceVersion: proposal.referenceDocument.version,
     };
     if (compositionFingerprint(input) !== operation.inputFingerprint) {
       throw new Error('SECTION_COMPOSITION_INPUT_DRIFT');
     }
 
     return {
-      parts: [{ kind: 'text', text: buildCompositionPrompt(input) }],
+      parts: [
+        {
+          kind: 'text',
+          text: buildCompositionPrompt({
+            sectionName: input.sectionName,
+            instructions: input.instructions,
+            parts: compositionParts(
+              proposal.referenceDocument.structuredContent,
+            ),
+          }),
+        },
+      ],
       outputContract: SECTION_COMPOSITION_OUTPUT_CONTRACT,
       outputSchema: SECTION_COMPOSITION_JSON_SCHEMA,
       maxOutputTokens: 8_000,
@@ -135,16 +119,10 @@ export class SectionCompositionHandler
     const output = SectionCompositionOutputSchema.parse(result.output);
     const proposal = await tx.sectionProposal.findUnique({
       where: { generationOperationId: operation.id },
-      include: { sourceRevision: { include: { items: true } } },
     });
     if (!proposal || proposal.status !== 'composing') {
       throw new Error('SECTION_COMPOSITION_NOT_CURRENT');
     }
-
-    validateCompositionReferences(
-      output,
-      proposal.sourceRevision.items.map((item) => item.informationItemId),
-    );
 
     await tx.sectionProposal.update({
       where: { id: proposal.id },
@@ -153,17 +131,16 @@ export class SectionCompositionHandler
         outcome: output.outcome,
         structuredContent: output.blocks,
         changeSummary: output.changeSummary,
-        provenanceSummary: output.provenanceSummary,
         failureCode: null,
         version: { increment: 1 },
       },
     });
 
     // Questions are written as rows rather than folded into the content, so the
-    // contributor reads them apart from what is proposed (FR-010) and can answer
+    // contributor reads them apart from what is proposed (FR-010) and can act on
     // one without touching the other.
     for (const [index, question] of output.questions.entries()) {
-      const created = await tx.sectionQuestion.create({
+      await tx.sectionQuestion.create({
         data: {
           proposalId: proposal.id,
           question: question.question,
@@ -171,19 +148,10 @@ export class SectionCompositionHandler
           sortOrder: index,
         },
       });
-      if (question.informationItemIds.length > 0) {
-        await tx.sectionQuestionItem.createMany({
-          data: question.informationItemIds.map((informationItemId) => ({
-            questionId: created.id,
-            informationItemId,
-          })),
-          skipDuplicates: true,
-        });
-      }
     }
 
-    // The section has now been composed against the current head, so it no
-    // longer needs a refresh. A later canonical change sets it again (FR-018).
+    // The section has now been composed against the current reference document,
+    // so it no longer needs a refresh. A later rewrite sets it again (FR-018).
     await tx.clientSection.update({
       where: { id: proposal.sectionId },
       data: { refreshNeeded: false, version: { increment: 1 } },

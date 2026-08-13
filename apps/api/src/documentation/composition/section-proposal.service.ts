@@ -12,10 +12,7 @@ import {
   SECTION_COMPOSITION_OUTPUT_CONTRACT,
   SECTION_COMPOSITION_PROMPT_VERSION,
 } from './composition-output.schema';
-import {
-  compositionFingerprint,
-  selectCompositionStatements,
-} from './section-composition.handler';
+import { compositionFingerprint } from './section-composition.handler';
 
 // The states a proposal can still move out of. A section holding one of these
 // is busy; anything else has released it.
@@ -51,30 +48,24 @@ export class SectionProposalService {
       if (held) throw new ConflictException({ code: 'SECTION_COMPOSING' });
     }
 
-    const source = await this.prisma.projectSource.findUnique({
-      where: { projectId },
-      select: { currentRevisionId: true },
+    // A section is a view of the reference document, so there is nothing to
+    // compose before one exists. Said plainly rather than failed downstream:
+    // this is a real ordering constraint, not an error (plan, Decision 4).
+    const reference = await this.prisma.referenceDocument.findFirst({
+      where: { projectId, status: 'ready', outcome: 'written' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, version: true },
     });
-    if (!source?.currentRevisionId) {
-      throw new BadRequestException({ code: 'NO_CANONICAL_CONTENT' });
-    }
-    const items = await this.prisma.sourceRevisionItem.findMany({
-      where: { sourceRevisionId: source.currentRevisionId },
-      orderBy: { sortOrder: 'asc' },
-    });
-    if (items.length === 0) {
-      throw new BadRequestException({ code: 'NO_CANONICAL_CONTENT' });
+    if (!reference) {
+      throw new BadRequestException({ code: 'NO_REFERENCE_DOCUMENT' });
     }
 
-    // Exclusions arrive in US2. Reading them through one helper now means the
-    // fingerprint and the prompt cannot later disagree about what was sent.
-    const statements = selectCompositionStatements(items);
     const inputFingerprint = compositionFingerprint({
       sectionId: section.id,
       sectionName: section.name,
       instructions: section.instructions,
-      sourceRevisionId: source.currentRevisionId,
-      statements,
+      referenceDocumentId: reference.id,
+      referenceVersion: reference.version,
     });
 
     const attempts = await this.prisma.sectionProposal.count({
@@ -85,16 +76,15 @@ export class SectionProposalService {
       const operation = await this.generation.createInTransaction(tx, {
         projectId,
         type: 'section_composition',
-        deduplicationKey: `composition:${projectId}:${section.id}:${source.currentRevisionId}:${attempts}`,
+        deduplicationKey: `composition:${projectId}:${section.id}:${reference.id}:${attempts}`,
         inputFingerprint,
         promptVersion: SECTION_COMPOSITION_PROMPT_VERSION,
         outputContractVersion: SECTION_COMPOSITION_OUTPUT_CONTRACT,
-        sourceRevisionId: source.currentRevisionId!,
       });
       const proposal = await tx.sectionProposal.create({
         data: {
           sectionId: section.id,
-          sourceRevisionId: source.currentRevisionId!,
+          referenceDocumentId: reference.id,
           generationOperationId: operation.id,
           status: 'composing',
         },
@@ -139,7 +129,7 @@ export class SectionProposalService {
 
     const proposal = await this.prisma.sectionProposal.findFirst({
       where: { sectionId },
-      include: { questions: { include: { items: true } } },
+      include: { questions: { orderBy: { sortOrder: 'asc' } } },
       orderBy: { createdAt: 'desc' },
     });
     if (!proposal) return null;
@@ -147,7 +137,7 @@ export class SectionProposalService {
     return {
       id: proposal.id,
       sectionId: proposal.sectionId,
-      sourceRevisionId: proposal.sourceRevisionId,
+      referenceDocumentId: proposal.referenceDocumentId,
       status: proposal.status,
       outcome: proposal.outcome,
       version: proposal.version,
@@ -163,12 +153,7 @@ export class SectionProposalService {
         id: question.id,
         question: question.question,
         impactExplanation: question.impactExplanation,
-        relatedInformationItemIds: question.items.map(
-          ({ informationItemId }) => informationItemId,
-        ),
-        answeredByAssertionId: question.answeredByAssertionId,
       })),
-      provenanceSummary: (proposal.provenanceSummary ?? []) as unknown[],
       failureCode: proposal.failureCode,
     };
   }

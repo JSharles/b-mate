@@ -13,20 +13,10 @@ const file = {
 
 describe('SourceDocumentsController', () => {
   let service: jest.Mocked<
-    Pick<
-      SourceDocumentService,
-      | 'addUpload'
-      | 'addNotion'
-      | 'list'
-      | 'detail'
-      | 'retryProcessing'
-      | 'cancelProcessing'
-    >
+    Pick<SourceDocumentService, 'addUpload' | 'addNotion' | 'list' | 'detail'>
   >;
   let controller: SourceDocumentsController;
-  let removal: jest.Mocked<
-    Pick<DocumentRemovalService, 'preview' | 'confirm' | 'retry'>
-  >;
+  let removal: jest.Mocked<Pick<DocumentRemovalService, 'preview' | 'confirm'>>;
 
   beforeEach(() => {
     service = {
@@ -34,14 +24,8 @@ describe('SourceDocumentsController', () => {
       addNotion: jest.fn(),
       list: jest.fn(),
       detail: jest.fn(),
-      retryProcessing: jest.fn(),
-      cancelProcessing: jest.fn(),
     };
-    removal = {
-      preview: jest.fn(),
-      confirm: jest.fn(),
-      retry: jest.fn(),
-    };
+    removal = { preview: jest.fn(), confirm: jest.fn() };
     controller = new SourceDocumentsController(
       service as unknown as SourceDocumentService,
       removal as unknown as DocumentRemovalService,
@@ -93,16 +77,14 @@ describe('SourceDocumentsController', () => {
     );
   });
 
-  it('delegates preview, confirmed removal, and recovery with exact identities', async () => {
+  it('delegates preview and confirmed removal with exact identities', async () => {
     removal.preview.mockResolvedValue({} as never);
     removal.confirm.mockResolvedValue({} as never);
-    removal.retry.mockResolvedValue({} as never);
     const confirmation = {
       expectedDocumentVersion: 2,
-      expectedSourceRevisionId: '00000000-0000-4000-8000-000000000001',
-      confirmationToken: 'a'.repeat(64),
       confirmed: true as const,
     };
+
     await controller.removalPreview(user, 'project-1', 'document-1');
     await controller.confirmRemoval(
       user,
@@ -110,7 +92,7 @@ describe('SourceDocumentsController', () => {
       'document-1',
       confirmation,
     );
-    await controller.retryRemoval(user, 'project-1', 'document-1');
+
     expect(removal.preview).toHaveBeenCalledWith(
       'user-1',
       'project-1',
@@ -121,38 +103,6 @@ describe('SourceDocumentsController', () => {
       'project-1',
       'document-1',
       confirmation,
-    );
-    expect(removal.retry).toHaveBeenCalledWith(
-      'user-1',
-      'project-1',
-      'document-1',
-    );
-  });
-
-  it('delegates stopping a document that is being processed', async () => {
-    service.cancelProcessing.mockResolvedValue({ cancelledOperationCount: 1 });
-
-    await controller.cancelProcessing(user, 'project-1', 'document-1');
-
-    expect(service.cancelProcessing).toHaveBeenCalledWith(
-      'user-1',
-      'project-1',
-      'document-1',
-    );
-  });
-
-  it('delegates a failed document processing retry', async () => {
-    service.retryProcessing.mockResolvedValue({
-      operationId: 'operation-2',
-      status: 'queued',
-    });
-
-    await controller.retryProcessing(user, 'project-1', 'document-1');
-
-    expect(service.retryProcessing).toHaveBeenCalledWith(
-      'user-1',
-      'project-1',
-      'document-1',
     );
   });
 });
