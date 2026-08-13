@@ -76,7 +76,14 @@ export class DocumentationWorkspaceService {
             ? 'processing'
             : publication?.currentReleaseId
               ? 'published'
-              : 'empty';
+              : // Documents but no section is its own situation, and telling a
+                // contributor to add a first document when they already have
+                // five is both wrong and unactionable. Under the fixed
+                // categories this state could not occur: documents produced
+                // drafts on their own.
+                documentCount > 0
+                ? 'no_sections'
+                : 'empty';
     const clientVisibility = publication?.currentReleaseId
       ? pendingRelease
         ? 'previous_version_visible'

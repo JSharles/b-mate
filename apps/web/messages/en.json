@@ -204,7 +204,6 @@
       "retry": "Retry",
       "Page": {
         "title": "Project documentation",
-        "description": "Add the documents that feed the source, follow their processing, and step in only when an action is required.",
         "summaryTitle": "Client documentation",
         "manage": "Manage documentation",
         "back": "Back to project",
@@ -367,7 +366,7 @@
       },
       "Pipeline": {
         "title": "Project documentation",
-        "description": "Your documents become documentation your client can read. Diaphane writes it, you approve what is true. Four steps, in order.",
+        "description": "Your documents become documentation your client can read. Diaphane writes it, you approve what is true. Three steps, in order.",
         "back": "Back to project",
         "manageDocuments": "Source documents",
         "loadError": "This project's documentation could not be loaded.",
@@ -656,11 +655,12 @@
         "refreshDelayed": "Automatic refresh is delayed; the last known data remains visible.",
         "navLabel": "Documentation workspace sections",
         "navSource": "1 · Source",
-        "navClient": "4 · Client view",
+        "navClient": "3 · Client view",
         "releaseProgress": "{ready, plural, one {# category approved} other {# categories approved}} of {expected} for the next release.",
         "releaseAtomic": "The client keeps seeing the current version until the new one is complete.",
         "failedAction": "See the documents concerned",
-        "navSections": "Your sections"
+        "navSections": "2 · Your sections",
+        "priority_no_sections": "Create your first section"
       },
       "Removal": {
         "title": "Delete this document?",

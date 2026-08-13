@@ -1,10 +1,29 @@
 import { asPrismaService, createPrismaMock } from '../../test/prisma-mock';
 import { ProjectAccessService } from '../../projects/project-access.service';
 import { DocumentationWorkspaceService } from './documentation-workspace.service';
+interface Case {
+  failed: number;
+  reviews: number;
+  active: number;
+  release: string | null;
+  pending: {
+    id: string;
+    expectedSectionCount: number;
+    entries: object[];
+  } | null;
+  documents?: number;
+}
+
 describe('DocumentationWorkspaceService', () => {
   it.each([
     [
-      { failed: 1, reviews: 0, active: 0, release: null, pending: null },
+      {
+        failed: 1,
+        reviews: 0,
+        active: 0,
+        release: null,
+        pending: null,
+      },
       'needs_attention',
       'nothing_published',
     ],
@@ -29,8 +48,24 @@ describe('DocumentationWorkspaceService', () => {
       'published',
       'current_version_visible',
     ],
+    // Documents but nothing composed yet: its own situation, and the one a
+    // project sits in for as long as its contributor has not created a
+    // section. Told to "add a first document" here, they would be told to
+    // repeat what they already did.
     [
       { failed: 0, reviews: 0, active: 0, release: null, pending: null },
+      'no_sections',
+      'nothing_published',
+    ],
+    [
+      {
+        failed: 0,
+        reviews: 0,
+        active: 0,
+        release: null,
+        pending: null,
+        documents: 0,
+      },
       'empty',
       'nothing_published',
     ],
@@ -40,7 +75,8 @@ describe('DocumentationWorkspaceService', () => {
     prisma.projectSource.findUnique.mockResolvedValue({
       currentRevisionId: 'revision-1',
     });
-    prisma.sourceDocument.count.mockResolvedValue(3);
+    const documents = input.documents ?? 3;
+    prisma.sourceDocument.count.mockResolvedValue(documents);
     prisma.generationOperation.count
       .mockResolvedValueOnce(input.active)
       .mockResolvedValueOnce(input.failed);
@@ -57,7 +93,7 @@ describe('DocumentationWorkspaceService', () => {
     await expect(service.get('user', 'project')).resolves.toMatchObject({
       priority,
       clientVisibility,
-      documentCount: 3,
+      documentCount: documents,
       openClarificationCount: 2,
       refreshAfterMs: input.active || input.pending ? 5_000 : 30_000,
     });

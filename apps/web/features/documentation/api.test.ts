@@ -157,7 +157,10 @@ describe("documentation api", () => {
     );
     expect(mockedApiFetch).toHaveBeenCalledWith(
       "/projects/project-1/documentation/sections/section-1/proposal/approve",
-      { method: "POST", body: JSON.stringify({ expectedVersion: 3 }) },
+      // apiFetch serialises the body itself. Asserting the object, not a
+      // string, is what makes a second JSON.stringify fail here rather than
+      // at runtime with a 400 the dialog mislabels.
+      { method: "POST", body: { expectedVersion: 3 } },
     );
     expect(mockedApiFetch).toHaveBeenCalledWith(
       "/projects/project-1/documentation/sections/section-1",

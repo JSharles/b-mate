@@ -246,7 +246,7 @@ export function listSections(projectId: string) {
 export function createSection(projectId: string, body: CreateSectionRequest) {
   return apiFetch<SectionView>(`/projects/${projectId}/documentation/sections`, {
     method: "POST",
-    body: JSON.stringify(body),
+    body,
   });
 }
 
@@ -257,7 +257,7 @@ export function updateSection(
 ) {
   return apiFetch<SectionView>(
     `/projects/${projectId}/documentation/sections/${sectionId}`,
-    { method: "PATCH", body: JSON.stringify(body) },
+    { method: "PATCH", body },
   );
 }
 
@@ -271,7 +271,7 @@ export function archiveSection(projectId: string, sectionId: string) {
 export function reorderSections(projectId: string, orderedSectionIds: string[]) {
   return apiFetch<{ sections: SectionView[] }>(
     `/projects/${projectId}/documentation/sections/order`,
-    { method: "POST", body: JSON.stringify({ orderedSectionIds }) },
+    { method: "POST", body: { orderedSectionIds } },
   );
 }
 
@@ -282,10 +282,14 @@ export function composeSection(projectId: string, sectionId: string) {
   );
 }
 
+// A section that has never composed has no proposal, and the API says so with
+// an empty body. `apiFetch` reads that as `undefined`, which TanStack Query
+// rejects as a query result — so "nothing yet" arrived at the screen as a
+// failed request, and the screen believed it.
 export function getSectionProposal(projectId: string, sectionId: string) {
   return apiFetch<SectionProposalDetail | null>(
     `/projects/${projectId}/documentation/sections/${sectionId}/proposal`,
-  );
+  ).then((proposal) => proposal ?? null);
 }
 
 export function approveSectionProposal(
@@ -295,6 +299,6 @@ export function approveSectionProposal(
 ) {
   return apiFetch<{ proposalId: string; releaseId: string; approved: true }>(
     `/projects/${projectId}/documentation/sections/${sectionId}/proposal/approve`,
-    { method: "POST", body: JSON.stringify({ expectedVersion }) },
+    { method: "POST", body: { expectedVersion } },
   );
 }

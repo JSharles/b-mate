@@ -204,7 +204,6 @@
       "retry": "Réessayer",
       "Page": {
         "title": "Documentation du projet",
-        "description": "Ajoutez les documents qui alimentent la source, suivez leur traitement et intervenez seulement lorsqu’une action est nécessaire.",
         "summaryTitle": "Documentation client",
         "manage": "Gérer la documentation",
         "back": "Retour au projet",
@@ -367,7 +366,7 @@
       },
       "Pipeline": {
         "title": "Documentation du projet",
-        "description": "Vos documents deviennent une documentation que votre client peut lire. Diaphane rédige, vous validez ce qui est vrai. Quatre étapes, dans l’ordre.",
+        "description": "Vos documents deviennent une documentation que votre client peut lire. Diaphane rédige, vous validez ce qui est vrai. Trois étapes, dans l’ordre.",
         "back": "Retour au projet",
         "manageDocuments": "Documents source",
         "loadError": "Impossible de charger la documentation de ce projet.",
@@ -656,11 +655,12 @@
         "refreshDelayed": "La mise à jour automatique est retardée ; les dernières données connues restent affichées.",
         "navLabel": "Sections de l’espace documentaire",
         "navSource": "1 · Source",
-        "navClient": "4 · Vue client",
+        "navClient": "3 · Vue client",
         "releaseProgress": "{ready, plural, one {# catégorie validée} other {# catégories validées}} sur {expected} pour la prochaine publication.",
         "releaseAtomic": "Le client continue de voir la version actuelle tant que la nouvelle n’est pas complète.",
         "failedAction": "Voir les documents concernés",
-        "navSections": "Vos sections"
+        "navSections": "2 · Vos sections",
+        "priority_no_sections": "Créez votre première section"
       },
       "Removal": {
         "title": "Supprimer ce document ?",

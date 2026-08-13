@@ -1,6 +1,6 @@
 import { z } from "zod";
 export const DocumentationWorkspaceSchema = z.object({
-  priority: z.enum(["needs_action", "processing", "published", "empty", "needs_attention"]),
+  priority: z.enum(["needs_action", "processing", "published", "empty", "no_sections", "needs_attention"]),
   activeOperationCount: z.number().int().nonnegative(),
   openClarificationCount: z.number().int().nonnegative(),
   pendingReviewCount: z.number().int().nonnegative(),

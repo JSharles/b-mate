@@ -2,11 +2,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 export class ApiError extends Error {
   status: number;
+  // The API answers a refusal with a stable `code` and no prose (its own
+  // convention: the wording belongs to whichever screen is asking). Carrying it
+  // here is what lets a screen tell one 400 from another — mapping every 400 to
+  // a single sentence turned a serialisation bug into "add a document first".
+  code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -36,7 +42,11 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
         ? (data as { message: unknown }).message
         : undefined;
     const message = Array.isArray(rawMessage) ? rawMessage.join(", ") : (rawMessage ?? res.statusText);
-    throw new ApiError(String(message), res.status);
+    const code =
+      data && typeof data === "object" && "code" in data
+        ? String((data as { code: unknown }).code)
+        : undefined;
+    throw new ApiError(String(message), res.status, code);
   }
 
   if (res.status === 204) {

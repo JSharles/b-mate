@@ -70,7 +70,7 @@ export function SectionEditorDialog({
 
   const error = mutation.error;
   const errorText =
-    error instanceof ApiError && error.status === 400
+    error instanceof ApiError && error.code === "NO_CANONICAL_CONTENT"
       ? t("noCanonicalContent")
       : error instanceof ApiError && error.status === 409
         ? t("staleError")
@@ -123,14 +123,17 @@ export function SectionEditorDialog({
                 </span>
               </button>
             ))}
-            <Button
-              type="button"
-              variant="ghost"
-              className="self-start"
-              onClick={() => setChosenStart(true)}
-            >
-              {t("startBlank")}
-            </Button>
+            {/* Not a fifth suggestion: it is the other way in. Separated so the
+                choice reads as "one of these, or your own words". */}
+            <div className="mt-2 border-t border-border pt-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setChosenStart(true)}
+              >
+                {t("startBlank")}
+              </Button>
+            </div>
           </div>
         ) : (
           <form
@@ -193,7 +196,7 @@ export function SectionEditorDialog({
                       setEditorial((current) => ({ ...current, [field]: value }))
                     }
                   >
-                    <SelectTrigger id={`section-${field}`}>
+                    <SelectTrigger id={`section-${field}`} className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
