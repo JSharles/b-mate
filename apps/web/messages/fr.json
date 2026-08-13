@@ -312,7 +312,9 @@
           "approving": "Publication…",
           "approveHint": "Votre client lira cette rubrique dès qu’elle est publiée.",
           "staleError": "Cette proposition a été remplacée. Rechargez pour voir la nouvelle.",
-          "loadError": "Impossible de charger cette proposition. Rechargez la page — ce que lit votre client n’a pas bougé."
+          "loadError": "Impossible de charger cette proposition. Rechargez la page — ce que lit votre client n’a pas bougé.",
+          "openPointLabel": "Pas encore tranché",
+          "openPointHint": "Votre client lira ce passage tel quel, signalé comme non décidé. Pour le trancher, répondez au point correspondant dans votre document de référence, puis relancez la rédaction."
         },
         "Toasts": {
           "created": "Rubrique créée. Rédaction en cours…",
@@ -570,7 +572,8 @@
       "roleFallback": "Développeur"
     },
     "ClientMainTabs": {
-      "tabsLabel": "Contenu du projet"
+      "tabsLabel": "Contenu du projet",
+      "openPointLabel": "Pas encore tranché"
     },
     "ProjectPreferences": {
       "timezone": "Fuseau horaire",

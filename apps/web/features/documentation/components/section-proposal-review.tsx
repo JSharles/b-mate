@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, SearchX, TriangleAlert } from "lucide-react";
+import { CircleHelp, LoaderCircle, SearchX, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { SectionView } from "schemas";
 import { Button } from "@/shared/components/ui/button";
@@ -86,19 +86,32 @@ export function SectionProposalReview({
       {/* Composition finishes by poll, not by user action, so the result
           appears with nothing to announce it. A screen reader user would
           otherwise have to go looking for a change they were not told about. */}
-      <div className="space-y-3" aria-live="polite">
-        {current.blocks.map((block, index) => (
-          <p
-            key={index}
-            className={
-              block.kind === "open_point"
-                ? "rounded-lg border border-border bg-muted p-3 text-sm leading-7"
-                : "max-w-3xl text-sm leading-7"
-            }
-          >
-            {block.text}
-          </p>
-        ))}
+      <div className="space-y-4" aria-live="polite">
+        {current.blocks.map((block, index) =>
+          // Something the reference document has not settled, kept unsettled
+          // here rather than written around. The box alone said nothing: a
+          // developer asked what it was, which is the whole answer as to
+          // whether it worked.
+          block.kind === "open_point" ? (
+            <div
+              key={index}
+              className="rounded-lg border border-border bg-muted p-4"
+            >
+              <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+                <CircleHelp className="size-3.5" />
+                {t("openPointLabel")}
+              </p>
+              <p className="mt-2 text-sm leading-7">{block.text}</p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                {t("openPointHint")}
+              </p>
+            </div>
+          ) : (
+            <p key={index} className="max-w-3xl text-sm leading-7">
+              {block.text}
+            </p>
+          ),
+        )}
       </div>
 
       {current.status === "pending_review" && (

@@ -47,7 +47,7 @@ const readyProposal = {
   status: "pending_review",
   outcome: "composed",
   version: 2,
-  blocks: [{ type: "fact", text: "Le lancement est prévu en octobre." }],
+  blocks: [{ kind: "paragraph", text: "Le lancement est prévu en octobre." }],
 };
 
 describe("SectionProposalReview", () => {
@@ -101,6 +101,31 @@ describe("SectionProposalReview", () => {
 
     expect(screen.getByText("Le lancement est prévu en octobre.")).toBeVisible();
     expect(screen.getByRole("button", { name: "approve" })).toBeVisible();
+  });
+
+  // The box alone said nothing: a developer asked what it was, which answers
+  // whether it worked. What is not settled says so, and says where to settle it.
+  it("names what an unsettled passage is, and where it gets settled", () => {
+    withProposal({
+      ...readyProposal,
+      blocks: [
+        { kind: "paragraph", text: "Le lancement est prévu en octobre." },
+        { kind: "open_point", text: "Le modèle de permission est remis en question." },
+      ],
+    });
+
+    render(<SectionProposalReview projectId="project-1" section={section} />);
+
+    expect(screen.getByText("openPointLabel")).toBeVisible();
+    expect(screen.getByText("openPointHint")).toBeVisible();
+  });
+
+  it("says nothing of the sort about a settled passage", () => {
+    withProposal(readyProposal);
+
+    render(<SectionProposalReview projectId="project-1" section={section} />);
+
+    expect(screen.queryByText("openPointLabel")).not.toBeInTheDocument();
   });
 
   // Questions per rubrique were a second place to answer what the reference

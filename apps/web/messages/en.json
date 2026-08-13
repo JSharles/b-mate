@@ -312,7 +312,9 @@
           "approving": "Publishing…",
           "approveHint": "Your client reads this topic as soon as it is published.",
           "staleError": "This proposal has been replaced. Reload to see the new one.",
-          "loadError": "Could not load this proposal. Reload the page — what your client reads has not changed."
+          "loadError": "Could not load this proposal. Reload the page — what your client reads has not changed.",
+          "openPointLabel": "Not settled yet",
+          "openPointHint": "Your client will read this passage as it is, marked as undecided. To settle it, answer the matching point in your reference document, then write the rubrique again."
         },
         "Toasts": {
           "created": "Topic created. Writing it now…",
@@ -570,7 +572,8 @@
       "roleFallback": "Developer"
     },
     "ClientMainTabs": {
-      "tabsLabel": "Project content"
+      "tabsLabel": "Project content",
+      "openPointLabel": "Not settled yet"
     },
     "ProjectPreferences": {
       "timezone": "Timezone",
