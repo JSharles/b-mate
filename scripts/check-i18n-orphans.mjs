@@ -73,9 +73,10 @@ const DYNAMIC_KEYS = [
   // section-editor-dialog.tsx maps over DIMENSIONS, building both the label and
   // each option's name from the field it is rendering.
   /^Projects\.Documentation\.Sections\.Editor\.(length|pedagogy|technicalFamiliarity|tone)(Label|_\w+)$/,
-  // section-editor-dialog.tsx maps over SECTION_SUGGESTION_IDS from
-  // section-suggestions.ts, building `suggestion_<id>_name`/`_instructions`.
-  /^Projects\.Documentation\.Sections\.Editor\.suggestion_\w+_(name|instructions)$/,
+  // section-editor-dialog.tsx maps over SECTION_STARTING_POINTS from
+  // section-suggestions.ts, building `suggestion_<id>_name` and either the
+  // brief it prefills or, for the roadmap, a line describing what it produces.
+  /^Projects\.Documentation\.Sections\.Editor\.suggestion_\w+_(name|instructions|summary)$/,
   // roadmap-editor.tsx maps over ROADMAP_PHASE_IDS from roadmap-phases.ts,
   // building the name of each phase it offers on the rail.
   /^Projects\.Documentation\.Sections\.Roadmap\.phase_\w+$/,

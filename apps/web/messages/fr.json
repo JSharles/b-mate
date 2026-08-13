@@ -288,14 +288,12 @@
           "suggestion_overview_instructions": "Ce que le client a demandé, pourquoi, et ce que le projet doit produire. Les objectifs, le périmètre, et les contraintes qui l’encadrent.",
           "suggestion_howItWorks_name": "Comment ça marche",
           "suggestion_howItWorks_instructions": "Les choix techniques et leurs raisons, expliqués sans jargon. Ce que le produit fait, comment les pièces s’assemblent, et ce que cela change pour l’utilisateur.",
-          "suggestion_planning_name": "Planning et jalons",
-          "suggestion_planning_instructions": "Les dates, les échéances, les livraisons prévues et l’ordre dans lequel elles arrivent. Ce qui est confirmé, et ce qui reste à confirmer.",
           "suggestion_audit_name": "Audit et cadrage",
           "suggestion_audit_instructions": "Ce que l’existant révèle : ce qui fonctionne, ce qui pose problème, les risques identifiés, et les recommandations qui en découlent.",
           "startBlank": "Écrire mon propre titre",
           "backToSuggestions": "Revenir aux propositions",
-          "startRoadmap": "Une frise du projet",
-          "roadmapName": "Roadmap"
+          "suggestion_roadmap_name": "Roadmap",
+          "suggestion_roadmap_summary": "Les étapes du projet et leur ordre, lues comme une frise plutôt qu’en paragraphes. Vous placez ensuite où le projet en est."
         },
         "Review": {
           "loading": "Chargement…",

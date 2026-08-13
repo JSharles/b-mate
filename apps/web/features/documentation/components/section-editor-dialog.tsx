@@ -23,7 +23,7 @@ import {
 } from "@/shared/components/ui/select";
 import { ApiError } from "@/shared/lib/api-client";
 import { useCreateSection, useUpdateSection } from "../hooks";
-import { SECTION_SUGGESTION_IDS } from "./section-suggestions";
+import { SECTION_STARTING_POINTS } from "./section-suggestions";
 
 const DEFAULT_EDITORIAL: SectionEditorial = {
   length: "balanced",
@@ -113,47 +113,47 @@ export function SectionEditorDialog({
 
         {!chosenStart ? (
           <div className="flex flex-col gap-2">
-            {SECTION_SUGGESTION_IDS.map((id) => (
+            {SECTION_STARTING_POINTS.map((start) => (
               <button
-                key={id}
+                key={start.id}
                 type="button"
                 onClick={() => {
-                  setName(t(`suggestion_${id}_name`));
-                  setInstructions(t(`suggestion_${id}_instructions`));
+                  setKind(start.kind);
+                  setName(t(`suggestion_${start.id}_name`));
+                  // A roadmap has no brief to prefill: what it covers is fixed.
+                  setInstructions(
+                    start.kind === "roadmap"
+                      ? ""
+                      : t(`suggestion_${start.id}_instructions`),
+                  );
                   setChosenStart(true);
                 }}
                 className="rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <span className="block text-sm font-medium">
-                  {t(`suggestion_${id}_name`)}
+                <span className="flex items-center gap-1.5 text-sm font-medium">
+                  {/* The one card that produces something other than prose says
+                      so with the shape it produces, not with a label. */}
+                  {start.kind === "roadmap" && (
+                    <GitCommitVertical className="size-3.5" />
+                  )}
+                  {t(`suggestion_${start.id}_name`)}
                 </span>
                 <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                  {t(`suggestion_${id}_instructions`)}
+                  {t(
+                    start.kind === "roadmap"
+                      ? "suggestion_roadmap_summary"
+                      : `suggestion_${start.id}_instructions`,
+                  )}
                 </span>
               </button>
             ))}
-            {/* A roadmap is not a fifth suggestion — it is a different kind of
-                rubrique, so it sits below the line with the blank start rather
-                than among texts it has nothing in common with. */}
-            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <div className="mt-2 border-t border-border pt-3">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setChosenStart(true)}
               >
                 {t("startBlank")}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setKind("roadmap");
-                  setName(t("roadmapName"));
-                  setChosenStart(true);
-                }}
-              >
-                <GitCommitVertical />
-                {t("startRoadmap")}
               </Button>
             </div>
           </div>

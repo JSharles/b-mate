@@ -288,14 +288,12 @@
           "suggestion_overview_instructions": "What the client asked for, why, and what the project must produce. The goals, the scope, and the constraints around them.",
           "suggestion_howItWorks_name": "How it works",
           "suggestion_howItWorks_instructions": "The technical choices and the reasons behind them, explained without jargon. What the product does, how the pieces fit, and what that means for the user.",
-          "suggestion_planning_name": "Planning and milestones",
-          "suggestion_planning_instructions": "The dates, the deadlines, the planned deliveries and the order they arrive in. What is confirmed, and what still needs confirming.",
           "suggestion_audit_name": "Audit and scoping",
           "suggestion_audit_instructions": "What the existing system reveals: what works, what causes trouble, the risks found, and the recommendations that follow.",
           "startBlank": "Write my own title",
           "backToSuggestions": "Back to the suggestions",
-          "startRoadmap": "A project timeline",
-          "roadmapName": "Roadmap"
+          "suggestion_roadmap_name": "Roadmap",
+          "suggestion_roadmap_summary": "The project's steps and their order, read as a timeline rather than in paragraphs. You then place where the project stands."
         },
         "Review": {
           "loading": "Loading…",
