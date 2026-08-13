@@ -421,7 +421,8 @@
         "notesHint": "Diaphane repart de vos documents à chaque réécriture : ces précisions sont rejouées à chaque fois. Elles ne seront dans le document qu’après une réécriture.",
         "notedBy": "{name}, le {date}",
         "removeNote": "Retirer cette précision",
-        "applyNotes": "{count, plural, one {Prendre en compte ma précision} other {Prendre en compte mes # précisions}}"
+        "applyNotes": "{count, plural, one {Prendre en compte ma précision} other {Prendre en compte mes # précisions}}",
+        "notWrittenYet": "Vos {count, plural, one {# document n’a} other {# documents n’ont}} pas encore donné de document de référence. Lancez la rédaction."
       }
     },
     "TeamSummaryCard": {

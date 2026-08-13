@@ -421,7 +421,8 @@
         "notesHint": "Diaphane starts from your documents on every rewrite, so these are replayed each time. They only reach the document after a rewrite.",
         "notedBy": "{name}, {date}",
         "removeNote": "Remove this",
-        "applyNotes": "{count, plural, one {Take my note into account} other {Take my # notes into account}}"
+        "applyNotes": "{count, plural, one {Take my note into account} other {Take my # notes into account}}",
+        "notWrittenYet": "Your {count, plural, one {# document has} other {# documents have}} not produced a reference document yet. Start it."
       }
     },
     "TeamSummaryCard": {

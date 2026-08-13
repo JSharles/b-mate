@@ -5,6 +5,7 @@ import {
   useAddNote,
   useNotes,
   useReferenceDocument,
+  useReferenceSummary,
   useRemoveNote,
   useWriteReferenceDocument,
 } from "../hooks";
@@ -12,6 +13,7 @@ import { ReferenceDocumentView } from "./reference-document-view";
 
 vi.mock("../hooks", () => ({
   useReferenceDocument: vi.fn(),
+  useReferenceSummary: vi.fn(),
   useWriteReferenceDocument: vi.fn(),
   useNotes: vi.fn(),
   useAddNote: vi.fn(),
@@ -65,6 +67,14 @@ function withDocument(data: unknown, overrides: Record<string, unknown> = {}) {
   } as never);
 }
 
+function withDocumentCount(documentCount: number) {
+  vi.mocked(useReferenceSummary).mockReturnValue({
+    data: { documentCount },
+    isPending: false,
+    isError: false,
+  } as never);
+}
+
 function withNotes(notes: unknown[]) {
   vi.mocked(useNotes).mockReturnValue({
     data: { notes },
@@ -90,6 +100,7 @@ describe("ReferenceDocumentView", () => {
       isPending: false,
     } as never);
     withNotes([]);
+    withDocumentCount(2);
   });
 
   it("sets the document as continuous text under its headings", () => {
@@ -226,6 +237,7 @@ describe("ReferenceDocumentView", () => {
   // button for what it already asked for.
   it("asks for a first document rather than for a first write", () => {
     withDocument(null);
+    withDocumentCount(0);
 
     render(<ReferenceDocumentView projectId="project-1" />);
 
@@ -233,6 +245,21 @@ describe("ReferenceDocumentView", () => {
     expect(
       screen.queryByRole("button", { name: /write/ }),
     ).not.toBeInTheDocument();
+  });
+
+  // Documents and no document means the write never happened — it failed, or
+  // the documents predate it. Offering nothing here would leave the only way
+  // forward behind an upload the developer has no reason to make.
+  it("offers the write when documents are held but nothing was written", async () => {
+    withDocument(null);
+    withDocumentCount(2);
+    const user = userEvent.setup();
+
+    render(<ReferenceDocumentView projectId="project-1" />);
+    expect(screen.getByText("notWrittenYet")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "write" }));
+
+    expect(write).toHaveBeenCalled();
   });
 
   // The other half of the rule: answers and corrections wait, so five of them

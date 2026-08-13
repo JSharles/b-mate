@@ -19,6 +19,7 @@ import {
   useAddNote,
   useNotes,
   useReferenceDocument,
+  useReferenceSummary,
   useRemoveNote,
   useWriteReferenceDocument,
 } from "../hooks";
@@ -234,11 +235,13 @@ function NoteList({ projectId, items }: { projectId: string; items: Note[] }) {
 export function ReferenceDocumentView({ projectId }: { projectId: string }) {
   const t = useTranslations("Projects.Documentation.Reference");
   const documentQuery = useReferenceDocument(projectId);
+  const summary = useReferenceSummary(projectId);
   const notes = useNotes(projectId);
   const write = useWriteReferenceDocument(projectId);
 
   const current = documentQuery.data;
   const pendingNotes: Note[] = notes.data?.notes ?? [];
+  const documentCount = summary.data?.documentCount ?? 0;
 
   if (documentQuery.isPending) {
     return (
@@ -282,13 +285,19 @@ export function ReferenceDocumentView({ projectId }: { projectId: string }) {
     </Button>
   );
 
-  // A project with no document has nothing to write from, and one with
-  // documents is already writing — adding a document starts it. Neither case
-  // needs a button asking for what was just asked for.
+  // Adding a document starts the write, so a project holding documents and no
+  // reference document is one where that write never happened — it failed, or
+  // the documents predate it. Offering nothing here left the only way forward
+  // behind a document upload the developer had no reason to make.
   if (!current) {
     return (
       <div className="rounded-xl border border-dashed border-border p-6">
-        <p className="text-sm text-muted-foreground">{t("neverWritten")}</p>
+        <p className="text-sm text-muted-foreground">
+          {documentCount > 0
+            ? t("notWrittenYet", { count: documentCount })
+            : t("neverWritten")}
+        </p>
+        {documentCount > 0 && <div className="mt-4">{writeAction}</div>}
       </div>
     );
   }
