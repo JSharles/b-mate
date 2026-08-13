@@ -45,9 +45,11 @@ export function SectionList({ projectId }: { projectId: string }) {
 
   return (
     <section className="mb-10">
-      <div className="mb-5">
-        <h2 className="font-semibold">{t("listTitle")}</h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold tracking-tight">
+          {t("listTitle")}
+        </h2>
+        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
           {t("listDescription")}
         </p>
       </div>
@@ -92,7 +94,11 @@ export function SectionList({ projectId }: { projectId: string }) {
             return (
               <article
                 key={section.id}
-                className="rounded-xl border border-border bg-card p-5"
+                className={
+                  state === "awaiting"
+                    ? "rounded-xl border border-primary/40 bg-primary/[0.04] p-5"
+                    : "rounded-xl border border-border bg-card p-5"
+                }
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">

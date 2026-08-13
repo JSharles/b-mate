@@ -107,16 +107,15 @@ describe("ClientContentPage", () => {
     expect(screen.queryByText("section-list")).not.toBeInTheDocument();
   });
 
-  // The documents are what this page runs on, so they are stated here and
-  // reached from here rather than sitting beside it in the navigation.
-  it("says what it runs on, and offers the way to change it", () => {
+  // The documents are configuration, and they live with the rest of it on the
+  // project page. Repeating them under this title made the heading look like it
+  // named the container below it.
+  it("does not restate the documents under a title that is not about them", () => {
     render(<ClientContentPage projectId="project-1" />);
 
-    expect(screen.getByText("sourceReady")).toBeVisible();
-    expect(screen.getByRole("link", { name: /sourceManage/ })).toHaveAttribute(
-      "href",
-      "/projects/project-1/documentation/sources",
-    );
+    expect(
+      screen.queryByRole("link", { name: /sourceManage/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("says what the client can see, and what waits for the developer", () => {

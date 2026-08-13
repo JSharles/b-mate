@@ -17,9 +17,20 @@ on, and turning it into something a client reads. They become two screens.
 
 | Route | Surface | Holds |
 |---|---|---|
-| `/projects/:id/documents` | **Base documentaire** | the documents, and the reference document written from them |
-| `/projects/:id/documents/:documentId` | one document | its original, its state, its removal |
-| `/projects/:id/client` | **Contenu client** | the sections, and the client preview |
+| `/projects/:id/documentation` | **Documentation client** | the topics, and the client preview |
+| `/projects/:id/documentation/sources` | **Mes documents** | the documents, and the reference document written from them |
+| `/projects/:id/documentation/sources/:documentId` | one document | its original, its state, its removal |
+
+**Two levels, from placement rather than from emphasis.** The client
+documentation is a card at the top of the project page: it is what the
+developer came for. The documents are a row in the project's settings, with
+Board, Notion and the preferences — configured once, revisited when they
+change. Nothing is dimmed and nothing is lit; the hierarchy is where each thing
+sits. Staged layouts, locks and highlighted containers were all tried on paper
+and rejected: they make the page a wizard, and this is not a wizard.
+
+**The word is "rubrique"** (EN: topic). "Section" named a region of a screen as
+readily as a part of a document, and the developer chose the editorial word.
 
 Removed: `/documentation` and `/documentation/reference`. Nothing is deployed,
 so they go rather than redirect.

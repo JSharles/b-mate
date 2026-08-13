@@ -23,6 +23,11 @@ vi.mock("@/features/projects/components/team-panel", () => ({
   TeamPanel: ({ projectId }: { projectId: string }) => <div>team-panel:{projectId}</div>,
 }));
 
+vi.mock("@/features/documentation/components/documentary-source-row", () => ({
+  DocumentarySourceRow: ({ projectId }: { projectId: string }) => (
+    <div>documentary-source:{projectId}</div>
+  ),
+}));
 vi.mock("@/features/documentation/components/documentation-summary-card", () => ({
   DocumentationSummaryCard: ({ projectId }: { projectId: string }) => (
     <div>documentation-summary:{projectId}</div>

@@ -7,9 +7,7 @@ import {
   CheckCircle2,
   FilePlus2,
   FileWarning,
-  Files,
   LoaderCircle,
-  Settings2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
@@ -20,39 +18,6 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useDocumentationWorkspace, useReferenceSummary } from "../hooks";
 import { ClientContentPreview } from "./client-content-preview";
 import { SectionList } from "./section-list";
-
-// What this page draws on, stated in one line and kept out of the way. The
-// documents are not a feature sitting beside this one — they are what it runs
-// on, so they are a setting reached from here (specs/019).
-function SourceBar({ projectId }: { projectId: string }) {
-  const t = useTranslations("Projects.Documentation.Client");
-  const summary = useReferenceSummary(projectId);
-  const data = summary.data;
-  const status = data?.document?.status;
-
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        {status === "writing" ? (
-          <LoaderCircle className="size-4 shrink-0 animate-spin motion-reduce:animate-none" />
-        ) : (
-          <Files className="size-4 shrink-0" />
-        )}
-        {status === "writing"
-          ? t("sourceWriting")
-          : status === "ready"
-            ? t("sourceReady", { count: data?.documentCount ?? 0 })
-            : t("sourceNotReady", { count: data?.documentCount ?? 0 })}
-      </p>
-      <Button asChild variant="outline" size="sm">
-        <Link href={`/projects/${projectId}/documentation/sources`}>
-          <Settings2 />
-          {t("sourceManage")}
-        </Link>
-      </Button>
-    </div>
-  );
-}
 
 // Shown only when it has something the list below does not already say. It
 // used to announce "créez votre première section" above a section that existed
@@ -212,7 +177,6 @@ export function ClientContentPage({ projectId }: { projectId: string }) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-8">
       {header}
-      <SourceBar projectId={projectId} />
       <StateBanner projectId={projectId} />
       <SectionList projectId={projectId} />
       <ClientContentPreview projectId={projectId} />

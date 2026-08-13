@@ -14,9 +14,11 @@ import { useClientContentPreview } from "../hooks";
 function PreviewHeading() {
   const t = useTranslations("Projects.Documentation.Client");
   return (
-    <div className="mb-5">
-      <h2 className="font-semibold">{t("previewTitle")}</h2>
-      <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+    <div className="mb-6">
+      <h2 className="text-lg font-semibold tracking-tight">
+        {t("previewTitle")}
+      </h2>
+      <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
         {t("previewDescription")}
       </p>
     </div>
@@ -25,7 +27,7 @@ function PreviewHeading() {
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <section className="border-b border-border py-8">
+    <section className="border-t border-border pt-10">
       <PreviewHeading />
       {children}
     </section>
@@ -66,7 +68,7 @@ export function ClientContentPreview({ projectId }: { projectId: string }) {
   }
 
   return (
-    <section className="border-b border-border py-8">
+    <section className="border-t border-border pt-10">
       <PreviewHeading />
       <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
         <Eye className="size-4 shrink-0" />
