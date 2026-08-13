@@ -61,6 +61,32 @@ A milestone carries **when**, **what**, and optionally **why it matters**.
 
 **It is the developer who says where the project stands.** The documents describe a plan, not today. This is the one thing they will change weekly without a document changing, so it must be changeable without regenerating anything.
 
+## Sub-steps
+
+**"Développement" is one word for three months.** It is the milestone the client
+spends longest looking at, and the one that tells them least: the roadmap says
+the project is building, and nothing about what. Naming what sits inside it —
+Feature 1, Feature 2, Feature 3 — is the difference between a frise that informs
+and one that reassures.
+
+**Two levels, and no more.** A milestone may carry sub-steps; a sub-step carries
+nothing. A generic `parentId` would buy arbitrary depth, and a roadmap three
+levels deep is not read by anyone. The ceiling is the design, not a limitation
+waiting to be lifted.
+
+**A sub-step is a milestone that may have no date.** Same title, same optional
+description, same origin — but "when" is nullable, because "Feature 2" often has
+no date of its own and inventing one would be inventing.
+
+**Where the project stands may name a sub-step.** This is the point: "Feature 2
+of five" says something "Développement" cannot. The milestone holding the
+current sub-step reads as current; everything before it is done, sub-steps
+included.
+
+**The model writes them where the documents name them**, on the same terms as
+milestones: never a feature the documents do not describe, and no invented
+order. Whatever else the developer wants, they write.
+
 ## The standard phases
 
 Nearly every project this product serves runs through the same arc, and the developer's own work sits in the middle of it. So an empty roadmap is not an empty page: it is that arc, offered.
@@ -130,18 +156,34 @@ The reference document is thin on sequence. The developer does not face an empty
 
 ---
 
-### User Story 4 - Say where the project stands (P1)
+### User Story 4 - Name what is inside a long step (P1)
+
+"Développement" runs for three months. The developer names what it contains, and
+the client stops having to ask.
+
+**Acceptance Scenarios**:
+
+1. **Given** a milestone, **When** the developer adds a sub-step to it, **Then** it belongs to that milestone and to no other.
+2. **Given** a sub-step, **When** the developer leaves its "when" empty, **Then** it is kept as a step with no date rather than refused.
+3. **Given** a reference document naming what a phase contains, **When** the roadmap is composed, **Then** those are returned as sub-steps of that phase rather than as milestones of their own.
+4. **Given** sub-steps, **When** the developer reorders or removes one, **Then** the others keep their order and their ids.
+5. **Given** a sub-step, **When** the developer tries to give it a sub-step of its own, **Then** there is no way to — the roadmap is two levels deep.
+
+---
+
+### User Story 5 - Say where the project stands (P1)
 
 **Acceptance Scenarios**:
 
 1. **Given** a published roadmap, **When** the developer marks a milestone as the current one, **Then** the client sees it as current without a new composition or a new approval.
+1b. **Given** a milestone carrying sub-steps, **When** the developer marks one of them as current, **Then** the client reads that sub-step as current and its milestone as the phase in progress.
 2. **Given** a current milestone, **When** the developer marks a different one, **Then** the first stops being current.
 3. **Given** a roadmap where nothing is marked, **When** the client reads it, **Then** it reads as a plan with no position claimed, rather than defaulting to the first milestone.
 4. **Given** the current milestone is deleted, **When** the set is saved, **Then** no milestone is current.
 
 ---
 
-### User Story 5 - The client reads the timeline (P1)
+### User Story 6 - The client reads the timeline (P1)
 
 **Acceptance Scenarios**:
 
@@ -152,7 +194,7 @@ The reference document is thin on sequence. The developer does not face an empty
 
 ---
 
-### User Story 6 - Keep it true as the project moves (P2)
+### User Story 7 - Keep it true as the project moves (P2)
 
 **Acceptance Scenarios**:
 
@@ -172,6 +214,10 @@ The reference document is thin on sequence. The developer does not face an empty
 - **FR-009** Composition reporting nothing matched behaves as it does for a prose section, and the standard phases remain available to start from.
 - **FR-010** Adding a step offers the standard phases and a blank one; taking a phase produces an ordinary milestone the developer owns. A phase already on the timeline stops being offered.
 - **FR-015** A project holds one roadmap, and no two live rubriques share a name — the client would otherwise read two identical tabs.
+- **FR-016** A milestone may carry sub-steps. A sub-step carries none: the roadmap is two levels deep and no more.
+- **FR-017** A sub-step's "when" may be absent; its title may not.
+- **FR-018** Where the project stands may name a sub-step, and the milestone holding it reads as the one in progress.
+- **FR-019** Deriving the client's version must return the same milestones and the same sub-steps under each, in the same order.
 - **FR-011** A milestone records whether it came from the reference document or was added by the developer. The developer's view distinguishes them; the client's does not.
 - **FR-012** What the client receives is structured milestones, not prose to be parsed.
 - **FR-013** Deriving the client's version may translate and adapt milestone text; it must return the same milestones, in the same order, and must not merge, drop or add one.
