@@ -2,7 +2,6 @@ import type {
   DocumentAcknowledgement,
   SourceDocument,
   SourceDocumentDetail,
-  ClientContentPreview,
   DocumentationWorkspace,
   ConfirmDocumentRemoval,
   DocumentRemovalPreview,
@@ -100,12 +99,6 @@ export async function uploadDocument(
 export function getDocumentationWorkspace(projectId: string) {
   return apiFetch<DocumentationWorkspace>(
     `/projects/${projectId}/documentation`,
-  );
-}
-
-export function getClientContentPreview(projectId: string) {
-  return apiFetch<ClientContentPreview>(
-    `/projects/${projectId}/documentation/client-content`,
   );
 }
 

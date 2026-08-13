@@ -16,8 +16,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useDocumentationWorkspace, useReferenceSummary } from "../hooks";
-import { ClientContentPreview } from "./client-content-preview";
-import { SectionList } from "./section-list";
+import { SectionWorkspace } from "./section-workspace";
 
 // Shown only when it has something the list below does not already say. It
 // used to announce "créez votre première section" above a section that existed
@@ -178,8 +177,7 @@ export function ClientContentPage({ projectId }: { projectId: string }) {
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-8">
       {header}
       <StateBanner projectId={projectId} />
-      <SectionList projectId={projectId} />
-      <ClientContentPreview projectId={projectId} />
+      <SectionWorkspace projectId={projectId} />
     </main>
   );
 }

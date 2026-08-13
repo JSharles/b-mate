@@ -18,7 +18,6 @@ import {
   getDocument,
   listDocuments,
   uploadDocument,
-  getClientContentPreview,
   getPublicClientSections,
   approveSectionProposal,
   archiveSection,
@@ -160,8 +159,6 @@ export function useAddNotionDocument(projectId: string) {
 
 export const workspaceKey = (projectId: string) =>
   [...documentationKey(projectId), "workspace"] as const;
-export const clientPreviewKey = (projectId: string) =>
-  [...documentationKey(projectId), "client-preview"] as const;
 export const publicClientSectionsKey = (projectId: string) =>
   [...documentationKey(projectId), "public-client-sections"] as const;
 
@@ -181,14 +178,10 @@ function useInvalidateDocumentation(projectId: string) {
   const queryClient = useQueryClient();
   return () => {
     queryClient.invalidateQueries({ queryKey: documentationKey(projectId) });
-    queryClient.invalidateQueries({ queryKey: clientPreviewKey(projectId) });
+    queryClient.invalidateQueries({
+      queryKey: publicClientSectionsKey(projectId),
+    });
   };
-}
-export function useClientContentPreview(projectId: string) {
-  return useQuery({
-    queryKey: clientPreviewKey(projectId),
-    queryFn: () => getClientContentPreview(projectId),
-  });
 }
 export function usePublicClientSections(projectId: string) {
   return useQuery({
@@ -303,7 +296,9 @@ export function useArchiveSection(projectId: string) {
     meta: { skipGlobalErrorToast: true, successMessage: t("archived") },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sectionsKey(projectId) });
-      queryClient.invalidateQueries({ queryKey: clientPreviewKey(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: publicClientSectionsKey(projectId),
+      });
     },
   });
 }
@@ -338,7 +333,9 @@ export function useApproveSectionProposal(
       queryClient.invalidateQueries({
         queryKey: sectionProposalKey(projectId, sectionId),
       });
-      queryClient.invalidateQueries({ queryKey: clientPreviewKey(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: publicClientSectionsKey(projectId),
+      });
       queryClient.invalidateQueries({ queryKey: workspaceKey(projectId) });
     },
   });

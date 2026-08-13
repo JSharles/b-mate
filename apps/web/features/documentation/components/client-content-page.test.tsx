@@ -9,11 +9,8 @@ vi.mock("../hooks", () => ({
   useReferenceSummary: vi.fn(),
 }));
 vi.mock("@/features/projects/hooks", () => ({ useProject: vi.fn() }));
-vi.mock("./section-list", () => ({
-  SectionList: () => <div>section-list</div>,
-}));
-vi.mock("./client-content-preview", () => ({
-  ClientContentPreview: () => <div>client-preview</div>,
+vi.mock("./section-workspace", () => ({
+  SectionWorkspace: () => <div>section-workspace</div>,
 }));
 
 const replace = vi.fn();
@@ -62,12 +59,14 @@ describe("ClientContentPage", () => {
     withReference({ status: "ready" });
   });
 
-  it("shows the sections and what the client sees", () => {
+  // The rubriques are read the way the client reads them, so there is no second
+  // "client preview" saying the same thing under a different heading.
+  it("shows the rubriques, and nothing that restates them", () => {
     render(<ClientContentPage projectId="project-1" />);
 
     expect(screen.getByRole("heading", { name: "title" })).toBeVisible();
-    expect(screen.getByText("section-list")).toBeVisible();
-    expect(screen.getByText("client-preview")).toBeVisible();
+    expect(screen.getByText("section-workspace")).toBeVisible();
+    expect(screen.queryByText("client-preview")).not.toBeInTheDocument();
   });
 
   // A section is written from the reference document, so a project without one
@@ -80,7 +79,7 @@ describe("ClientContentPage", () => {
 
     expect(screen.getByText("startTitle")).toBeVisible();
     expect(screen.getByText("startDescription")).toBeVisible();
-    expect(screen.queryByText("section-list")).not.toBeInTheDocument();
+    expect(screen.queryByText("section-workspace")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /startAction/ })).toHaveAttribute(
       "href",
       "/projects/project-1/documentation/sources",
@@ -104,7 +103,7 @@ describe("ClientContentPage", () => {
     render(<ClientContentPage projectId="project-1" />);
 
     expect(screen.queryByText("startTitle")).not.toBeInTheDocument();
-    expect(screen.queryByText("section-list")).not.toBeInTheDocument();
+    expect(screen.queryByText("section-workspace")).not.toBeInTheDocument();
   });
 
   // The documents are configuration, and they live with the rest of it on the
@@ -145,7 +144,7 @@ describe("ClientContentPage", () => {
     render(<ClientContentPage projectId="project-1" />);
 
     expect(screen.queryByText("priority_no_sections")).not.toBeInTheDocument();
-    expect(screen.getByText("section-list")).toBeVisible();
+    expect(screen.getByText("section-workspace")).toBeVisible();
   });
 
   // The failing write is not on this page, but the base lists it — so the
@@ -181,6 +180,6 @@ describe("ClientContentPage", () => {
     render(<ClientContentPage projectId="project-1" />);
 
     expect(replace).toHaveBeenCalledWith("/projects/project-1");
-    expect(screen.queryByText("section-list")).not.toBeInTheDocument();
+    expect(screen.queryByText("section-workspace")).not.toBeInTheDocument();
   });
 });

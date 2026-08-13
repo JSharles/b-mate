@@ -392,8 +392,6 @@
         "description": "What your client will read. You decide the topics, Diaphane writes them from your documents, and nothing is published without your approval.",
         "loadError": "Could not load this project.",
         "retry": "Try again",
-        "previewTitle": "Client preview",
-        "previewDescription": "Exactly what your client sees today. It only changes when you approve a topic, and never halfway.",
         "priority_needs_action": "A topic is waiting for your review",
         "priority_processing": "Writing in progress",
         "priority_published": "Your client is reading the current version",
@@ -600,14 +598,6 @@
       "join": "Join meeting"
     },
     "DocumentationNew": {
-      "Preview": {
-        "title": "What your client sees",
-        "exactVisible": "This view exactly matches the published version.",
-        "previousVisible": "A new version is being prepared. Your client still sees the previous version.",
-        "empty": "Nothing has been published to the client yet.",
-        "loadError": "The client preview could not be loaded.",
-        "retry": "Try again"
-      },
       "Removal": {
         "title": "Delete this document?",
         "description": "Diaphane will permanently delete the stored original. Your next rewrites will no longer draw on it.",

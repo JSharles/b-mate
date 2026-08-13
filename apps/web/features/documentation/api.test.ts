@@ -4,7 +4,6 @@ import {
   addNotionDocument,
   addNote,
   confirmDocumentRemoval,
-  getClientContentPreview,
   getDocument,
   getDocumentationWorkspace,
   getPublicClientSections,
@@ -120,7 +119,6 @@ describe("documentation api", () => {
   it("owns the complete contributor review, publication preview, editorial, and removal API surface", async () => {
     mockedApiFetch.mockResolvedValue({});
     await getDocumentationWorkspace("project-1");
-    await getClientContentPreview("project-1");
     await getPublicClientSections("project-1");
     await listSections("project-1");
     await createSection("project-1", {

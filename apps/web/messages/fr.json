@@ -392,8 +392,6 @@
         "description": "Ce que votre client lira. Vous décidez des rubriques, Diaphane les rédige à partir de vos documents, et rien n’est publié sans votre accord.",
         "loadError": "Impossible de charger ce projet.",
         "retry": "Réessayer",
-        "previewTitle": "Aperçu client",
-        "previewDescription": "Exactement ce que votre client voit aujourd’hui. Cela ne change que quand vous approuvez une rubrique, et jamais à moitié.",
         "priority_needs_action": "Une rubrique attend votre relecture",
         "priority_processing": "Rédaction en cours",
         "priority_published": "Votre client lit la version à jour",
@@ -600,14 +598,6 @@
       "join": "Rejoindre la réunion"
     },
     "DocumentationNew": {
-      "Preview": {
-        "title": "Ce que voit votre client",
-        "exactVisible": "Cette vue correspond exactement à la version publiée.",
-        "previousVisible": "Une nouvelle version est en préparation. Votre client continue de voir la version précédente.",
-        "empty": "Rien n’est encore publié pour le client.",
-        "loadError": "L’aperçu client n’a pas pu être chargé.",
-        "retry": "Réessayer"
-      },
       "Removal": {
         "title": "Supprimer ce document ?",
         "description": "Diaphane supprimera définitivement l’original stocké. Vos prochaines réécritures ne s’appuieront plus dessus.",
