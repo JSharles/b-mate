@@ -8,10 +8,10 @@ describe('createPrismaMock', () => {
     expect(typeof prisma.sourceDocument.create).toBe('function');
     expect(typeof prisma.note.create).toBe('function');
     expect(typeof prisma.sectionProposal.updateMany).toBe('function');
-    expect(typeof prisma.sectionQuestion.create).toBe('function');
+    expect(typeof prisma.clientSection.findMany).toBe('function');
     expect(typeof prisma.clientSection.upsert).toBe('function');
     expect(typeof prisma.sectionProposal.findMany).toBe('function');
-    expect(typeof prisma.sectionQuestion.create).toBe('function');
+    expect(typeof prisma.clientSection.findMany).toBe('function');
     expect(typeof prisma.clientSectionContent.upsert).toBe('function');
     expect(typeof prisma.clientContentReleaseEntry.createMany).toBe('function');
     expect(typeof prisma.generationOperation.findFirst).toBe('function');

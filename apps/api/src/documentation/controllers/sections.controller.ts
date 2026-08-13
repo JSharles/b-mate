@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   Param,
   Patch,
@@ -39,8 +40,16 @@ export class SectionsController {
     @CurrentUser() user: User,
     @Param('projectId') projectId: string,
     @Body() body: CreateClientSectionDto,
+    // Defining a section writes it, so the language the request arrived in has
+    // to travel with it: the developer reads this before publishing anything.
+    @Headers('x-interface-locale') headerLocale?: string,
   ) {
-    return this.sections.create(user.id, projectId, body);
+    return this.sections.create(
+      user.id,
+      projectId,
+      body,
+      headerLocale ?? user.locale ?? null,
+    );
   }
 
   // Ahead of `:sectionId` so an ordering request is never read as a section
@@ -60,8 +69,15 @@ export class SectionsController {
     @Param('projectId') projectId: string,
     @Param('sectionId') sectionId: string,
     @Body() body: UpdateClientSectionDto,
+    @Headers('x-interface-locale') headerLocale?: string,
   ) {
-    return this.sections.update(user.id, projectId, sectionId, body);
+    return this.sections.update(
+      user.id,
+      projectId,
+      sectionId,
+      body,
+      headerLocale ?? user.locale ?? null,
+    );
   }
 
   @Delete(':sectionId')
@@ -79,8 +95,14 @@ export class SectionsController {
     @CurrentUser() user: User,
     @Param('projectId') projectId: string,
     @Param('sectionId') sectionId: string,
+    @Headers('x-interface-locale') headerLocale?: string,
   ) {
-    return this.proposals.compose(user.id, projectId, sectionId);
+    return this.proposals.compose(
+      user.id,
+      projectId,
+      sectionId,
+      headerLocale ?? user.locale ?? null,
+    );
   }
 
   @Get(':sectionId/proposal')

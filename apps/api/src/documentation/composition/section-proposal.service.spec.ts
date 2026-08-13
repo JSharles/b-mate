@@ -181,7 +181,7 @@ describe('SectionProposalService', () => {
       ).resolves.toMatchObject({ status: 'composing', blocks: [] });
     });
 
-    it('returns the content and its questions once it awaits review', async () => {
+    it('returns the content once it awaits review', async () => {
       const { prisma, service } = setup();
       prisma.clientSection.findFirst.mockResolvedValue({ id: sectionId });
       prisma.sectionProposal.findFirst.mockResolvedValue({
@@ -193,23 +193,13 @@ describe('SectionProposalService', () => {
         version: 2,
         changeSummary: 'First composition.',
         createdAt: new Date('2026-08-12T10:00:00.000Z'),
-        structuredContent: [{ type: 'fact', text: 'A fact.' }],
+        structuredContent: [{ kind: 'paragraph', text: 'A paragraph.' }],
         failureCode: null,
-        questions: [
-          {
-            id: 'question-1',
-            question: 'Is the date confirmed?',
-            impactExplanation: 'The client would read an unconfirmed date.',
-          },
-        ],
       });
 
       const proposal = await service.current(userId, projectId, sectionId);
 
       expect(proposal?.blocks).toHaveLength(1);
-      expect(proposal?.questions[0]).toMatchObject({
-        question: 'Is the date confirmed?',
-      });
     });
 
     it('reports a section that has never composed', async () => {

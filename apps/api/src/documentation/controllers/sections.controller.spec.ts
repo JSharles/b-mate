@@ -61,7 +61,12 @@ describe('SectionsController', () => {
 
     await controller.create(user, projectId, body);
 
-    expect(sections.create).toHaveBeenCalledWith('user-1', projectId, body);
+    expect(sections.create).toHaveBeenCalledWith(
+      'user-1',
+      projectId,
+      body,
+      null,
+    );
   });
 
   it('surfaces the refusal to compose a section from nothing', async () => {
@@ -111,6 +116,7 @@ describe('SectionsController', () => {
       projectId,
       sectionId,
       body,
+      null,
     );
   });
 
@@ -148,6 +154,7 @@ describe('SectionsController', () => {
       'user-1',
       projectId,
       sectionId,
+      null,
     );
   });
 

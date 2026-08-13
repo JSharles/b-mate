@@ -35,9 +35,11 @@ const section = {
 };
 
 const referenceDocument = { id: referenceId, version: 2, structuredContent };
+const locale = 'fr';
 
 function fingerprint(overrides: Record<string, unknown> = {}) {
   return compositionFingerprint({
+    locale,
     sectionId,
     sectionName: section.name,
     instructions: section.instructions,
@@ -59,7 +61,6 @@ function output(overrides: Record<string, unknown> = {}) {
     promptVersion: SECTION_COMPOSITION_PROMPT_VERSION,
     outcome: 'composed',
     blocks: [{ kind: 'paragraph', text: 'The launch is planned for October.' }],
-    questions: [],
     changeSummary: 'First composition.',
     ...overrides,
   });
@@ -81,6 +82,7 @@ describe('SectionCompositionHandler', () => {
       id: proposalId,
       sectionId,
       referenceDocumentId: referenceId,
+      locale,
       status: 'composing',
       section,
       referenceDocument,
@@ -114,7 +116,20 @@ describe('SectionCompositionHandler', () => {
       expect(text).toContain('What the client asked for');
       expect(text).toContain('Everything about the request');
       expect(text).toContain('The launch is planned for October.');
-      expect(request.outputContract).toBe('section-composition-v2');
+      expect(request.outputContract).toBe('section-composition-v3');
+    });
+
+    // The developer reads this before publishing anything, so it is written in
+    // their language. It used to be English whatever they read the product in.
+    it('writes in the language the composition was queued in', async () => {
+      const { prisma, handler } = setup();
+      prisma.sectionProposal.findUnique.mockResolvedValue(composing());
+
+      const request = await handler.buildRequest(operation());
+
+      expect((request.parts[0] as { text: string }).text).toContain(
+        'Write in French',
+      );
     });
 
     it('refuses a proposal that is no longer composing', async () => {
@@ -203,35 +218,6 @@ describe('SectionCompositionHandler', () => {
           data: expect.objectContaining({
             outcome: 'nothing_matched',
             structuredContent: [],
-          }),
-        }),
-      );
-    });
-
-    // FR-010: read apart from what is proposed, so the contributor can act on
-    // one without touching the other.
-    it('writes questions as rows beside the content', async () => {
-      const { prisma, handler } = setup();
-      prisma.sectionProposal.findUnique.mockResolvedValue(composing());
-      prisma.sectionQuestion.create.mockResolvedValue({ id: 'question-1' });
-
-      await handler.apply(prisma as never, operation(), {
-        output: output({
-          questions: [
-            {
-              question: 'Is the October date confirmed?',
-              impactExplanation: 'The client would read an unconfirmed date.',
-            },
-          ],
-        }),
-      });
-
-      expect(prisma.sectionQuestion.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            proposalId,
-            question: 'Is the October date confirmed?',
-            sortOrder: 0,
           }),
         }),
       );

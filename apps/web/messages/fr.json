@@ -308,8 +308,6 @@
           "composing": "Rédaction en cours. Cela prend généralement moins d’une minute.",
           "failed": "La rédaction a échoué. Ce que votre client lit n’a pas bougé — relancez quand vous voulez.",
           "nothingMatched": "Rien dans vos documents ne correspond à ce que cette rubrique doit couvrir. Précisez sa description, ou ajoutez un document.",
-          "questionsTitle": "{count, plural, one {# point à clarifier} other {# points à clarifier}}",
-          "questionsHint": "Diaphane n’a pas pu trancher ces points à partir de vos documents seuls. Vous pouvez publier sans y répondre : ils seront signalés comme ouverts.",
           "approve": "Approuver et publier",
           "approving": "Publication…",
           "approveHint": "Votre client lira cette rubrique dès qu’elle est publiée.",

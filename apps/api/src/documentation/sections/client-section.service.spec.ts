@@ -198,6 +198,7 @@ describe('ClientSectionService', () => {
         userId,
         projectId,
         sectionId,
+        null,
       );
     });
 
@@ -354,6 +355,7 @@ describe('ClientSectionService', () => {
         userId,
         projectId,
         sectionId,
+        null,
       );
     });
 

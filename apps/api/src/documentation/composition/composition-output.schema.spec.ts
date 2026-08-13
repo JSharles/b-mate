@@ -8,7 +8,6 @@ function output(overrides: Record<string, unknown> = {}) {
     promptVersion: SECTION_COMPOSITION_PROMPT_VERSION,
     outcome: 'composed',
     blocks: [{ kind: 'paragraph', text: 'The launch is planned for October.' }],
-    questions: [],
     changeSummary: 'First composition of this section.',
     ...overrides,
   };
@@ -19,25 +18,6 @@ describe('section composition output', () => {
     expect(SectionCompositionOutputSchema.parse(output()).outcome).toBe(
       'composed',
     );
-  });
-
-  // FR-010: what could not be resolved travels beside the content, never
-  // inside it.
-  it('accepts questions carried beside the content', () => {
-    const parsed = SectionCompositionOutputSchema.parse(
-      output({
-        questions: [
-          {
-            question: 'Is the October launch date confirmed?',
-            impactExplanation:
-              'The client would read a date that nothing in the document confirms.',
-          },
-        ],
-      }),
-    );
-
-    expect(parsed.questions).toHaveLength(1);
-    expect(parsed.blocks).toHaveLength(1);
   });
 
   // What the reference document leaves unsettled stays unsettled in a section
@@ -77,7 +57,7 @@ describe('section composition output', () => {
   it('refuses an output from a different prompt version', () => {
     expect(
       SectionCompositionOutputSchema.safeParse(
-        output({ promptVersion: 'section-composition-v1' }),
+        output({ promptVersion: 'section-composition-v2' }),
       ).success,
     ).toBe(false);
   });

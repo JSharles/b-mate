@@ -47,12 +47,15 @@ export function SectionEditorDialog({
   section,
   open,
   onOpenChange,
+  onCreated,
 }: {
   projectId: string;
   /** Absent when creating. Present when revising an existing section. */
   section?: SectionView;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Told which one was created, so the list can take the contributor to it. */
+  onCreated?: (sectionId: string) => void;
 }) {
   const t = useTranslations("Projects.Documentation.Sections.Editor");
   const tToasts = useTranslations("Toasts");
@@ -152,7 +155,12 @@ export function SectionEditorDialog({
                   { onSuccess: () => onOpenChange(false) },
                 );
               } else {
-                create.mutate(body, { onSuccess: () => onOpenChange(false) });
+                create.mutate(body, {
+                  onSuccess: (created) => {
+                    onOpenChange(false);
+                    onCreated?.(created.id);
+                  },
+                });
               }
             }}
           >

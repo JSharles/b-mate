@@ -48,7 +48,6 @@ const readyProposal = {
   outcome: "composed",
   version: 2,
   blocks: [{ type: "fact", text: "Le lancement est prévu en octobre." }],
-  questions: [],
 };
 
 describe("SectionProposalReview", () => {
@@ -104,51 +103,14 @@ describe("SectionProposalReview", () => {
     expect(screen.getByRole("button", { name: "approve" })).toBeVisible();
   });
 
-  // FR-010: the questions travel beside the content, never inside it. Mixed in,
-  // an unanswered question reads as a statement of fact — the one thing it is not.
-  it("renders questions outside the proposed content, not among it", () => {
-    withProposal({
-      ...readyProposal,
-      questions: [
-        {
-          id: "question-1",
-          question: "La date d'octobre est-elle confirmée ?",
-          impactExplanation: "Votre client lirait une date que rien ne confirme.",
-          relatedInformationItemIds: [],
-          answeredByAssertionId: null,
-        },
-      ],
-    });
+  // Questions per rubrique were a second place to answer what the reference
+  // document already asks. There is one place, and it is the document.
+  it("asks nothing of its own", () => {
+    withProposal(readyProposal);
 
     render(<SectionProposalReview projectId="project-1" section={section} />);
 
-    const questions = screen.getByRole("region", { name: /questionsTitle/ });
-    expect(
-      within(questions).getByText("La date d'octobre est-elle confirmée ?"),
-    ).toBeVisible();
-    expect(
-      within(questions).queryByText("Le lancement est prévu en octobre."),
-    ).not.toBeInTheDocument();
-  });
-
-  it("says an unanswered question does not block publishing", () => {
-    withProposal({
-      ...readyProposal,
-      questions: [
-        {
-          id: "question-1",
-          question: "Confirmée ?",
-          impactExplanation: "Impact.",
-          relatedInformationItemIds: [],
-          answeredByAssertionId: null,
-        },
-      ],
-    });
-
-    render(<SectionProposalReview projectId="project-1" section={section} />);
-
-    expect(screen.getByText("questionsHint")).toBeVisible();
-    expect(screen.getByRole("button", { name: "approve" })).toBeEnabled();
+    expect(screen.queryByText("questionsHint")).not.toBeInTheDocument();
   });
 
   // FR-012: approving names the version the contributor actually read, so a

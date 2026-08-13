@@ -60,6 +60,7 @@ export class ClientSectionService {
     userId: string,
     projectId: string,
     input: CreateClientSectionDto,
+    locale: string | null = null,
   ) {
     await this.access.requireContributor(userId, projectId);
     // US1.8: a section composed from nothing is not worth queueing, and the
@@ -92,7 +93,7 @@ export class ClientSectionService {
     // Defining a section is asking for it. Making the contributor press
     // "Rédiger" afterwards asked them again for what they had just asked —
     // the same reason adding a document now writes the reference document.
-    await this.compose(userId, projectId, created.id);
+    await this.compose(userId, projectId, created.id, locale);
     return this.toView(created);
   }
 
@@ -101,6 +102,7 @@ export class ClientSectionService {
     projectId: string,
     sectionId: string,
     input: UpdateClientSectionDto,
+    locale: string | null = null,
   ) {
     await this.access.requireContributor(userId, projectId);
     await this.requireSection(projectId, sectionId);
@@ -147,7 +149,7 @@ export class ClientSectionService {
     });
     if (count === 0) throw new ConflictException({ code: 'SECTION_STALE' });
 
-    await this.compose(userId, projectId, sectionId);
+    await this.compose(userId, projectId, sectionId, locale);
 
     const row = await this.prisma.clientSection.findUnique({
       where: { id: sectionId },
@@ -161,9 +163,14 @@ export class ClientSectionService {
   // that nor a project whose reference document went missing is a reason to
   // refuse the edit: the section is saved either way, and the screen offers the
   // write it did not get.
-  private async compose(userId: string, projectId: string, sectionId: string) {
+  private async compose(
+    userId: string,
+    projectId: string,
+    sectionId: string,
+    locale: string | null,
+  ) {
     try {
-      await this.proposals.compose(userId, projectId, sectionId);
+      await this.proposals.compose(userId, projectId, sectionId, locale);
     } catch (error) {
       if (
         !(error instanceof ConflictException) &&

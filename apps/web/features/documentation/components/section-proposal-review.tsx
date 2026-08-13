@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleHelp, LoaderCircle, SearchX, TriangleAlert } from "lucide-react";
+import { LoaderCircle, SearchX, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { SectionView } from "schemas";
 import { Button } from "@/shared/components/ui/button";
@@ -100,37 +100,6 @@ export function SectionProposalReview({
           </p>
         ))}
       </div>
-
-      {/* FR-010: what composition could not resolve sits beside the content,
-          never inside it. Mixed in, an unanswered question reads as a statement
-          of fact — which is the one thing it is not. */}
-      {current.questions.length > 0 && (
-        <section
-          aria-labelledby={`questions-${section.id}`}
-          className="rounded-lg border border-border bg-card p-4"
-        >
-          <h4
-            id={`questions-${section.id}`}
-            className="flex items-center gap-2 text-sm font-semibold"
-          >
-            <CircleHelp className="size-4" />
-            {t("questionsTitle", { count: current.questions.length })}
-          </h4>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            {t("questionsHint")}
-          </p>
-          <ul className="mt-3 space-y-3">
-            {current.questions.map((question) => (
-              <li key={question.id} className="text-sm">
-                <p className="leading-relaxed">{question.question}</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  {question.impactExplanation}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       {current.status === "pending_review" && (
         <div className="flex flex-wrap items-center gap-3">

@@ -17,6 +17,7 @@ import {
 } from './composition-output.schema';
 
 export interface CompositionInput {
+  locale: string;
   sectionId: string;
   sectionName: string;
   instructions: string;
@@ -82,6 +83,7 @@ export class SectionCompositionHandler
     }
 
     const input: CompositionInput = {
+      locale: proposal.locale,
       sectionId: proposal.sectionId,
       sectionName: proposal.section.name,
       instructions: proposal.section.instructions,
@@ -97,6 +99,7 @@ export class SectionCompositionHandler
         {
           kind: 'text',
           text: buildCompositionPrompt({
+            locale: input.locale,
             sectionName: input.sectionName,
             instructions: input.instructions,
             parts: compositionParts(
@@ -135,20 +138,6 @@ export class SectionCompositionHandler
         version: { increment: 1 },
       },
     });
-
-    // Questions are written as rows rather than folded into the content, so the
-    // contributor reads them apart from what is proposed (FR-010) and can act on
-    // one without touching the other.
-    for (const [index, question] of output.questions.entries()) {
-      await tx.sectionQuestion.create({
-        data: {
-          proposalId: proposal.id,
-          question: question.question,
-          impactExplanation: question.impactExplanation,
-          sortOrder: index,
-        },
-      });
-    }
 
     // The section has now been composed against the current reference document,
     // so it no longer needs a refresh. A later rewrite sets it again (FR-018).

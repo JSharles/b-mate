@@ -557,6 +557,10 @@ model SectionProposal {
   // The reference document this was composed from, so a refresh can tell
   // whether the truth has moved since.
   referenceDocumentId   String                  @map("reference_document_id") @db.Uuid
+  // The language it was written in, carried the way the reference document
+  // carries its own: a composition queued in French must not run in English
+  // because the developer changed tab.
+  locale                String                  @default("en") @db.VarChar(8)
   generationOperationId String                  @unique @map("generation_operation_id") @db.Uuid
   status                SectionProposalStatus   @default(composing)
   outcome               SectionProposalOutcome?
@@ -574,29 +578,12 @@ model SectionProposal {
   referenceDocument    ReferenceDocument      @relation("SectionProposalReference", fields: [referenceDocumentId], references: [id], onDelete: Restrict)
   generationOperation  GenerationOperation    @relation("SectionProposalGenerationOperation", fields: [generationOperationId], references: [id], onDelete: Restrict)
   approvedByUser       User?                  @relation("SectionProposalApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
-  questions            SectionQuestion[]
   clientContents       ClientSectionContent[]
   initiatingReleases   ClientContentRelease[] @relation("ReleaseInitiatingProposal")
   derivationOperations GenerationOperation[]  @relation("GenerationSectionProposal")
 
   @@index([sectionId, status, createdAt])
   @@map("section_proposals")
-}
-
-// FR-010: what composition could not resolve is stored beside the proposal, not
-// inside its content, so the contributor reads the two separately.
-model SectionQuestion {
-  id                String   @id @default(uuid()) @db.Uuid
-  proposalId        String   @map("proposal_id") @db.Uuid
-  question          String
-  impactExplanation String   @map("impact_explanation")
-  sortOrder         Int      @map("sort_order")
-  createdAt         DateTime @default(now()) @map("created_at")
-
-  proposal SectionProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-
-  @@index([proposalId, sortOrder])
-  @@map("section_questions")
 }
 
 model ClientSectionContent {

@@ -308,8 +308,6 @@
           "composing": "Being written. This usually takes under a minute.",
           "failed": "Writing failed. What your client reads has not changed — start it again whenever you like.",
           "nothingMatched": "Nothing in your documents matches what this topic should cover. Sharpen its description, or add a document.",
-          "questionsTitle": "{count, plural, one {# point to clarify} other {# points to clarify}}",
-          "questionsHint": "Diaphane could not settle these from your documents alone. You can publish without answering: they will be marked as open.",
           "approve": "Approve and publish",
           "approving": "Publishing…",
           "approveHint": "Your client reads this topic as soon as it is published.",

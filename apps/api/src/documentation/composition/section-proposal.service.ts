@@ -18,6 +18,8 @@ import { compositionFingerprint } from './section-composition.handler';
 // is busy; anything else has released it.
 const LIVE_PROPOSAL_STATUSES = ['composing', 'pending_review'] as const;
 
+const FALLBACK_LOCALE = 'en';
+
 @Injectable()
 export class SectionProposalService {
   constructor(
@@ -27,7 +29,12 @@ export class SectionProposalService {
     private readonly publication: ClientPublicationService,
   ) {}
 
-  async compose(userId: string, projectId: string, sectionId: string) {
+  async compose(
+    userId: string,
+    projectId: string,
+    sectionId: string,
+    locale: string | null = null,
+  ) {
     await this.access.requireContributor(userId, projectId);
 
     const section = await this.prisma.clientSection.findFirst({
@@ -61,6 +68,7 @@ export class SectionProposalService {
     }
 
     const inputFingerprint = compositionFingerprint({
+      locale: locale ?? FALLBACK_LOCALE,
       sectionId: section.id,
       sectionName: section.name,
       instructions: section.instructions,
@@ -85,6 +93,7 @@ export class SectionProposalService {
         data: {
           sectionId: section.id,
           referenceDocumentId: reference.id,
+          locale: locale ?? FALLBACK_LOCALE,
           generationOperationId: operation.id,
           status: 'composing',
         },
@@ -113,10 +122,10 @@ export class SectionProposalService {
   ) {
     const proposal = await this.prisma.sectionProposal.findFirst({
       where: { generationOperationId: operationId, section: { projectId } },
-      select: { sectionId: true },
+      select: { sectionId: true, locale: true },
     });
     if (!proposal) return null;
-    return this.compose(userId, projectId, proposal.sectionId);
+    return this.compose(userId, projectId, proposal.sectionId, proposal.locale);
   }
 
   async current(userId: string, projectId: string, sectionId: string) {
@@ -129,7 +138,6 @@ export class SectionProposalService {
 
     const proposal = await this.prisma.sectionProposal.findFirst({
       where: { sectionId },
-      include: { questions: { orderBy: { sortOrder: 'asc' } } },
       orderBy: { createdAt: 'desc' },
     });
     if (!proposal) return null;
@@ -149,11 +157,6 @@ export class SectionProposalService {
         proposal.status === 'pending_review' || proposal.status === 'approved'
           ? ((proposal.structuredContent ?? []) as unknown[])
           : [],
-      questions: proposal.questions.map((question) => ({
-        id: question.id,
-        question: question.question,
-        impactExplanation: question.impactExplanation,
-      })),
       failureCode: proposal.failureCode,
     };
   }

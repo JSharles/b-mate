@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-export const SECTION_COMPOSITION_PROMPT_VERSION = 'section-composition-v2';
-export const SECTION_COMPOSITION_OUTPUT_CONTRACT = 'section-composition-v2';
+export const SECTION_COMPOSITION_PROMPT_VERSION = 'section-composition-v3';
+export const SECTION_COMPOSITION_OUTPUT_CONTRACT = 'section-composition-v3';
 
 // A section is a view of the reference document, so its blocks are shaped like
 // the document's: prose, and what the document leaves open carried as its own
@@ -10,16 +10,6 @@ export const CompositionBlockSchema = z
   .object({
     kind: z.enum(['paragraph', 'open_point']),
     text: z.string().trim().min(1).max(20_000),
-  })
-  .strict();
-
-// FR-010: what could not be resolved travels beside the content, never inside
-// it. The model supplies the question and why it matters to what the client
-// will end up reading.
-export const CompositionQuestionSchema = z
-  .object({
-    question: z.string().trim().min(1).max(2_000),
-    impactExplanation: z.string().trim().min(1).max(2_000),
   })
   .strict();
 
@@ -33,7 +23,6 @@ export const SectionCompositionOutputSchema = z
     promptVersion: z.literal(SECTION_COMPOSITION_PROMPT_VERSION),
     outcome: z.enum(['composed', 'nothing_matched']),
     blocks: z.array(CompositionBlockSchema),
-    questions: z.array(CompositionQuestionSchema),
     changeSummary: z.string().trim().min(1).max(2_000),
   })
   .strict()
@@ -59,13 +48,7 @@ export const SectionCompositionOutputSchema = z
 export const SECTION_COMPOSITION_JSON_SCHEMA: Record<string, unknown> = {
   type: 'object',
   additionalProperties: false,
-  required: [
-    'promptVersion',
-    'outcome',
-    'blocks',
-    'questions',
-    'changeSummary',
-  ],
+  required: ['promptVersion', 'outcome', 'blocks', 'changeSummary'],
   properties: {
     promptVersion: { const: SECTION_COMPOSITION_PROMPT_VERSION },
     outcome: { enum: ['composed', 'nothing_matched'] },
@@ -78,18 +61,6 @@ export const SECTION_COMPOSITION_JSON_SCHEMA: Record<string, unknown> = {
         properties: {
           kind: { enum: ['paragraph', 'open_point'] },
           text: { type: 'string' },
-        },
-      },
-    },
-    questions: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['question', 'impactExplanation'],
-        properties: {
-          question: { type: 'string' },
-          impactExplanation: { type: 'string' },
         },
       },
     },

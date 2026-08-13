@@ -41,7 +41,6 @@ const DELEGATE_NAMES = [
   // Author-defined client sections and their composition.
   'clientSection',
   'sectionProposal',
-  'sectionQuestion',
   // Publication delegates.
   'clientSectionContent',
   'clientContentRelease',

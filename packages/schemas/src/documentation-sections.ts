@@ -80,20 +80,9 @@ export const SectionProposalSummarySchema = z
   })
   .strict();
 
-// FR-010: what composition could not resolve travels beside the proposal, never
-// inside its content.
-export const SectionQuestionSchema = z
-  .object({
-    id: DocumentationUuidSchema,
-    question: z.string().trim().min(1).max(2_000),
-    impactExplanation: z.string().trim().min(1).max(2_000),
-  })
-  .strict();
-
 export const SectionProposalDetailSchema = SectionProposalSummarySchema.extend({
   outcome: SectionProposalOutcomeSchema.nullable(),
   blocks: z.array(SectionContentBlockSchema),
-  questions: z.array(SectionQuestionSchema),
   failureCode: z.string().trim().min(1).max(128).nullable(),
 }).strict();
 
@@ -174,7 +163,6 @@ export type SectionProposalSummary = z.infer<
   typeof SectionProposalSummarySchema
 >;
 export type SectionProposalDetail = z.infer<typeof SectionProposalDetailSchema>;
-export type SectionQuestion = z.infer<typeof SectionQuestionSchema>;
 export type SectionView = z.infer<typeof SectionViewSchema>;
 export type CreateSectionRequest = z.infer<typeof CreateSectionRequestSchema>;
 export type UpdateSectionRequest = z.infer<typeof UpdateSectionRequestSchema>;

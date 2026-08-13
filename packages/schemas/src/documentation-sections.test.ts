@@ -112,7 +112,6 @@ describe("composed content", () => {
       createdAt: new Date().toISOString(),
       outcome: "composed",
       blocks: [{ kind: "paragraph", text: "Le lancement est prévu en octobre." }],
-      questions: [],
       failureCode: null,
       ...overrides,
     };
@@ -164,24 +163,6 @@ describe("composed content", () => {
     expect(parsed.blocks).toEqual([]);
   });
 
-  // FR-010: what composition could not resolve travels beside the proposal,
-  // never inside its content.
-  it("carries unresolved questions beside the content, not inside it", () => {
-    const parsed = SectionProposalDetailSchema.parse(
-      proposal({
-        questions: [
-          {
-            id,
-            question: "La date de lancement est-elle confirmée ?",
-            impactExplanation: "Le client lira une date que rien ne confirme.",
-          },
-        ],
-      }),
-    );
-
-    expect(parsed.questions).toHaveLength(1);
-    expect(parsed.blocks[0]?.text).toContain("octobre");
-  });
 });
 
 describe("a section's state", () => {

@@ -38,6 +38,11 @@ export function SectionList({ projectId }: { projectId: string }) {
   const sections = useSections(projectId);
   const compose = useComposeSection(projectId);
   const [creating, setCreating] = useState(false);
+  // A new rubrique is appended, and the one above it may have a whole proposal
+  // unfolded under it — measured at some 2500px on a real project. The dialog
+  // closed, the list refreshed, and nothing appeared to happen because what had
+  // changed was far below the fold.
+  const [created, setCreated] = useState<string | null>(null);
   const [editing, setEditing] = useState<SectionView | undefined>();
   const [deleting, setDeleting] = useState<SectionView | undefined>();
 
@@ -94,6 +99,19 @@ export function SectionList({ projectId }: { projectId: string }) {
             return (
               <article
                 key={section.id}
+                ref={
+                  section.id === created
+                    ? (node) => {
+                        if (node) {
+                          setCreated(null);
+                          node.scrollIntoView({
+                            behavior: "smooth",
+                            block: "center",
+                          });
+                        }
+                      }
+                    : undefined
+                }
                 className={
                   state === "awaiting"
                     ? "rounded-xl border border-primary/40 bg-primary/[0.04] p-5"
@@ -181,6 +199,7 @@ export function SectionList({ projectId }: { projectId: string }) {
         projectId={projectId}
         open={creating}
         onOpenChange={setCreating}
+        onCreated={setCreated}
       />
       {editing && (
         <SectionEditorDialog
