@@ -267,9 +267,14 @@ export function useCreateSection(projectId: string) {
   return useMutation({
     mutationFn: (body: CreateSectionRequest) => createSection(projectId, body),
     meta: { skipGlobalErrorToast: true, successMessage: t("created") },
-    onSuccess: () => {
+    onSuccess: (section) => {
       queryClient.invalidateQueries({ queryKey: sectionsKey(projectId) });
       queryClient.invalidateQueries({ queryKey: workspaceKey(projectId) });
+      // Defining a section writes it, so the proposal the row is about to show
+      // has to be read again rather than served from an empty cache.
+      queryClient.invalidateQueries({
+        queryKey: sectionProposalKey(projectId, section.id),
+      });
     },
   });
 }
@@ -283,6 +288,9 @@ export function useUpdateSection(projectId: string, sectionId: string) {
     meta: { skipGlobalErrorToast: true, successMessage: t("updated") },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sectionsKey(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: sectionProposalKey(projectId, sectionId),
+      });
     },
   });
 }

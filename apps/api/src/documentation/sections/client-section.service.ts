@@ -7,6 +7,7 @@ import {
 import type { ClientSection, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
+import { SectionProposalService } from '../composition/section-proposal.service';
 import {
   CreateClientSectionDto,
   ReorderClientSectionsDto,
@@ -42,6 +43,7 @@ export class ClientSectionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: ProjectAccessService,
+    private readonly proposals: SectionProposalService,
   ) {}
 
   async list(userId: string, projectId: string) {
@@ -86,6 +88,11 @@ export class ClientSectionService {
       },
       include: SECTION_INCLUDE,
     });
+
+    // Defining a section is asking for it. Making the contributor press
+    // "Rédiger" afterwards asked them again for what they had just asked —
+    // the same reason adding a document now writes the reference document.
+    await this.compose(userId, projectId, created.id);
     return this.toView(created);
   }
 
@@ -106,8 +113,10 @@ export class ClientSectionService {
       throw new BadRequestException({ code: 'SECTION_UPDATE_EMPTY' });
     }
 
-    // FR-020: revising what a section is meant to cover marks it, it never
-    // recomposes silently.
+    // Revising what a section covers is the same act as defining it, so it is
+    // written again. What does not recompose on its own is a section the
+    // contributor did not touch — a rewritten reference document marks those
+    // and waits (FR-020).
     const data: Prisma.ClientSectionUpdateManyMutationInput = {
       ...(input.name !== undefined ? { name: input.name.trim() } : {}),
       ...(input.instructions !== undefined
@@ -138,12 +147,31 @@ export class ClientSectionService {
     });
     if (count === 0) throw new ConflictException({ code: 'SECTION_STALE' });
 
+    await this.compose(userId, projectId, sectionId);
+
     const row = await this.prisma.clientSection.findUnique({
       where: { id: sectionId },
       include: SECTION_INCLUDE,
     });
     if (!row) throw new NotFoundException({ code: 'NOT_FOUND' });
     return this.toView(row);
+  }
+
+  // A composition already running has this definition behind it, and neither
+  // that nor a project whose reference document went missing is a reason to
+  // refuse the edit: the section is saved either way, and the screen offers the
+  // write it did not get.
+  private async compose(userId: string, projectId: string, sectionId: string) {
+    try {
+      await this.proposals.compose(userId, projectId, sectionId);
+    } catch (error) {
+      if (
+        !(error instanceof ConflictException) &&
+        !(error instanceof BadRequestException)
+      ) {
+        throw error;
+      }
+    }
   }
 
   async archive(userId: string, projectId: string, sectionId: string) {

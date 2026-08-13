@@ -285,7 +285,7 @@
           "pedagogy_direct": "Straight to the point",
           "pedagogy_guided": "Explains along the way",
           "pedagogy_highly_explanatory": "Highly explanatory",
-          "refreshNotice": "Editing a topic marks it as needing a refresh. Nothing is written or published until you ask for it.",
+          "refreshNotice": "Editing a topic rewrites it straight away. Nothing is published until you have reviewed it.",
           "noCanonicalContent": "Add a document first — there is nothing to write from.",
           "staleError": "This topic changed while you were editing it. Reopen it to start from the current version.",
           "cancel": "Cancel",
@@ -316,8 +316,8 @@
           "loadError": "Could not load this proposal. Reload the page — what your client reads has not changed."
         },
         "Toasts": {
-          "created": "Topic created.",
-          "updated": "Topic updated.",
+          "created": "Topic created. Writing it now…",
+          "updated": "Topic updated. Writing it again now…",
           "archived": "Topic deleted.",
           "composing": "Writing started.",
           "approved": "Topic published."

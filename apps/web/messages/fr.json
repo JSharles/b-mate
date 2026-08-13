@@ -285,7 +285,7 @@
           "pedagogy_direct": "Va à l’essentiel",
           "pedagogy_guided": "Explique en chemin",
           "pedagogy_highly_explanatory": "Très explicative",
-          "refreshNotice": "Modifier une rubrique la marque à rafraîchir. Rien n’est rédigé ni publié tant que vous ne le demandez pas.",
+          "refreshNotice": "Modifier une rubrique la fait réécrire aussitôt. Rien n’est publié tant que vous ne l’avez pas relue.",
           "noCanonicalContent": "Ajoutez d’abord un document : il n’y a rien à partir de quoi rédiger.",
           "staleError": "Cette rubrique a changé pendant que vous l’éditiez. Rouvrez-la pour repartir de la version à jour.",
           "cancel": "Annuler",
@@ -316,8 +316,8 @@
           "loadError": "Impossible de charger cette proposition. Rechargez la page — ce que lit votre client n’a pas bougé."
         },
         "Toasts": {
-          "created": "Rubrique créée.",
-          "updated": "Rubrique mise à jour.",
+          "created": "Rubrique créée. Rédaction en cours…",
+          "updated": "Rubrique mise à jour. Réécriture en cours…",
           "archived": "Rubrique supprimée.",
           "composing": "Rédaction lancée.",
           "approved": "Rubrique publiée."

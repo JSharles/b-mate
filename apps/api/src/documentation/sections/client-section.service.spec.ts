@@ -1,5 +1,6 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { asPrismaService, createPrismaMock } from '../../test/prisma-mock';
+import { SectionProposalService } from '../composition/section-proposal.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
 import { ClientSectionService } from './client-section.service';
 
@@ -43,12 +44,19 @@ describe('ClientSectionService', () => {
     const access = {
       requireContributor: jest.fn().mockResolvedValue({ role: 'contributor' }),
     };
+    const proposals = {
+      compose: jest
+        .fn()
+        .mockResolvedValue({ proposalId: 'p', operationId: 'o' }),
+    };
     return {
       prisma,
       access,
+      proposals,
       service: new ClientSectionService(
         asPrismaService(prisma),
         access as unknown as ProjectAccessService,
+        proposals as unknown as SectionProposalService,
       ),
     };
   }
@@ -170,6 +178,49 @@ describe('ClientSectionService', () => {
       expect(view.editorial.tone).toBe('reassuring');
     });
 
+    // Defining a section is asking for it: making the contributor press
+    // "Rédiger" afterwards asked them again for what they had just asked.
+    it('writes the section it was just given', async () => {
+      const { prisma, proposals, service } = setup();
+      withReferenceDocument(prisma);
+      prisma.clientSection.findFirst.mockResolvedValue(null);
+      prisma.clientSection.create.mockResolvedValue(
+        sectionRow({ id: sectionId }),
+      );
+
+      await service.create(userId, projectId, {
+        name: 'Planning',
+        instructions: 'Les jalons.',
+        editorial,
+      });
+
+      expect(proposals.compose).toHaveBeenCalledWith(
+        userId,
+        projectId,
+        sectionId,
+      );
+    });
+
+    // A composition already running has this definition behind it, and that is
+    // not a reason to refuse the section the contributor just defined.
+    it('keeps the section when its write cannot start', async () => {
+      const { prisma, proposals, service } = setup();
+      withReferenceDocument(prisma);
+      prisma.clientSection.findFirst.mockResolvedValue(null);
+      prisma.clientSection.create.mockResolvedValue(sectionRow());
+      proposals.compose.mockRejectedValue(
+        new ConflictException({ code: 'SECTION_COMPOSING' }),
+      );
+
+      await expect(
+        service.create(userId, projectId, {
+          name: 'Planning',
+          instructions: 'Les jalons.',
+          editorial,
+        }),
+      ).resolves.toMatchObject({ name: expect.any(String) });
+    });
+
     it('comes back needing a refresh, since it has never composed', async () => {
       const { prisma, service } = setup();
       withReferenceDocument(prisma);
@@ -280,8 +331,11 @@ describe('ClientSectionService', () => {
       );
     });
 
-    it('marks the section for refresh when its definition changes (FR-020)', async () => {
-      const { prisma, service } = setup();
+    // Revising what a section covers is the same act as defining it, so it is
+    // written again rather than parked in a state the contributor has to clear
+    // by hand.
+    it('writes the section again when its definition changes', async () => {
+      const { prisma, proposals, service } = setup();
       prisma.clientSection.findFirst.mockResolvedValue({ id: sectionId });
       prisma.clientSection.updateMany.mockResolvedValue({ count: 1 });
       prisma.clientSection.findUnique.mockResolvedValue(sectionRow());
@@ -296,6 +350,27 @@ describe('ClientSectionService', () => {
           data: expect.objectContaining({ refreshNeeded: true }),
         }),
       );
+      expect(proposals.compose).toHaveBeenCalledWith(
+        userId,
+        projectId,
+        sectionId,
+      );
+    });
+
+    // A concurrent edit loses in the database, and nothing is written for a
+    // definition that was never saved.
+    it('writes nothing when the edit lost the race', async () => {
+      const { prisma, proposals, service } = setup();
+      prisma.clientSection.findFirst.mockResolvedValue({ id: sectionId });
+      prisma.clientSection.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.update(userId, projectId, sectionId, {
+          instructions: 'Autre chose.',
+          expectedVersion: 1,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'SECTION_STALE' } });
+      expect(proposals.compose).not.toHaveBeenCalled();
     });
 
     it('refuses an update that changes nothing', async () => {

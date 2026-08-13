@@ -268,7 +268,7 @@ describe("documentation hooks", () => {
     });
 
     it("refreshes the list after creating, editing, archiving or composing", async () => {
-      vi.mocked(createSection).mockResolvedValue({} as never);
+      vi.mocked(createSection).mockResolvedValue({ id: "section-1" } as never);
       vi.mocked(updateSection).mockResolvedValue({} as never);
       vi.mocked(archiveSection).mockResolvedValue({ archived: true });
       vi.mocked(composeSection).mockResolvedValue({
