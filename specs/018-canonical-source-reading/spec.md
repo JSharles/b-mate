@@ -72,8 +72,9 @@ The developer wants the reference document outside the app — to send it, to ke
 **Acceptance Scenarios**:
 
 1. **Given** a reference document, **When** the developer downloads it, **Then** they get a file holding its full text and its parts.
-2. **Given** points left open, **When** the document is downloaded, **Then** they appear in it, marked as open, exactly as on screen.
-3. **Given** a document still being written, **When** the developer looks for the download, **Then** it is unavailable rather than producing a half-written file.
+2. **Given** something the documents never settled, **When** the document is downloaded, **Then** the gap is marked where it applies — "launch date: not confirmed" — so the file cannot be read as if everything were settled.
+3. **Given** questions the system is asking the developer, **When** the document is downloaded, **Then** they are absent. They are addressed to the developer; they are not content.
+4. **Given** a document still being written, **When** the developer looks for the download, **Then** it is unavailable rather than producing a half-written file.
 
 ---
 
@@ -91,6 +92,8 @@ The developer works in French. Every question the system asks them is in French.
 
 ### Edge Cases
 
+- Answering the last point in the set: the set closes and says so, rather than leaving an empty card.
+
 - One short document: the reference document is short. It does not pad.
 - Documents that say almost nothing usable: the document says so plainly rather than being written out of nothing.
 - A document removed later: the reference document is rewritten without it, and says it needs rewriting until the developer triggers it.
@@ -107,6 +110,18 @@ The developer works in French. Every question the system asks them is in French.
 - **FR-005**: A developer MUST be able to correct any sentence, attributably, and the correction MUST hold for everything built afterwards.
 - **FR-006**: It MUST be rewritten when the documents change, and MUST say it needs rewriting rather than rewriting itself.
 - **FR-007**: When the documents hold nothing usable, it MUST say so rather than be written from nothing.
+
+### Where each thing lives
+
+- **FR-026**: The reference document MUST have its own screen, reachable at its own address. It is read, not passed through.
+- **FR-027**: The documentation working page MUST NOT render the reference document. It carries what the source holds in a sentence, the points to clarify, a way to the document, and the sections.
+
+### Answering the points
+
+- **FR-028**: Points to clarify MUST be presented one at a time when there are three or more, so a developer faces one decision rather than a wall.
+- **FR-029**: The developer MUST see where they are in the set — which point, out of how many.
+- **FR-030**: The developer MUST be able to move past a point without answering it, and come back to it.
+- **FR-031**: Below three points, they MUST be shown plainly, without the one-at-a-time treatment. A carousel over two questions is ceremony.
 
 ### Points to clarify
 
@@ -126,15 +141,17 @@ The developer works in French. Every question the system asks them is in French.
 
 ### Downloading
 
-- **FR-018**: The reference document MUST be downloadable, carrying its full text, its parts, and its open points as shown.
-- **FR-019**: The download MUST be unavailable while the document is being written, rather than producing a partial file.
+- **FR-018**: The reference document MUST be downloadable, carrying its full text and its parts.
+- **FR-019**: A gap the documents never settled MUST appear in the downloaded file, marked where it applies. A file that reads as if everything were settled is the failure this product exists to prevent.
+- **FR-020**: The questions the system asks the developer MUST NOT appear in the downloaded file. They are addressed to a person, not part of what the project is.
+- **FR-021**: The download MUST be unavailable while the document is being written, rather than producing a partial file.
 
 ### Language
 
-- **FR-020**: Points to clarify MUST be written in the language the developer is using the product in.
-- **FR-021**: The developer MUST NOT have to set that language.
-- **FR-022**: It MUST be resolvable when the system works in the background.
-- **FR-023**: An unknown language MUST fall back to English.
+- **FR-022**: Points to clarify MUST be written in the language the developer is using the product in.
+- **FR-023**: The developer MUST NOT have to set that language.
+- **FR-024**: It MUST be resolvable when the system works in the background.
+- **FR-025**: An unknown language MUST fall back to English.
 
 ## Success Criteria *(mandatory)*
 
@@ -152,6 +169,7 @@ The developer works in French. Every question the system asks them is in French.
 - The reference document is for the developer. What the client reads is still the sections they compose, unchanged by this feature.
 - Writing it is one operation per project, run when the documents change — not one per statement.
 - Whether a document belongs is judged against what the project already holds. That makes the first document unjudgeable, which is why FR-016 exempts it rather than pretending otherwise.
+- One point to clarify carries one decision — answer it, or leave it open — and a written answer needs room. That is what makes presenting them one at a time worth the mechanism here, and what makes it wrong for the extracted statements, which carry no decision at all.
 - Downloading is served first by a page laid out for paper plus a print action, so the browser produces the file. A server-generated PDF is the same requirement met more expensively, and is only worth it once something needs to send the file without a person present.
 
 ## Out of Scope
