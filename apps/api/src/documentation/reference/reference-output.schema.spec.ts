@@ -186,11 +186,9 @@ describe('resolving what the document cited', () => {
   // every write failed on output it had produced exactly as instructed.
   it('asks the provider for the same field the parser accepts', () => {
     const block = (
-      (
-        (REFERENCE_DOCUMENT_JSON_SCHEMA.properties as Record<string, any>).parts
-          .items.properties.blocks as Record<string, any>
-      ).items as Record<string, any>
-    );
+      (REFERENCE_DOCUMENT_JSON_SCHEMA.properties as Record<string, any>).parts
+        .items.properties.blocks as Record<string, any>
+    ).items as Record<string, any>;
 
     expect(block.required).toContain('informationItemRefs');
     expect(Object.keys(block.properties)).toContain('informationItemRefs');

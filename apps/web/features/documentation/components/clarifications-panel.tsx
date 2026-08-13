@@ -2,9 +2,15 @@
 
 import { AlertCircle, ChevronLeft, ChevronRight, MessageCircleQuestion } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Clarification } from "schemas";
 import { Button } from "@/shared/components/ui/button";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/shared/components/ui/carousel";
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useClarifications, useResolveClarifications } from "../hooks";
@@ -44,7 +50,7 @@ function ClarificationCard({
   };
 
   return (
-    <article className="space-y-4 rounded-xl border border-border bg-card p-5">
+    <article className="flex h-full flex-col gap-4 rounded-xl border border-border bg-card p-5">
       <div>
         <h4 className="text-sm font-semibold leading-relaxed">
           {clarification.question}
@@ -74,7 +80,7 @@ function ClarificationCard({
         </ul>
       )}
 
-      <div className="space-y-2">
+      <div className="mt-auto space-y-2">
         <Label htmlFor={`answer-${clarification.id}`}>{t("answerLabel")}</Label>
         <textarea
           id={`answer-${clarification.id}`}
@@ -123,9 +129,20 @@ export function ClarificationsPanel({
   const t = useTranslations("Projects.Documentation.Clarifications");
   const clarifications = useClarifications(projectId, { status: "open" });
   const resolve = useResolveClarifications(projectId);
-  const [index, setIndex] = useState(0);
+  const [api, setApi] = useState<CarouselApi>();
+  const [position, setPosition] = useState(0);
 
-  if (clarifications.isPending) return <Skeleton className="h-56 w-full rounded-xl" />;
+  useEffect(() => {
+    if (!api) return;
+    const onSelect = () => setPosition(api.selectedScrollSnap());
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api]);
+
+  if (clarifications.isPending)
+    return <Skeleton className="h-56 w-full rounded-xl" />;
   if (clarifications.isError)
     return (
       <p role="alert" className="text-sm text-destructive">
@@ -136,11 +153,8 @@ export function ClarificationsPanel({
   const items = clarifications.data?.items ?? [];
   if (items.length === 0) return null;
 
-  // Answering removes a point from the set, so the position can land past the
-  // end. Clamping here keeps the last answer from leaving an empty card.
-  const position = Math.min(index, items.length - 1);
-  const current = items[position];
   const many = items.length > 1;
+  const shown = Math.min(position, items.length - 1);
 
   return (
     <section
@@ -156,19 +170,31 @@ export function ClarificationsPanel({
           <p className="mt-1 text-sm text-muted-foreground">
             {t("total", { count: clarifications.data?.total ?? items.length })}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {t("optionalHint")}
           </p>
         </div>
       </div>
 
-      <div className="mt-4">
-        <ClarificationCard
-          key={current.id}
-          clarification={current}
-          revisionId={revisionId}
-          resolve={resolve}
-        />
+      {/* Embla, not a hand-rolled index: it carries pointer drag, trackpad and
+          touch out of the box. Arrows alone left the card unswipeable — unusable
+          on a phone, and awkward everywhere else. */}
+      <div className="mt-4 min-w-0">
+        <Carousel setApi={setApi} opts={{ align: "start", loop: false }}>
+          {/* Stretch, not start: cards of unequal content should still read as
+              one row rather than a ragged one. */}
+          <CarouselContent className="items-stretch">
+            {items.map((clarification) => (
+              <CarouselItem key={clarification.id}>
+                <ClarificationCard
+                  clarification={clarification}
+                  revisionId={revisionId}
+                  resolve={resolve}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
       </div>
 
       {/* Only what would be meaningless is dropped: with a single point there
@@ -180,8 +206,8 @@ export function ClarificationsPanel({
             variant="outline"
             size="icon-sm"
             aria-label={t("previous")}
-            disabled={position === 0}
-            onClick={() => setIndex(position - 1)}
+            disabled={!api?.canScrollPrev()}
+            onClick={() => api?.scrollPrev()}
           >
             <ChevronLeft />
           </Button>
@@ -190,19 +216,14 @@ export function ClarificationsPanel({
             variant="outline"
             size="icon-sm"
             aria-label={t("next")}
-            disabled={position === items.length - 1 && !clarifications.hasNextPage}
-            onClick={() => {
-              if (position === items.length - 1 && clarifications.hasNextPage) {
-                void clarifications.fetchNextPage();
-              }
-              setIndex(position + 1);
-            }}
+            disabled={!api?.canScrollNext()}
+            onClick={() => api?.scrollNext()}
           >
             <ChevronRight />
           </Button>
           <p aria-live="polite" className="text-xs text-muted-foreground">
             {t("position", {
-              position: position + 1,
+              position: shown + 1,
               total: clarifications.data?.total ?? items.length,
             })}
           </p>

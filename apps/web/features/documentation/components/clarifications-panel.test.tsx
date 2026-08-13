@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useClarifications, useResolveClarifications } from "../hooks";
@@ -54,16 +54,17 @@ describe("ClarificationsPanel", () => {
     } as unknown as ReturnType<typeof useResolveClarifications>);
   });
 
-  // FR-028: one decision at a time. A wall of twenty questions is what this
-  // replaces.
-  it("shows one point at a time, not the whole set", () => {
+  // FR-028: one decision at a time. Each point is its own slide, so the
+  // contributor faces one rather than a wall — and can reach the next by
+  // dragging, which arrows alone did not allow.
+  it("gives each point its own slide", () => {
     withClarifications([first, second]);
 
     render(<ClarificationsPanel projectId="project-1" revisionId="revision-1" />);
 
-    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(screen.getAllByRole("group")).toHaveLength(2);
     expect(screen.getByText("Date ?")).toBeVisible();
-    expect(screen.queryByText("Mode hors ligne ?")).not.toBeInTheDocument();
+    expect(screen.getByText("Mode hors ligne ?")).toBeVisible();
   });
 
   it("shows its evidence with it", () => {
@@ -76,19 +77,14 @@ describe("ClarificationsPanel", () => {
 
   // FR-029/FR-030: the developer sees where they are, and can move past a point
   // without answering it.
-  it("says where in the set the developer is, and moves between points", async () => {
+  it("says where in the set the developer is, and offers both directions", () => {
     withClarifications([first, second]);
-    const user = userEvent.setup();
 
     render(<ClarificationsPanel projectId="project-1" revisionId="revision-1" />);
 
     expect(screen.getByText("position")).toBeVisible();
-    expect(screen.getByRole("button", { name: "previous" })).toBeDisabled();
-
-    await user.click(screen.getByRole("button", { name: "next" }));
-
-    expect(screen.getByText("Mode hors ligne ?")).toBeVisible();
-    expect(screen.getByRole("button", { name: "previous" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "previous" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "next" })).toBeInTheDocument();
   });
 
   // FR-031: only what would be meaningless is dropped. The card never changes.
@@ -97,18 +93,19 @@ describe("ClarificationsPanel", () => {
 
     render(<ClarificationsPanel projectId="project-1" revisionId="revision-1" />);
 
-    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(screen.getAllByRole("group")).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "next" })).not.toBeInTheDocument();
     expect(screen.queryByText("position")).not.toBeInTheDocument();
   });
 
-  it("answers the point it is showing", async () => {
+  it("answers the point whose card the action belongs to", async () => {
     withClarifications([first, second]);
     const user = userEvent.setup();
 
     render(<ClarificationsPanel projectId="project-1" revisionId="revision-1" />);
-    await user.type(screen.getByLabelText("answerLabel"), "19 septembre");
-    await user.click(screen.getByRole("button", { name: "answerAction" }));
+    const [firstCard] = screen.getAllByRole("group");
+    await user.type(within(firstCard).getByLabelText("answerLabel"), "19 septembre");
+    await user.click(within(firstCard).getByRole("button", { name: "answerAction" }));
 
     expect(mutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -126,13 +123,13 @@ describe("ClarificationsPanel", () => {
     );
   });
 
-  it("leaves the point it is showing open", async () => {
+  it("leaves open the point whose card the action belongs to", async () => {
     withClarifications([first, second]);
     const user = userEvent.setup();
 
     render(<ClarificationsPanel projectId="project-1" revisionId="revision-1" />);
-    await user.click(screen.getByRole("button", { name: "next" }));
-    await user.click(screen.getByRole("button", { name: "leaveOpenAction" }));
+    const secondCard = screen.getAllByRole("group")[1];
+    await user.click(within(secondCard).getByRole("button", { name: "leaveOpenAction" }));
 
     expect(mutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -144,23 +141,26 @@ describe("ClarificationsPanel", () => {
     );
   });
 
-  // Answering removes a point from the set, so the position can land past the
-  // end. Without clamping, the last answer would leave an empty card.
-  it("never shows an empty card when the set shrinks under it", async () => {
-    withClarifications([first, second]);
-    const user = userEvent.setup();
-    const { rerender } = render(
-      <ClarificationsPanel projectId="project-1" revisionId="revision-1" />,
-    );
-    await user.click(screen.getByRole("button", { name: "next" }));
-
+  // Answering removes a point from the set, so the reported position can land
+  // past the end. It is clamped rather than reading "3 sur 1".
+  it("never reports a position past the end when the set shrinks", () => {
     withClarifications([first]);
-    rerender(
-      <ClarificationsPanel projectId="project-1" revisionId="revision-1" />,
-    );
 
+    render(<ClarificationsPanel projectId="project-1" revisionId="revision-1" />);
+
+    expect(screen.getAllByRole("group")).toHaveLength(1);
     expect(screen.getByText("Date ?")).toBeVisible();
-    expect(screen.getAllByRole("article")).toHaveLength(1);
+  });
+
+  // Cards of unequal content should still read as one row: without stretch the
+  // shorter card stopped short of the taller one and the row was ragged.
+  it("stretches the cards to one another", () => {
+    withClarifications([first, second]);
+
+    render(<ClarificationsPanel projectId="project-1" revisionId="revision-1" />);
+
+    const track = screen.getAllByRole("group")[0].parentElement!;
+    expect(track.className).toContain("items-stretch");
   });
 
   it("shows nothing at all when there is nothing to clarify", () => {

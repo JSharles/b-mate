@@ -159,6 +159,9 @@ export class SourceConsolidationHandler
         projectId: operation.projectId,
         status: { in: ['ready_to_consolidate', 'incorporating'] },
       },
+      // Only the locale: the questions this raises are addressed to whoever
+      // added the document.
+      include: { addedByUser: { select: { locale: true } } },
     });
     if (!document) {
       throw new Error('Source consolidation document is no longer current.');
@@ -196,6 +199,9 @@ export class SourceConsolidationHandler
           text: buildSourceConsolidationPrompt({
             observationCount: observations.length,
             currentItemCount: source?.currentRevision?.items.length ?? 0,
+            // The person who added the document is the one who will read the
+            // questions it raises.
+            contributorLocale: document.addedByUser.locale,
           }),
         },
         {

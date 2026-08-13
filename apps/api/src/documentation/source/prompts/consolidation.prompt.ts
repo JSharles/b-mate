@@ -7,6 +7,7 @@ export const SOURCE_CONSOLIDATION_OUTPUT_CONTRACT =
 export function buildSourceConsolidationPrompt(input: {
   observationCount: number;
   currentItemCount: number;
+  contributorLocale?: string | null;
 }): string {
   return [
     `Prompt version: ${SOURCE_CONSOLIDATION_PROMPT_VERSION}`,
@@ -40,7 +41,7 @@ export function buildSourceConsolidationPrompt(input: {
     'Never emit a claim or ref absent from the input.',
     'Do not rewrite current facts for style. Preserve stable item identity.',
     'Write every canonical value in English; it is the one form the client-facing rewrite reads.',
-    buildClarificationInstructions(),
+    buildClarificationInstructions(input.contributorLocale),
     'Return only data matching the structured output contract.',
   ].join('\n');
 }

@@ -148,6 +148,9 @@ describe('SourceConsolidationHandler', () => {
       id: operation.sourceDocumentId,
       version: 1,
       status: 'ready_to_consolidate',
+      // The person who added it is the one who will read the questions it
+      // raises, so the prompt is written in their language.
+      addedByUser: { locale: 'fr' },
     });
     prisma.sourceDocument.updateMany.mockResolvedValue({ count: 1 });
     prisma.projectSource.findUnique.mockResolvedValue(null);
