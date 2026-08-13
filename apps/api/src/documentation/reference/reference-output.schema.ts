@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-export const REFERENCE_DOCUMENT_PROMPT_VERSION = 'reference-document-v2';
-export const REFERENCE_DOCUMENT_OUTPUT_CONTRACT = 'reference-document-v2';
+export const REFERENCE_DOCUMENT_PROMPT_VERSION = 'reference-document-v3';
+export const REFERENCE_DOCUMENT_OUTPUT_CONTRACT = 'reference-document-v3';
 
 // The model never sees an identifier, only `d0` and `p0`. Handing a model raw
 // UUIDs and asking for them back verbatim cost this codebase a whole stage:
