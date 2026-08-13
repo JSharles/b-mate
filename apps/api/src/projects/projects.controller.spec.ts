@@ -21,6 +21,7 @@ const fakeUser: User = {
   malt: null,
   website: null,
   roleTitle: null,
+  locale: null,
   status: null,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -35,6 +36,10 @@ const fakeProject = {
   timezone: null,
   dateFormat: null,
   language: null,
+  // The project holds the reference document being written and whether one is
+  // owed, since specs/018 removed the table that used to (FR-006).
+  activeReferenceDocumentId: null,
+  referenceNeedsRewrite: true,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -135,6 +140,7 @@ describe('ProjectsController', () => {
         role: 'client' as const,
         image: null,
         roleTitle: null,
+        locale: null,
         phone: null,
         github: null,
         linkedin: null,
