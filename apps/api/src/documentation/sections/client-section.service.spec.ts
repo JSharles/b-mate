@@ -116,7 +116,10 @@ describe('ClientSectionService', () => {
     it('appends after the last section rather than colliding with it', async () => {
       const { prisma, service } = setup();
       withReferenceDocument(prisma);
-      prisma.clientSection.findFirst.mockResolvedValue({ sortOrder: 4 });
+      prisma.clientSection.findFirst
+        .mockResolvedValueOnce({ sortOrder: 4 })
+        // The name is free.
+        .mockResolvedValueOnce(null);
       prisma.clientSection.create.mockResolvedValue(
         sectionRow({ sortOrder: 5 }),
       );
@@ -302,7 +305,9 @@ describe('ClientSectionService', () => {
   describe('updating', () => {
     it('refuses a stale version instead of overwriting a concurrent edit', async () => {
       const { prisma, service } = setup();
-      prisma.clientSection.findFirst.mockResolvedValue({ id: sectionId });
+      prisma.clientSection.findFirst
+        .mockResolvedValueOnce({ id: sectionId, kind: 'prose' })
+        .mockResolvedValueOnce(null);
       prisma.clientSection.updateMany.mockResolvedValue({ count: 0 });
 
       await expect(
@@ -315,7 +320,9 @@ describe('ClientSectionService', () => {
 
     it('carries the expected version in the where clause, not in a prior read', async () => {
       const { prisma, service } = setup();
-      prisma.clientSection.findFirst.mockResolvedValue({ id: sectionId });
+      prisma.clientSection.findFirst
+        .mockResolvedValueOnce({ id: sectionId, kind: 'prose' })
+        .mockResolvedValueOnce(null);
       prisma.clientSection.updateMany.mockResolvedValue({ count: 1 });
       prisma.clientSection.findUnique.mockResolvedValue(
         sectionRow({ version: 3 }),
@@ -368,7 +375,9 @@ describe('ClientSectionService', () => {
     // definition that was never saved.
     it('writes nothing when the edit lost the race', async () => {
       const { prisma, proposals, service } = setup();
-      prisma.clientSection.findFirst.mockResolvedValue({ id: sectionId });
+      prisma.clientSection.findFirst
+        .mockResolvedValueOnce({ id: sectionId, kind: 'prose' })
+        .mockResolvedValueOnce(null);
       prisma.clientSection.updateMany.mockResolvedValue({ count: 0 });
 
       await expect(
@@ -422,7 +431,9 @@ describe('ClientSectionService', () => {
 
     it('reports a section already archived as missing', async () => {
       const { prisma, service } = setup();
-      prisma.clientSection.findFirst.mockResolvedValue({ id: sectionId });
+      prisma.clientSection.findFirst
+        .mockResolvedValueOnce({ id: sectionId, kind: 'prose' })
+        .mockResolvedValueOnce(null);
       prisma.clientSection.updateMany.mockResolvedValue({ count: 0 });
 
       await expect(
@@ -530,7 +541,10 @@ describe('ClientSectionService', () => {
     it('is created with a name and nothing else', async () => {
       const { prisma, service } = setup();
       prisma.referenceDocument.count.mockResolvedValue(1);
-      prisma.clientSection.findFirst.mockResolvedValue({ sortOrder: 0 });
+      prisma.clientSection.findFirst
+        .mockResolvedValueOnce({ sortOrder: 0 })
+        .mockResolvedValueOnce(null);
+      prisma.clientSection.count.mockResolvedValue(0);
       prisma.clientSection.create.mockResolvedValue({
         id: sectionId,
         kind: 'roadmap',
@@ -697,5 +711,69 @@ describe('ClientSectionService', () => {
 
       expect(view.currentMilestoneId).toBeNull();
     });
+  });
+
+  // Two rubriques with the same name are two identical tabs to the client, and
+  // nothing on screen tells them apart.
+  describe('a name already taken', () => {
+    it('refuses a second rubrique with the same title, whatever its case', async () => {
+      const { prisma, service } = setup();
+      prisma.referenceDocument.count.mockResolvedValue(1);
+      prisma.clientSection.findFirst.mockResolvedValue({ id: 'other' });
+
+      await expect(
+        service.create(userId, projectId, {
+          name: '  roadmap ',
+          kind: 'roadmap',
+        } as never),
+      ).rejects.toMatchObject({ response: { code: 'SECTION_NAME_TAKEN' } });
+    });
+
+    it('lets a rubrique keep its own name when something else changes', async () => {
+      const { prisma, service } = setup();
+      prisma.clientSection.findFirst
+        .mockResolvedValueOnce({ id: sectionId, kind: 'prose' })
+        .mockResolvedValueOnce(null);
+      prisma.clientSection.updateMany.mockResolvedValue({ count: 1 });
+      prisma.clientSection.findUnique.mockResolvedValue({
+        id: sectionId,
+        kind: 'prose',
+        name: 'Planning',
+        instructions: 'Les jalons.',
+        length: 'concise',
+        pedagogy: 'direct',
+        technicalFamiliarity: 'novice',
+        tone: 'neutral',
+        currentMilestoneId: null,
+        sortOrder: 0,
+        refreshNeeded: true,
+        version: 2,
+        activeProposal: null,
+        proposals: [],
+      });
+
+      await expect(
+        service.update(userId, projectId, sectionId, {
+          name: 'Planning',
+          expectedVersion: 1,
+        }),
+      ).resolves.toMatchObject({ name: 'Planning' });
+    });
+  });
+
+  // A project runs one sequence, so it has one frise. Two would put the same
+  // question to the client twice and let the two answers disagree.
+  it('refuses a second roadmap', async () => {
+    const { prisma, service } = setup();
+    prisma.referenceDocument.count.mockResolvedValue(1);
+    prisma.clientSection.findFirst.mockResolvedValue(null);
+    prisma.clientSection.count.mockResolvedValue(1);
+
+    await expect(
+      service.create(userId, projectId, {
+        name: 'Étapes',
+        kind: 'roadmap',
+      } as never),
+    ).rejects.toMatchObject({ response: { code: 'SECTION_ROADMAP_EXISTS' } });
   });
 });

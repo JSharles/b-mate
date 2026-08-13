@@ -249,6 +249,7 @@ export function SectionWorkspace({ projectId }: { projectId: string }) {
 
       <SectionEditorDialog
         projectId={projectId}
+        hasRoadmap={rows.some((row) => row.kind === "roadmap")}
         open={creating}
         onOpenChange={setCreating}
         onCreated={setSelected}

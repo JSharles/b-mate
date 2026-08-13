@@ -6,6 +6,13 @@ import { useState } from "react";
 import type { MilestoneDraft, SectionView } from "schemas";
 import { Button } from "@/shared/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+import {
   Timeline,
   TimelineItem,
   TimelineMarker,
@@ -121,8 +128,8 @@ export function RoadmapEditor({
     });
   }
 
-  // The arc continues past what the roadmap holds, greyed, and taking one adds
-  // an ordinary milestone. A phase already on the timeline stops being offered.
+  // A phase already on the timeline stops being offered: what it would add is
+  // already there.
   const taken = new Set(rows.map((row) => row.title.trim().toLowerCase()));
   const offered = ROADMAP_PHASE_IDS.map((id) => t(`phase_${id}`)).filter(
     (name) => !taken.has(name.trim().toLowerCase()),
@@ -145,7 +152,7 @@ export function RoadmapEditor({
             <TimelineItem
               key={row.key}
               state={state}
-              last={index === rows.length - 1 && !editable}
+              last={index === rows.length - 1}
               className="group"
               marker={
                 // The dot is where the project stands, so the dot is the
@@ -280,36 +287,45 @@ export function RoadmapEditor({
           );
         })}
 
-        {editable &&
-          offered.map((name, index) => (
-            <TimelineItem
-              key={name}
-              state="offered"
-              last={index === offered.length - 1}
-            >
-              <button
-                type="button"
-                onClick={() => setDraft((current) => [...current, blank(name)])}
-                className="-ml-2 rounded-md px-2 py-1 text-left text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {name}
-              </button>
-            </TimelineItem>
-          ))}
       </Timeline>
 
       {editable && (
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="-ml-2 text-muted-foreground"
-            onClick={() => setDraft((current) => [...current, blank()])}
-          >
-            <Plus />
-            {t("addStep")}
-          </Button>
+          {/* One control, and the arc every project runs through lives inside
+              it. Laid out on the rail the phases looked like steps the roadmap
+              already had; here they are what they are — ways of adding one. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="-ml-2 text-muted-foreground"
+              >
+                <Plus />
+                {t("addStep")}
+                <ChevronDown className="opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {offered.map((name) => (
+                <DropdownMenuItem
+                  key={name}
+                  onSelect={() =>
+                    setDraft((current) => [...current, blank(name)])
+                  }
+                >
+                  {name}
+                </DropdownMenuItem>
+              ))}
+              {offered.length > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuItem
+                onSelect={() => setDraft((current) => [...current, blank()])}
+              >
+                {t("addBlankStep")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {dirty && (
             <Button
               type="button"

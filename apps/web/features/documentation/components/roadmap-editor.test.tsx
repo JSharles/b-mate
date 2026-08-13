@@ -94,6 +94,7 @@ describe("RoadmapEditor", () => {
     renderEditor();
 
     await user.click(screen.getByText("addStep"));
+    await user.click(screen.getByRole("menuitem", { name: "addBlankStep" }));
     const titles = screen.getAllByLabelText("titleLabel");
     await user.type(titles[titles.length - 1], "Atelier");
     const dates = screen.getAllByLabelText("whenLabel");
@@ -114,6 +115,7 @@ describe("RoadmapEditor", () => {
     renderEditor();
 
     await user.click(screen.getByText("addStep"));
+    await user.click(screen.getByRole("menuitem", { name: "addBlankStep" }));
 
     expect(screen.getByText("save")).toBeDisabled();
   });
@@ -149,32 +151,42 @@ describe("RoadmapEditor", () => {
     );
   });
 
-  // The arc continues past what the roadmap holds, and taking one adds an
-  // ordinary milestone the developer owns.
-  it("offers the phases the roadmap does not already have", async () => {
+  // The arc lives inside the one control that adds a step. On the rail the
+  // phases looked like steps the roadmap already had, which was false.
+  it("keeps the phases out of the timeline and inside the button that adds one", async () => {
+    const user = userEvent.setup();
+    renderEditor({ milestones: [] });
+
+    expect(screen.queryByText("phase_framing")).toBeNull();
+
+    await user.click(screen.getByText("addStep"));
+
+    expect(screen.getByRole("menuitem", { name: "phase_framing" })).toBeVisible();
+    expect(
+      screen.getByRole("menuitem", { name: "phase_aftercare" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("menuitem", { name: "addBlankStep" }),
+    ).toBeVisible();
+  });
+
+  it("stops offering a phase the roadmap already has", async () => {
     const user = userEvent.setup();
     // Under the test translator a phase's name is its key, so a milestone
     // already carrying that name is what "already taken" looks like here.
     renderEditor({ milestones: [{ ...framing, title: "phase_framing" }] });
 
-    expect(screen.queryByRole("button", { name: "phase_framing" })).toBeNull();
+    await user.click(screen.getByText("addStep"));
 
-    await user.click(screen.getByRole("button", { name: "phase_acceptance" }));
+    expect(screen.queryByRole("menuitem", { name: "phase_framing" })).toBeNull();
+
+    await user.click(screen.getByRole("menuitem", { name: "phase_acceptance" }));
 
     expect(
-      screen.getAllByLabelText("titleLabel").map((input) => (input as HTMLInputElement).value),
+      screen
+        .getAllByLabelText("titleLabel")
+        .map((input) => (input as HTMLInputElement).value),
     ).toContain("phase_acceptance");
-  });
-
-  it("offers the whole arc on a roadmap the documents said nothing about", () => {
-    renderEditor({ milestones: [] });
-
-    expect(
-      screen.getByRole("button", { name: "phase_framing" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "phase_aftercare" }),
-    ).toBeInTheDocument();
   });
 
   // The dot is where the project stands, so the dot is the control that moves
@@ -214,7 +226,6 @@ describe("RoadmapEditor", () => {
 
     expect(screen.queryByLabelText("whenLabel")).toBeNull();
     expect(screen.queryByText("addStep")).toBeNull();
-    expect(screen.queryByRole("button", { name: "phase_acceptance" })).toBeNull();
 
     await user.click(screen.getAllByRole("button")[0]);
 
@@ -261,6 +272,7 @@ describe("RoadmapEditor", () => {
     const { container } = renderEditor({ milestones: [] });
 
     await user.click(screen.getByText("addStep"));
+    await user.click(screen.getByRole("menuitem", { name: "addBlankStep" }));
 
     expect(container.querySelectorAll("ol .bg-primary")).toHaveLength(0);
   });

@@ -284,7 +284,7 @@ describe("SectionProposalReview, on a roadmap", () => {
 
   // FR-009: a roadmap the documents said nothing about is a starting point, not
   // a dead end.
-  it("offers the phases when the documents held no sequence at all", () => {
+  it("offers the phases when the documents held no sequence at all", async () => {
     withPublished(undefined);
     withProposal({
       status: "pending_review",
@@ -295,10 +295,11 @@ describe("SectionProposalReview, on a roadmap", () => {
     });
 
     render(<SectionProposalReview projectId="project-1" section={roadmap} />);
+    await userEvent.setup().click(screen.getByText("addStep"));
 
     expect(
-      screen.getByRole("button", { name: "phase_framing" }),
-    ).toBeInTheDocument();
+      screen.getByRole("menuitem", { name: "phase_framing" }),
+    ).toBeVisible();
   });
 
   // Nothing is waiting on the developer, so the rubrique shows the one timeline

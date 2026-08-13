@@ -49,18 +49,18 @@ A milestone carries **when**, **what**, and optionally **why it matters**.
 
 Nearly every project this product serves runs through the same arc, and the developer's own work sits in the middle of it. So an empty roadmap is not an empty page: it is that arc, offered.
 
-| phase | what it covers | offered by default |
-|---|---|---|
-| Cadrage | recueil du besoin, audit de l'existant, périmètre | yes |
-| Conception | parcours, maquettes, architecture technique | yes |
-| Développement | the developer's own milestones go here | yes |
-| Recette | tests et validation par le client | yes |
-| Mise en ligne | déploiement en production | yes |
-| Suivi | corrections, évolutions, maintenance | yes |
-| Contractualisation | devis signé, acompte | no |
-| Reprise de données | migration depuis l'existant | no |
-| Bêta | pilote avec de vrais utilisateurs | no |
-| Formation | prise en main par les équipes du client | no |
+| phase | what it covers |
+|---|---|
+| Cadrage | recueil du besoin, audit de l'existant, périmètre |
+| Conception | parcours, maquettes, architecture technique |
+| Développement | the developer's own milestones go here |
+| Recette | tests et validation par le client |
+| Mise en ligne | déploiement en production |
+| Suivi | corrections, évolutions, maintenance |
+
+**Six, and no more.** Ten were tried — the six above plus contractualisation, reprise de données, bêta and formation — and read as a wall of things the developer had not decided. The four that concern some projects and not others are one line of typing for whoever needs them, against four rows everyone else scrolls past.
+
+**They are presets for one control, not rows on the rail.** Laid out as ghost nodes on the timeline they looked like the roadmap already had ten steps, which was false, and left no way to tell an offer from something the developer had written. They live inside "add a step", which is where someone adding a step looks.
 
 **A phase is a milestone like any other.** It arrives named and empty of dates, and the developer edits it, renames it, moves it or removes it exactly as they would one the documents produced. There is no second kind of object and no nesting: "Développement — lot 1" is a milestone the developer writes, not a child of a phase.
 
@@ -105,7 +105,7 @@ The reference document is thin on sequence. The developer does not face an empty
 
 **Acceptance Scenarios**:
 
-1. **Given** a roadmap with no milestones, **When** the developer opens it, **Then** the standard phases are shown on the timeline as available, and one is added by choosing it.
+1. **Given** a roadmap with no milestones, **When** the developer opens "add a step", **Then** the standard phases are among what it offers, and one is added by choosing it.
 2. **Given** a phase added by hand, **When** the developer edits its "when", its title or its description, **Then** it behaves exactly as a milestone read from the documents.
 3. **Given** the phases, **When** the developer wants a step of their own between two of them, **Then** they can insert one at that point.
 4. **Given** a roadmap holding both, **When** the developer reviews it, **Then** they can tell a milestone read from the documents from a phase they added.
@@ -154,7 +154,8 @@ The reference document is thin on sequence. The developer does not face an empty
 - **FR-007** The current milestone can be changed on a published roadmap without composing or approving anything.
 - **FR-008** The developer can edit, add, remove and reorder milestones on a proposal before approving it.
 - **FR-009** Composition reporting nothing matched behaves as it does for a prose section, and the standard phases remain available to start from.
-- **FR-010** A roadmap with no milestones offers the standard phases; adding one produces an ordinary milestone the developer owns.
+- **FR-010** Adding a step offers the standard phases and a blank one; taking a phase produces an ordinary milestone the developer owns. A phase already on the timeline stops being offered.
+- **FR-015** A project holds one roadmap, and no two live rubriques share a name — the client would otherwise read two identical tabs.
 - **FR-011** A milestone records whether it came from the reference document or was added by the developer. The developer's view distinguishes them; the client's does not.
 - **FR-012** What the client receives is structured milestones, not prose to be parsed.
 - **FR-013** Deriving the client's version may translate and adapt milestone text; it must return the same milestones, in the same order, and must not merge, drop or add one.

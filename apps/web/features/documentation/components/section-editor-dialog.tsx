@@ -45,6 +45,7 @@ const textareaClass =
 export function SectionEditorDialog({
   projectId,
   section,
+  hasRoadmap = false,
   open,
   onOpenChange,
   onCreated,
@@ -52,6 +53,9 @@ export function SectionEditorDialog({
   projectId: string;
   /** Absent when creating. Present when revising an existing section. */
   section?: SectionView;
+  /** A project runs one sequence, so it has one frise. Not offered rather than
+   *  offered and refused. */
+  hasRoadmap?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Told which one was created, so the list can take the contributor to it. */
@@ -78,11 +82,15 @@ export function SectionEditorDialog({
   const errorText =
     error instanceof ApiError && error.code === "NO_CANONICAL_CONTENT"
       ? t("noCanonicalContent")
-      : error instanceof ApiError && error.status === 409
-        ? t("staleError")
-        : error instanceof ApiError
-          ? error.message
-          : tToasts("genericError");
+      : error instanceof ApiError && error.code === "SECTION_NAME_TAKEN"
+        ? t("nameTaken")
+        : error instanceof ApiError && error.code === "SECTION_ROADMAP_EXISTS"
+          ? t("roadmapExists")
+          : error instanceof ApiError && error.status === 409
+            ? t("staleError")
+            : error instanceof ApiError
+              ? error.message
+              : tToasts("genericError");
 
   // A roadmap has neither a brief nor a register: its brief is fixed, and a
   // milestone date has no tone. So there is nothing left to ask for but a name.
@@ -113,7 +121,9 @@ export function SectionEditorDialog({
 
         {!chosenStart ? (
           <div className="flex flex-col gap-2">
-            {SECTION_STARTING_POINTS.map((start) => (
+            {SECTION_STARTING_POINTS.filter(
+              (start) => !(start.kind === "roadmap" && hasRoadmap),
+            ).map((start) => (
               <button
                 key={start.id}
                 type="button"

@@ -57,7 +57,8 @@ description: "Task list for The Roadmap Section"
 
 - [x] T016 Create `apps/web/shared/components/ui/timeline.tsx` — a rail, four marker states, no new dependency
 - [x] T017 [P] Create `apps/web/features/documentation/components/roadmap-phases.ts`
-- [x] T018 Create `roadmap-editor.tsx`: edit in place, add, remove, reorder, offer the unused phases, and move the position from the marker itself
+- [x] T018 Create `roadmap-editor.tsx`: edit in place, add, remove, reorder, and move the position from the marker itself
+- [x] T018b The phases live inside "add a step", not on the rail, and there are six of them — ten ghost nodes read as a wall and as content the roadmap did not have
 - [x] T019 Add `replaceMilestones`/`setCurrentMilestone` to `api.ts` and their hooks
 - [x] T020 Branch `section-proposal-review.tsx` on the kind, with no "nothing matched" dead end
 - [x] T021 Put the roadmap among the starting points in `section-editor-dialog.tsx`, in place of the prose "Planning et jalons", and drop the brief and the register when it is chosen
@@ -79,9 +80,10 @@ description: "Task list for The Roadmap Section"
 - [x] T027 `refetchInterval` read `document.visibilityState` during the server render and threw; guarded behind one `watching()` helper
 - [x] T028 Derivation checked open-point coverage against `block.type` where composition writes `block.kind`, so the check never fired
 - [x] T029 A milestone the developer has just added carries `id: null`, and so does "no position claimed" — every new step marked itself as current
+- [x] T030 Nothing refused a second rubrique with the same name, nor a second roadmap. The screen no longer offers the frise when the project has one, and the API refuses both
 
 ---
 
 ## Not done, and why
 
-- [ ] T030 **Editing a published roadmap.** It is read only once published, except the position. Adding a step means recomposing, which starts from the documents again. Closing this needs a proposal that was authored rather than composed — a change to what a proposal is, which is not settled here.
+- [ ] T031 **Editing a published roadmap.** It is read only once published, except the position. Adding a step means recomposing, which starts from the documents again. Closing this needs a proposal that was authored rather than composed — a change to what a proposal is, which is not settled here.

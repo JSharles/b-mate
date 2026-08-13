@@ -293,7 +293,9 @@
           "startBlank": "Write my own title",
           "backToSuggestions": "Back to the suggestions",
           "suggestion_roadmap_name": "Roadmap",
-          "suggestion_roadmap_summary": "The project's steps and their order, read as a timeline rather than in paragraphs. You then place where the project stands."
+          "suggestion_roadmap_summary": "The project's steps and their order, read as a timeline rather than in paragraphs. You then place where the project stands.",
+          "nameTaken": "A rubrique already has this title. Your client would see two identical tabs.",
+          "roadmapExists": "This project already has its timeline."
         },
         "Review": {
           "loading": "Loading…",
@@ -355,10 +357,7 @@
           "phase_acceptance": "Acceptance",
           "phase_launch": "Launch",
           "phase_aftercare": "Aftercare",
-          "phase_contract": "Contract",
-          "phase_migration": "Data migration",
-          "phase_beta": "Beta",
-          "phase_training": "Training"
+          "addBlankStep": "Blank step"
         }
       },
       "Reference": {

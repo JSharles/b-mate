@@ -81,6 +81,18 @@ export class ClientSectionService {
       throw new BadRequestException({ code: 'SECTION_ROADMAP_HAS_NO_BRIEF' });
     }
 
+    await this.requireNameFree(projectId, input.name, null);
+    // A project runs one sequence, so it has one frise. Two would put the same
+    // question to the client twice and let the two answers disagree.
+    if (kind === 'roadmap') {
+      const existing = await this.prisma.clientSection.count({
+        where: { projectId, kind: 'roadmap', archivedAt: null },
+      });
+      if (existing > 0) {
+        throw new ConflictException({ code: 'SECTION_ROADMAP_EXISTS' });
+      }
+    }
+
     const created = await this.prisma.clientSection.create({
       data: {
         projectId,
@@ -134,6 +146,10 @@ export class ClientSectionService {
       (input.instructions !== undefined || input.editorial !== undefined)
     ) {
       throw new BadRequestException({ code: 'SECTION_ROADMAP_HAS_NO_BRIEF' });
+    }
+
+    if (input.name !== undefined) {
+      await this.requireNameFree(projectId, input.name, sectionId);
     }
 
     // Revising what a section covers is the same act as defining it, so it is
@@ -324,6 +340,26 @@ export class ClientSectionService {
     });
     if (!row) throw new NotFoundException({ code: 'NOT_FOUND' });
     return this.toView(row);
+  }
+
+  // Two rubriques with the same name are two identical tabs to the client, and
+  // nothing on screen tells them apart. Compared case-insensitively on the
+  // trimmed name, because "Roadmap" and "roadmap " are the same tab.
+  private async requireNameFree(
+    projectId: string,
+    name: string,
+    exceptSectionId: string | null,
+  ) {
+    const taken = await this.prisma.clientSection.findFirst({
+      where: {
+        projectId,
+        archivedAt: null,
+        name: { equals: name.trim(), mode: 'insensitive' },
+        ...(exceptSectionId ? { id: { not: exceptSectionId } } : {}),
+      },
+      select: { id: true },
+    });
+    if (taken) throw new ConflictException({ code: 'SECTION_NAME_TAKEN' });
   }
 
   private async requireSection(projectId: string, sectionId: string) {

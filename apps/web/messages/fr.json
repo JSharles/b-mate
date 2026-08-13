@@ -293,7 +293,9 @@
           "startBlank": "Écrire mon propre titre",
           "backToSuggestions": "Revenir aux propositions",
           "suggestion_roadmap_name": "Roadmap",
-          "suggestion_roadmap_summary": "Les étapes du projet et leur ordre, lues comme une frise plutôt qu’en paragraphes. Vous placez ensuite où le projet en est."
+          "suggestion_roadmap_summary": "Les étapes du projet et leur ordre, lues comme une frise plutôt qu’en paragraphes. Vous placez ensuite où le projet en est.",
+          "nameTaken": "Une rubrique porte déjà ce titre. Votre client verrait deux onglets identiques.",
+          "roadmapExists": "Ce projet a déjà sa frise."
         },
         "Review": {
           "loading": "Chargement…",
@@ -355,10 +357,7 @@
           "phase_acceptance": "Recette",
           "phase_launch": "Mise en ligne",
           "phase_aftercare": "Suivi",
-          "phase_contract": "Contractualisation",
-          "phase_migration": "Reprise de données",
-          "phase_beta": "Bêta",
-          "phase_training": "Formation"
+          "addBlankStep": "Étape vierge"
         }
       },
       "Reference": {
