@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useComposeSection, useSections } from "../hooks";
@@ -160,9 +160,43 @@ describe("SectionWorkspace", () => {
     withSections([section({ activeProposal: { status: "pending_review" } })]);
 
     render(<SectionWorkspace projectId="project-1" />);
-    fireEvent.click(screen.getByRole("button", { name: /refresh/ }));
+    fireEvent.click(screen.getByRole("button", { name: /recompose/ }));
 
     expect(compose).toHaveBeenCalledWith("section-1");
+  });
+
+  // Three jobs behind one button, so it names the one it is doing.
+  it.each([
+    [{}, "compose"],
+    [{ refreshNeeded: true, hasPublishedContent: true }, "refresh"],
+    [{ activeProposal: { status: "pending_review" } }, "recompose"],
+    [{ refreshNeeded: false, hasPublishedContent: true }, "recompose"],
+  ])("names the job it is about to do (%#)", (overrides, label) => {
+    withSections([section(overrides)]);
+
+    render(<SectionWorkspace projectId="project-1" />);
+
+    expect(
+      screen.getByRole("button", { name: new RegExp(label) }),
+    ).toBeVisible();
+  });
+
+  // Each control sits beside what it changes: the two that act on what was
+  // asked for stay with the brief, the one that rewrites the text goes with
+  // the text. Side by side they needed a sentence to tell them apart.
+  it("puts the rewrite with the text, not with the brief", () => {
+    withSections([section()]);
+
+    render(<SectionWorkspace projectId="project-1" />);
+    const panel = screen.getByRole("tabpanel");
+    const brief = screen.getByText("Ce que le client a demandé.").parentElement!
+      .parentElement!;
+
+    expect(within(brief).getByRole("button", { name: /edit/ })).toBeVisible();
+    expect(
+      within(brief).queryByRole("button", { name: /compose/ }),
+    ).not.toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: /compose/ })).toBeVisible();
   });
 
   it("invites a first rubrique when there are none", () => {

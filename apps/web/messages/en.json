@@ -334,7 +334,8 @@
           "error": "Deleting failed. Try again."
         },
         "listTitle": "Your topics",
-        "listDescription": "A topic is a part your client will read. You give it a title, say what it should cover and for which kind of client; Diaphane writes it."
+        "listDescription": "A topic is a part your client will read. You give it a title, say what it should cover and for which kind of client; Diaphane writes it.",
+        "recompose": "Write it again"
       },
       "Reference": {
         "title": "Reference document",

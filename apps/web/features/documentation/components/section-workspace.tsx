@@ -176,27 +176,10 @@ export function SectionWorkspace({ projectId }: { projectId: string }) {
                         {section.instructions}
                       </p>
                     </div>
+                    {/* These two act on what was asked for, so they sit with
+                        it — the button that rewrites the text sits with the
+                        text, below. */}
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
-                      {state !== "composing" && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => compose.mutate(section.id)}
-                          disabled={busy}
-                        >
-                          {busy ? (
-                            <LoaderCircle className="animate-spin motion-reduce:animate-none" />
-                          ) : (
-                            <RefreshCw />
-                          )}
-                          {/* "Rédiger" on a rubrique that already holds one is
-                              asking for another go, not a first one. */}
-                          {section.hasPublishedContent || state === "awaiting"
-                            ? t("refresh")
-                            : t("compose")}
-                        </Button>
-                      )}
                       <Button
                         type="button"
                         variant="ghost"
@@ -220,6 +203,32 @@ export function SectionWorkspace({ projectId }: { projectId: string }) {
                   </div>
 
                   <div className="mt-6 border-t border-border pt-6">
+                    {state !== "composing" && (
+                      <div className="mb-5 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => compose.mutate(section.id)}
+                          disabled={busy}
+                        >
+                          {busy ? (
+                            <LoaderCircle className="animate-spin motion-reduce:animate-none" />
+                          ) : (
+                            <RefreshCw />
+                          )}
+                          {/* Three jobs behind one button, so it names the one
+                              it is doing: a first write, catching up with a
+                              reference document that moved, or another go at a
+                              proposal the developer did not want. */}
+                          {state === "stale"
+                            ? t("refresh")
+                            : state === "never"
+                              ? t("compose")
+                              : t("recompose")}
+                        </Button>
+                      </div>
+                    )}
                     <SectionProposalReview
                       projectId={projectId}
                       section={section}

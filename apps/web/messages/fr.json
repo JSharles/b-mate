@@ -334,7 +334,8 @@
           "error": "La suppression a échoué. Réessayez."
         },
         "listTitle": "Vos rubriques",
-        "listDescription": "Une rubrique est une partie que votre client lira. Vous lui donnez un titre, vous dites ce qu’elle doit couvrir et pour quel niveau de client ; Diaphane la rédige."
+        "listDescription": "Une rubrique est une partie que votre client lira. Vous lui donnez un titre, vous dites ce qu’elle doit couvrir et pour quel niveau de client ; Diaphane la rédige.",
+        "recompose": "Rédiger à nouveau"
       },
       "Reference": {
         "title": "Document de référence",
