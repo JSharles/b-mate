@@ -96,6 +96,27 @@ describe('ReferenceDocumentHandler', () => {
       expect(text).toContain('The launch is planned for October.');
     });
 
+
+  // The fingerprint is taken over the statements in order. The service reads
+  // them sorted; an unsorted read here produced a different fingerprint and the
+  // stage refused its own input as drift — on the very first real run.
+  it('reads the statements in the order the service recorded them', async () => {
+    const { prisma, handler } = setup();
+    prisma.referenceDocument.findUnique.mockResolvedValue(writing());
+
+    await handler.buildRequest(operation());
+
+    expect(prisma.referenceDocument.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          sourceRevision: {
+            include: { items: { orderBy: { sortOrder: 'asc' } } },
+          },
+        }),
+      }),
+    );
+  });
+
     it('refuses a document that is no longer being written', async () => {
       const { prisma, handler } = setup();
       prisma.referenceDocument.findUnique.mockResolvedValue(

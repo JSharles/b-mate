@@ -66,7 +66,14 @@ export class ReferenceDocumentHandler
   ): Promise<GenerationRequestInput> {
     const document = await this.prisma.referenceDocument.findUnique({
       where: { generationOperationId: operation.id },
-      include: { sourceRevision: { include: { items: true } } },
+      // Ordered, and ordered the same way the service ordered them when it
+      // queued the work. An unordered read here made the fingerprint differ
+      // from the one recorded, and the stage refused its own input as drift.
+      include: {
+        sourceRevision: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
+        },
+      },
     });
     if (!document || document.status !== 'writing') {
       throw new Error('REFERENCE_DOCUMENT_NOT_CURRENT');

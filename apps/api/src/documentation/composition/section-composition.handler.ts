@@ -88,7 +88,12 @@ export class SectionCompositionHandler
       where: { generationOperationId: operation.id },
       include: {
         section: true,
-        sourceRevision: { include: { items: true } },
+        // Ordered the same way the proposal service ordered them when it
+        // queued the work: an unordered read makes the fingerprint differ from
+        // the one recorded, and the stage refuses its own input as drift.
+        sourceRevision: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
+        },
       },
     });
     if (!proposal || proposal.status !== 'composing') {
