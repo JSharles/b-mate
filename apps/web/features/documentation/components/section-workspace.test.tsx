@@ -92,18 +92,30 @@ describe("SectionWorkspace", () => {
     expect(screen.getByText("review:section-2")).toBeVisible();
   });
 
-  // The tab carries the state, so the one rubrique waiting on a decision is
-  // visible without opening any of them.
-  it("says where each rubrique stands on its own tab", () => {
+  // A pill of text beside the name read as a second tab, and a row of them as
+  // twice the tabs there are. The tab carries a mark; the panel carries words.
+  it("marks the tab without putting a second label on it", () => {
     withSections([
       section({ activeProposal: { status: "pending_review" } }),
-      section({ id: "section-2", name: "Planning", refreshNeeded: true }),
+      section({ id: "section-2", name: "Planning" }),
     ]);
 
     render(<SectionWorkspace projectId="project-1" />);
+    const [tab] = screen.getAllByRole("tab");
 
-    expect(screen.getByText("state_awaiting")).toBeVisible();
-    expect(screen.getByText("state_never")).toBeVisible();
+    // Said for a screen reader, never drawn as a chip beside the name.
+    expect(tab).toHaveAccessibleName(/state_awaiting/);
+    expect(tab.querySelector(".bg-primary")).not.toBeNull();
+  });
+
+  it("spells the state out in the panel, where there is room", () => {
+    withSections([section({ activeProposal: { status: "pending_review" } })]);
+
+    render(<SectionWorkspace projectId="project-1" />);
+
+    expect(
+      screen.getByRole("tabpanel").querySelector(".bg-primary\\/15"),
+    ).not.toBeNull();
   });
 
   it("offers the actions the client does not get", () => {
@@ -140,6 +152,17 @@ describe("SectionWorkspace", () => {
     expect(
       screen.queryByRole("button", { name: /compose/ }),
     ).not.toBeInTheDocument();
+  });
+
+  // Pressing it on a rubrique that already holds a proposal is asking for
+  // another go, not a first one — and it used to be refused in silence.
+  it("offers another go at a rubrique waiting to be read", () => {
+    withSections([section({ activeProposal: { status: "pending_review" } })]);
+
+    render(<SectionWorkspace projectId="project-1" />);
+    fireEvent.click(screen.getByRole("button", { name: /refresh/ }));
+
+    expect(compose).toHaveBeenCalledWith("section-1");
   });
 
   it("invites a first rubrique when there are none", () => {

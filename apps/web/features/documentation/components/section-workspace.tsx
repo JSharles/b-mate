@@ -25,8 +25,24 @@ export function stateOf(section: SectionView) {
   return "published";
 }
 
+// On the tab, a mark rather than a word: a pill of text beside the name read
+// as a second tab, and a row of them read as twice the tabs there are. The
+// state is spelled out in the panel, where there is room for it.
+//
 // Exactly one of these states asks something of the developer, and periwinkle
 // is the only colour allowed to say so (DESIGN.md, One Voice Rule).
+function TabMark({ state }: { state: ReturnType<typeof stateOf> }) {
+  if (state === "composing") {
+    return (
+      <LoaderCircle className="ml-2 size-3.5 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
+    );
+  }
+  if (state === "awaiting") {
+    return <span className="ml-2 size-2 shrink-0 rounded-full bg-primary" />;
+  }
+  return null;
+}
+
 const STATE_TONE: Record<ReturnType<typeof stateOf>, string> = {
   awaiting: "bg-primary/15 text-primary",
   composing: "bg-muted text-muted-foreground",
@@ -121,13 +137,10 @@ export function SectionWorkspace({ projectId }: { projectId: string }) {
                 return (
                   <TabsTrigger key={section.id} value={section.id}>
                     {section.name}
-                    {/* The one rubrique waiting on a decision is the only thing
-                        that should catch the eye down a row of eight. */}
-                    <span
-                      className={`ml-2 rounded px-1.5 py-0.5 text-xs ${STATE_TONE[state]}`}
-                    >
-                      {t(`state_${state}`)}
-                    </span>
+                    <TabMark state={state} />
+                    {/* The mark carries no words, so the state is still said
+                        somewhere a screen reader reaches it. */}
+                    <span className="sr-only">{t(`state_${state}`)}</span>
                   </TabsTrigger>
                 );
               })}
@@ -149,9 +162,16 @@ export function SectionWorkspace({ projectId }: { projectId: string }) {
                 <div className="rounded-xl border border-border bg-card p-6">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <h3 className="text-lg font-semibold tracking-tight">
-                        {section.name}
-                      </h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-semibold tracking-tight">
+                          {section.name}
+                        </h3>
+                        <span
+                          className={`rounded px-2 py-0.5 text-xs ${STATE_TONE[state]}`}
+                        >
+                          {t(`state_${state}`)}
+                        </span>
+                      </div>
                       <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                         {section.instructions}
                       </p>
@@ -170,7 +190,9 @@ export function SectionWorkspace({ projectId }: { projectId: string }) {
                           ) : (
                             <RefreshCw />
                           )}
-                          {section.hasPublishedContent
+                          {/* "Rédiger" on a rubrique that already holds one is
+                              asking for another go, not a first one. */}
+                          {section.hasPublishedContent || state === "awaiting"
                             ? t("refresh")
                             : t("compose")}
                         </Button>

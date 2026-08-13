@@ -101,13 +101,42 @@ describe('SectionProposalService', () => {
       );
     });
 
+    // A proposal merely waiting to be read is not in the way: pressing "write
+    // it" on one is the developer asking for another go, and refusing that
+    // silently is what made the button look broken.
+    it('retires a proposal awaiting review and writes another', async () => {
+      const { prisma, service } = setup();
+      readyToCompose(prisma);
+      prisma.clientSection.findFirst.mockResolvedValue({
+        ...section,
+        activeProposalId: 'proposal-old',
+      });
+      prisma.sectionProposal.findFirst.mockResolvedValue({
+        id: 'proposal-old',
+        status: 'pending_review',
+      });
+      prisma.sectionProposal.updateMany.mockResolvedValue({ count: 1 });
+
+      await expect(
+        service.compose(userId, projectId, sectionId),
+      ).resolves.toMatchObject({ proposalId });
+      expect(prisma.sectionProposal.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'superseded' }),
+        }),
+      );
+    });
+
     it('refuses a second composition while one is running (FR-013)', async () => {
       const { prisma, service } = setup();
       prisma.clientSection.findFirst.mockResolvedValue({
         ...section,
         activeProposalId: proposalId,
       });
-      prisma.sectionProposal.findFirst.mockResolvedValue({ id: proposalId });
+      prisma.sectionProposal.findFirst.mockResolvedValue({
+        id: proposalId,
+        status: 'composing',
+      });
 
       await expect(
         service.compose(userId, projectId, sectionId),

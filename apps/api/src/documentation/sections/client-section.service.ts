@@ -149,6 +149,8 @@ export class ClientSectionService {
     });
     if (count === 0) throw new ConflictException({ code: 'SECTION_STALE' });
 
+    // What the section was holding was written for the brief that just changed.
+    await this.proposals.releaseForRevision(projectId, sectionId);
     await this.compose(userId, projectId, sectionId, locale);
 
     const row = await this.prisma.clientSection.findUnique({

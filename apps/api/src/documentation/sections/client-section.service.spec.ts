@@ -48,6 +48,7 @@ describe('ClientSectionService', () => {
       compose: jest
         .fn()
         .mockResolvedValue({ proposalId: 'p', operationId: 'o' }),
+      releaseForRevision: jest.fn().mockResolvedValue(undefined),
     };
     return {
       prisma,
@@ -350,6 +351,10 @@ describe('ClientSectionService', () => {
         expect.objectContaining({
           data: expect.objectContaining({ refreshNeeded: true }),
         }),
+      );
+      expect(proposals.releaseForRevision).toHaveBeenCalledWith(
+        projectId,
+        sectionId,
       );
       expect(proposals.compose).toHaveBeenCalledWith(
         userId,

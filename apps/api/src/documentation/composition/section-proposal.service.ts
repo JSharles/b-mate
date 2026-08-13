@@ -42,17 +42,24 @@ export class SectionProposalService {
     });
     if (!section) throw new NotFoundException({ code: 'NOT_FOUND' });
 
-    // FR-013. Checked here for a usable error, and refused again by the unique
-    // constraint on `activeProposalId` below if two callers get this far at once.
+    // FR-013 is about two compositions at once, not about a deliberate second
+    // go. A run already in flight is refused — asking twice pays twice — and
+    // the unique constraint on `activeProposalId` refuses it again if two
+    // callers get this far together. A proposal merely waiting to be read is
+    // not in the way: pressing "write it" on one is the developer saying they
+    // want another. Refusing that silently is what made the button look broken.
     if (section.activeProposalId) {
       const held = await this.prisma.sectionProposal.findFirst({
         where: {
           id: section.activeProposalId,
           status: { in: [...LIVE_PROPOSAL_STATUSES] },
         },
-        select: { id: true },
+        select: { id: true, status: true },
       });
-      if (held) throw new ConflictException({ code: 'SECTION_COMPOSING' });
+      if (held?.status === 'composing') {
+        throw new ConflictException({ code: 'SECTION_COMPOSING' });
+      }
+      if (held) await this.supersede(sectionId, held.id);
     }
 
     // A section is a view of the reference document, so there is nothing to
@@ -108,6 +115,48 @@ export class SectionProposalService {
         throw new ConflictException({ code: 'SECTION_COMPOSING' });
       }
       return { proposalId: proposal.id, operationId: operation.id };
+    });
+  }
+
+  // Revising a section makes whatever it is holding obsolete: a proposal under
+  // review was written for a brief that no longer exists, and a composition
+  // still running is writing for it right now. Without this, editing a section
+  // that had just been written did nothing at all — the slot was taken, the
+  // conflict was swallowed, and the developer got a toast and no work.
+  async releaseForRevision(projectId: string, sectionId: string) {
+    const section = await this.prisma.clientSection.findFirst({
+      where: { id: sectionId, projectId, archivedAt: null },
+      select: { activeProposalId: true },
+    });
+    if (!section?.activeProposalId) return;
+
+    const held = await this.prisma.sectionProposal.findFirst({
+      where: {
+        id: section.activeProposalId,
+        status: { in: [...LIVE_PROPOSAL_STATUSES] },
+      },
+      select: { id: true, status: true, generationOperationId: true },
+    });
+    if (!held) return;
+
+    // Stop the remote work before releasing the slot. Released first, the run
+    // in flight could still land on a proposal the section had moved past.
+    if (held.status === 'composing') {
+      await this.generation.cancel(held.generationOperationId);
+    }
+    await this.supersede(sectionId, held.id);
+  }
+
+  // Retires a proposal and hands its section the slot back, both guarded on
+  // what they still hold so a concurrent release cannot undo a newer one.
+  private async supersede(sectionId: string, proposalId: string) {
+    await this.prisma.sectionProposal.updateMany({
+      where: { id: proposalId, status: { in: [...LIVE_PROPOSAL_STATUSES] } },
+      data: { status: 'superseded', version: { increment: 1 } },
+    });
+    await this.prisma.clientSection.updateMany({
+      where: { id: sectionId, activeProposalId: proposalId },
+      data: { activeProposalId: null, version: { increment: 1 } },
     });
   }
 
