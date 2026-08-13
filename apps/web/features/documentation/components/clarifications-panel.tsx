@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, MessageCircleQuestion } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, MessageCircleQuestion } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { Clarification } from "schemas";
@@ -42,84 +42,182 @@ function ClarificationCard({
       { onSuccess: () => setAnswer("") },
     );
   };
+
   return (
-    <article className="space-y-4 border-b border-border py-5 last:border-b-0">
-      <div className="flex gap-3">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold text-foreground">
-          {clarification.impactRank}
-        </span>
-        <div>
-          <h4 className="text-sm font-semibold">{clarification.question}</h4>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            {clarification.impactExplanation}
-          </p>
-        </div>
+    <article className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <div>
+        <h4 className="text-sm font-semibold leading-relaxed">
+          {clarification.question}
+        </h4>
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          {clarification.impactExplanation}
+        </p>
       </div>
-      <ul className="space-y-2 pl-10">
-        {clarification.evidence.map((evidence, index) => (
-          <li key={`${evidence.originId}-${index}`} className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">{evidence.label}</span>
-            {evidence.excerpt && <p className="mt-1 border-l border-border pl-2">{evidence.excerpt}</p>}
-          </li>
-        ))}
-      </ul>
-      <div className="space-y-2 pl-10">
+
+      {clarification.evidence.length > 0 && (
+        <ul className="space-y-2">
+          {clarification.evidence.map((evidence, index) => (
+            <li
+              key={`${evidence.originId}-${index}`}
+              className="text-xs text-muted-foreground"
+            >
+              <span className="font-medium text-foreground">
+                {evidence.label}
+              </span>
+              {evidence.excerpt && (
+                <p className="mt-1 border-l border-border pl-2">
+                  {evidence.excerpt}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="space-y-2">
         <Label htmlFor={`answer-${clarification.id}`}>{t("answerLabel")}</Label>
         <textarea
           id={`answer-${clarification.id}`}
           value={answer}
           onChange={(event) => setAnswer(event.target.value)}
-          rows={2}
+          rows={3}
           className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
         />
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" disabled={!answer.trim() || resolve.isPending} onClick={() => submit("answer")}>
-            {t("answerAction")}
-          </Button>
-          <Button type="button" size="sm" variant="ghost" disabled={resolve.isPending} onClick={() => submit("leave_open")}>
-            {t("leaveOpenAction")}
-          </Button>
-        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={!answer.trim() || resolve.isPending}
+          onClick={() => submit("answer")}
+        >
+          {t("answerAction")}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={resolve.isPending}
+          onClick={() => submit("leave_open")}
+        >
+          {t("leaveOpenAction")}
+        </Button>
       </div>
     </article>
   );
 }
 
-export function ClarificationsPanel({ projectId, revisionId }: { projectId: string; revisionId: string }) {
+// One point at a time, whatever the number. A wall of twenty questions is what
+// this replaces, and a threshold below which the treatment changed was worse:
+// the count moves week to week on the same project, so the screen would have
+// changed shape underneath the developer on a number they do not control
+// (specs/018, FR-028 to FR-031).
+export function ClarificationsPanel({
+  projectId,
+  revisionId,
+}: {
+  projectId: string;
+  revisionId: string;
+}) {
   const t = useTranslations("Projects.Documentation.Clarifications");
   const clarifications = useClarifications(projectId, { status: "open" });
   const resolve = useResolveClarifications(projectId);
-  if (clarifications.isPending) return <Skeleton className="h-32 w-full" />;
-  if (clarifications.isError) return <p role="alert" className="text-sm text-destructive">{t("loadError")}</p>;
-  if (!clarifications.data?.items.length) return null;
+  const [index, setIndex] = useState(0);
+
+  if (clarifications.isPending) return <Skeleton className="h-56 w-full rounded-xl" />;
+  if (clarifications.isError)
+    return (
+      <p role="alert" className="text-sm text-destructive">
+        {t("loadError")}
+      </p>
+    );
+
+  const items = clarifications.data?.items ?? [];
+  if (items.length === 0) return null;
+
+  // Answering removes a point from the set, so the position can land past the
+  // end. Clamping here keeps the last answer from leaving an empty card.
+  const position = Math.min(index, items.length - 1);
+  const current = items[position];
+  const many = items.length > 1;
+
   return (
-    <section className="border-b border-border py-7">
+    <section
+      aria-labelledby="clarifications-title"
+      className="border-b border-border py-7"
+    >
       <div className="flex items-start gap-3">
         <MessageCircleQuestion className="mt-0.5 size-5 text-muted-foreground" />
         <div>
-          <h3 className="font-semibold">{t("title")}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{t("total", { count: clarifications.data.total })}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{t("optionalHint")}</p>
+          <h3 id="clarifications-title" className="font-semibold">
+            {t("title")}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("total", { count: clarifications.data?.total ?? items.length })}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("optionalHint")}
+          </p>
         </div>
       </div>
-      <div className="mt-3">
-        {clarifications.data.items.map((clarification) => (
-          <ClarificationCard key={clarification.id} clarification={clarification} revisionId={revisionId} resolve={resolve} />
-        ))}
-        {clarifications.hasNextPage && (
+
+      <div className="mt-4">
+        <ClarificationCard
+          key={current.id}
+          clarification={current}
+          revisionId={revisionId}
+          resolve={resolve}
+        />
+      </div>
+
+      {/* Only what would be meaningless is dropped: with a single point there
+          are no arrows and no position. The card itself never changes. */}
+      {many && (
+        <div className="mt-3 flex items-center gap-3">
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            className="mt-3"
-            disabled={clarifications.isFetchingNextPage}
-            onClick={() => void clarifications.fetchNextPage()}
+            size="icon-sm"
+            aria-label={t("previous")}
+            disabled={position === 0}
+            onClick={() => setIndex(position - 1)}
           >
-            {t(clarifications.isFetchingNextPage ? "loadingMore" : "loadMore")}
+            <ChevronLeft />
           </Button>
-        )}
-      </div>
-      {resolve.isError && <p role="alert" className="flex items-center gap-2 text-sm text-destructive"><AlertCircle className="size-4" />{t("resolveError")}</p>}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label={t("next")}
+            disabled={position === items.length - 1 && !clarifications.hasNextPage}
+            onClick={() => {
+              if (position === items.length - 1 && clarifications.hasNextPage) {
+                void clarifications.fetchNextPage();
+              }
+              setIndex(position + 1);
+            }}
+          >
+            <ChevronRight />
+          </Button>
+          <p aria-live="polite" className="text-xs text-muted-foreground">
+            {t("position", {
+              position: position + 1,
+              total: clarifications.data?.total ?? items.length,
+            })}
+          </p>
+        </div>
+      )}
+
+      {resolve.isError && (
+        <p
+          role="alert"
+          className="mt-3 flex items-center gap-2 text-sm text-destructive"
+        >
+          <AlertCircle className="size-4" />
+          {t("resolveError")}
+        </p>
+      )}
     </section>
   );
 }

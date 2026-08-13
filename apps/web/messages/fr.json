@@ -331,7 +331,10 @@
         "loadError": "Impossible de charger les points à clarifier.",
         "resolveError": "Cette décision n’a pas pu être enregistrée. Vérifiez la dernière version de la source.",
         "loadMore": "Afficher plus",
-        "loadingMore": "Chargement…"
+        "loadingMore": "Chargement…",
+        "previous": "Point précédent",
+        "next": "Point suivant",
+        "position": "{position} sur {total}"
       },
       "DocumentDetail": {
         "back": "Retour au projet",

@@ -331,7 +331,10 @@
         "loadError": "The points to clarify couldn't be loaded.",
         "resolveError": "This decision couldn't be saved. Check the latest source version.",
         "loadMore": "Show more",
-        "loadingMore": "Loading…"
+        "loadingMore": "Loading…",
+        "previous": "Previous point",
+        "next": "Next point",
+        "position": "{position} of {total}"
       },
       "DocumentDetail": {
         "back": "Back to project",
