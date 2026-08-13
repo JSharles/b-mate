@@ -105,6 +105,19 @@ Each slice ends with something usable. Slice 1 is the one that matters; slices 3
 
 **The statement list is leaving a page some habit has formed around.** It has been the first thing on that page since 016.
 
-## Open Decision — not resolved here
+## Resolved: the reference document has no approval gate
 
-**Does the reference document need approval before the developer relies on it?** Sections are approved because a client reads them. Nothing publishes the reference document, so nothing forces a gate — but it is also the artefact the developer will send to people. The spec is silent, this plan builds it without a gate, and if you want one it belongs in the spec first.
+Answered by the developer on 2026-08-13: "pas nécessairement, si le document ne me plaît pas alors je ne crée pas de contenu client et je le remplace ou le corrige."
+
+That is the better answer, and it is worth writing down why. The chain is:
+
+1. Documents are added.
+2. Statements are extracted into the canonical source.
+3. **The reference document is written from them — for the developer.**
+4. The developer creates sections, naming them and saying what they cover.
+5. A proposal is composed for each section.
+6. **The developer approves it, and their client reads it.**
+
+The approval sits at step 6 because that is the moment something becomes visible to a client. The reference document sits at step 3 and is never client-facing, so a gate on it would guard nothing — and a bad one is self-correcting, because the developer simply does not build sections on it until they have fixed it.
+
+Nothing here is validated by a client, and nothing is validated by the system. The developer approves; the client reads.
