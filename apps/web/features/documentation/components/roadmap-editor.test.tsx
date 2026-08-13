@@ -300,7 +300,7 @@ describe("the roadmap's markers", () => {
     );
 
     expect(container.querySelectorAll("ol .bg-primary")).toHaveLength(1);
-    expect(container.querySelectorAll("ol .bg-foreground\\/50")).toHaveLength(1);
+    expect(container.querySelectorAll("ol .bg-muted-foreground")).toHaveLength(1);
     const current = screen.getByRole("button", { name: "clearPosition" });
     expect(within(current).getByText("clearPosition")).toBeInTheDocument();
   });

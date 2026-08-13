@@ -14,7 +14,10 @@ import { cn } from "@/shared/lib/utils";
 export type MilestoneState = "done" | "current" | "ahead" | "offered";
 
 const MARKER: Record<MilestoneState, string> = {
-  done: "border-foreground/50 bg-foreground/50",
+  // Muted rather than a dimmed off-white: at twelve pixels, half-opacity body
+  // text sits at almost the same brightness as the periwinkle beside it, and
+  // the eye had only the ring to tell "done" from "where we are".
+  done: "border-muted-foreground bg-muted-foreground",
   current: "border-primary bg-primary ring-4 ring-primary/20",
   ahead: "border-border bg-background",
   // Lighter than a milestone, and no dashes: a dashed ring at this size reads

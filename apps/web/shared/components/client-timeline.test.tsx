@@ -58,7 +58,7 @@ describe("ClientTimeline", () => {
     );
 
     expect(container.querySelectorAll(".bg-primary")).toHaveLength(1);
-    expect(container.querySelectorAll(".bg-foreground\\/50")).toHaveLength(1);
+    expect(container.querySelectorAll(".bg-muted-foreground")).toHaveLength(1);
   });
 
   it("survives a position naming a milestone that is gone", () => {
