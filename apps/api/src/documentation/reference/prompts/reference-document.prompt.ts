@@ -10,6 +10,13 @@ export interface PromptNote {
   context: string | null;
 }
 
+// What a reference document is worth reading at. Six to twelve parts of a few
+// paragraphs each lands here, and a developer who has to scroll further than
+// this to know where their project stands has been handed the raw material
+// again. A number the model can aim at beats a ratio it has to work out from
+// the sources — it was already estimating their length to apply one.
+export const MAX_DOCUMENT_WORDS = 2_500;
+
 const LANGUAGE_NAMES: Record<string, string> = {
   fr: 'French',
   en: 'English',
@@ -67,12 +74,14 @@ export function buildReferenceDocumentPrompt(input: {
     'Write the document:',
     '- It is a synthesis, not a transcription. The developer already has the',
     '  documents; what they do not have is one account of what those documents',
-    '  say together. Expect it to be several times shorter than its sources —',
-    '  aim for around a tenth of their length, and never write more than they',
-    '  hold. A document that reproduces its sources has done nothing.',
-    '- Around six to twelve parts for a typical project, and a handful of',
-    '  paragraphs in each. If you are writing more than that, you are copying',
-    '  rather than deciding what matters.',
+    `  say together. Write at most ${MAX_DOCUMENT_WORDS} words in total, across`,
+    '  every part. A document that reproduces its sources has done nothing.',
+    '- Around six to twelve parts, and a handful of paragraphs in each. If you',
+    '  are writing more than that, you are copying rather than deciding what',
+    '  matters.',
+    '- If there is more material than fits, that is a judgement to make, not a',
+    '  reason to write longer: keep what the developer needs to rely on and',
+    '  leave out the detail their documents already hold.',
     '- Named parts, continuous prose under each, read top to bottom.',
     '- Group what belongs together, and order the parts so the document builds:',
     '  what the project is before how it works, and so on.',

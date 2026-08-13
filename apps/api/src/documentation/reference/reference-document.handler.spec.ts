@@ -8,6 +8,7 @@ import {
   referenceFingerprint,
 } from './reference-document.handler';
 import { REFERENCE_DOCUMENT_PROMPT_VERSION } from './reference-output.schema';
+import { MAX_DOCUMENT_WORDS } from './prompts/reference-document.prompt';
 
 const operationId = '00000000-0000-4000-8000-0000000000aa';
 const documentId = '00000000-0000-4000-8000-000000000001';
@@ -127,6 +128,30 @@ describe('ReferenceDocumentHandler', () => {
       ).text;
 
       expect(prompt).toContain('A note outranks the documents');
+    });
+
+    // The ceiling is sized just above what the prompt asks for, so a run that
+    // ignores the word budget dies in a minute rather than after seven. Left at
+    // the model's own maximum it bought a longer transcription and charged for
+    // it — the first real run on two documents was truncated after 7 minutes.
+    it('will not pay for more than the document is allowed to be', async () => {
+      const { prisma, handler } = setup();
+      ready(prisma);
+
+      const request = await handler.buildRequest(operation());
+
+      expect(request.maxOutputTokens).toBe(MAX_DOCUMENT_WORDS * 4);
+    });
+
+    it('gives the model a word budget it can aim at', async () => {
+      const { prisma, handler } = setup();
+      ready(prisma);
+
+      const prompt = (
+        (await handler.buildRequest(operation())).parts[0] as { text: string }
+      ).text;
+
+      expect(prompt).toContain(`at most ${MAX_DOCUMENT_WORDS} words`);
     });
 
     it('carries each document body after its heading', async () => {

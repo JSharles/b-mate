@@ -16,7 +16,10 @@ import {
   DocumentInputNormalizerService,
   type UploadDocumentInput,
 } from '../source/document-input-normalizer.service';
-import { buildReferenceDocumentPrompt } from './prompts/reference-document.prompt';
+import {
+  MAX_DOCUMENT_WORDS,
+  buildReferenceDocumentPrompt,
+} from './prompts/reference-document.prompt';
 import {
   REFERENCE_DOCUMENT_JSON_SCHEMA,
   REFERENCE_DOCUMENT_OUTPUT_CONTRACT,
@@ -36,6 +39,10 @@ export interface ReferenceInputShape {
 export function referenceFingerprint(input: ReferenceInputShape): string {
   return createHash('sha256').update(JSON.stringify(input)).digest('hex');
 }
+
+// Words to tokens, generously: French runs near two tokens a word, and the
+// JSON around the text, the points and the part titles all cost more.
+const MAX_OUTPUT_TOKENS = MAX_DOCUMENT_WORDS * 4;
 
 export function documentRef(index: number): string {
   return `d${index}`;
@@ -142,7 +149,11 @@ export class ReferenceDocumentHandler
       parts,
       outputContract: REFERENCE_DOCUMENT_OUTPUT_CONTRACT,
       outputSchema: REFERENCE_DOCUMENT_JSON_SCHEMA,
-      maxOutputTokens: 32_000,
+      // Sized just above what the prompt asks for rather than as high as the
+      // model allows. A run that ignores the word budget then dies in a minute
+      // instead of after seven — the ceiling cannot stop a model writing too
+      // much, but it decides how long we pay for it before finding out.
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
     };
   }
 
