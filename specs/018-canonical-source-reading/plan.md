@@ -91,13 +91,13 @@ This reverses the rule the previous draft carried ("nothing reads the reference 
 
 ## Implementation Sequence
 
-**Slice 1 — the new path, beside the old.** `Note`, the reshaped `reference_document` stage reading documents and notes, and the document screen answering and correcting in place. Nothing is deleted yet, so this can be abandoned.
+**Slice 1 — the new path, beside the old.** ✅ `Note`, the reshaped `reference_document` stage reading documents and notes, and the document screen answering and correcting in place. Shipped 2026-08-13.
 
-**Slice 2 — the switch.** Sections read the reference document. The working page keeps a count and a way in.
+**Slice 2 — the switch.** ✅ Sections read the reference document. The working page keeps a count and a way in. Shipped 2026-08-13.
 
-**Slice 3 — the removal.** Everything in Decision 5, verified by `pnpm knip`, `pnpm i18n:orphans` and a schema pass for models with no reader.
+**Slice 3 — the removal.** ✅ Everything in Decision 5, verified by `pnpm knip`, `pnpm i18n:orphans` and a schema pass for models with no reader. Shipped 2026-08-13 with slice 2 — deleting the old models is what forces every consumer to be rewritten, and keeping both alive for a slice would have meant writing a compatibility layer to throw away.
 
-Slice 3 is deliberately last here, unlike 017: this time the replacement is not a rearrangement of the same data but a different way of producing it, and it should be seen working on the real project before the old path is gone.
+**What slice 3 also took, beyond Decision 5.** A document's pipeline. With no extraction there is nothing to run behind an upload, so `SourceDocument` keeps only `received | incorporated | failed | removed`: the file is read once at upload — an unreadable one is refused there rather than failing a whole reference write later — stored, and it is in. Nothing to stop, nothing to retry, and no removal to resume.
 
 ## Risks
 
