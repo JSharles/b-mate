@@ -263,7 +263,6 @@
           "createDescription": "Start from a suggestion or write your own title. Everything stays editable afterwards.",
           "editTitle": "Edit the topic",
           "editDescription": "Change its title, its tone, or what it should cover.",
-          "startBlank": "Write my own title",
           "nameLabel": "Topic title",
           "nameHint": "This is the heading your client reads, exactly as you write it.",
           "instructionsLabel": "What this topic should cover",
@@ -299,7 +298,9 @@
           "suggestion_planning_name": "Planning and milestones",
           "suggestion_planning_instructions": "The dates, the deadlines, the planned deliveries and the order they arrive in. What is confirmed, and what still needs confirming.",
           "suggestion_audit_name": "Audit and scoping",
-          "suggestion_audit_instructions": "What the existing system reveals: what works, what causes trouble, the risks found, and the recommendations that follow."
+          "suggestion_audit_instructions": "What the existing system reveals: what works, what causes trouble, the risks found, and the recommendations that follow.",
+          "startBlank": "Write my own title",
+          "backToSuggestions": "Back to the suggestions"
         },
         "Review": {
           "loading": "Loading…",

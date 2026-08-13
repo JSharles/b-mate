@@ -263,7 +263,6 @@
           "createDescription": "Partez d’une proposition ou écrivez votre propre titre. Tout reste modifiable ensuite.",
           "editTitle": "Modifier la rubrique",
           "editDescription": "Changez son titre, son ton, ou ce qu’elle doit couvrir.",
-          "startBlank": "Écrire mon propre titre",
           "nameLabel": "Titre de la rubrique",
           "nameHint": "C’est le titre que votre client lira, tel que vous l’écrivez.",
           "instructionsLabel": "Ce que cette rubrique doit couvrir",
@@ -299,7 +298,9 @@
           "suggestion_planning_name": "Planning et jalons",
           "suggestion_planning_instructions": "Les dates, les échéances, les livraisons prévues et l’ordre dans lequel elles arrivent. Ce qui est confirmé, et ce qui reste à confirmer.",
           "suggestion_audit_name": "Audit et cadrage",
-          "suggestion_audit_instructions": "Ce que l’existant révèle : ce qui fonctionne, ce qui pose problème, les risques identifiés, et les recommandations qui en découlent."
+          "suggestion_audit_instructions": "Ce que l’existant révèle : ce qui fonctionne, ce qui pose problème, les risques identifiés, et les recommandations qui en découlent.",
+          "startBlank": "Écrire mon propre titre",
+          "backToSuggestions": "Revenir aux propositions"
         },
         "Review": {
           "loading": "Chargement…",

@@ -80,6 +80,34 @@ describe("SectionEditorDialog", () => {
     );
   });
 
+  // Choosing a suggestion used to replace the list with the form for good: a
+  // contributor who changed their mind cleared the title and found nothing,
+  // because the list no longer existed.
+  it("lets a contributor go back and choose differently", async () => {
+    const user = userEvent.setup();
+    render(<SectionEditorDialog projectId="project-1" open onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /suggestion_overview_name/ }));
+    await user.click(screen.getByRole("button", { name: "backToSuggestions" }));
+    await user.click(screen.getByRole("button", { name: /suggestion_planning_name/ }));
+
+    expect(screen.getByLabelText("nameLabel")).toHaveValue(
+      "suggestion_planning_name",
+    );
+  });
+
+  it("leaves nothing of the abandoned suggestion behind", async () => {
+    const user = userEvent.setup();
+    render(<SectionEditorDialog projectId="project-1" open onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /suggestion_overview_name/ }));
+    await user.click(screen.getByRole("button", { name: "backToSuggestions" }));
+    await user.click(screen.getByRole("button", { name: "startBlank" }));
+
+    expect(screen.getByLabelText("nameLabel")).toHaveValue("");
+    expect(screen.getByLabelText("instructionsLabel")).toHaveValue("");
+  });
+
   it("opens on a blank form when a free title is chosen", async () => {
     const user = userEvent.setup();
     render(<SectionEditorDialog projectId="project-1" open onOpenChange={vi.fn()} />);

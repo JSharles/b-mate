@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SectionEditorial, SectionView } from "schemas";
@@ -155,6 +156,23 @@ export function SectionEditorDialog({
               }
             }}
           >
+            {!section && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="-ml-2 w-fit text-muted-foreground"
+                onClick={() => {
+                  setName("");
+                  setInstructions("");
+                  setChosenStart(false);
+                }}
+              >
+                <ArrowLeft />
+                {t("backToSuggestions")}
+              </Button>
+            )}
+
             <div className="flex flex-col gap-2">
               <Label htmlFor="section-name">{t("nameLabel")}</Label>
               <input
