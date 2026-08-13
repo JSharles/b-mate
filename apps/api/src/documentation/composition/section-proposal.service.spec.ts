@@ -371,7 +371,7 @@ describe('SectionProposalService', () => {
       expect(generation.createInTransaction).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          outputContractVersion: 'roadmap-composition-v2',
+          outputContractVersion: 'roadmap-composition-v3',
         }),
       );
     });

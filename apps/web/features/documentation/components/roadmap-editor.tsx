@@ -43,7 +43,7 @@ type ReadSubstep = {
 };
 type ReadMilestone = {
   id: string;
-  when: string;
+  when: string | null;
   title: string;
   description: string | null;
   substeps: ReadSubstep[];
@@ -70,7 +70,7 @@ function toDraft(milestone: ReadMilestone): Draft {
   };
 }
 
-function blank(title = "", when = ""): Draft {
+function blank(title = "", when: string | null = null): Draft {
   return { key: newKey(), id: null, when, title, description: null, substeps: [] };
 }
 
@@ -148,7 +148,7 @@ export function RoadmapEditor({
       return (
         !original ||
         original.id !== row.id ||
-        original.when !== row.when ||
+        (original.when ?? "") !== (row.when ?? "") ||
         original.title !== row.title ||
         (original.description ?? "") !== (row.description ?? "") ||
         original.substeps.length !== row.substeps.length ||
@@ -276,9 +276,9 @@ export function RoadmapEditor({
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                       <input
-                        value={row.when}
+                        value={row.when ?? ""}
                         onChange={(event) =>
-                          patch(row.key, { when: event.target.value })
+                          patch(row.key, { when: event.target.value || null })
                         }
                         maxLength={120}
                         placeholder={t("whenPlaceholder")}
@@ -318,7 +318,7 @@ export function RoadmapEditor({
                   {/* What sits inside this step. A list under it rather than a
                       rail of its own: two rails would read as two roadmaps, and
                       the depth stops here. */}
-                  <ul className="mt-1 space-y-1">
+                  <ul className="mt-2 space-y-1 border-l border-border/60 pl-3">
                     {row.substeps.map((substep, substepIndex) => (
                       <li
                         key={substep.key}
@@ -452,24 +452,26 @@ export function RoadmapEditor({
                       </li>
                     ))}
                     <li>
-                      {/* No menu here: a step inside a phase is whatever the
-                          developer calls it, and there is nothing standard to
-                          offer. */}
-                      <Button
+                      {/* Inside the rule, aligned with the rows it extends and
+                          carrying their bullet rather than a plus: it reads as
+                          "one more of these", not as a second way to add a
+                          step. The two controls were mistaken for each other. */}
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-muted-foreground"
                         onClick={() =>
                           setSubsteps(row.key, (current) => [
                             ...current,
                             blankSubstep(),
                           ])
                         }
+                        className="flex items-center gap-2 rounded px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
-                        <Plus />
+                        <span
+                          aria-hidden="true"
+                          className="size-1.5 shrink-0 rounded-full border border-dashed border-muted-foreground/60"
+                        />
                         {t("addSubstep")}
-                      </Button>
+                      </button>
                     </li>
                   </ul>
                 </div>
@@ -516,7 +518,7 @@ export function RoadmapEditor({
         })}
       </Timeline>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
           {/* One control, and the arc every project runs through lives inside
               it. Laid out on the rail the phases looked like steps the roadmap
               already had; here they are what they are — ways of adding one. */}
@@ -561,7 +563,6 @@ export function RoadmapEditor({
                 draft.some(
                   (row) =>
                     !row.title.trim() ||
-                    !row.when.trim() ||
                     row.substeps.some((substep) => !substep.title.trim()),
                 )
               }
@@ -569,7 +570,7 @@ export function RoadmapEditor({
                 save.mutate({
                   milestones: draft.map((row) => ({
                     id: row.id,
-                    when: row.when.trim(),
+                    when: row.when?.trim() || null,
                     title: row.title.trim(),
                     description: row.description?.trim() || null,
                     substeps: row.substeps.map((substep) => ({

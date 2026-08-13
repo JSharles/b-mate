@@ -70,7 +70,8 @@ description: "Task list for The Roadmap Section"
 ## Slice 3 — The client's roadmap
 
 - [x] T024 Create `client-timeline.tsx` and branch `client-section-view.tsx` on the kind
-- [x] T024b Render it horizontally, falling back to a column below `sm`, and make the developer's published view the same component so the preview cannot drift
+- [x] T024b Make the developer's published view the same component, so the preview cannot drift from the thing
+- [x] T024c Horizontal, then back to vertical: it read well on a bare rail and broke as soon as a step carried sub-steps. Takes the full width now, with the date on the right edge of each row
 - [x] T025 [P] Cover it: one node carries the accent, none does when no position is claimed, and a position naming nothing is survived
 - [x] T026 Verify at 390px — no sideways scroll on any of the four surfaces
 

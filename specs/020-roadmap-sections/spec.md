@@ -37,19 +37,19 @@ Everything else is unchanged: one section per tab, a proposal to review, an appr
 
 ## Which way it runs
 
-**Horizontal is how a roadmap is read.** Left to right is how time moves, and
-where the project stands becomes a position along a track rather than a row in a
-list. That is what the client gets, and what the developer is shown under "what
-your client reads" — the same component, so the preview cannot drift from the
-thing.
+**Down.** Horizontal was built first and read well on a bare rail — left to right
+is how time moves, and where the project stands becomes a position along a track.
+It stopped working the moment a milestone carried what sits inside it: five steps
+across a page is a two-hundred-pixel column per step, holding a title and a list,
+and the titles began wrapping mid-word.
 
-**Vertical is how it is written.** A milestone being edited is three fields and
-three controls; those need a full column, and editing sideways would be a form
-laid out in columns nobody asked for.
+**It takes the width it is given.** A timeline is scanned, not read, so the 65–75
+character measure that serves prose buys nothing here and leaves half the page
+empty. The date anchors the right edge of each row and the title the left, which
+is what makes the row span rather than huddle against the rail.
 
-Below `sm` a horizontal rail falls back to a column — four steps side by side on
-a phone is four words per column — and past a handful of steps it scrolls inside
-its own container rather than squeezing them.
+Centring was considered and rejected: a rail is a left-edge device, and centring
+one puts air on both sides of it instead of one.
 
 ## The milestone
 

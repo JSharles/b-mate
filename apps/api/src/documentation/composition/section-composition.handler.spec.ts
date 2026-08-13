@@ -327,7 +327,7 @@ describe('SectionCompositionHandler', () => {
       const request = await handler.buildRequest(roadmapOperation());
       const text = (request.parts[0] as { text: string }).text;
 
-      expect(request.outputContract).toBe('roadmap-composition-v2');
+      expect(request.outputContract).toBe('roadmap-composition-v3');
       expect(text).toContain('timeline');
       // Only what the document names, never a phase broken down because
       // breaking phases down is usual.
@@ -348,7 +348,7 @@ describe('SectionCompositionHandler', () => {
 
       await handler.apply(asPrismaService(prisma), operation(), {
         output: {
-          promptVersion: 'roadmap-composition-v2',
+          promptVersion: 'roadmap-composition-v3',
           outcome: 'composed',
           milestones: [
             {

@@ -206,7 +206,7 @@ export class SectionCompositionHandler
     const output = RoadmapCompositionOutputSchema.parse(result.output);
     const milestones = output.milestones.map((milestone) => ({
       id: randomUUID(),
-      when: milestone.when,
+      when: milestone.when?.trim() ? milestone.when : null,
       title: milestone.title,
       description: milestone.description?.trim() ? milestone.description : null,
       substeps: milestone.substeps.map((substep) => ({

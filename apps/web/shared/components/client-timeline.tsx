@@ -99,21 +99,29 @@ export function ClientTimeline({
   }
 
   return (
-    <Timeline orientation="horizontal">
+    <Timeline>
       {milestones.map((milestone, index) => {
         const state = stateOf(index);
         return (
           <TimelineItem
             key={milestone.id}
             state={state}
-            orientation="horizontal"
             last={index === milestones.length - 1}
-            marker={marker(milestone.id, state, "sm:top-0")}
+            marker={marker(milestone.id, state)}
           >
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              {milestone.when}
-            </p>
-            <p className="font-medium">{milestone.title}</p>
+            {/* The date anchors the right edge and the title the left, so the
+                row spans the width it is given instead of huddling against the
+                rail. A timeline is scanned, not read: the 68ch measure that
+                serves prose was buying nothing here and leaving half the page
+                empty. */}
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <p className="font-medium">{milestone.title}</p>
+              {milestone.when && (
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {milestone.when}
+                </p>
+              )}
+            </div>
             {milestone.description && (
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 {milestone.description}
@@ -140,19 +148,19 @@ export function ClientTimeline({
                       )}
                       <span
                         className={cn(
-                          "text-sm",
+                          "flex-1 text-sm",
                           substepState === "current"
                             ? "text-foreground"
                             : "text-muted-foreground",
                         )}
                       >
                         {substep.title}
-                        {substep.when && (
-                          <span className="ml-1.5 text-xs uppercase tracking-wide text-muted-foreground">
-                            {substep.when}
-                          </span>
-                        )}
                       </span>
+                      {substep.when && (
+                        <span className="shrink-0 text-xs uppercase tracking-wide text-muted-foreground">
+                          {substep.when}
+                        </span>
+                      )}
                     </li>
                   );
                 })}

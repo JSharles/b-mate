@@ -11,18 +11,13 @@ import { cn } from "@/shared/lib/utils";
 // roadmap that asks anything of the reader. What is done is solid and quiet,
 // what is ahead is hollow, and a phase merely on offer is smaller.
 //
-// It runs either way. **Horizontal is how a roadmap is read**: left to right is
-// how time moves, and where the project stands is a position along a track
-// rather than a row in a list. **Vertical is how it is written**: a milestone
-// being edited is three fields and three controls, and those need a full
-// column.
-//
-// A horizontal rail always falls back to vertical below `sm` — four steps side
-// by side on a phone is four words per column — and scrolls inside itself when
-// there are enough steps to squeeze them, rather than squeezing them.
+// It runs one way: down. Horizontal was tried and read well on a bare rail —
+// left to right is how time moves — but the moment a milestone carries what
+// sits inside it, each step becomes a column two hundred pixels wide holding a
+// title and a list, and titles start wrapping mid-word. A column per step is
+// not enough room for a step that contains things.
 
 export type MilestoneState = "done" | "current" | "ahead" | "offered";
-export type TimelineOrientation = "vertical" | "horizontal";
 
 const MARKER: Record<MilestoneState, string> = {
   // Muted rather than a dimmed off-white: at twelve pixels, half-opacity body
@@ -37,27 +32,12 @@ const MARKER: Record<MilestoneState, string> = {
   offered: "scale-50 border-muted-foreground/50 bg-transparent",
 };
 
-export function Timeline({
-  orientation = "vertical",
-  className,
-  ...props
-}: ComponentProps<"ol"> & { orientation?: TimelineOrientation }) {
-  return (
-    <ol
-      data-orientation={orientation}
-      className={cn(
-        "relative",
-        orientation === "horizontal" && "sm:flex sm:overflow-x-auto sm:pb-2",
-        className,
-      )}
-      {...props}
-    />
-  );
+export function Timeline({ className, ...props }: ComponentProps<"ol">) {
+  return <ol className={cn("relative", className)} {...props} />;
 }
 
 export function TimelineItem({
   state,
-  orientation = "vertical",
   marker,
   last = false,
   className,
@@ -65,14 +45,12 @@ export function TimelineItem({
   ...props
 }: Omit<ComponentProps<"li">, "children"> & {
   state: MilestoneState;
-  orientation?: TimelineOrientation;
   /** Replaces the dot when the marker itself is the control, as it is when the
    *  developer moves where the project stands. */
   marker?: ReactNode;
   last?: boolean;
   children: ReactNode;
 }) {
-  const horizontal = orientation === "horizontal";
   return (
     <li
       className={cn(
@@ -80,10 +58,6 @@ export function TimelineItem({
         // A phase on offer is one line, so it sits closer to the next than a
         // milestone carrying a date, a title and a sentence does.
         last ? "pb-0" : state === "offered" ? "pb-3" : "pb-6",
-        // Enough width that a title is read rather than hyphenated, and the
-        // rail scrolls sideways rather than crushing ten steps into a page.
-        horizontal &&
-          "sm:min-w-40 sm:flex-1 sm:pl-0 sm:pt-8 sm:pb-0 sm:pr-6 sm:last:pr-0",
         className,
       )}
       {...props}
@@ -93,15 +67,10 @@ export function TimelineItem({
       {!last && (
         <span
           aria-hidden="true"
-          className={cn(
-            "absolute bg-border",
-            "left-[5px] top-5 bottom-0 w-px",
-            horizontal &&
-              "sm:left-4 sm:right-0 sm:top-[5px] sm:bottom-auto sm:h-px sm:w-auto",
-          )}
+          className="absolute left-[5px] top-5 bottom-0 w-px bg-border"
         />
       )}
-      {marker ?? <TimelineMarker state={state} orientation={orientation} />}
+      {marker ?? <TimelineMarker state={state} />}
       {children}
     </li>
   );
@@ -109,11 +78,9 @@ export function TimelineItem({
 
 export function TimelineMarker({
   state,
-  orientation = "vertical",
   className,
 }: {
   state: MilestoneState;
-  orientation?: TimelineOrientation;
   className?: string;
 }) {
   return (
@@ -121,7 +88,6 @@ export function TimelineMarker({
       aria-hidden="true"
       className={cn(
         "absolute left-0 top-1.5 size-3 rounded-full border-2",
-        orientation === "horizontal" && "sm:top-0",
         MARKER[state],
         className,
       )}

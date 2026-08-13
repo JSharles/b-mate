@@ -124,6 +124,25 @@ describe("RoadmapEditor", () => {
     );
   });
 
+  // Taking "Développement" from the menu gives a step with no date. Requiring
+  // one left the developer with a disabled button and nothing saying why.
+  it("saves a step whose date is not fixed yet", async () => {
+    const user = userEvent.setup();
+    renderEditor({ milestones: [] });
+
+    await user.click(screen.getByText("addStep"));
+    await user.click(screen.getByRole("menuitem", { name: "phase_build" }));
+    await user.click(screen.getByText("save"));
+
+    expect(save.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        milestones: [
+          expect.objectContaining({ title: "phase_build", when: null }),
+        ],
+      }),
+    );
+  });
+
   it("refuses to save a step with no title — a marker over nothing", async () => {
     const user = userEvent.setup();
     renderEditor();
@@ -233,40 +252,20 @@ describe("RoadmapEditor", () => {
   });
 
   // What is published is shown by the client's own component, so the preview
-  // cannot drift from the thing — and it reads horizontally, as the client
-  // reads it. The marker stays a control: the position moves without composing,
-  // approving or publishing anything.
+  // cannot drift from the thing. The marker stays a control: the position moves
+  // without composing, approving or publishing anything.
   it("shows a published roadmap as the client's own timeline, position still movable", async () => {
     const user = userEvent.setup();
-    const { container } = renderEditor({
-      editable: false,
-      proposalVersion: undefined,
-    });
+    renderEditor({ editable: false, proposalVersion: undefined });
 
     expect(screen.queryByLabelText("whenLabel")).toBeNull();
     expect(screen.queryByText("addStep")).toBeNull();
-    expect(container.querySelector("ol")).toHaveAttribute(
-      "data-orientation",
-      "horizontal",
-    );
-
     await user.click(screen.getAllByRole("button")[0]);
 
     expect(move.mutate).toHaveBeenCalledWith({
       milestoneId: framing.id,
       expectedVersion: 4,
     });
-  });
-
-  // Writing one is a different act: a milestone being edited is three fields and
-  // three controls, and those need a full column.
-  it("writes it in a column", () => {
-    const { container } = renderEditor();
-
-    expect(container.querySelector("ol")).toHaveAttribute(
-      "data-orientation",
-      "vertical",
-    );
   });
 
   // A fresh composition replaces the draft rather than being masked by edits

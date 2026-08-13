@@ -80,10 +80,14 @@ export const SubstepSchema = z
 // "When" is text, never a date. Documents say "Q3 2026", "après la phase
 // pilote", "mi-octobre". A date type would either lose those or invent a
 // precision the documents never gave, and order is carried by the list anyway.
+//
+// And it may be absent. "Développement" with no date yet is an honest step;
+// requiring one made the developer invent a date to get past a disabled button,
+// which is the one thing this whole feature is careful not to do.
 export const MilestoneSchema = z
   .object({
     id: DocumentationUuidSchema,
-    when: z.string().trim().min(1).max(120),
+    when: z.string().trim().min(1).max(120).nullable(),
     title: z.string().trim().min(1).max(200),
     description: z.string().trim().min(1).max(2_000).nullable(),
     substeps: z.array(SubstepSchema),

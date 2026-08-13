@@ -91,10 +91,11 @@ export class MilestoneDraftDto {
   @IsUUID('4')
   id?: string | null;
 
+  // Optional, like a sub-step's: a step with no date yet is honest.
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(120)
-  when!: string;
+  when?: string | null;
 
   @IsString()
   @MinLength(1)

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-export const ROADMAP_COMPOSITION_PROMPT_VERSION = 'roadmap-composition-v2';
-export const ROADMAP_COMPOSITION_OUTPUT_CONTRACT = 'roadmap-composition-v2';
+export const ROADMAP_COMPOSITION_PROMPT_VERSION = 'roadmap-composition-v3';
+export const ROADMAP_COMPOSITION_OUTPUT_CONTRACT = 'roadmap-composition-v3';
 
 // What sits inside a long milestone, as the model returns it. Its "when" may be
 // null: a feature inside a phase often has no date of its own, and a model
@@ -24,7 +24,7 @@ export const RoadmapSubstepOutputSchema = z
 // identifiers killed three stages by getting a character wrong.
 export const RoadmapMilestoneOutputSchema = z
   .object({
-    when: z.string().trim().min(1).max(120),
+    when: z.string().trim().min(1).max(120).nullable(),
     title: z.string().trim().min(1).max(200),
     description: z.string().trim().max(2_000).nullable(),
     substeps: z.array(RoadmapSubstepOutputSchema),
@@ -74,7 +74,7 @@ export const ROADMAP_COMPOSITION_JSON_SCHEMA: Record<string, unknown> = {
         additionalProperties: false,
         required: ['when', 'title', 'description', 'substeps'],
         properties: {
-          when: { type: 'string' },
+          when: { type: ['string', 'null'] },
           title: { type: 'string' },
           description: { type: ['string', 'null'] },
           substeps: {

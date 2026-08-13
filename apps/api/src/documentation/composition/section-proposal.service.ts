@@ -263,7 +263,7 @@ export class SectionProposalService {
     input: {
       milestones: {
         id?: string | null;
-        when: string;
+        when?: string | null;
         title: string;
         description?: string | null;
         substeps?: {
@@ -322,7 +322,7 @@ export class SectionProposalService {
       const kept = milestone.id ? existing.get(milestone.id) : undefined;
       return {
         id: kept?.id ?? randomUUID(),
-        when: milestone.when.trim(),
+        when: milestone.when?.trim() ? milestone.when.trim() : null,
         title: milestone.title.trim(),
         description: milestone.description?.trim()
           ? milestone.description.trim()

@@ -270,6 +270,12 @@ describe("a roadmap's milestones", () => {
     ).toBe("après la phase pilote");
   });
 
+  // "Développement" with no date yet is an honest step. Requiring one made the
+  // developer invent a date to get past a disabled button.
+  it("accepts a step whose date is not fixed", () => {
+    expect(MilestoneSchema.parse({ ...milestone, when: null }).when).toBeNull();
+  });
+
   it("refuses a milestone with no title — a marker over nothing", () => {
     expect(
       MilestoneSchema.safeParse({ ...milestone, title: "  " }).success,

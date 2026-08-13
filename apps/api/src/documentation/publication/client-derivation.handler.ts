@@ -71,7 +71,7 @@ export const RoadmapDerivationOutputSchema = z
     milestones: z.array(
       z
         .object({
-          when: z.string().trim().min(1).max(120),
+          when: z.string().trim().min(1).max(120).nullable(),
           title: z.string().trim().min(1).max(200),
           description: z.string().trim().max(2_000).nullable(),
           substeps: z.array(DerivedSubstepSchema),
@@ -95,7 +95,7 @@ const ROADMAP_DERIVATION_JSON_SCHEMA: Record<string, unknown> = {
         additionalProperties: false,
         required: ['when', 'title', 'description', 'substeps'],
         properties: {
-          when: { type: 'string' },
+          when: { type: ['string', 'null'] },
           title: { type: 'string' },
           description: { type: ['string', 'null'] },
           substeps: {
@@ -126,7 +126,7 @@ interface SourceSubstep {
 
 interface SourceMilestone {
   id: string;
-  when: string;
+  when: string | null;
   title: string;
   description: string | null;
   substeps?: SourceSubstep[];
@@ -247,7 +247,7 @@ export class ClientDerivationHandler
         throw new Error('CLIENT_DERIVATION_MILESTONE_COUNT');
       return {
         id: milestone.id,
-        when: written.when,
+        when: written.when?.trim() ? written.when : null,
         title: written.title,
         description: written.description?.trim() ? written.description : null,
         substeps: sourceSubsteps.map((substep, substepIndex) => {

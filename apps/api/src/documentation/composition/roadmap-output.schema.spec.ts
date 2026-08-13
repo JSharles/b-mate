@@ -9,7 +9,7 @@ const milestone = {
 
 function output(overrides: Record<string, unknown> = {}) {
   return {
-    promptVersion: 'roadmap-composition-v2',
+    promptVersion: 'roadmap-composition-v3',
     outcome: 'composed',
     milestones: [milestone],
     changeSummary: 'First roadmap.',

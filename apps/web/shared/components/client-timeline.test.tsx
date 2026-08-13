@@ -90,20 +90,31 @@ describe("ClientTimeline", () => {
     expect(screen.getByText("Cadrage")).toBeInTheDocument();
   });
 
-  // Left to right is how time moves. Where the project stands is a position
-  // along a track, not a row in a list.
-  it("reads horizontally, and falls back to a column on a phone", () => {
+  // Horizontal was tried and read well on a bare rail, but a step that contains
+  // things needs more than a two-hundred-pixel column. A timeline is scanned
+  // rather than read, so it also takes the width it is given: the prose measure
+  // was buying nothing here and leaving half the page empty.
+  it("reads down the page, across the width it is given", () => {
     const { container } = render(
       <ClientTimeline milestones={milestones} currentMilestoneId={null} />,
     );
 
     const rail = container.querySelector("ol");
-    expect(rail).toHaveAttribute("data-orientation", "horizontal");
-    expect(rail?.className).toContain("sm:flex");
-    // Enough width per step that a title is read rather than hyphenated, and
-    // the rail scrolls inside itself rather than crushing ten steps.
-    expect(rail?.className).toContain("sm:overflow-x-auto");
-    expect(container.querySelector("li")?.className).toContain("sm:min-w-40");
+    expect(rail).not.toHaveAttribute("data-orientation");
+    expect(rail?.className).not.toContain("max-w");
+    expect(rail?.className).not.toContain("flex");
+  });
+
+  // The date anchors the right edge and the title the left, so the row spans
+  // the width instead of huddling against the rail.
+  it("sets the date against the title rather than above it", () => {
+    render(
+      <ClientTimeline milestones={milestones} currentMilestoneId={null} />,
+    );
+
+    const row = screen.getByText("Cadrage").parentElement;
+    expect(row?.className).toContain("justify-between");
+    expect(row?.textContent).toContain("Q2 2026");
   });
 
   // The client's markers are not buttons; the developer's are, because that is

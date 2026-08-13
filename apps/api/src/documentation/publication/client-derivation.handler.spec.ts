@@ -181,7 +181,7 @@ describe('ClientDerivationHandler', () => {
 
       const request = await handler.buildRequest(operation as never);
 
-      expect(request.outputContract).toBe('roadmap-derivation-v2');
+      expect(request.outputContract).toBe('roadmap-derivation-v3');
       expect((request.parts[0] as { text: string }).text).toContain('Q3 2026');
       // No register: a roadmap has none, and asking for one would invent it.
       expect((request.parts[0] as { text: string }).text).not.toContain(
@@ -202,7 +202,7 @@ describe('ClientDerivationHandler', () => {
 
       await handler.apply(asPrismaService(prisma), operation as never, {
         output: {
-          promptVersion: 'roadmap-derivation-v2',
+          promptVersion: 'roadmap-derivation-v3',
           locale: 'fr',
           milestones: [
             {
@@ -233,7 +233,7 @@ describe('ClientDerivationHandler', () => {
       await expect(
         handler.apply(asPrismaService(prisma), operation as never, {
           output: {
-            promptVersion: 'roadmap-derivation-v2',
+            promptVersion: 'roadmap-derivation-v3',
             locale: 'fr',
             milestones: [],
           },
@@ -274,7 +274,7 @@ describe('ClientDerivationHandler', () => {
       await expect(
         handler.apply(asPrismaService(prisma), operation as never, {
           output: {
-            promptVersion: 'roadmap-derivation-v2',
+            promptVersion: 'roadmap-derivation-v3',
             locale: 'fr',
             milestones: [
               {
@@ -322,7 +322,7 @@ describe('ClientDerivationHandler', () => {
 
       await handler.apply(asPrismaService(prisma), operation as never, {
         output: {
-          promptVersion: 'roadmap-derivation-v2',
+          promptVersion: 'roadmap-derivation-v3',
           locale: 'fr',
           milestones: [
             {
