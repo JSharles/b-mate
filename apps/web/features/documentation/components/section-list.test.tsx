@@ -36,7 +36,6 @@ function section(overrides: Partial<SectionView> = {}): SectionView {
     },
     sortOrder: 0,
     refreshNeeded: true,
-    exclusionCount: 0,
     activeProposal: null,
     hasPublishedContent: false,
     version: 1,
@@ -167,7 +166,7 @@ describe("SectionList", () => {
 
     render(<SectionList projectId="project-1" />);
 
-    expect(screen.getByRole("heading", { name: /title2/ })).toBeVisible();
+    expect(screen.getByRole("heading", { name: /listTitle/ })).toBeVisible();
     expect(screen.getByLabelText("loading")).toHaveAttribute(
       "aria-busy",
       "true",

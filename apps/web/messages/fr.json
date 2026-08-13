@@ -198,31 +198,6 @@
       "joinMeeting": "Rejoindre la réunion"
     },
     "Documentation": {
-      "title": "La source du projet",
-      "description": "Diaphane rassemble les informations utiles en une source claire et traçable. Chaque nouveau document enrichit cette source sans devenir une section isolée.",
-      "manageDocuments": "Gérer les documents",
-      "retry": "Réessayer",
-      "Page": {
-        "title": "Documentation du projet",
-        "summaryTitle": "Documentation client",
-        "manage": "Gérer la documentation",
-        "back": "Retour au projet",
-        "add": "Ajouter un document",
-        "documentsTitle": "Documents source",
-        "documentsDescription": "Chaque document est relu à chaque réécriture du document de référence, et reste consultable pour la traçabilité.",
-        "documentCount": "{count, plural, =0 {Aucun document} one {# document} other {# documents}}",
-        "loadError": "Impossible de charger la documentation de ce projet.",
-        "documentsLoadError": "Impossible de charger les documents source.",
-        "retry": "Réessayer",
-        "emptyTitle": "Aucun document source",
-        "emptyDescription": "Ajoutez un fichier ou une page Notion pour commencer à construire la source du projet.",
-        "addFirst": "Ajouter le premier document",
-        "remove": "Supprimer",
-        "open": "Ouvrir {title}",
-        "loadMore": "Afficher plus",
-        "loadingMore": "Chargement…",
-        "openPipeline": "Ouvrir la documentation"
-      },
       "AddDocument": {
         "title": "Enrichir la source",
         "description": "Ajoutez un document de travail. Diaphane en extrait les informations utiles, les rapproche de l’existant et conserve leur origine.",
@@ -239,27 +214,11 @@
         "notionUnavailable": "Connectez d’abord Notion dans les outils du projet, puis revenez ajouter la page souhaitée.",
         "configureNotion": "Configurer Notion"
       },
-      "Source": {
-        "emptyTitle": "Aucun document pour l’instant.",
-        "emptyDescription": "Ajoutez un premier document : Diaphane en tirera ce qui compte pour écrire votre document de référence.",
-        "loadError": "Impossible de charger l’état de vos documents. Rechargez la page.",
-        "loading": "Chargement…",
-        "held": "{documents, plural, one {# document} other {# documents}} et {notes, plural, =0 {aucune précision de votre part} one {# précision de votre part} other {# précisions de votre part}}.",
-        "needsRewrite": "{count, plural, one {# précision de votre part n’est pas encore prise en compte.} other {# précisions de votre part ne sont pas encore prises en compte.}}",
-        "readDocument": "Lire le document de référence",
-        "openPoints": "{count, plural, one {# point reste à clarifier dans le document} other {# points restent à clarifier dans le document}}.",
-        "writingDocument": "Rédaction du document de référence en cours…"
-      },
       "Documents": {
-        "title": "Documents ajoutés",
-        "description": "Les contributions conservées à l’origine de la source.",
-        "empty": "Aucun document ajouté pour le moment.",
-        "loadError": "Impossible de charger les documents.",
-        "statusIncorporated": "Intégré à la source",
-        "statusFailed": "Action nécessaire",
-        "statusRemoved": "Supprimé",
-        "statusUnavailable": "Indisponible",
-        "remove": "Supprimer"
+        "statusIncorporated": "Pris en compte",
+        "statusFailed": "Illisible",
+        "statusRemoved": "Retiré",
+        "statusUnavailable": "État inconnu"
       },
       "DocumentDetail": {
         "back": "Retour au projet",
@@ -282,23 +241,6 @@
         "removeDocument": "Supprimer le document",
         "downloadOriginal": "Télécharger l’original",
         "openOriginal": "Ouvrir la page d’origine"
-      },
-      "Pipeline": {
-        "title": "Documentation du projet",
-        "description": "Vos documents deviennent une documentation que votre client peut lire. Diaphane rédige, vous validez ce qui est vrai. Trois étapes, dans l’ordre.",
-        "back": "Retour au projet",
-        "manageDocuments": "Documents source",
-        "loadError": "Impossible de charger la documentation de ce projet.",
-        "retry": "Réessayer"
-      },
-      "Steps": {
-        "stepLabel": "Étape {step} sur 3",
-        "title1": "Ce que Diaphane a retenu de vos documents",
-        "purpose1": "Tout ce que vos documents disent, rassemblé au même endroit et rattaché à son origine. C’est la matière première — pas ce que votre client lira.",
-        "title2": "Les sections que lira votre client",
-        "purpose2": "Vous nommez une section, vous dites ce qu’elle doit couvrir, et Diaphane la rédige à partir de ce que disent vos documents. Rien n’est publié sans votre accord.",
-        "title3": "Ce que votre client verra",
-        "purpose3": "Le résultat final. Il ne change que lorsque vous approuvez une section — jamais à moitié."
       },
       "Sections": {
         "loading": "Chargement des sections…",
@@ -388,12 +330,13 @@
           "confirm": "Supprimer la section",
           "deleting": "Suppression…",
           "error": "La suppression a échoué. Réessayez."
-        }
+        },
+        "listTitle": "Vos sections",
+        "listDescription": "Vous nommez une section, vous dites ce qu’elle doit couvrir et pour quel niveau de client. Diaphane la rédige depuis votre document de référence."
       },
       "Reference": {
         "title": "Document de référence",
         "description": "Ce que disent vos documents, réécrit en un seul texte structuré. C’est votre référence de travail — votre client ne le lit pas.",
-        "backToDocumentation": "Retour à la documentation",
         "loading": "Chargement du document…",
         "loadError": "Impossible de charger le document. Rechargez la page — rien n’a été perdu.",
         "neverWritten": "Ajoutez un premier document : Diaphane écrira votre document de référence dès qu’il en aura un.",
@@ -423,6 +366,66 @@
         "removeNote": "Retirer cette précision",
         "applyNotes": "{count, plural, one {Prendre en compte ma précision} other {Prendre en compte mes # précisions}}",
         "notWrittenYet": "Vos {count, plural, one {# document n’a} other {# documents n’ont}} pas encore donné de document de référence. Lancez la rédaction."
+      },
+      "Base": {
+        "back": "Retour au projet",
+        "title": "Base documentaire",
+        "description": "Vos documents d’un côté, le texte que Diaphane en tire de l’autre. C’est votre base de travail : votre client ne la lit pas.",
+        "loadError": "Impossible de charger ce projet.",
+        "retry": "Réessayer",
+        "documentsTitle": "Vos documents",
+        "documentsDescription": "Cahier des charges, comptes rendus, pages Notion : tout ce qui décrit le projet. Chaque ajout ou retrait relance la rédaction.",
+        "add": "Ajouter un document",
+        "remove": "Retirer",
+        "emptyTitle": "Aucun document pour l’instant.",
+        "emptyDescription": "Ajoutez-en un et Diaphane écrit votre document de référence dans la foulée.",
+        "documentsLoadError": "Impossible de charger vos documents.",
+        "loadMore": "Afficher plus",
+        "loadingMore": "Chargement…",
+        "referenceTitle": "Document de référence",
+        "referenceDescription": "Ce que disent vos documents, réuni en un seul texte structuré. Répondez aux points à clarifier et corrigez les passages faux directement dedans.",
+        "toClientContent": "Passer au contenu que lira votre client"
+      },
+      "Client": {
+        "back": "Retour au projet",
+        "title": "Contenu client",
+        "description": "Vous décidez des chapitres, Diaphane les rédige depuis votre base documentaire, et rien ne part sans votre accord.",
+        "loadError": "Impossible de charger ce projet.",
+        "retry": "Réessayer",
+        "lockedTitle": "Votre base documentaire n’est pas encore prête.",
+        "lockedDescription": "Une section est rédigée à partir de votre document de référence. Ajoutez vos documents et laissez Diaphane l’écrire ; vous pourrez créer vos sections juste après.",
+        "lockedAction": "Ouvrir la base documentaire",
+        "previewTitle": "Aperçu client",
+        "previewDescription": "Exactement ce que votre client voit aujourd’hui. Cela ne change que quand vous approuvez une section, et jamais à moitié.",
+        "priority_needs_action": "Une section attend votre relecture",
+        "priority_processing": "Rédaction en cours",
+        "priority_published": "Votre client lit la version à jour",
+        "priority_empty": "Ajoutez un premier document",
+        "priority_no_sections": "Créez votre première section",
+        "priority_needs_attention": "Une rédaction n’a pas abouti",
+        "visibility_nothing_published": "Votre client ne voit encore rien",
+        "visibility_previous_version_visible": "Votre client voit encore la version précédente",
+        "visibility_current_version_visible": "Votre client voit la version à jour",
+        "releaseProgress": "{ready, plural, one {# section prête} other {# sections prêtes}} sur {expected} pour la prochaine publication.",
+        "releaseAtomic": "Votre client garde la version actuelle tant que la nouvelle n’est pas complète.",
+        "failedAction": "Voir la base documentaire",
+        "refreshDelayed": "La mise à jour automatique est retardée ; ce que vous voyez date de quelques instants."
+      },
+      "Entries": {
+        "baseTitle": "Base documentaire",
+        "baseEmpty": "Aucun document",
+        "baseWriting": "Rédaction en cours",
+        "baseFailed": "La rédaction n’a pas abouti",
+        "baseNotWritten": "{count, plural, one {# document, pas encore rédigé} other {# documents, pas encore rédigés}}",
+        "baseReady": "{count, plural, one {# document} other {# documents}}, document de référence à jour",
+        "clientTitle": "Contenu client",
+        "clientLocked": "Disponible dès que votre document de référence est écrit",
+        "priority_needs_action": "Une section attend votre relecture",
+        "priority_processing": "Rédaction en cours",
+        "priority_published": "Votre client lit la version à jour",
+        "priority_empty": "Ajoutez un premier document",
+        "priority_no_sections": "Créez votre première section",
+        "priority_needs_attention": "Une rédaction n’a pas abouti"
       }
     },
     "TeamSummaryCard": {
@@ -595,25 +598,6 @@
         "empty": "Rien n’est encore publié pour le client.",
         "loadError": "L’aperçu client n’a pas pu être chargé.",
         "retry": "Réessayer"
-      },
-      "Workspace": {
-        "priority_needs_action": "Votre validation est attendue",
-        "priority_processing": "Diaphane traite vos documents",
-        "priority_published": "La documentation client est à jour",
-        "priority_empty": "Ajoutez un premier document",
-        "priority_needs_attention": "Le traitement d’un document n’a pas abouti",
-        "visibility_nothing_published": "Rien n’est visible par le client",
-        "visibility_previous_version_visible": "La version précédente reste visible par le client",
-        "visibility_current_version_visible": "Le client voit la version actuelle",
-        "refreshDelayed": "La mise à jour automatique est retardée ; les dernières données connues restent affichées.",
-        "navLabel": "Sections de l’espace documentaire",
-        "navSource": "1 · Source",
-        "navClient": "3 · Vue client",
-        "releaseProgress": "{ready, plural, one {# catégorie validée} other {# catégories validées}} sur {expected} pour la prochaine publication.",
-        "releaseAtomic": "Le client continue de voir la version actuelle tant que la nouvelle n’est pas complète.",
-        "failedAction": "Voir les documents concernés",
-        "navSections": "2 · Vos sections",
-        "priority_no_sections": "Créez votre première section"
       },
       "Removal": {
         "title": "Supprimer ce document ?",

@@ -10,7 +10,6 @@ import { useComposeSection, useSections } from "../hooks";
 import { DeleteSectionDialog } from "./delete-section-dialog";
 import { SectionEditorDialog } from "./section-editor-dialog";
 import { SectionProposalReview } from "./section-proposal-review";
-import { StepHeading } from "./step-heading";
 
 // What the contributor needs to know at a glance is what to do next, so the
 // state is derived from the section rather than shown as four raw flags.
@@ -46,12 +45,12 @@ export function SectionList({ projectId }: { projectId: string }) {
 
   return (
     <section className="mb-10">
-      <StepHeading
-        step={2}
-        namespace="Projects.Documentation.Steps"
-        titleKey="title2"
-        purposeKey="purpose2"
-      />
+      <div className="mb-5">
+        <h2 className="font-semibold">{t("listTitle")}</h2>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+          {t("listDescription")}
+        </p>
+      </div>
 
       {sections.isPending ? (
         <div className="space-y-4" aria-busy="true" aria-label={t("loading")}>

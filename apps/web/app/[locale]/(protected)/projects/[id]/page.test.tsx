@@ -23,9 +23,9 @@ vi.mock("@/features/projects/components/team-panel", () => ({
   TeamPanel: ({ projectId }: { projectId: string }) => <div>team-panel:{projectId}</div>,
 }));
 
-vi.mock("@/features/documentation/components/documentation-summary-card", () => ({
-  DocumentationSummaryCard: ({ projectId }: { projectId: string }) => (
-    <div>documentation-summary:{projectId}</div>
+vi.mock("@/features/documentation/components/documentation-entry-cards", () => ({
+  DocumentationEntryCards: ({ projectId }: { projectId: string }) => (
+    <div>documentation-entries:{projectId}</div>
   ),
 }));
 
@@ -79,14 +79,14 @@ function mockProject(role: "contributor" | "client", isAdmin: boolean) {
 }
 
 describe("ProjectPage", () => {
-  it("shows the canonical source workspace and project settings to a contributor admin", () => {
+  it("shows the documentation entries and project settings to a contributor admin", () => {
     mockProject("contributor", true);
 
     renderPage();
 
     expect(screen.getByText("Site vitrine client X")).toBeInTheDocument();
     expect(screen.getByText("team-summary-card:project-1")).toBeInTheDocument();
-    expect(screen.getByText("documentation-summary:project-1")).toBeInTheDocument();
+    expect(screen.getByText("documentation-entries:project-1")).toBeInTheDocument();
     expect(screen.getByText("board-connection-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("notion-connection-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("meeting-link-card:project-1")).toBeInTheDocument();
@@ -145,7 +145,7 @@ describe("ProjectPage", () => {
     renderPage();
 
     expect(screen.getByText("team-summary-card:project-1")).toBeInTheDocument();
-    expect(screen.getByText("documentation-summary:project-1")).toBeInTheDocument();
+    expect(screen.getByText("documentation-entries:project-1")).toBeInTheDocument();
     expect(screen.getByText("board-connection-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("notion-connection-card:project-1")).toBeInTheDocument();
     expect(screen.getByText("meeting-link-card:project-1")).toBeInTheDocument();
@@ -158,7 +158,7 @@ describe("ProjectPage", () => {
     renderPage();
 
     const labels = [
-      "documentation-summary:project-1",
+      "documentation-entries:project-1",
       "team-summary-card:project-1",
       "tools",
       "board-connection-card:project-1",
@@ -182,7 +182,7 @@ describe("ProjectPage", () => {
     renderPage();
 
     expect(screen.queryByText("team-summary-card:project-1")).not.toBeInTheDocument();
-    expect(screen.queryByText("documentation-summary:project-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("documentation-entries:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("board-connection-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("notion-connection-card:project-1")).not.toBeInTheDocument();
     expect(screen.queryByText("meeting-link-card:project-1")).not.toBeInTheDocument();
@@ -198,7 +198,7 @@ describe("ProjectPage", () => {
     renderPage();
 
     expect(screen.queryByText("team-summary-card:project-1")).not.toBeInTheDocument();
-    expect(screen.queryByText("documentation-summary:project-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("documentation-entries:project-1")).not.toBeInTheDocument();
     expect(screen.getByText("team-panel:project-1")).toBeInTheDocument();
     expect(screen.getByText("client-main-tabs:project-1")).toBeInTheDocument();
   });

@@ -5,22 +5,28 @@ import { ClientSectionView } from "@/shared/components/client-section-view";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useClientContentPreview } from "../hooks";
-import { StepHeading } from "./step-heading";
 
 // This section answers the only question a contributor arrives with — what
 // does my client actually see — and it is deliberately last so the page closes
 // on it. Returning null while loading or on error defeated that: the page
 // ended on the editorial dropdowns instead, and a failed fetch read as
 // "nothing is published", which is a different and wrong fact.
+function PreviewHeading() {
+  const t = useTranslations("Projects.Documentation.Client");
+  return (
+    <div className="mb-5">
+      <h2 className="font-semibold">{t("previewTitle")}</h2>
+      <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+        {t("previewDescription")}
+      </p>
+    </div>
+  );
+}
+
 function Frame({ children }: { children: React.ReactNode }) {
   return (
     <section className="border-b border-border py-8">
-      <StepHeading
-        step={3}
-        namespace="Projects.Documentation.Steps"
-        titleKey="title3"
-        purposeKey="purpose3"
-      />
+      <PreviewHeading />
       {children}
     </section>
   );
@@ -61,12 +67,7 @@ export function ClientContentPreview({ projectId }: { projectId: string }) {
 
   return (
     <section className="border-b border-border py-8">
-      <StepHeading
-        step={3}
-        namespace="Projects.Documentation.Steps"
-        titleKey="title3"
-        purposeKey="purpose3"
-      />
+      <PreviewHeading />
       <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
         <Eye className="size-4 shrink-0" />
         {preview.data.pending ? t("previousVisible") : t("exactVisible")}

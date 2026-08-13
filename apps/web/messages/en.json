@@ -198,31 +198,6 @@
       "joinMeeting": "Join meeting"
     },
     "Documentation": {
-      "title": "The project source",
-      "description": "Diaphane brings useful information together into one clear, traceable source. Each new document enriches it instead of becoming an isolated section.",
-      "manageDocuments": "Manage documents",
-      "retry": "Retry",
-      "Page": {
-        "title": "Project documentation",
-        "summaryTitle": "Client documentation",
-        "manage": "Manage documentation",
-        "back": "Back to project",
-        "add": "Add a document",
-        "documentsTitle": "Source documents",
-        "documentsDescription": "Every document is read again on every rewrite of the reference document, and stays available for traceability.",
-        "documentCount": "{count, plural, =0 {No documents} one {# document} other {# documents}}",
-        "loadError": "This project's documentation couldn't be loaded.",
-        "documentsLoadError": "The source documents couldn't be loaded.",
-        "retry": "Retry",
-        "emptyTitle": "No source documents",
-        "emptyDescription": "Add a file or Notion page to start building the project source.",
-        "addFirst": "Add the first document",
-        "remove": "Delete",
-        "open": "Open {title}",
-        "loadMore": "Show more",
-        "loadingMore": "Loading…",
-        "openPipeline": "Open the documentation"
-      },
       "AddDocument": {
         "title": "Enrich the source",
         "description": "Add a working document. Diaphane extracts useful information, reconciles it with the existing source, and preserves its origin.",
@@ -239,27 +214,11 @@
         "notionUnavailable": "Connect Notion in the project tools first, then come back to add the page you want.",
         "configureNotion": "Configure Notion"
       },
-      "Source": {
-        "emptyTitle": "No documents yet.",
-        "emptyDescription": "Add a first document: Diaphane will pull out what matters and write your reference document from it.",
-        "loadError": "Could not load the state of your documents. Reload the page.",
-        "loading": "Loading…",
-        "held": "{documents, plural, one {# document} other {# documents}} and {notes, plural, =0 {nothing you have added} one {# thing you added} other {# things you added}}.",
-        "needsRewrite": "{count, plural, one {# thing you added is not in the document yet.} other {# things you added are not in the document yet.}}",
-        "readDocument": "Read the reference document",
-        "openPoints": "{count, plural, one {# point is still open in the document} other {# points are still open in the document}}.",
-        "writingDocument": "Writing the reference document…"
-      },
       "Documents": {
-        "title": "Added documents",
-        "description": "Preserved contributions behind the source.",
-        "empty": "No document has been added yet.",
-        "loadError": "The documents couldn't be loaded.",
-        "statusIncorporated": "Incorporated into the source",
-        "statusFailed": "Action needed",
-        "statusRemoved": "Deleted",
-        "statusUnavailable": "Unavailable",
-        "remove": "Delete"
+        "statusIncorporated": "Taken into account",
+        "statusFailed": "Unreadable",
+        "statusRemoved": "Removed",
+        "statusUnavailable": "Unknown state"
       },
       "DocumentDetail": {
         "back": "Back to project",
@@ -282,23 +241,6 @@
         "removeDocument": "Delete document",
         "downloadOriginal": "Download original",
         "openOriginal": "Open original page"
-      },
-      "Pipeline": {
-        "title": "Project documentation",
-        "description": "Your documents become documentation your client can read. Diaphane writes it, you approve what is true. Three steps, in order.",
-        "back": "Back to project",
-        "manageDocuments": "Source documents",
-        "loadError": "This project's documentation could not be loaded.",
-        "retry": "Try again"
-      },
-      "Steps": {
-        "stepLabel": "Step {step} of 3",
-        "title1": "What Diaphane took from your documents",
-        "purpose1": "Everything your documents say, gathered in one place and tied back to where it came from. This is the raw material — not what your client reads.",
-        "title2": "The sections your client will read",
-        "purpose2": "You name a section, say what it should cover, and Diaphane writes it from what your documents say. Nothing is published without your approval.",
-        "title3": "What your client will see",
-        "purpose3": "The final result. It changes only when you approve a section — never halfway."
       },
       "Sections": {
         "loading": "Loading sections…",
@@ -388,12 +330,13 @@
           "confirm": "Delete section",
           "deleting": "Deleting…",
           "error": "Deleting failed. Try again."
-        }
+        },
+        "listTitle": "Your sections",
+        "listDescription": "You name a section, you say what it should cover and for which kind of client. Diaphane writes it from your reference document."
       },
       "Reference": {
         "title": "Reference document",
         "description": "What your documents say, rewritten as one structured text. This is your working reference — your client does not read it.",
-        "backToDocumentation": "Back to documentation",
         "loading": "Loading the document…",
         "loadError": "Could not load the document. Reload the page — nothing has been lost.",
         "neverWritten": "Add a first document: Diaphane writes your reference document as soon as it has one.",
@@ -423,6 +366,66 @@
         "removeNote": "Remove this",
         "applyNotes": "{count, plural, one {Take my note into account} other {Take my # notes into account}}",
         "notWrittenYet": "Your {count, plural, one {# document has} other {# documents have}} not produced a reference document yet. Start it."
+      },
+      "Base": {
+        "back": "Back to the project",
+        "title": "Documentary base",
+        "description": "Your documents on one side, the text Diaphane draws from them on the other. This is your working base: your client does not read it.",
+        "loadError": "Could not load this project.",
+        "retry": "Try again",
+        "documentsTitle": "Your documents",
+        "documentsDescription": "Statements of work, meeting notes, Notion pages: anything that describes the project. Every document added or removed starts the writing again.",
+        "add": "Add a document",
+        "remove": "Remove",
+        "emptyTitle": "No documents yet.",
+        "emptyDescription": "Add one and Diaphane writes your reference document straight away.",
+        "documentsLoadError": "Could not load your documents.",
+        "loadMore": "Show more",
+        "loadingMore": "Loading…",
+        "referenceTitle": "Reference document",
+        "referenceDescription": "What your documents say, brought together as one structured text. Answer the open points and correct anything wrong right inside it.",
+        "toClientContent": "Move on to what your client will read"
+      },
+      "Client": {
+        "back": "Back to the project",
+        "title": "Client content",
+        "description": "You decide the chapters, Diaphane writes them from your documentary base, and nothing goes out without your approval.",
+        "loadError": "Could not load this project.",
+        "retry": "Try again",
+        "lockedTitle": "Your documentary base isn't ready yet.",
+        "lockedDescription": "A section is written from your reference document. Add your documents and let Diaphane write it; you can create your sections right after.",
+        "lockedAction": "Open the documentary base",
+        "previewTitle": "Client preview",
+        "previewDescription": "Exactly what your client sees today. It only changes when you approve a section, and never halfway.",
+        "priority_needs_action": "A section is waiting for your review",
+        "priority_processing": "Writing in progress",
+        "priority_published": "Your client is reading the current version",
+        "priority_empty": "Add a first document",
+        "priority_no_sections": "Create your first section",
+        "priority_needs_attention": "A write did not finish",
+        "visibility_nothing_published": "Your client cannot see anything yet",
+        "visibility_previous_version_visible": "Your client still sees the previous version",
+        "visibility_current_version_visible": "Your client sees the current version",
+        "releaseProgress": "{ready, plural, one {# section ready} other {# sections ready}} of {expected} for the next publication.",
+        "releaseAtomic": "Your client keeps the current version until the new one is complete.",
+        "failedAction": "Open the documentary base",
+        "refreshDelayed": "The automatic refresh is delayed; what you see is a few moments old."
+      },
+      "Entries": {
+        "baseTitle": "Documentary base",
+        "baseEmpty": "No documents",
+        "baseWriting": "Writing in progress",
+        "baseFailed": "The write did not finish",
+        "baseNotWritten": "{count, plural, one {# document, not written yet} other {# documents, not written yet}}",
+        "baseReady": "{count, plural, one {# document} other {# documents}}, reference document up to date",
+        "clientTitle": "Client content",
+        "clientLocked": "Available once your reference document is written",
+        "priority_needs_action": "A section is waiting for your review",
+        "priority_processing": "Writing in progress",
+        "priority_published": "Your client is reading the current version",
+        "priority_empty": "Add a first document",
+        "priority_no_sections": "Create your first section",
+        "priority_needs_attention": "A write did not finish"
       }
     },
     "TeamSummaryCard": {
@@ -595,25 +598,6 @@
         "empty": "Nothing has been published to the client yet.",
         "loadError": "The client preview could not be loaded.",
         "retry": "Try again"
-      },
-      "Workspace": {
-        "priority_needs_action": "Your approval is needed",
-        "priority_processing": "Diaphane is processing your documents",
-        "priority_published": "Client documentation is up to date",
-        "priority_empty": "Add your first document",
-        "priority_needs_attention": "A document could not be processed",
-        "visibility_nothing_published": "Nothing is visible to the client",
-        "visibility_previous_version_visible": "The client still sees the previous version",
-        "visibility_current_version_visible": "The client sees the current version",
-        "refreshDelayed": "Automatic refresh is delayed; the last known data remains visible.",
-        "navLabel": "Documentation workspace sections",
-        "navSource": "1 · Source",
-        "navClient": "3 · Client view",
-        "releaseProgress": "{ready, plural, one {# category approved} other {# categories approved}} of {expected} for the next release.",
-        "releaseAtomic": "The client keeps seeing the current version until the new one is complete.",
-        "failedAction": "See the documents concerned",
-        "navSections": "2 · Your sections",
-        "priority_no_sections": "Create your first section"
       },
       "Removal": {
         "title": "Delete this document?",

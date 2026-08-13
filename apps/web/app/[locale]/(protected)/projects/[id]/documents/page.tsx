@@ -1,13 +1,11 @@
-"use client";
-
 import { use } from "react";
-import { DocumentManagementPage } from "@/features/documentation/components/document-management-page";
+import { DocumentaryBasePage } from "@/features/documentation/components/documentary-base-page";
 
-export default function ProjectDocumentsPage({
+export default function ProjectDocumentaryBasePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  return <DocumentManagementPage projectId={id} />;
+  return <DocumentaryBasePage projectId={id} />;
 }

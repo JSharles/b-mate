@@ -63,14 +63,10 @@ const DYNAMIC_KEYS = [
   /^Landing\.features\.documentPreview\.\w+Description$/,
   // ai-preview.tsx renders `t(`${key}Label`)`.
   /^Landing\.features\.preview\.\w+Label$/,
-  // provenance-sheet.tsx labels each entry by its role and change type.
-  /^Projects\.Documentation\.Provenance\.(change|role)_\w+$/,
-  // canonical-source-view.tsx labels an item by its kind, and a revision by
-  // what triggered it.
-  /^Projects\.Documentation\.Source\.(kind|trigger)_\w+$/,
-  // editorial-profile-settings.tsx renders `t(`${key}_${option}`)` over the
-  // documentation-workspace.tsx renders the aggregate's own state values.
-  /^Projects\.DocumentationNew\.Workspace\.(priority|visibility)_\w+$/,
+  // client-content-page.tsx renders the aggregate's own state values, and
+  // documentation-entry-cards.tsx renders its priority on the client card.
+  /^Projects\.Documentation\.Client\.(priority|visibility)_\w+$/,
+  /^Projects\.Documentation\.Entries\.priority_\w+$/,
   // section-list.tsx derives one state per section from its flags.
   /^Projects\.Documentation\.Sections\.state_\w+$/,
   // section-editor-dialog.tsx maps over DIMENSIONS, building both the label and

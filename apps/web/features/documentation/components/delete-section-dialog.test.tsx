@@ -22,7 +22,6 @@ function section(overrides: Partial<SectionView> = {}): SectionView {
     },
     sortOrder: 0,
     refreshNeeded: false,
-    exclusionCount: 0,
     activeProposal: null,
     hasPublishedContent: true,
     version: 1,
