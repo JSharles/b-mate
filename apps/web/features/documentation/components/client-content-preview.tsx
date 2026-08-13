@@ -16,10 +16,10 @@ function Frame({ children }: { children: React.ReactNode }) {
   return (
     <section className="border-b border-border py-8">
       <StepHeading
-        step={4}
+        step={3}
         namespace="Projects.Documentation.Steps"
-        titleKey="title4"
-        purposeKey="purpose4"
+        titleKey="title3"
+        purposeKey="purpose3"
       />
       {children}
     </section>
@@ -62,10 +62,10 @@ export function ClientContentPreview({ projectId }: { projectId: string }) {
   return (
     <section className="border-b border-border py-8">
       <StepHeading
-        step={4}
+        step={3}
         namespace="Projects.Documentation.Steps"
-        titleKey="title4"
-        purposeKey="purpose4"
+        titleKey="title3"
+        purposeKey="purpose3"
       />
       <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
         <Eye className="size-4 shrink-0" />

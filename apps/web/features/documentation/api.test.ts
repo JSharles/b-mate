@@ -8,6 +8,15 @@ import {
   getClientContentPreview,
   getDocument,
   getDocumentationWorkspace,
+  getPublicClientSections,
+  listSections,
+  createSection,
+  updateSection,
+  reorderSections,
+  composeSection,
+  getSectionProposal,
+  approveSectionProposal,
+  archiveSection,
   getItemProvenance,
   listClarifications,
   listDocuments,
@@ -111,6 +120,27 @@ describe("documentation api", () => {
     });
     await getDocumentationWorkspace("project-1");
     await getClientContentPreview("project-1");
+    await getPublicClientSections("project-1");
+    await listSections("project-1");
+    await createSection("project-1", {
+      name: "Le projet",
+      instructions: "Ce que le client a demandé.",
+      editorial: {
+        length: "balanced",
+        pedagogy: "guided",
+        technicalFamiliarity: "novice",
+        tone: "reassuring",
+      },
+    });
+    await updateSection("project-1", "section-1", {
+      name: "Planning",
+      expectedVersion: 2,
+    });
+    await reorderSections("project-1", ["section-1"]);
+    await composeSection("project-1", "section-1");
+    await getSectionProposal("project-1", "section-1");
+    await approveSectionProposal("project-1", "section-1", 3);
+    await archiveSection("project-1", "section-1");
     await previewDocumentRemoval("project-1", "document-1");
     await confirmDocumentRemoval("project-1", "document-1", {
       expectedDocumentVersion: 2,
@@ -124,6 +154,14 @@ describe("documentation api", () => {
     expect(mockedApiFetch).toHaveBeenCalledWith(
       "/projects/project-1/documentation/documents/document-1/retry-processing",
       { method: "POST" },
+    );
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/documentation/sections/section-1/proposal/approve",
+      { method: "POST", body: JSON.stringify({ expectedVersion: 3 }) },
+    );
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/documentation/sections/section-1",
+      { method: "DELETE" },
     );
     expect(mockedApiFetch).toHaveBeenCalledWith(
       "/projects/project-1/documentation/documents/document-1/removal/retry",

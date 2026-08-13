@@ -12,6 +12,13 @@ import {
   uploadDocument,
   listClarifications,
   resolveClarifications,
+  listSections,
+  createSection,
+  updateSection,
+  archiveSection,
+  composeSection,
+  getSectionProposal,
+  approveSectionProposal,
 } from "./api";
 import {
   canonicalSourceKey,
@@ -27,6 +34,15 @@ import {
   clarificationsKey,
   useClarifications,
   useResolveClarifications,
+  sectionsKey,
+  sectionProposalKey,
+  useSections,
+  useSectionProposal,
+  useCreateSection,
+  useUpdateSection,
+  useArchiveSection,
+  useComposeSection,
+  useApproveSectionProposal,
 } from "./hooks";
 
 vi.mock("./api", () => ({
@@ -41,6 +57,13 @@ vi.mock("./api", () => ({
   confirmWorkingLanguage: vi.fn(),
   listClarifications: vi.fn(),
   resolveClarifications: vi.fn(),
+  listSections: vi.fn(),
+  createSection: vi.fn(),
+  updateSection: vi.fn(),
+  archiveSection: vi.fn(),
+  composeSection: vi.fn(),
+  getSectionProposal: vi.fn(),
+  approveSectionProposal: vi.fn(),
 }));
 
 function wrapper() {
@@ -298,6 +321,108 @@ describe("documentation hooks", () => {
     expect(listClarifications).toHaveBeenLastCalledWith("project-1", {
       status: "open",
       cursor: "cursor-2",
+    });
+  });
+
+  describe("sections", () => {
+    it("keys the list and each section's proposal separately", async () => {
+      vi.mocked(listSections).mockResolvedValue({ sections: [] });
+      vi.mocked(getSectionProposal).mockResolvedValue(null);
+      const { queryClient, Wrapper } = wrapper();
+
+      renderHook(() => useSections("project-1"), { wrapper: Wrapper });
+      renderHook(() => useSectionProposal("project-1", "section-1"), {
+        wrapper: Wrapper,
+      });
+
+      await waitFor(() => {
+        expect(queryClient.getQueryData(sectionsKey("project-1"))).toEqual({
+          sections: [],
+        });
+      });
+      expect(sectionProposalKey("project-1", "section-1")).not.toEqual(
+        sectionsKey("project-1"),
+      );
+    });
+
+    it("refreshes the list after creating, editing, archiving or composing", async () => {
+      vi.mocked(createSection).mockResolvedValue({} as never);
+      vi.mocked(updateSection).mockResolvedValue({} as never);
+      vi.mocked(archiveSection).mockResolvedValue({ archived: true });
+      vi.mocked(composeSection).mockResolvedValue({
+        proposalId: "p",
+        operationId: "o",
+      });
+      const { queryClient, Wrapper } = wrapper();
+      const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+      const create = renderHook(() => useCreateSection("project-1"), {
+        wrapper: Wrapper,
+      });
+      const update = renderHook(
+        () => useUpdateSection("project-1", "section-1"),
+        { wrapper: Wrapper },
+      );
+      const archive = renderHook(() => useArchiveSection("project-1"), {
+        wrapper: Wrapper,
+      });
+      const compose = renderHook(() => useComposeSection("project-1"), {
+        wrapper: Wrapper,
+      });
+
+      await act(async () => {
+        await create.result.current.mutateAsync({
+          name: "Le projet",
+          instructions: "Ce que le client a demandé.",
+          editorial: {
+            length: "balanced",
+            pedagogy: "guided",
+            technicalFamiliarity: "novice",
+            tone: "reassuring",
+          },
+        });
+        await update.result.current.mutateAsync({
+          name: "Planning",
+          expectedVersion: 2,
+        });
+        await archive.result.current.mutateAsync("section-1");
+        await compose.result.current.mutateAsync("section-1");
+      });
+
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: sectionsKey("project-1"),
+      });
+      expect(composeSection).toHaveBeenCalledWith("project-1", "section-1");
+    });
+
+    // Approving is what changes the client's view, so it has to invalidate the
+    // published preview too — not only the section that produced it.
+    it("refreshes the client preview when a proposal is approved", async () => {
+      vi.mocked(approveSectionProposal).mockResolvedValue({
+        proposalId: "p",
+        releaseId: "r",
+        approved: true,
+      });
+      const { queryClient, Wrapper } = wrapper();
+      const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+      const approve = renderHook(
+        () => useApproveSectionProposal("project-1", "section-1"),
+        { wrapper: Wrapper },
+      );
+      await act(async () => {
+        await approve.result.current.mutateAsync(3);
+      });
+
+      expect(approveSectionProposal).toHaveBeenCalledWith(
+        "project-1",
+        "section-1",
+        3,
+      );
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: sectionProposalKey("project-1", "section-1"),
+      });
+      expect(invalidate.mock.calls.length).toBeGreaterThan(2);
     });
   });
 });

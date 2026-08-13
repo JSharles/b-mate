@@ -11,14 +11,15 @@ import { Link } from "@/i18n/navigation";
 import { useDocumentationWorkspace } from "../hooks";
 import { CanonicalSourceView } from "./canonical-source-view";
 import { ClientContentPreview } from "./client-content-preview";
+import { SectionList } from "./section-list";
 
-// What a contributor works, in order: the facts the documents contribute, then
-// what the client ends up reading. The two steps between — reviewing four fixed
-// categories and setting a project-wide tone — are gone with the categories
-// themselves (specs/017). Composing a section replaces them, and its screen is
-// the next thing built.
+// What a contributor works, in order: the facts the documents contribute, the
+// sections they compose from those facts, and what the client ends up reading.
+// The client preview is last on purpose — the page closes on the answer to the
+// only question a contributor arrives with.
 const SECTIONS = [
   { id: "documentation-source", key: "navSource" },
+  { id: "documentation-sections", key: "navSections" },
   { id: "documentation-client", key: "navClient" },
 ] as const;
 
@@ -108,6 +109,9 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
           document and the nav is worse than useless to a keyboard user. */}
       <div id="documentation-source" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <CanonicalSourceView projectId={projectId} />
+      </div>
+      <div id="documentation-sections" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <SectionList projectId={projectId} />
       </div>
       <div id="documentation-client" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <ClientContentPreview projectId={projectId} />

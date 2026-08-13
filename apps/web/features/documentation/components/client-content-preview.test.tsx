@@ -29,7 +29,7 @@ describe("ClientContentPreview", () => {
       isPending: true,
     } as never);
     const { container } = render(<ClientContentPreview projectId="project-1" />);
-    expect(screen.getByRole("heading", { name: /title4/ })).toBeVisible();
+    expect(screen.getByRole("heading", { name: /title3/ })).toBeVisible();
     expect(container.querySelector('[data-slot="skeleton"]')).toBeInTheDocument();
   });
 

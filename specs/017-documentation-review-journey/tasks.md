@@ -79,15 +79,15 @@ The removal is no longer a final phase. It happens in Phase 7 below, which now r
 
 ### Composition, web side
 
-- [ ] T023 [P] [US1] Create `apps/web/features/documentation/components/section-suggestions.ts` holding the starting points as translated copy only — name and worked description per suggestion, plus the free-title option. Nothing here is persisted (FR-004b, research Decision 10)
-- [ ] T024 [US1] Create `apps/web/features/documentation/components/section-editor-dialog.tsx`: choose a suggestion or a free title, then edit name, tone and instructions, all editable before and after creation
-- [ ] T025 [P] [US1] Write `apps/web/features/documentation/components/section-editor-dialog.test.tsx` covering that a suggestion prefills and that every prefilled field stays editable
-- [ ] T026 [US1] Create `apps/web/features/documentation/components/section-list.tsx` showing each section and its state — needs refresh, composing, awaiting review, published — plus the empty state that says no section exists yet and offers to create one (FR-005)
-- [ ] T027 [P] [US1] Write `apps/web/features/documentation/components/section-list.test.tsx` covering the empty state and each section state
-- [ ] T028 [US1] Create `apps/web/features/documentation/components/section-proposal-review.tsx`: the proposed content, and separately the questions composition could not resolve, with the approve action
-- [ ] T029 [P] [US1] Write `apps/web/features/documentation/components/section-proposal-review.test.tsx`, including that questions render outside the proposed content rather than inside it
-- [ ] T030 [US1] Add the section hooks to `apps/web/features/documentation/hooks.ts` and their calls to `apps/web/features/documentation/api.ts`, following the existing `meta.successMessage` / `meta.skipGlobalErrorToast` convention
-- [ ] T031 [US1] Add every string these screens need to `apps/web/messages/fr.json` and `apps/web/messages/en.json`, including the suggestions' worked descriptions
+- [x] T023 [P] [US1] Create `apps/web/features/documentation/components/section-suggestions.ts` holding the starting points as translated copy only — name and worked description per suggestion, plus the free-title option. Nothing here is persisted (FR-004b, research Decision 10)
+- [x] T024 [US1] Create `apps/web/features/documentation/components/section-editor-dialog.tsx`: choose a suggestion or a free title, then edit name, tone and instructions, all editable before and after creation
+- [x] T025 [P] [US1] Write `apps/web/features/documentation/components/section-editor-dialog.test.tsx` covering that a suggestion prefills and that every prefilled field stays editable
+- [x] T026 [US1] Create `apps/web/features/documentation/components/section-list.tsx` showing each section and its state — needs refresh, composing, awaiting review, published — plus the empty state that says no section exists yet and offers to create one (FR-005)
+- [x] T027 [P] [US1] Write `apps/web/features/documentation/components/section-list.test.tsx` covering the empty state and each section state
+- [x] T028 [US1] Create `apps/web/features/documentation/components/section-proposal-review.tsx`: the proposed content, and separately the questions composition could not resolve, with the approve action
+- [x] T029 [P] [US1] Write `apps/web/features/documentation/components/section-proposal-review.test.tsx`, including that questions render outside the proposed content rather than inside it
+- [x] T030 [US1] Add the section hooks to `apps/web/features/documentation/hooks.ts` and their calls to `apps/web/features/documentation/api.ts`, following the existing `meta.successMessage` / `meta.skipGlobalErrorToast` convention
+- [x] T031 [US1] Add every string these screens need to `apps/web/messages/fr.json` and `apps/web/messages/en.json`, including the suggestions' worked descriptions
 
 **Checkpoint**: Quickstart Scenario 1 passes. The four fixed categories still work, untouched, beside this.
 

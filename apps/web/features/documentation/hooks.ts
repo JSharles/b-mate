@@ -8,8 +8,10 @@ import {
 } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
 import type {
+  CreateSectionRequest,
   GuidedCorrectionRequest,
   SourceDocument,
+  UpdateSectionRequest,
 } from "schemas";
 import {
   addNotionDocument,
@@ -26,6 +28,13 @@ import {
   resolveClarifications,
   getClientContentPreview,
   getPublicClientSections,
+  approveSectionProposal,
+  archiveSection,
+  composeSection,
+  createSection,
+  getSectionProposal,
+  listSections,
+  updateSection,
   getDocumentationWorkspace,
   confirmDocumentRemoval,
   previewDocumentRemoval,
@@ -372,5 +381,106 @@ export function useRetryDocumentRemoval(projectId: string) {
       retryDocumentRemoval(projectId, documentId),
     onSuccess: invalidate,
     meta: { skipGlobalErrorToast: true, successMessage: t("removalResumed") },
+  });
+}
+
+// ─── Author-defined client sections (specs/017) ───────────────────────────────
+
+export const sectionsKey = (projectId: string) =>
+  [...documentationKey(projectId), "sections"] as const;
+export const sectionProposalKey = (projectId: string, sectionId: string) =>
+  [...sectionsKey(projectId), sectionId, "proposal"] as const;
+
+export function useSections(projectId: string) {
+  return useQuery({
+    queryKey: sectionsKey(projectId),
+    queryFn: () => listSections(projectId),
+  });
+}
+
+// A section being composed has no completion event to listen for, so the list
+// polls while any section is busy and stops as soon as none is — the same
+// treatment documents already get, for the same reason.
+export function useSectionProposal(projectId: string, sectionId: string) {
+  return useQuery({
+    queryKey: sectionProposalKey(projectId, sectionId),
+    queryFn: () => getSectionProposal(projectId, sectionId),
+    refetchInterval: (query) =>
+      query.state.data?.status === "composing" ? 3_000 : false,
+  });
+}
+
+export function useCreateSection(projectId: string) {
+  const t = useTranslations("Projects.Documentation.Sections.Toasts");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateSectionRequest) => createSection(projectId, body),
+    meta: { skipGlobalErrorToast: true, successMessage: t("created") },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sectionsKey(projectId) });
+      queryClient.invalidateQueries({ queryKey: workspaceKey(projectId) });
+    },
+  });
+}
+
+export function useUpdateSection(projectId: string, sectionId: string) {
+  const t = useTranslations("Projects.Documentation.Sections.Toasts");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateSectionRequest) =>
+      updateSection(projectId, sectionId, body),
+    meta: { skipGlobalErrorToast: true, successMessage: t("updated") },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sectionsKey(projectId) });
+    },
+  });
+}
+
+export function useArchiveSection(projectId: string) {
+  const t = useTranslations("Projects.Documentation.Sections.Toasts");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sectionId: string) => archiveSection(projectId, sectionId),
+    meta: { skipGlobalErrorToast: true, successMessage: t("archived") },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sectionsKey(projectId) });
+      queryClient.invalidateQueries({ queryKey: clientPreviewKey(projectId) });
+    },
+  });
+}
+
+export function useComposeSection(projectId: string) {
+  const t = useTranslations("Projects.Documentation.Sections.Toasts");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sectionId: string) => composeSection(projectId, sectionId),
+    meta: { skipGlobalErrorToast: true, successMessage: t("composing") },
+    onSuccess: (_result, sectionId) => {
+      queryClient.invalidateQueries({ queryKey: sectionsKey(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: sectionProposalKey(projectId, sectionId),
+      });
+    },
+  });
+}
+
+export function useApproveSectionProposal(
+  projectId: string,
+  sectionId: string,
+) {
+  const t = useTranslations("Projects.Documentation.Sections.Toasts");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (expectedVersion: number) =>
+      approveSectionProposal(projectId, sectionId, expectedVersion),
+    meta: { skipGlobalErrorToast: true, successMessage: t("approved") },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sectionsKey(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: sectionProposalKey(projectId, sectionId),
+      });
+      queryClient.invalidateQueries({ queryKey: clientPreviewKey(projectId) });
+      queryClient.invalidateQueries({ queryKey: workspaceKey(projectId) });
+    },
   });
 }

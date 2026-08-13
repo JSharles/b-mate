@@ -69,10 +69,16 @@ const DYNAMIC_KEYS = [
   // what triggered it.
   /^Projects\.Documentation\.Source\.(kind|trigger)_\w+$/,
   // editorial-profile-settings.tsx renders `t(`${key}_${option}`)` over the
-  // four enum dimensions of the editorial profile.
-  /^Projects\.DocumentationNew\.Editorial\.(length|pedagogy|technicalFamiliarity|tone)_\w+$/,
   // documentation-workspace.tsx renders the aggregate's own state values.
   /^Projects\.DocumentationNew\.Workspace\.(priority|visibility)_\w+$/,
+  // section-list.tsx derives one state per section from its flags.
+  /^Projects\.Documentation\.Sections\.state_\w+$/,
+  // section-editor-dialog.tsx maps over DIMENSIONS, building both the label and
+  // each option's name from the field it is rendering.
+  /^Projects\.Documentation\.Sections\.Editor\.(length|pedagogy|technicalFamiliarity|tone)(Label|_\w+)$/,
+  // section-editor-dialog.tsx maps over SECTION_SUGGESTION_IDS from
+  // section-suggestions.ts, building `suggestion_<id>_name`/`_instructions`.
+  /^Projects\.Documentation\.Sections\.Editor\.suggestion_\w+_(name|instructions)$/,
 ];
 
 function escapeRegExp(value) {

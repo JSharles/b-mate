@@ -14,6 +14,10 @@ import type {
   ConfirmDocumentRemoval,
   DocumentRemovalPreview,
   PublicClientSection,
+  CreateSectionRequest,
+  SectionProposalDetail,
+  SectionView,
+  UpdateSectionRequest,
 } from "schemas";
 import { ApiError, apiFetch } from "@/shared/lib/api-client";
 
@@ -228,5 +232,69 @@ export function retryDocumentRemoval(projectId: string, documentId: string) {
   }>(
     `/projects/${projectId}/documentation/documents/${documentId}/removal/retry`,
     { method: "POST" },
+  );
+}
+
+// ─── Author-defined client sections (specs/017) ───────────────────────────────
+
+export function listSections(projectId: string) {
+  return apiFetch<{ sections: SectionView[] }>(
+    `/projects/${projectId}/documentation/sections`,
+  );
+}
+
+export function createSection(projectId: string, body: CreateSectionRequest) {
+  return apiFetch<SectionView>(`/projects/${projectId}/documentation/sections`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateSection(
+  projectId: string,
+  sectionId: string,
+  body: UpdateSectionRequest,
+) {
+  return apiFetch<SectionView>(
+    `/projects/${projectId}/documentation/sections/${sectionId}`,
+    { method: "PATCH", body: JSON.stringify(body) },
+  );
+}
+
+export function archiveSection(projectId: string, sectionId: string) {
+  return apiFetch<{ archived: true }>(
+    `/projects/${projectId}/documentation/sections/${sectionId}`,
+    { method: "DELETE" },
+  );
+}
+
+export function reorderSections(projectId: string, orderedSectionIds: string[]) {
+  return apiFetch<{ sections: SectionView[] }>(
+    `/projects/${projectId}/documentation/sections/order`,
+    { method: "POST", body: JSON.stringify({ orderedSectionIds }) },
+  );
+}
+
+export function composeSection(projectId: string, sectionId: string) {
+  return apiFetch<{ proposalId: string; operationId: string }>(
+    `/projects/${projectId}/documentation/sections/${sectionId}/composition`,
+    { method: "POST" },
+  );
+}
+
+export function getSectionProposal(projectId: string, sectionId: string) {
+  return apiFetch<SectionProposalDetail | null>(
+    `/projects/${projectId}/documentation/sections/${sectionId}/proposal`,
+  );
+}
+
+export function approveSectionProposal(
+  projectId: string,
+  sectionId: string,
+  expectedVersion: number,
+) {
+  return apiFetch<{ proposalId: string; releaseId: string; approved: true }>(
+    `/projects/${projectId}/documentation/sections/${sectionId}/proposal/approve`,
+    { method: "POST", body: JSON.stringify({ expectedVersion }) },
   );
 }

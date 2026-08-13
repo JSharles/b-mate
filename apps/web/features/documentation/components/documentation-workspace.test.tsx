@@ -12,6 +12,9 @@ vi.mock("@/i18n/navigation", () => ({
 vi.mock("./canonical-source-view", () => ({
   CanonicalSourceView: () => <div>canonical-source</div>,
 }));
+vi.mock("./section-list", () => ({
+  SectionList: () => <div>section-list</div>,
+}));
 vi.mock("./client-content-preview", () => ({
   ClientContentPreview: () => <div>client-preview</div>,
 }));
@@ -73,7 +76,7 @@ describe("DocumentationWorkspace", () => {
 
     render(<DocumentationWorkspace projectId="project-1" />);
 
-    const sections = ["canonical-source", "client-preview"];
+    const sections = ["canonical-source", "section-list", "client-preview"];
     const rendered = sections.map((name) => screen.getByText(name));
     for (let index = 0; index < rendered.length - 1; index++) {
       expect(
@@ -83,7 +86,7 @@ describe("DocumentationWorkspace", () => {
     }
 
     const nav = screen.getByRole("navigation", { name: "navLabel" });
-    expect(within(nav).getAllByRole("link")).toHaveLength(2);
+    expect(within(nav).getAllByRole("link")).toHaveLength(3);
     expect(within(nav).getByRole("link", { name: "navClient" })).toHaveAttribute(
       "href",
       "#documentation-client",
