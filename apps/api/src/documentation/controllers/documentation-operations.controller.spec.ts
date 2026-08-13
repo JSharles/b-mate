@@ -1,0 +1,104 @@
+import { NotFoundException } from '@nestjs/common';
+import { GenerationService } from '../../generation/generation.service';
+import { ProjectAccessService } from '../../projects/project-access.service';
+import { SectionProposalService } from '../composition/section-proposal.service';
+import { asPrismaService, createPrismaMock } from '../../test/prisma-mock';
+import { DocumentationOperationsController } from './documentation-operations.controller';
+
+describe('DocumentationOperationsController', () => {
+  function setup() {
+    const prisma = createPrismaMock();
+    const access = { requireContributor: jest.fn() };
+    const generation = { retry: jest.fn() };
+    const projections = { retryComposition: jest.fn() };
+    return {
+      prisma,
+      access,
+      generation,
+      projections,
+      controller: new DocumentationOperationsController(
+        asPrismaService(prisma),
+        access as unknown as ProjectAccessService,
+        generation as unknown as GenerationService,
+        projections as unknown as SectionProposalService,
+      ),
+    };
+  }
+
+  it('queues a replacement only for a contributor-owned attention operation', async () => {
+    const { prisma, access, generation, controller } = setup();
+    prisma.generationOperation.findFirst.mockResolvedValue({
+      id: 'operation-1',
+    });
+    generation.retry.mockResolvedValue({ id: 'operation-2', status: 'queued' });
+
+    await expect(
+      controller.retry({ id: 'user-1' } as never, 'project-1', 'operation-1'),
+    ).resolves.toEqual({
+      operationId: 'operation-2',
+      status: 'queued',
+      actionCode: 'RETRY_QUEUED',
+    });
+    expect(access.requireContributor).toHaveBeenCalledWith(
+      'user-1',
+      'project-1',
+    );
+    expect(prisma.generationOperation.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'operation-1',
+        projectId: 'project-1',
+        status: 'needs_attention',
+      },
+      select: { id: true, type: true },
+    });
+  });
+
+  it.each([
+    ['missing operation', null, undefined],
+    ['non-retryable operation', { id: 'operation-1' }, null],
+  ])('hides a %s', async (_label, operation, replacement) => {
+    const { prisma, generation, controller } = setup();
+    prisma.generationOperation.findFirst.mockResolvedValue(operation);
+    generation.retry.mockResolvedValue(replacement);
+    await expect(
+      controller.retry({ id: 'user-1' } as never, 'project-1', 'operation-1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+  // Re-running a drafting operation made a second one with no draft behind it,
+  // which failed NOT_CURRENT on every attempt and then sat in needs_attention
+  // for good — a button that could only ever make things worse.
+  it('retries a composition through its section, not its dead operation', async () => {
+    const { prisma, generation, projections, controller } = setup();
+    prisma.generationOperation.findFirst.mockResolvedValue({
+      id: 'operation-1',
+      type: 'section_composition',
+    });
+    projections.retryComposition.mockResolvedValue({
+      proposalId: 'proposal-2',
+      operationId: 'operation-2',
+    });
+
+    await expect(
+      controller.retry({ id: 'user-1' } as never, 'project-1', 'operation-1'),
+    ).resolves.toEqual({
+      proposalId: 'proposal-2',
+      operationId: 'operation-2',
+      status: 'composing',
+      actionCode: 'RETRY_QUEUED',
+    });
+    expect(generation.retry).not.toHaveBeenCalled();
+  });
+
+  it('refuses a composition operation whose section is gone', async () => {
+    const { prisma, projections, controller } = setup();
+    prisma.generationOperation.findFirst.mockResolvedValue({
+      id: 'operation-1',
+      type: 'section_composition',
+    });
+    projections.retryComposition.mockResolvedValue(null);
+
+    await expect(
+      controller.retry({ id: 'user-1' } as never, 'project-1', 'operation-1'),
+    ).rejects.toEqual(new NotFoundException({ code: 'NOT_FOUND' }));
+  });
+});

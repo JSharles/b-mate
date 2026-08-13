@@ -48,12 +48,34 @@ const locales = readdirSync(MESSAGES)
 // Keys assembled at runtime (`t(`q${n}`)`), which no static scan can resolve.
 // Listed rather than silently skipped: each entry is a promise that a human
 // checked the call site once, and the list is short enough to re-check.
+// A key built at runtime has no literal call site to find, so it has to be
+// declared here or the check reports it as waste. Each entry names the file
+// that builds it — if that file goes, so does the entry.
 const DYNAMIC_KEYS = [
   // apps/web/features/landing/components/faq-section.tsx builds `q${n}`/`a${n}`
   // from GROUPS[].questionNumbers.
   /^Landing\.faq\.[qa]\d+$/,
   // The three landing sections index their cards by number.
   /^Landing\.(clients|developers|features)\.card\d+(Title|Description)$/,
+  // features-section, how-it-works-section and document-preview all render
+  // `t(`${key}Description`)` over a local list of keys.
+  /^Landing\.(features|howItWorks)\.\w+Description$/,
+  /^Landing\.features\.documentPreview\.\w+Description$/,
+  // ai-preview.tsx renders `t(`${key}Label`)`.
+  /^Landing\.features\.preview\.\w+Label$/,
+  // client-content-page.tsx renders the aggregate's own state values, and
+  // documentation-entry-cards.tsx renders its priority on the client card.
+  /^Projects\.Documentation\.Client\.(priority|visibility)_\w+$/,
+  /^Projects\.Documentation\.Entry\.priority_\w+$/,
+  // section-workspace.tsx derives one state per rubrique from its flags, and
+  // labels the actions from the same value.
+  /^Projects\.Documentation\.Sections\.state_\w+$/,
+  // section-editor-dialog.tsx maps over DIMENSIONS, building both the label and
+  // each option's name from the field it is rendering.
+  /^Projects\.Documentation\.Sections\.Editor\.(length|pedagogy|technicalFamiliarity|tone)(Label|_\w+)$/,
+  // section-editor-dialog.tsx maps over SECTION_SUGGESTION_IDS from
+  // section-suggestions.ts, building `suggestion_<id>_name`/`_instructions`.
+  /^Projects\.Documentation\.Sections\.Editor\.suggestion_\w+_(name|instructions)$/,
 ];
 
 function escapeRegExp(value) {

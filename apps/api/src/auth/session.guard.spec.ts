@@ -3,12 +3,18 @@ import { User } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { SessionGuard } from './session.guard';
 
-function createContext(cookies: Record<string, string> | undefined): {
+function createContext(
+  cookies: Record<string, string> | undefined,
+  locale?: string,
+): {
   context: ExecutionContext;
   request: { cookies: Record<string, string> | undefined; user?: User };
 } {
-  const request: { cookies: Record<string, string> | undefined; user?: User } =
-    { cookies };
+  const request: {
+    cookies: Record<string, string> | undefined;
+    user?: User;
+    header: (name: string) => string | undefined;
+  } = { cookies, header: () => locale };
   const context = {
     switchToHttp: () => ({
       getRequest: () => request,
@@ -18,11 +24,13 @@ function createContext(cookies: Record<string, string> | undefined): {
 }
 
 describe('SessionGuard', () => {
-  let authService: jest.Mocked<Pick<AuthService, 'validateSession'>>;
+  let authService: jest.Mocked<
+    Pick<AuthService, 'validateSession' | 'rememberLocale'>
+  >;
   let guard: SessionGuard;
 
   beforeEach(() => {
-    authService = { validateSession: jest.fn() };
+    authService = { validateSession: jest.fn(), rememberLocale: jest.fn() };
     guard = new SessionGuard(authService as unknown as AuthService);
   });
 
@@ -56,5 +64,38 @@ describe('SessionGuard', () => {
     expect(result).toBe(true);
     expect(request.user).toBe(user);
     expect(authService.validateSession).toHaveBeenCalledWith('good-session');
+  });
+
+  // The language is learned from the interface rather than configured, so
+  // background work can address the developer in it.
+  it('remembers the interface language when it changes', async () => {
+    const user = { id: 'user-1', locale: 'en' } as User;
+    authService.validateSession.mockResolvedValue(user);
+    const { context } = createContext({ session_token: 'good' }, 'fr');
+
+    await guard.canActivate(context);
+
+    expect(authService.rememberLocale).toHaveBeenCalledWith('user-1', 'fr');
+  });
+
+  // A write on every request would be pure waste.
+  it('writes nothing when the language has not changed', async () => {
+    const user = { id: 'user-1', locale: 'fr' } as User;
+    authService.validateSession.mockResolvedValue(user);
+    const { context } = createContext({ session_token: 'good' }, 'fr');
+
+    await guard.canActivate(context);
+
+    expect(authService.rememberLocale).not.toHaveBeenCalled();
+  });
+
+  it('ignores a language it does not support', async () => {
+    const user = { id: 'user-1', locale: 'fr' } as User;
+    authService.validateSession.mockResolvedValue(user);
+    const { context } = createContext({ session_token: 'good' }, 'xx');
+
+    await guard.canActivate(context);
+
+    expect(authService.rememberLocale).not.toHaveBeenCalled();
   });
 });

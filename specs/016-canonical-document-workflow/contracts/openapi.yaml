@@ -1,0 +1,1010 @@
+openapi: 3.1.0
+info:
+  title: Diaphane Canonical Documentation API
+  version: 0.1.0
+  description: >-
+    Contributor documentary workflow and published client category contract.
+    All routes require the existing server-side session cookie. Contributor-only
+    resources return the same 404 shape for missing and unauthorized objects.
+servers:
+  - url: http://localhost:3001
+tags:
+  - name: Documentation workspace
+  - name: Source documents
+  - name: Canonical source
+  - name: Clarifications
+  - name: Factual review
+  - name: Editorial profile
+  - name: Client publication
+
+paths:
+  /projects/{projectId}/documentation:
+    get:
+      tags: [Documentation workspace]
+      summary: Read the compact contributor workflow aggregate
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Current source, actions, processing and client visibility
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentationWorkspace' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+  /projects/{projectId}/documentation/documents:
+    get:
+      tags: [Source documents]
+      summary: List source-document contributions
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Cursor page
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CursorPage'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/SourceDocument' }
+    post:
+      tags: [Source documents]
+      summary: Upload and durably acknowledge an original document
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Original stored and extraction operation queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentAcknowledgement' }
+        '400': { $ref: '#/components/responses/SafeError' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+  /projects/{projectId}/documentation/documents/notion:
+    post:
+      tags: [Source documents]
+      summary: Snapshot a connected Notion page and queue extraction
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pageUrl]
+              properties:
+                pageUrl: { type: string, format: uri, maxLength: 2048 }
+      responses:
+        '201':
+          description: Page snapshot stored and extraction queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentAcknowledgement' }
+        '400': { $ref: '#/components/responses/SafeError' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+  /projects/{projectId}/documentation/documents/{documentId}:
+    get:
+      tags: [Source documents]
+      summary: Read contributor-only document detail and original link
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Document with short-lived original URL when available
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SourceDocumentDetail' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+  /projects/{projectId}/documentation/documents/{documentId}/removal-preview:
+    get:
+      tags: [Source documents]
+      summary: Preview the likely documentary impact before confirmation
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Impact preview based on current provenance
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemovalPreview' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+  /projects/{projectId}/documentation/documents/{documentId}/removal:
+    post:
+      tags: [Source documents]
+      summary: Confirm asynchronous document removal and recalculation
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedDocumentVersion, expectedSourceRevisionId, confirmed]
+              properties:
+                expectedDocumentVersion: { type: integer, minimum: 1 }
+                expectedSourceRevisionId: { type: [string, 'null'], format: uuid }
+                confirmed: { const: true }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedOperation' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+  /projects/{projectId}/documentation/source:
+    get:
+      tags: [Canonical source]
+      summary: Read a canonical source revision, current by default
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: revisionId
+          in: query
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Canonical items grouped by fixed category
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CanonicalSourcePage' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+  /projects/{projectId}/documentation/source/revisions:
+    get:
+      tags: [Canonical source]
+      summary: List immutable source revision headers
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Revision history page
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CursorPage'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/SourceRevisionSummary' }
+
+  /projects/{projectId}/documentation/source/items/{itemId}/provenance:
+    get:
+      tags: [Canonical source]
+      summary: Read current/historical provenance for one information identity
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/ItemId'
+        - name: revisionId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Contributor-only origins and change history
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItemProvenance' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+  /projects/{projectId}/documentation/source/items/{itemId}/corrections:
+    post:
+      tags: [Canonical source]
+      summary: Submit a guided attributable factual correction
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/ItemId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedSourceRevisionId, correctedContent]
+              properties:
+                expectedSourceRevisionId: { type: string, format: uuid }
+                correctedContent: { type: string, minLength: 1, maxLength: 10000 }
+                reason: { type: string, maxLength: 2000 }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedOperation' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+  /projects/{projectId}/documentation/source/language-proposals:
+    post:
+      tags: [Canonical source]
+      summary: Prepare an explicit working-language change confirmation
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedSourceRevisionId, language]
+              properties:
+                expectedSourceRevisionId: { type: [string, 'null'], format: uuid }
+                language: { $ref: '#/components/schemas/ProjectLanguage' }
+      responses:
+        '201':
+          description: Confirmation proposal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LanguageProposal' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /projects/{projectId}/documentation/source/language-proposals/{proposalId}/confirm:
+    post:
+      tags: [Canonical source]
+      summary: Confirm language change and queue a new source revision
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/ProposalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmed]
+              properties:
+                confirmed: { const: true }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedOperation' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /projects/{projectId}/documentation/clarifications:
+    get:
+      tags: [Clarifications]
+      summary: List every material clarification by impact
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, left_open, answered, superseded] }
+        - name: categoryKey
+          in: query
+          schema: { $ref: '#/components/schemas/CategoryKey' }
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Ranked cursor page; total is the complete count, not a business cap
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CursorPage'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Clarification' }
+
+  /projects/{projectId}/documentation/clarifications/resolutions:
+    post:
+      tags: [Clarifications]
+      summary: Answer or deliberately leave open one or more clarifications
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedSourceRevisionId, resolutions]
+              properties:
+                expectedSourceRevisionId: { type: string, format: uuid }
+                resolutions:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [clarificationId, expectedVersion, action]
+                    properties:
+                      clarificationId: { type: string, format: uuid }
+                      expectedVersion: { type: integer, minimum: 1 }
+                      action: { type: string, enum: [answer, leave_open] }
+                      answer: { type: string, minLength: 1, maxLength: 10000 }
+      responses:
+        '202':
+          description: Answer creates an operation/new source revision; leave-open-only may complete immediately
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationOutcome' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /projects/{projectId}/documentation/category-drafts:
+    get:
+      tags: [Factual review]
+      summary: List active impacted-category drafts and catch-up state
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: One active item per category at most
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CategoryDraftSummary' }
+
+  /projects/{projectId}/documentation/category-drafts/{draftId}:
+    get:
+      tags: [Factual review]
+      summary: Read factual draft, current reference, provenance and open points
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/DraftId'
+      responses:
+        '200':
+          description: Contributor-only review detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryDraftDetail' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+  /projects/{projectId}/documentation/category-drafts/{draftId}/accept:
+    post:
+      tags: [Factual review]
+      summary: Validate the exact factual draft version
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/DraftId'
+      requestBody: { $ref: '#/components/requestBodies/DraftMutation' }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedOperation' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /projects/{projectId}/documentation/category-drafts/{draftId}/discard:
+    post:
+      tags: [Factual review]
+      summary: Discard the exact draft and schedule catch-up if needed
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/DraftId'
+      requestBody: { $ref: '#/components/requestBodies/DraftMutation' }
+      responses:
+        '202':
+          description: Closed immediately or with a queued catch-up operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationOutcome' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /projects/{projectId}/documentation/category-drafts/{draftId}/correct:
+    post:
+      tags: [Factual review]
+      summary: Request a factual correction, never an editorial rewrite
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/DraftId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, instruction]
+              properties:
+                expectedVersion: { type: integer, minimum: 1 }
+                instruction: { type: string, minLength: 1, maxLength: 5000 }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedOperation' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422':
+          description: Instruction is editorial and belongs in profile settings
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SafeError'
+                  - type: object
+                    properties:
+                      code: { const: EDITORIAL_INSTRUCTION_REQUIRED }
+
+  /projects/{projectId}/editorial-profile:
+    get:
+      tags: [Editorial profile]
+      summary: Read confirmed profile and active proposal state
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Provider-neutral contributor settings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EditorialProfileState' }
+
+  /projects/{projectId}/editorial-profile/proposals:
+    post:
+      tags: [Editorial profile]
+      summary: Save candidate values and generate a real preview when possible
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EditorialProfileInput' }
+      responses:
+        '201':
+          description: Preview pending or profile saved because no validated content exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EditorialProposal' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /projects/{projectId}/editorial-profile/proposals/{proposalId}:
+    get:
+      tags: [Editorial profile]
+      summary: Poll/read before-and-after preview state
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/ProposalId'
+      responses:
+        '200':
+          description: Candidate and real project preview
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EditorialProposal' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+    delete:
+      tags: [Editorial profile]
+      summary: Cancel an unconfirmed proposal without changing published content
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/ProposalId'
+      responses:
+        '204': { description: Cancelled }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /projects/{projectId}/editorial-profile/proposals/{proposalId}/confirm:
+    post:
+      tags: [Editorial profile]
+      summary: Confirm profile and queue one all-category release
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/ProposalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion, confirmed]
+              properties:
+                expectedVersion: { type: integer, minimum: 1 }
+                confirmed: { const: true }
+      responses:
+        '202':
+          description: Full release queued, or saved immediately when there is no content
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MutationOutcome' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /projects/{projectId}/documentation/client-content:
+    get:
+      tags: [Client publication]
+      summary: Contributor preview of published or pending client content
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: release
+          in: query
+          required: true
+          schema: { type: string, enum: [current, pending] }
+        - $ref: '#/components/parameters/Locale'
+      responses:
+        '200':
+          description: Exact shared renderer input with contributor visibility label
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientContentView' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+  /projects/{projectId}/documentation/operations/{operationId}/retry:
+    post:
+      tags: [Documentation workspace]
+      summary: Create a replacement operation under the current permitted policy
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: operationId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedOperation' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /projects/{projectId}/categories/content:
+    get:
+      tags: [Client publication]
+      summary: Read only the current published client release
+      description: Existing client contract, reimplemented to resolve the atomic release pointer only.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/Locale'
+      responses:
+        '200':
+          description: Ordered non-empty fixed categories, with no source/provenance/draft diagnostics
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClientCategory' }
+        '404': { $ref: '#/components/responses/HiddenNotFound' }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    DraftId:
+      name: draftId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ProposalId:
+      name: proposalId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    Locale:
+      name: locale
+      in: query
+      required: true
+      schema: { type: string, enum: [en, fr] }
+
+  requestBodies:
+    DraftMutation:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [expectedVersion]
+            properties:
+              expectedVersion: { type: integer, minimum: 1 }
+
+  responses:
+    AcceptedOperation:
+      description: Durable work accepted; prior validated/published state is unchanged
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AsyncOperation' }
+    HiddenNotFound:
+      description: Missing or unauthorized; intentionally indistinguishable
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/SafeError'
+              - type: object
+                properties:
+                  code: { const: NOT_FOUND }
+    Conflict:
+      description: Optimistic concurrency token is stale
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/SafeError'
+              - type: object
+                properties:
+                  code:
+                    type: string
+                    enum: [STALE_SOURCE_REVISION, STALE_DRAFT, STALE_CLARIFICATION, CONFLICT]
+    SafeError:
+      description: Localizable safe error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/SafeError' }
+
+  schemas:
+    ProjectLanguage: { type: string, enum: [en, fr] }
+    CategoryKey: { type: string, enum: [overview, how_it_works, planning, other] }
+    SafeError:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+        parameters: { type: object, additionalProperties: true }
+    AsyncOperation:
+      type: object
+      required: [operationId, status]
+      properties:
+        operationId: { type: string, format: uuid }
+        status: { type: string, enum: [queued, running, waiting_provider, retry_scheduled] }
+    MutationOutcome:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [completed, queued] }
+        operationId: { type: [string, 'null'], format: uuid }
+    CursorPage:
+      type: object
+      required: [items, total, nextCursor]
+      properties:
+        items: { type: array, items: {} }
+        total: { type: integer, minimum: 0 }
+        nextCursor: { type: [string, 'null'] }
+
+    DocumentationWorkspace:
+      type: object
+      required: [workspaceVersion, primaryState, actions, source, documents, clarifications, categories, clientVisibility, hasActiveOperations, refreshAfterMs]
+      properties:
+        workspaceVersion: { type: integer, minimum: 0 }
+        primaryState: { type: string, enum: [idle, processing, retrying, clarification_available, review_required, publication_preparing, needs_attention] }
+        actions:
+          type: array
+          items: { $ref: '#/components/schemas/WorkspaceAction' }
+        source:
+          type: object
+          required: [workingLanguage, revisionId, revisionSequence, itemCount]
+          properties:
+            workingLanguage: { $ref: '#/components/schemas/ProjectLanguage' }
+            revisionId: { type: [string, 'null'], format: uuid }
+            revisionSequence: { type: integer, minimum: 0 }
+            itemCount: { type: integer, minimum: 0 }
+        documents:
+          type: object
+          required: [total, activeCount, attentionCount]
+          properties:
+            total: { type: integer, minimum: 0 }
+            activeCount: { type: integer, minimum: 0 }
+            attentionCount: { type: integer, minimum: 0 }
+        clarifications:
+          type: object
+          required: [openCount, leftOpenCount]
+          properties:
+            openCount: { type: integer, minimum: 0 }
+            leftOpenCount: { type: integer, minimum: 0 }
+        categories:
+          type: array
+          items: { $ref: '#/components/schemas/CategoryWorkspaceState' }
+        clientVisibility: { $ref: '#/components/schemas/ClientVisibility' }
+        editorialProfileRevisionId: { type: [string, 'null'], format: uuid }
+        hasActiveOperations: { type: boolean }
+        refreshAfterMs: { type: integer, enum: [5000, 30000] }
+        updateWarningCode: { type: [string, 'null'] }
+    WorkspaceAction:
+      type: object
+      required: [id, class, code]
+      properties:
+        id: { type: string }
+        class: { type: string, enum: [required, optional, automatic, attention] }
+        code: { type: string }
+        target: { type: [string, 'null'] }
+        count: { type: integer, minimum: 0 }
+    CategoryWorkspaceState:
+      type: object
+      required: [categoryKey, state]
+      properties:
+        categoryKey: { $ref: '#/components/schemas/CategoryKey' }
+        state: { type: string, enum: [empty, current, generating, review_required, publishing, attention] }
+        targetSourceRevisionId: { type: [string, 'null'], format: uuid }
+        validatedSourceRevisionId: { type: [string, 'null'], format: uuid }
+        publishedReferenceId: { type: [string, 'null'], format: uuid }
+        activeDraftId: { type: [string, 'null'], format: uuid }
+    ClientVisibility:
+      type: object
+      required: [state, pendingReadyCount, pendingExpectedCount]
+      properties:
+        state: { type: string, enum: [none, current, previous_while_preparing] }
+        publishedReleaseId: { type: [string, 'null'], format: uuid }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        pendingReleaseId: { type: [string, 'null'], format: uuid }
+        pendingReadyCount: { type: integer, minimum: 0, maximum: 4 }
+        pendingExpectedCount: { type: integer, minimum: 0, maximum: 4 }
+
+    SourceDocument:
+      type: object
+      required: [id, kind, status, version, title, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [upload, notion] }
+        status: { type: string, enum: [received, extracting, ready_to_consolidate, incorporating, incorporated, retrying, failed, removal_pending, removal_failed, removed] }
+        version: { type: integer, minimum: 1 }
+        title: { type: string }
+        failureCode: { type: [string, 'null'] }
+        incorporatedInRevisionId: { type: [string, 'null'], format: uuid }
+        createdAt: { type: string, format: date-time }
+    SourceDocumentDetail:
+      allOf:
+        - $ref: '#/components/schemas/SourceDocument'
+        - type: object
+          properties:
+            originalFileName: { type: [string, 'null'] }
+            originalMimeType: { type: [string, 'null'] }
+            originalSizeBytes: { type: [integer, 'null'], minimum: 0 }
+            originalDownloadUrl: { type: [string, 'null'], format: uri }
+            externalUrl: { type: [string, 'null'], format: uri }
+            affectedCategories:
+              type: array
+              items: { $ref: '#/components/schemas/CategoryKey' }
+    DocumentAcknowledgement:
+      type: object
+      required: [document, operation]
+      properties:
+        document: { $ref: '#/components/schemas/SourceDocument' }
+        operation: { $ref: '#/components/schemas/AsyncOperation' }
+    RemovalPreview:
+      type: object
+      required: [documentId, expectedDocumentVersion, expectedSourceRevisionId, affectedCategories, solelySupportedItemCount, sharedSupportItemCount, clientVisibility]
+      properties:
+        documentId: { type: string, format: uuid }
+        expectedDocumentVersion: { type: integer }
+        expectedSourceRevisionId: { type: [string, 'null'], format: uuid }
+        affectedCategories:
+          type: array
+          items: { $ref: '#/components/schemas/CategoryKey' }
+        solelySupportedItemCount: { type: integer, minimum: 0 }
+        sharedSupportItemCount: { type: integer, minimum: 0 }
+        clientVisibility: { $ref: '#/components/schemas/ClientVisibility' }
+
+    SourceRevisionSummary:
+      type: object
+      required: [id, sequence, trigger, summary, impactedCategories, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        sequence: { type: integer, minimum: 1 }
+        trigger: { type: string, enum: [document_added, document_removed, clarification_answered, guided_correction, working_language_changed] }
+        summary: { type: string }
+        impactedCategories:
+          type: array
+          items: { $ref: '#/components/schemas/CategoryKey' }
+        createdAt: { type: string, format: date-time }
+    CanonicalSourcePage:
+      type: object
+      required: [revision, workingLanguage, items, total, nextCursor]
+      properties:
+        revision: { $ref: '#/components/schemas/SourceRevisionSummary' }
+        workingLanguage: { $ref: '#/components/schemas/ProjectLanguage' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CanonicalItem' }
+        total: { type: integer, minimum: 0 }
+        nextCursor: { type: [string, 'null'] }
+    CanonicalItem:
+      type: object
+      required: [id, kind, state, content, categories, provenanceCount]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [fact, decision, date, figure, constraint, explanation, open_point] }
+        state: { type: string, enum: [confirmed, point_to_clarify] }
+        content: { type: string }
+        categories:
+          type: array
+          items: { $ref: '#/components/schemas/CategoryKey' }
+        provenanceCount: { type: integer, minimum: 1 }
+        clarificationIds:
+          type: array
+          items: { type: string, format: uuid }
+    ItemProvenance:
+      type: object
+      required: [itemId, revisionId, origins, history]
+      properties:
+        itemId: { type: string, format: uuid }
+        revisionId: { type: string, format: uuid }
+        origins:
+          type: array
+          items:
+            type: object
+            required: [kind, label, role]
+            properties:
+              kind: { type: string, enum: [document, contributor] }
+              documentId: { type: [string, 'null'], format: uuid }
+              label: { type: string }
+              locator: { type: [object, 'null'], additionalProperties: true }
+              excerpt: { type: [string, 'null'] }
+              role: { type: string, enum: [supports, conflicts, supersedes, confirms] }
+        history:
+          type: array
+          items:
+            type: object
+            required: [revisionId, revisionSequence, change, createdAt]
+            properties:
+              revisionId: { type: string, format: uuid }
+              revisionSequence: { type: integer }
+              change: { type: string }
+              createdAt: { type: string, format: date-time }
+    LanguageProposal:
+      type: object
+      required: [id, fromLanguage, toLanguage, expectedSourceRevisionId, impactedItemCount, version]
+      properties:
+        id: { type: string, format: uuid }
+        fromLanguage: { $ref: '#/components/schemas/ProjectLanguage' }
+        toLanguage: { $ref: '#/components/schemas/ProjectLanguage' }
+        expectedSourceRevisionId: { type: [string, 'null'], format: uuid }
+        impactedItemCount: { type: integer, minimum: 0 }
+        version: { type: integer, minimum: 1 }
+
+    Clarification:
+      type: object
+      required: [id, question, impactRank, impactExplanation, status, version, categories, evidence]
+      properties:
+        id: { type: string, format: uuid }
+        question: { type: string }
+        impactRank: { type: integer, minimum: 1 }
+        impactExplanation: { type: string }
+        status: { type: string, enum: [open, left_open, answered, superseded] }
+        version: { type: integer, minimum: 1 }
+        categories:
+          type: array
+          items: { $ref: '#/components/schemas/CategoryKey' }
+        evidence:
+          type: array
+          items:
+            type: object
+            required: [label]
+            properties:
+              documentId: { type: [string, 'null'], format: uuid }
+              label: { type: string }
+              excerpt: { type: [string, 'null'] }
+              locator: { type: [object, 'null'], additionalProperties: true }
+
+    StructuredContent:
+      type: object
+      required: [blocks]
+      properties:
+        blocks:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [kind, text, informationItemIds, clarificationIds]
+            properties:
+              kind: { type: string, enum: [paragraph, heading, point_to_clarify] }
+              text: { type: string, minLength: 1 }
+              informationItemIds:
+                type: array
+                items: { type: string, format: uuid }
+              clarificationIds:
+                type: array
+                items: { type: string, format: uuid }
+    CategoryDraftSummary:
+      type: object
+      required: [id, categoryKey, status, sourceRevisionId, trigger, version, openClarificationCount]
+      properties:
+        id: { type: string, format: uuid }
+        categoryKey: { $ref: '#/components/schemas/CategoryKey' }
+        status: { type: string, enum: [generating, pending_review, correction_generating, failed] }
+        sourceRevisionId: { type: string, format: uuid }
+        targetSourceRevisionId: { type: string, format: uuid }
+        trigger: { type: string }
+        version: { type: integer, minimum: 1 }
+        openClarificationCount: { type: integer, minimum: 0 }
+        failureCode: { type: [string, 'null'] }
+    CategoryDraftDetail:
+      allOf:
+        - $ref: '#/components/schemas/CategoryDraftSummary'
+        - type: object
+          properties:
+            currentReference: { anyOf: [{ $ref: '#/components/schemas/StructuredContent' }, { type: 'null' }] }
+            proposedReference: { anyOf: [{ $ref: '#/components/schemas/StructuredContent' }, { type: 'null' }] }
+            changeSummary: { type: [string, 'null'] }
+            provenanceSummary: { type: [object, 'null'], additionalProperties: true }
+            clarifications:
+              type: array
+              items: { $ref: '#/components/schemas/Clarification' }
+            clientVisibility: { $ref: '#/components/schemas/ClientVisibility' }
+
+    EditorialProfileInput:
+      type: object
+      required: [baseProfileRevisionId, length, pedagogy, technicalFamiliarity, tone]
+      properties:
+        baseProfileRevisionId: { type: [string, 'null'], format: uuid }
+        length: { type: string, enum: [concise, balanced, detailed] }
+        pedagogy: { type: string, enum: [direct, guided, highly_explanatory] }
+        technicalFamiliarity: { type: string, enum: [novice, informed, technical] }
+        tone: { type: string, enum: [reassuring, neutral, direct, formal] }
+        guidance: { type: [string, 'null'], maxLength: 2000 }
+    EditorialProfileState:
+      type: object
+      required: [confirmed, activeProposal]
+      properties:
+        confirmed: { anyOf: [{ $ref: '#/components/schemas/EditorialProfileInput' }, { type: 'null' }] }
+        confirmedRevisionId: { type: [string, 'null'], format: uuid }
+        activeProposal: { anyOf: [{ $ref: '#/components/schemas/EditorialProposal' }, { type: 'null' }] }
+    EditorialProposal:
+      type: object
+      required: [id, version, status, candidate]
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer, minimum: 1 }
+        status: { type: string, enum: [preview_pending, preview_ready, saved_without_preview, confirmed, cancelled, failed, expired] }
+        candidate: { $ref: '#/components/schemas/EditorialProfileInput' }
+        operationId: { type: [string, 'null'], format: uuid }
+        preview:
+          anyOf:
+            - type: object
+              required: [categoryKey, before, after]
+              properties:
+                categoryKey: { $ref: '#/components/schemas/CategoryKey' }
+                before: { $ref: '#/components/schemas/StructuredContent' }
+                after: { $ref: '#/components/schemas/StructuredContent' }
+            - type: 'null'
+        failureCode: { type: [string, 'null'] }
+
+    ClientCategory:
+      type: object
+      required: [categoryKey, content]
+      properties:
+        categoryKey: { $ref: '#/components/schemas/CategoryKey' }
+        content: { $ref: '#/components/schemas/PublicStructuredContent' }
+    PublicStructuredContent:
+      description: >-
+        Release rendering payload. Internal information-item and clarification
+        identifiers are intentionally removed at this serialization boundary.
+      type: object
+      required: [blocks]
+      properties:
+        blocks:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [kind, text]
+            properties:
+              kind: { type: string, enum: [paragraph, heading, point_to_clarify] }
+              text: { type: string, minLength: 1 }
+    ClientContentView:
+      type: object
+      required: [mode, visibleToClient, categories]
+      properties:
+        mode: { type: string, enum: [published, pending] }
+        visibleToClient: { type: boolean }
+        releaseId: { type: [string, 'null'], format: uuid }
+        categories:
+          type: array
+          items: { $ref: '#/components/schemas/ClientCategory' }
+
+security:
+  - sessionCookie: []

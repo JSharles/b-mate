@@ -78,7 +78,7 @@ export class NotionConnectionService {
 
   // For `resources` to resolve the stored token when creating a
   // Notion-sourced resource — no membership check here, the caller
-  // (ResourcesService.createFromNotion) already did its own.
+  // The documentation ingestion service performs its own membership check.
   async getDecryptedToken(projectId: string): Promise<string | null> {
     const connection = await this.prisma.notionConnection.findUnique({
       where: { projectId },
@@ -87,7 +87,7 @@ export class NotionConnectionService {
     return connection ? decryptToken(connection.encryptedToken) : null;
   }
 
-  // Mirrors BoardConnectionsService/ResourcesService's own membership
+  // Mirrors the board and documentation services' own membership
   // checks — kept as a separate copy per Constitution III (Feature
   // Isolation). A client-role member gets the exact same response as a
   // non-member.

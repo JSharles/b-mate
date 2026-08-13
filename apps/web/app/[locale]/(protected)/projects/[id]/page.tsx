@@ -4,14 +4,14 @@ import { TriangleAlert, Video } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Suspense, use } from "react";
 import { BoardConnectionCard } from "@/features/board-connections/components/board-connection-card";
+import { DocumentationSummaryCard } from "@/features/documentation/components/documentation-summary-card";
+import { DocumentarySourceRow } from "@/features/documentation/components/documentary-source-row";
 import { NotionConnectionCard } from "@/features/notion-connection/components/notion-connection-card";
 import { MeetingCard } from "@/features/projects/components/meeting-card";
 import { MeetingLinkCard } from "@/features/projects/components/meeting-link-card";
 import { ProjectPreferences } from "@/features/projects/components/project-preferences";
 import { TeamPanel } from "@/features/projects/components/team-panel";
 import { TeamSummaryCard } from "@/features/projects/components/team-summary-card";
-import { ReferenceDraftQueue } from "@/features/resources/components/reference-draft-queue";
-import { ResourcesList } from "@/features/resources/components/resources-list";
 import { useProject } from "@/features/projects/hooks";
 import { Button } from "@/shared/components/ui/button";
 import { SettingsSectionHeading } from "@/shared/components/settings-section-heading";
@@ -85,11 +85,19 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         // supplies its own vertical rhythm via padding + border-b, so an
         // extra gap between them would just double up the spacing.
         <div className="flex flex-col">
-          <ResourcesList projectId={id} />
-          <ReferenceDraftQueue projectId={id} />
+          <DocumentationSummaryCard projectId={id} />
           <TeamSummaryCard projectId={id} isAdmin={project.isAdmin} />
 
-          <SettingsSectionHeading>{t("tools")}</SettingsSectionHeading>
+          {/* The documents the client documentation runs on: configured once,
+              revisited when they change — the same kind of thing as a Board or
+              a Notion connection, and placed with them rather than beside the
+              feature they serve (specs/019). */}
+          <SettingsSectionHeading>{t("sources")}</SettingsSectionHeading>
+          <DocumentarySourceRow projectId={id} />
+
+          <div id="project-tools">
+            <SettingsSectionHeading>{t("tools")}</SettingsSectionHeading>
+          </div>
           {/* Suspense: BoardConnectionCard reads useSearchParams (the
               `connectBoard` param set by the GitHub OAuth callback
               redirect), which Next.js requires to be boundary-wrapped. */}

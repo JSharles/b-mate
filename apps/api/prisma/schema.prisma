@@ -48,21 +48,6 @@ enum AccountKind {
   client
 }
 
-// specs/011-project-resources.
-enum ResourceSource {
-  upload
-  notion
-}
-
-// specs/015: `ready_for_review` and `published` served a per-document
-// publication step that no longer exists — validating a category's reference
-// content is now the only act that makes anything client-visible (Q3).
-enum ResourceStatus {
-  pending
-  absorbed
-  failed
-}
-
 // A developer can juggle clients in several countries at once — this is a
 // per-project preference (not a per-user one) so a French client and a US
 // client on two different projects each see dates formatted the way they
@@ -79,6 +64,108 @@ enum ProjectDateFormat {
 enum ProjectLanguage {
   en
   fr
+}
+
+enum SourceDocumentKind {
+  upload
+  notion
+}
+
+// A document is stored, read once to check it can be read at all, and then it
+// is part of the corpus. Nothing else happens to it: every reference write
+// re-reads the originals, so there is no pipeline behind a document any more
+// (specs/018).
+enum SourceDocumentStatus {
+  received
+  incorporated
+  failed
+  removed
+}
+
+enum EditorialLength {
+  concise
+  balanced
+  detailed
+}
+
+enum EditorialPedagogy {
+  direct
+  guided
+  highly_explanatory
+}
+
+enum ClientTechnicalFamiliarity {
+  novice
+  informed
+  technical
+}
+
+enum EditorialTone {
+  reassuring
+  neutral
+  direct
+  formal
+}
+
+enum ClientReleaseReason {
+  section_approval
+  section_removal
+}
+
+enum ClientReleaseStatus {
+  queued
+  preparing
+  validating
+  ready
+  published
+  failed
+  superseded
+}
+
+enum GenerationOperationType {
+  reference_document
+  section_composition
+  client_derivation
+}
+
+enum GenerationOperationStatus {
+  queued
+  running
+  waiting_provider
+  retry_scheduled
+  succeeded
+  needs_attention
+  cancelled
+  superseded
+}
+
+enum GenerationTransport {
+  sync
+  batch
+}
+
+enum GenerationAttemptStatus {
+  submitting
+  submitted
+  polling
+  succeeded
+  failed
+  invalid_output
+  abandoned_unknown
+  cancelled
+}
+
+enum GenerationErrorClass {
+  transient
+  rate_limited
+  credit_exhausted
+  model_unavailable
+  invalid_request
+  input_unprocessable
+  invalid_output
+  provider_terminal
+  policy_denied
+  unknown
 }
 
 model User {
@@ -112,14 +199,23 @@ model User {
   website      String?
   roleTitle    String?     @map("role_title")
   status       String?
+  // Which language this person reads the product in. Not a setting they fill:
+  // the interface already knows it on every request and writes it here, so
+  // background work — which has no browser — can still address them in it
+  // (specs/018, FR-023).
+  locale       String?     @db.VarChar(8)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  memberships    ProjectMember[]
-  assignedTasks  Task[]
-  sessions       Session[]
-  addedResources Resource[]
+  memberships   ProjectMember[]
+  assignedTasks Task[]
+  sessions      Session[]
+
+  sourceDocuments          SourceDocument[]  @relation("SourceDocumentAuthor")
+  authoredClientSections   ClientSection[]   @relation("ClientSectionAuthor")
+  approvedSectionProposals SectionProposal[] @relation("SectionProposalApprover")
+  notes                    Note[]            @relation("NoteAuthor")
 
   @@map("users")
 }
@@ -140,14 +236,14 @@ model Session {
 }
 
 model Project {
-  id                 String  @id @default(uuid()) @db.Uuid
+  id                 String             @id @default(uuid()) @db.Uuid
   title              String
   status             String?
-  progressPercentage Int?    @map("progress_percentage")
+  progressPercentage Int?               @map("progress_percentage")
   // Not yet surfaced client-side — a Settings field the developer can fill
   // in today so meetings have somewhere to live once the meeting/summary
   // feature (docs/PRODUCT.md "Working notes") is actually built.
-  meetingUrl         String? @map("meeting_url")
+  meetingUrl         String?            @map("meeting_url")
   // Not yet consumed by any date-rendering or content-localization logic
   // elsewhere in the app (same "field exists before the feature that reads
   // it" precedent as meetingUrl above) — a developer can set them per
@@ -156,20 +252,34 @@ model Project {
   dateFormat         ProjectDateFormat? @map("date_format")
   language           ProjectLanguage?
 
+  // One reference document may be written at a time, guaranteed by the unique
+  // constraint rather than by a check the next caller might forget — the same
+  // procedure ClientSection.activeProposalId uses.
+  activeReferenceDocumentId String? @unique @map("active_reference_document_id") @db.Uuid
+  // FR-006: the documents or the notes moved, so the document is out of date.
+  // It says so and waits; it never rewrites itself.
+  referenceNeedsRewrite     Boolean @default(true) @map("reference_needs_rewrite")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  members            ProjectMember[]
-  invitations        Invitation[]
-  tasks              Task[]
-  boardConnection    BoardConnection?
-  vulgarizedTasks    VulgarizedTask[]
-  taskProgress       TaskProgress[]
-  resources          Resource[]
-  notionConnection   NotionConnection?
-  categoryReferences CategoryReference[]
-  categoryDrafts     CategoryReferenceDraft[]
-  categoryContents   CategoryContent[]
+  members          ProjectMember[]
+  invitations      Invitation[]
+  tasks            Task[]
+  boardConnection  BoardConnection?
+  vulgarizedTasks  VulgarizedTask[]
+  taskProgress     TaskProgress[]
+  notionConnection NotionConnection?
+
+  sourceDocuments         SourceDocument[]
+  clientContentReleases   ClientContentRelease[]
+  clientPublication       ProjectClientPublication?
+  generationOperations    GenerationOperation[]
+  clientSections          ClientSection[]
+  clientSectionContents   ClientSectionContent[]
+  referenceDocuments      ReferenceDocument[]
+  notes                   Note[]
+  activeReferenceDocument ReferenceDocument?        @relation("ProjectActiveReferenceDocument", fields: [activeReferenceDocumentId], references: [id], onDelete: SetNull)
 
   @@map("projects")
 }
@@ -268,239 +378,377 @@ model BoardConnection {
   @@map("board_connections")
 }
 
-// specs/011-project-resources data-model.md. Unlike BoardConnection (1:1
-// with a project), a project can have many resources. `original*` fields
-// are set only for `source: upload`; `notionPageUrl` only for
-// `source: notion` — enforced in ResourcesService, not by Prisma (no clean
-// way to express "required based on this enum" in the schema itself).
-model Resource {
-  id        String  @id @default(uuid()) @db.Uuid
-  projectId String  @map("project_id") @db.Uuid
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+model SourceDocument {
+  id                  String               @id @default(uuid()) @db.Uuid
+  projectId           String               @map("project_id") @db.Uuid
+  kind                SourceDocumentKind
+  status              SourceDocumentStatus @default(received)
+  version             Int                  @default(1)
+  title               String
+  originalFileName    String?              @map("original_file_name")
+  originalMimeType    String?              @map("original_mime_type")
+  originalSizeBytes   Int?                 @map("original_size_bytes")
+  storedObjectKey     String?              @map("stored_object_key")
+  externalUrl         String?              @map("external_url")
+  contentSha256       String?              @map("content_sha256") @db.VarChar(64)
+  addedByUserId       String               @map("added_by_user_id") @db.Uuid
+  failureCode         String?              @map("failure_code") @db.VarChar(128)
+  // When the run currently in progress began. Distinct from createdAt: the
+  // row showed "processing for 10 hours" after a restart, counting the time
+  // already spent before the contributor stopped it.
+  processingStartedAt DateTime?            @map("processing_started_at")
+  removedAt           DateTime?            @map("removed_at")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
 
-  source ResourceSource
-  status ResourceStatus @default(pending)
+  project              Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  addedByUser          User                  @relation("SourceDocumentAuthor", fields: [addedByUserId], references: [id], onDelete: Restrict)
+  generationOperations GenerationOperation[]
 
-  // Uploaded filename (minus extension) or the Notion page's title — shown
-  // on the tile immediately, before/regardless of processing completing.
-  title String
-
-  // source: upload only.
-  originalFileKey       String? @map("original_file_key")
-  originalFileName      String? @map("original_file_name")
-  originalFileMimeType  String? @map("original_file_mime_type")
-  originalFileSizeBytes Int?    @map("original_file_size_bytes")
-
-  // source: notion only — the "original" link for a resource with no
-  // uploaded file (FR-007/FR-008's Notion equivalent).
-  notionPageUrl String? @map("notion_page_url")
-
-  // Set only when status: failed (FR-011) — a short, developer-facing note,
-  // never shown to a client.
-  failureReason String? @map("failure_reason")
-
-  // The Claude Batch API request ID this resource's processing was
-  // submitted under (research.md Decision 4), read by
-  // ResourceBatchSweepService. Cleared once terminal.
-  //
-  // specs/014-category-sections research.md Decision 1: the batch now holds
-  // a single request producing every section in both locales at once, where
-  // 013 submitted three (one per locale, plus category detection).
-  anthropicBatchId String? @map("anthropic_batch_id")
-
-  addedByUserId String @map("added_by_user_id") @db.Uuid
-  addedByUser   User   @relation(fields: [addedByUserId], references: [id])
-
-  extracts CategoryExtract[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("resources")
+  @@index([projectId, status, createdAt])
+  @@index([projectId, contentSha256])
+  @@map("source_documents")
 }
 
-// specs/015-document-reference-layer data-model.md. What one document
-// contributes to one category, in reference register. Never shown to anyone:
-// it exists so a category can be rebuilt from the documents that remain when
-// one is deleted (research.md Decision 1).
+// ─── The reference document (specs/018-canonical-source-reading) ──────────────
 //
-// Without it, honouring "delete a document as if it had never been added"
-// would mean either re-reading every remaining original from storage on each
-// deletion, or asking a model to subtract one document's contribution from
-// merged prose — which it cannot do, having no idea which sentence came from
-// where.
-model CategoryExtract {
-  id         String   @id @default(uuid()) @db.Uuid
-  resourceId String   @map("resource_id") @db.Uuid
-  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+// One written document per project, produced from the canonical source for the
+// developer to read. Nothing reads it back: composition still draws only on the
+// canonical source. A reading that becomes an input is how a product ends up
+// holding two accounts of the same project.
 
-  categoryKey ResourceCategoryKey @map("category_key")
-
-  // Written once at ingestion and never rewritten — merging happens
-  // downstream, into CategoryReference.
-  content String
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@unique([resourceId, categoryKey])
-  @@map("category_extracts")
+enum ReferenceDocumentStatus {
+  writing
+  ready
+  superseded
+  failed
 }
 
-// The contributor's own documentation: organised, structured, exhaustive,
-// in ordinary professional language. Explicitly NOT vulgarized — the client
-// layer below is derived from it.
-//
-// Single-language on purpose (spec Assumptions): it is a working document
-// only its author reads, and CategoryContent already produces both locales.
-//
-// No status column — existing means live. A category with no validated
-// version simply has no row.
-model CategoryReference {
-  id        String  @id @default(uuid()) @db.Uuid
-  projectId String  @map("project_id") @db.Uuid
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  categoryKey ResourceCategoryKey @map("category_key")
-
-  content String
-
-  // Set while the client-facing version is being derived from this content,
-  // cleared when it lands. Until then the client keeps reading the previous
-  // CategoryContent — which is why derivation writes to its own row rather
-  // than rendering this one directly.
-  derivationBatchId String? @map("derivation_batch_id")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([projectId, categoryKey])
-  @@map("category_references")
+// FR-007: documents that hold nothing usable produce a document that says so,
+// not an empty one the developer has to interpret.
+enum ReferenceDocumentOutcome {
+  written
+  nothing_usable
 }
 
-// A regeneration awaiting the contributor's validation, kept apart from the
-// live row so a client keeps reading the validated version throughout
-// (FR-017) — structural rather than a filter every read has to remember.
-//
-// The unique constraint does a second job: it serialises two documents
-// ingested at once. The second cannot open a competing draft for the same
-// category, so its material waits instead of racing.
-model CategoryReferenceDraft {
-  id        String  @id @default(uuid()) @db.Uuid
-  projectId String  @map("project_id") @db.Uuid
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+// One sentence the developer added — an answer to a point, or a correction.
+// The two are the same thing: something true that their documents do not say,
+// replayed on every write (specs/018, FR-012).
+model Note {
+  id         String    @id @default(uuid()) @db.Uuid
+  projectId  String    @map("project_id") @db.Uuid
+  // What the developer wrote. It has to stand on its own: the next write remakes
+  // the document, so the paragraph that prompted a correction will not exist.
+  content    String
+  // A frozen copy of what prompted it — the question, or the paragraph being
+  // corrected. Copied, never pointed at, for the same reason.
+  context    String?
+  authorId   String    @map("author_id") @db.Uuid
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
-  categoryKey ResourceCategoryKey  @map("category_key")
-  status      ReferenceDraftStatus @default(pending_review)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User    @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
 
-  content String
-
-  // Why this draft exists, surfaced in the review queue so a contributor
-  // knows what they are looking at before opening it.
-  trigger           DraftTrigger
-  triggerResourceId String?      @map("trigger_resource_id") @db.Uuid
-
-  // The review loop (research.md Decision 4). Counting per draft rather than
-  // per category is what makes "three attempts at THIS correction" mean
-  // something; accepting or discarding deletes the row and resets it.
-  attempt         Int     @default(1)
-  lastInstruction String? @map("last_instruction")
-
-  // Set while a rebuild is in flight, cleared when it lands. Regeneration
-  // rides the same durable batch + sweep path as ingestion rather than a
-  // fire-and-forget promise, which would not survive a restart.
-  anthropicBatchId String? @map("anthropic_batch_id")
-
-  questions ReferenceQuestion[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([projectId, categoryKey])
-  @@map("category_reference_drafts")
+  @@index([projectId, archivedAt, createdAt])
+  @@map("notes")
 }
 
-enum ReferenceDraftStatus {
-  // A rebuild is in flight. The contributor sees the draft marked as such;
-  // the client is unaffected either way, since drafts never reach them.
-  generating
+model ReferenceDocument {
+  id                    String                    @id @default(uuid()) @db.Uuid
+  projectId             String                    @map("project_id") @db.Uuid
+  generationOperationId String                    @unique @map("generation_operation_id") @db.Uuid
+  status                ReferenceDocumentStatus   @default(writing)
+  outcome               ReferenceDocumentOutcome?
+  // The language it was written in, kept with the document: a developer who
+  // switches interface language keeps reading the one they had until it is
+  // rewritten, rather than seeing it half-translated.
+  locale                String                    @db.VarChar(8)
+  structuredContent     Json?                     @map("structured_content")
+  // The points this write could not settle, shown with the document and
+  // answered where they appear. Display data: an answered point does not come
+  // back because its answer is in the next write's input, not because we
+  // recorded that it was answered.
+  points                Json?
+  // Documents the write could make nothing of — an upload mistake, most
+  // likely. Named rather than woven in, so the developer sees which one and
+  // decides (FR-017).
+  unrelatedDocuments    Json?                     @map("unrelated_documents")
+  failureCode           String?                   @map("failure_code") @db.VarChar(128)
+  version               Int                       @default(1)
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+
+  project             Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  generationOperation GenerationOperation @relation("ReferenceDocumentGenerationOperation", fields: [generationOperationId], references: [id], onDelete: Restrict)
+  writingForProject   Project?            @relation("ProjectActiveReferenceDocument")
+  sectionProposals    SectionProposal[]   @relation("SectionProposalReference")
+
+  @@index([projectId, status, createdAt])
+  @@map("reference_documents")
+}
+
+// ─── Author-defined client sections (specs/017-documentation-review-journey) ───
+//
+// A section is a heading its contributor created, not one the product chose.
+// The four fixed categories this replaced are gone, along with everything that
+// existed to serve them.
+
+enum SectionProposalStatus {
+  composing
   pending_review
-  awaiting_answers
+  approved
+  superseded
+  failed
 }
 
-enum DraftTrigger {
-  document_added
-  document_removed
-  regeneration_requested
+// FR-011: a composition that matched nothing says so. Without this the caller
+// cannot tell "found nothing" from "still composing", and both look like an
+// empty block list.
+enum SectionProposalOutcome {
+  composed
+  nothing_matched
 }
 
-// What a client reads: one continuous plain-language text per category,
-// derived from validated reference content and NEVER from a previous version
-// of itself (FR-010) — which is what stops detail eroding across successive
-// ingestions.
-//
-// Both locales in one row: they are produced together in a single request,
-// which is what guarantees they say the same thing. No review state —
-// validating the reference above is the only gate (FR-014), so existing here
-// means visible.
-model CategoryContent {
-  id        String  @id @default(uuid()) @db.Uuid
-  projectId String  @map("project_id") @db.Uuid
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+model ClientSection {
+  id                   String                     @id @default(uuid()) @db.Uuid
+  projectId            String                     @map("project_id") @db.Uuid
+  // Contributor-authored and shown to the client as-is — never a translation
+  // key, because the system cannot translate what it did not write
+  // (research Decision 7).
+  name                 String                     @db.VarChar(120)
+  // What composition should look for in the canonical source. The field the
+  // whole feature's output quality rests on.
+  instructions         String
+  length               EditorialLength
+  pedagogy             EditorialPedagogy
+  technicalFamiliarity ClientTechnicalFamiliarity @map("technical_familiarity")
+  tone                 EditorialTone
+  sortOrder            Int                        @map("sort_order")
+  // True from creation: a section that has never composed needs to.
+  refreshNeeded        Boolean                    @default(true) @map("refresh_needed")
+  // Soft delete. A deleted section must stop being readable by the client while
+  // the proposals and provenance that fed it stay explicable, so every read path
+  // filters on this rather than the row disappearing (research Decision 1).
+  archivedAt           DateTime?                  @map("archived_at")
+  // FR-013 made structural rather than conventional: at most one non-terminal
+  // proposal per section, guaranteed by the unique constraint instead of by a
+  // check the next caller might forget.
+  activeProposalId     String?                    @unique @map("active_proposal_id") @db.Uuid
+  createdByUserId      String                     @map("created_by_user_id") @db.Uuid
+  version              Int                        @default(1)
+  createdAt            DateTime                   @default(now()) @map("created_at")
+  updatedAt            DateTime                   @updatedAt @map("updated_at")
 
-  categoryKey ResourceCategoryKey @map("category_key")
+  project        Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdByUser  User                        @relation("ClientSectionAuthor", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  activeProposal SectionProposal?            @relation("SectionActiveProposal", fields: [activeProposalId], references: [id], onDelete: SetNull)
+  proposals      SectionProposal[]           @relation("SectionProposals")
+  clientContents ClientSectionContent[]
+  releaseEntries ClientContentReleaseEntry[]
 
-  contentEn String @map("content_en")
-  contentFr String @map("content_fr")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([projectId, categoryKey])
-  @@map("category_contents")
+  @@index([projectId, archivedAt, sortOrder])
+  @@map("client_sections")
 }
 
-// specs/015 US5. Raised against a pending draft when two documents contradict
-// each other, or when a gap would change what the client is told. Answerable
-// or skippable — an unanswered question never blocks validation, it becomes a
-// point explicitly marked in the reference content (FR-023).
-model ReferenceQuestion {
-  id      String                 @id @default(uuid()) @db.Uuid
-  draftId String                 @map("draft_id") @db.Uuid
-  draft   CategoryReferenceDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+model SectionProposal {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  sectionId             String                  @map("section_id") @db.Uuid
+  // The reference document this was composed from, so a refresh can tell
+  // whether the truth has moved since.
+  referenceDocumentId   String                  @map("reference_document_id") @db.Uuid
+  // The language it was written in, carried the way the reference document
+  // carries its own: a composition queued in French must not run in English
+  // because the developer changed tab.
+  locale                String                  @default("en") @db.VarChar(8)
+  generationOperationId String                  @unique @map("generation_operation_id") @db.Uuid
+  status                SectionProposalStatus   @default(composing)
+  outcome               SectionProposalOutcome?
+  structuredContent     Json?                   @map("structured_content")
+  changeSummary         String?                 @map("change_summary")
+  failureCode           String?                 @map("failure_code") @db.VarChar(128)
+  version               Int                     @default(1)
+  approvedAt            DateTime?               @map("approved_at")
+  approvedByUserId      String?                 @map("approved_by_user_id") @db.Uuid
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
 
-  question String
-  answer   String?
-  // Lower is more consequential — FR-022 orders by how much the answer
-  // changes what the client will read.
-  rank Int
+  section              ClientSection          @relation("SectionProposals", fields: [sectionId], references: [id], onDelete: Cascade)
+  activeForSection     ClientSection?         @relation("SectionActiveProposal")
+  referenceDocument    ReferenceDocument      @relation("SectionProposalReference", fields: [referenceDocumentId], references: [id], onDelete: Restrict)
+  generationOperation  GenerationOperation    @relation("SectionProposalGenerationOperation", fields: [generationOperationId], references: [id], onDelete: Restrict)
+  approvedByUser       User?                  @relation("SectionProposalApprover", fields: [approvedByUserId], references: [id], onDelete: Restrict)
+  clientContents       ClientSectionContent[]
+  initiatingReleases   ClientContentRelease[] @relation("ReleaseInitiatingProposal")
+  derivationOperations GenerationOperation[]  @relation("GenerationSectionProposal")
 
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@map("reference_questions")
+  @@index([sectionId, status, createdAt])
+  @@map("section_proposals")
 }
 
-// The frozen, product-wide category list (FR-001). Not a table: there is
-// nothing per-project to store, and a table is exactly what let 013's
-// taxonomy drift. Mirrored in packages/schemas/src/resource-category.ts and
-// apps/api/src/resources/resource-categories.ts — change one, change all
-// three. Keys are identifier-safe because Prisma enum members cannot contain
-// hyphens, and a key is never shown to a user.
-enum ResourceCategoryKey {
-  overview
-  how_it_works
-  planning
-  other
+model ClientSectionContent {
+  id                    String   @id @default(uuid()) @db.Uuid
+  projectId             String   @map("project_id") @db.Uuid
+  sectionId             String   @map("section_id") @db.Uuid
+  sectionProposalId     String   @map("section_proposal_id") @db.Uuid
+  locale                String   @db.VarChar(16)
+  outputContractVersion String   @map("output_contract_version") @db.VarChar(64)
+  structuredContent     Json     @map("structured_content")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  project              Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  section              ClientSection               @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  sectionProposal      SectionProposal             @relation(fields: [sectionProposalId], references: [id], onDelete: Restrict)
+  releaseEntries       ClientContentReleaseEntry[]
+  generationOperations GenerationOperation[]       @relation("GenerationClientContent")
+
+  @@unique([sectionProposalId, locale, outputContractVersion])
+  @@index([projectId, sectionId, locale])
+  @@map("client_section_contents")
 }
 
-// Per-resource, 1:1, present only when Resource.source == notion. Kept as
-// its own table (not columns on Resource) so the credential is physically
-// distinct from the resource's own display/content data — mirrors
-// Project-level, 1:1 — mirrors BoardConnection's shape (research.md
-// Decision 7 still applies: same encryption utility, but a deliberately
-// separate, unshared credential). Revised from the original per-resource
-// design: a developer connecting several Notion pages to the same project
-// shouldn't have to re-paste the integration token for every single one —
-// it's connected once per project and reused, exactly like BoardConnection.
+model ClientContentRelease {
+  id                   String              @id @default(uuid()) @db.Uuid
+  projectId            String              @map("project_id") @db.Uuid
+  sequence             Int
+  baseReleaseId        String?             @map("base_release_id") @db.Uuid
+  reason               ClientReleaseReason
+  status               ClientReleaseStatus @default(queued)
+  expectedSectionCount Int                 @map("expected_section_count")
+  initiatingProposalId String?             @map("initiating_proposal_id") @db.Uuid
+  readyAt              DateTime?           @map("ready_at")
+  publishedAt          DateTime?           @map("published_at")
+  failedAt             DateTime?           @map("failed_at")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  project               Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  baseRelease           ClientContentRelease?       @relation("ReleaseBase", fields: [baseReleaseId], references: [id], onDelete: Restrict)
+  derivedReleases       ClientContentRelease[]      @relation("ReleaseBase")
+  initiatingProposal    SectionProposal?            @relation("ReleaseInitiatingProposal", fields: [initiatingProposalId], references: [id], onDelete: Restrict)
+  entries               ClientContentReleaseEntry[]
+  currentForPublication ProjectClientPublication?   @relation("CurrentClientRelease")
+  generationOperations  GenerationOperation[]       @relation("GenerationClientRelease")
+
+  @@unique([projectId, sequence])
+  @@index([projectId, status, createdAt])
+  @@map("client_content_releases")
+}
+
+model ClientContentReleaseEntry {
+  releaseId              String @map("release_id") @db.Uuid
+  sectionId              String @map("section_id") @db.Uuid
+  locale                 String @db.VarChar(16)
+  clientSectionContentId String @map("client_section_content_id") @db.Uuid
+
+  release              ClientContentRelease @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  section              ClientSection        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  clientSectionContent ClientSectionContent @relation(fields: [clientSectionContentId], references: [id], onDelete: Restrict)
+
+  @@id([releaseId, sectionId, locale])
+  @@map("client_content_release_entries")
+}
+
+model ProjectClientPublication {
+  projectId        String   @id @map("project_id") @db.Uuid
+  currentReleaseId String?  @unique @map("current_release_id") @db.Uuid
+  nextSequence     Int      @default(1) @map("next_sequence")
+  version          Int      @default(1)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  project        Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  currentRelease ClientContentRelease? @relation("CurrentClientRelease", fields: [currentReleaseId], references: [id], onDelete: SetNull)
+
+  @@map("project_client_publications")
+}
+
+model GenerationOperation {
+  id                     String                    @id @default(uuid()) @db.Uuid
+  projectId              String                    @map("project_id") @db.Uuid
+  type                   GenerationOperationType
+  deduplicationKey       String                    @unique @map("deduplication_key")
+  inputFingerprint       String                    @map("input_fingerprint") @db.VarChar(64)
+  sourceDocumentId       String?                   @map("source_document_id") @db.Uuid
+  sectionProposalId      String?                   @map("section_proposal_id") @db.Uuid
+  clientReleaseId        String?                   @map("client_release_id") @db.Uuid
+  clientSectionContentId String?                   @map("client_section_content_id") @db.Uuid
+  promptVersion          String                    @map("prompt_version") @db.VarChar(64)
+  outputContractVersion  String                    @map("output_contract_version") @db.VarChar(64)
+  policySnapshot         Json                      @map("policy_snapshot")
+  status                 GenerationOperationStatus @default(queued)
+  currentRouteIndex      Int                       @default(0) @map("current_route_index")
+  currentAttemptId       String?                   @unique @map("current_attempt_id") @db.Uuid
+  runAfter               DateTime                  @default(now()) @map("run_after")
+  leaseOwner             String?                   @map("lease_owner") @db.VarChar(128)
+  leaseExpiresAt         DateTime?                 @map("lease_expires_at")
+  terminalFailureCode    String?                   @map("terminal_failure_code") @db.VarChar(128)
+  replacesOperationId    String?                   @map("replaces_operation_id") @db.Uuid
+  cancelledAt            DateTime?                 @map("cancelled_at")
+  supersededAt           DateTime?                 @map("superseded_at")
+  completedAt            DateTime?                 @map("completed_at")
+  createdAt              DateTime                  @default(now()) @map("created_at")
+  updatedAt              DateTime                  @updatedAt @map("updated_at")
+
+  project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceDocument        SourceDocument?       @relation(fields: [sourceDocumentId], references: [id], onDelete: Restrict)
+  derivedProposal       SectionProposal?      @relation("GenerationSectionProposal", fields: [sectionProposalId], references: [id], onDelete: Restrict)
+  clientRelease         ClientContentRelease? @relation("GenerationClientRelease", fields: [clientReleaseId], references: [id], onDelete: Restrict)
+  clientSectionContent  ClientSectionContent? @relation("GenerationClientContent", fields: [clientSectionContentId], references: [id], onDelete: Restrict)
+  currentAttempt        GenerationAttempt?    @relation("CurrentGenerationAttempt", fields: [currentAttemptId], references: [id], onDelete: SetNull)
+  attempts              GenerationAttempt[]   @relation("GenerationAttempts")
+  replacesOperation     GenerationOperation?  @relation("GenerationReplacement", fields: [replacesOperationId], references: [id], onDelete: Restrict)
+  replacementOperations GenerationOperation[] @relation("GenerationReplacement")
+  sectionProposal       SectionProposal?      @relation("SectionProposalGenerationOperation")
+  referenceDocument     ReferenceDocument?    @relation("ReferenceDocumentGenerationOperation")
+
+  @@index([status, runAfter, leaseExpiresAt])
+  @@index([projectId, type, createdAt])
+  @@map("generation_operations")
+}
+
+model GenerationAttempt {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  operationId           String                  @map("operation_id") @db.Uuid
+  ordinal               Int
+  routeIndex            Int                     @map("route_index")
+  provider              String                  @db.VarChar(64)
+  model                 String                  @db.VarChar(128)
+  transport             GenerationTransport
+  status                GenerationAttemptStatus @default(submitting)
+  providerCorrelationId String?                 @map("provider_correlation_id") @db.VarChar(255)
+  providerRequestId     String?                 @map("provider_request_id") @db.VarChar(255)
+  providerJobId         String?                 @map("provider_job_id") @db.VarChar(255)
+  errorClass            GenerationErrorClass?   @map("error_class")
+  errorCode             String?                 @map("error_code") @db.VarChar(128)
+  errorHttpStatus       Int?                    @map("error_http_status")
+  retryable             Boolean?
+  protectedDiagnostic   String?                 @map("protected_diagnostic") @db.VarChar(2000)
+  inputTokens           Int?                    @map("input_tokens")
+  outputTokens          Int?                    @map("output_tokens")
+  cacheReadTokens       Int?                    @map("cache_read_tokens")
+  cacheWriteTokens      Int?                    @map("cache_write_tokens")
+  rawUsage              Json?                   @map("raw_usage")
+  estimatedCostMicros   BigInt?                 @map("estimated_cost_micros")
+  pricingSnapshot       Json?                   @map("pricing_snapshot")
+  pricingVersion        String?                 @map("pricing_version") @db.VarChar(64)
+  nextPollAt            DateTime?               @map("next_poll_at")
+  submittedAt           DateTime?               @map("submitted_at")
+  terminalAt            DateTime?               @map("terminal_at")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
+
+  operation           GenerationOperation  @relation("GenerationAttempts", fields: [operationId], references: [id], onDelete: Cascade)
+  currentForOperation GenerationOperation? @relation("CurrentGenerationAttempt")
+
+  @@unique([operationId, ordinal])
+  @@index([status, nextPollAt])
+  @@map("generation_attempts")
+}
+
+// Frozen legacy relation retained for the separately approved post-drain
+// schema drop. The active Notion connection is project-scoped and canonical
+// document snapshots are stored through SourceDocument.
 // A resource's own page id is parsed on demand from `Resource.notionPageUrl`
 // (see ResourcesService.createFromNotion), not stored here.
 model NotionConnection {

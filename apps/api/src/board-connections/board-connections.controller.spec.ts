@@ -28,6 +28,7 @@ const fakeUser: User = {
   malt: null,
   website: null,
   roleTitle: null,
+  locale: null,
   status: null,
   createdAt: new Date(),
   updatedAt: new Date(),

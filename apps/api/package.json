@@ -24,6 +24,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
+    "documentary:reset": "ts-node -r tsconfig-paths/register src/documentation/reset/documentary-reset.bootstrap.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -42,6 +43,7 @@
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
     "mammoth": "^1.12.0",
+    "openai": "^7.4.0",
     "pg": "^8.22.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
@@ -81,13 +83,14 @@
       "ts"
     ],
     "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "testRegex": ".*(?:\\.spec|\\.e2e-spec)\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s",
       "!**/*.spec.ts",
+      "!**/*.e2e-spec.ts",
       "!**/*.module.ts",
       "!**/*.d.ts",
       "!test/**",
@@ -102,6 +105,7 @@
         "lines": 80
       }
     },
+    "watchman": false,
     "testEnvironment": "node"
   }
 }

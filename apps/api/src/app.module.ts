@@ -9,12 +9,15 @@ import { InvitationsModule } from './invitations/invitations.module';
 import { BoardConnectionsModule } from './board-connections/board-connections.module';
 import { CurrentTaskModule } from './current-task/current-task.module';
 import { TaskVulgarizationModule } from './task-vulgarization/task-vulgarization.module';
-import { ResourcesModule } from './resources/resources.module';
 import { NotionConnectionModule } from './notion-connection/notion-connection.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { GenerationModule } from './generation/generation.module';
+import { DocumentationModule } from './documentation/documentation.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     ProjectsModule,
@@ -23,7 +26,8 @@ import { NotionConnectionModule } from './notion-connection/notion-connection.mo
     TaskVulgarizationModule,
     CurrentTaskModule,
     NotionConnectionModule,
-    ResourcesModule,
+    GenerationModule,
+    DocumentationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

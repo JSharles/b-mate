@@ -9,6 +9,7 @@ import {
   PrismaMock,
 } from '../test/prisma-mock';
 import { ProjectsService } from './projects.service';
+import { ProjectAccessService } from './project-access.service';
 
 const fakeProject = {
   id: 'project-1',
@@ -39,7 +40,8 @@ describe('ProjectsService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     prisma = createPrismaMock();
-    service = new ProjectsService(asPrismaService(prisma));
+    const access = new ProjectAccessService(asPrismaService(prisma));
+    service = new ProjectsService(asPrismaService(prisma), access);
   });
 
   describe('create', () => {
