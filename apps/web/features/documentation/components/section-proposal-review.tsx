@@ -1,11 +1,23 @@
 "use client";
 
-import { CircleHelp, LoaderCircle, SearchX, TriangleAlert } from "lucide-react";
+import {
+  CircleDashed,
+  CircleHelp,
+  Eye,
+  LoaderCircle,
+  SearchX,
+  TriangleAlert,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { SectionView } from "schemas";
 import { Button } from "@/shared/components/ui/button";
 import { ApiError } from "@/shared/lib/api-client";
-import { useApproveSectionProposal, useSectionProposal } from "../hooks";
+import { ClientSectionView } from "@/shared/components/client-section-view";
+import {
+  useApproveSectionProposal,
+  usePublicClientSections,
+  useSectionProposal,
+} from "../hooks";
 
 export function SectionProposalReview({
   projectId,
@@ -18,6 +30,24 @@ export function SectionProposalReview({
   const tToasts = useTranslations("Toasts");
   const proposal = useSectionProposal(projectId, section.id);
   const approve = useApproveSectionProposal(projectId, section.id);
+  const published = usePublicClientSections(projectId);
+  const live = published.data?.find((entry) => entry.id === section.id);
+
+  // What the client reads is not what the developer reviews: the proposal is
+  // the factual layer in their own language, and the published text is derived
+  // from it under the rubrique's tone and their client's language. Showing only
+  // the proposal left no way to see what the client actually gets.
+  function publishedView() {
+    return (
+      <div className="space-y-4">
+        <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+          <Eye className="size-3.5" />
+          {t("liveLabel")}
+        </p>
+        <ClientSectionView section={live!} />
+      </div>
+    );
+  }
 
   if (proposal.isPending) {
     return (
@@ -40,8 +70,16 @@ export function SectionProposalReview({
 
   const current = proposal.data;
   if (!current) {
-    return <p className="text-sm text-muted-foreground">{t("neverComposed")}</p>;
+    return live ? (
+      publishedView()
+    ) : (
+      <p className="text-sm text-muted-foreground">{t("neverComposed")}</p>
+    );
   }
+
+  // Nothing is waiting on the developer, so the rubrique shows the one text
+  // that still matters: the one their client is reading.
+  if (current.status !== "pending_review" && live) return publishedView();
 
   if (current.status === "composing") {
     return (
@@ -86,6 +124,13 @@ export function SectionProposalReview({
       {/* Composition finishes by poll, not by user action, so the result
           appears with nothing to announce it. A screen reader user would
           otherwise have to go looking for a change they were not told about. */}
+      {/* A proposal is not yet what anyone reads: it is waiting on a decision,
+          and saying so is what stops it being mistaken for the client's copy. */}
+      <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-primary">
+        <CircleDashed className="size-3.5" />
+        {live ? t("pendingOverLive") : t("pendingLabel")}
+      </p>
+
       <div className="max-w-[68ch] space-y-5" aria-live="polite">
         {current.blocks.map((block, index) =>
           // Something the reference document has not settled, kept unsettled

@@ -6,7 +6,7 @@ export function ClientSectionView({ section }: { section: PublicClientSection })
   const t = useTranslations("Projects.ClientMainTabs");
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-[68ch] space-y-4 text-base leading-[1.75]">
       {section.blocks.map((block, index) => {
         if (block.type === "bullet") {
           return (

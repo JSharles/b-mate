@@ -2,10 +2,15 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { SectionView } from "schemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useApproveSectionProposal, useSectionProposal } from "../hooks";
+import {
+  useApproveSectionProposal,
+  usePublicClientSections,
+  useSectionProposal,
+} from "../hooks";
 import { SectionProposalReview } from "./section-proposal-review";
 
 vi.mock("../hooks", () => ({
+  usePublicClientSections: vi.fn(),
   useSectionProposal: vi.fn(),
   useApproveSectionProposal: vi.fn(),
 }));
@@ -34,6 +39,14 @@ const section: SectionView = {
   version: 1,
 };
 
+function withPublished(live: unknown) {
+  vi.mocked(usePublicClientSections).mockReturnValue({
+    data: live ? [live] : [],
+    isPending: false,
+    isError: false,
+  } as never);
+}
+
 function withProposal(data: unknown, isPending = false) {
   vi.mocked(useSectionProposal).mockReturnValue({
     data,
@@ -53,6 +66,7 @@ const readyProposal = {
 describe("SectionProposalReview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    withPublished(undefined);
     vi.mocked(useApproveSectionProposal).mockReturnValue(approve as never);
   });
 
@@ -101,6 +115,47 @@ describe("SectionProposalReview", () => {
 
     expect(screen.getByText("Le lancement est prévu en octobre.")).toBeVisible();
     expect(screen.getByRole("button", { name: "approve" })).toBeVisible();
+  });
+
+  // What the client reads is not what the developer reviews: the proposal is
+  // the factual layer in their own language, the published text is derived
+  // from it. Showing only the proposal left no way to see what the client gets.
+  it("shows what the client reads once nothing is waiting", () => {
+    withProposal({ ...readyProposal, status: "approved" });
+    withPublished({
+      id: section.id,
+      name: section.name,
+      blocks: [{ type: "paragraph", text: "Le texte que lit votre client." }],
+    });
+
+    render(<SectionProposalReview projectId="project-1" section={section} />);
+
+    expect(screen.getByText("liveLabel")).toBeVisible();
+    expect(screen.getByText("Le texte que lit votre client.")).toBeVisible();
+  });
+
+  // A proposal is not yet what anyone reads, and saying so is what stops it
+  // being mistaken for the client's copy.
+  it("says a proposal is waiting, and that the client still reads the old one", () => {
+    withProposal(readyProposal);
+    withPublished({
+      id: section.id,
+      name: section.name,
+      blocks: [{ type: "paragraph", text: "Le texte que lit votre client." }],
+    });
+
+    render(<SectionProposalReview projectId="project-1" section={section} />);
+
+    expect(screen.getByText("pendingOverLive")).toBeVisible();
+    expect(screen.getByText("Le lancement est prévu en octobre.")).toBeVisible();
+  });
+
+  it("says a proposal is waiting when the client has nothing yet", () => {
+    withProposal(readyProposal);
+
+    render(<SectionProposalReview projectId="project-1" section={section} />);
+
+    expect(screen.getByText("pendingLabel")).toBeVisible();
   });
 
   // The box alone said nothing: a developer asked what it was, which answers

@@ -307,7 +307,10 @@
           "staleError": "Cette proposition a été remplacée. Rechargez pour voir la nouvelle.",
           "loadError": "Impossible de charger cette proposition. Rechargez la page — ce que lit votre client n’a pas bougé.",
           "openPointLabel": "Pas encore tranché",
-          "openPointHint": "Votre client lira ce passage tel quel, signalé comme non décidé. Pour le trancher, répondez au point correspondant dans votre document de référence, puis relancez la rédaction."
+          "openPointHint": "Votre client lira ce passage tel quel, signalé comme non décidé. Pour le trancher, répondez au point correspondant dans votre document de référence, puis relancez la rédaction.",
+          "liveLabel": "Ce que votre client lit",
+          "pendingLabel": "En attente de votre relecture",
+          "pendingOverLive": "En attente de votre relecture — votre client lit encore la version publiée"
         },
         "Toasts": {
           "created": "Rubrique créée. Rédaction en cours…",

@@ -1,5 +1,5 @@
-export const CLIENT_DERIVATION_PROMPT_VERSION = 'client-derivation-v3';
-export const CLIENT_DERIVATION_OUTPUT_CONTRACT = 'client-derivation-v3';
+export const CLIENT_DERIVATION_PROMPT_VERSION = 'client-derivation-v4';
+export const CLIENT_DERIVATION_OUTPUT_CONTRACT = 'client-derivation-v4';
 
 export interface ClientDerivationEditorial {
   length: string;
@@ -25,6 +25,8 @@ export function buildClientDerivationPrompt(input: {
     'Rewrite this section for the client in the register below. Preserve every',
     'fact and every open-point identifier. Never invent, and never drop a point',
     'because it is awkward to phrase.',
+    'The heading above is already shown to the client, so start with the content',
+    'itself: do not repeat the heading, and do not open with a title of your own.',
     `Register: ${JSON.stringify(input.editorial)}`,
     `Factual reference: ${JSON.stringify(input.blocks)}`,
   ].join('\n');

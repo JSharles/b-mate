@@ -48,7 +48,7 @@ describe('ClientDerivationHandler', () => {
 
     const request = await handler.buildRequest(operation as never);
 
-    expect(request.outputContract).toBe('client-derivation-v3');
+    expect(request.outputContract).toBe('client-derivation-v4');
     expect((request.parts[0] as { text: string }).text).toContain(
       'What the client asked for',
     );
@@ -73,7 +73,7 @@ describe('ClientDerivationHandler', () => {
 
     await handler.apply(asPrismaService(prisma), operation as never, {
       output: {
-        promptVersion: 'client-derivation-v3',
+        promptVersion: 'client-derivation-v4',
         locale: 'fr',
         blocks: [{ type: 'open_point', text: 'TBD', openPointId: openId }],
       },
@@ -105,7 +105,7 @@ describe('ClientDerivationHandler', () => {
 
     await handler.apply(asPrismaService(prisma), operation as never, {
       output: {
-        promptVersion: 'client-derivation-v3',
+        promptVersion: 'client-derivation-v4',
         locale: 'fr',
         blocks: [{ type: 'open_point', text: 'TBD', openPointId: openId }],
       },
@@ -141,7 +141,7 @@ describe('ClientDerivationHandler', () => {
     await expect(
       handler.apply(asPrismaService(prisma) as never, operation as never, {
         output: {
-          promptVersion: 'client-derivation-v3',
+          promptVersion: 'client-derivation-v4',
           locale: 'fr',
           blocks: [],
         },

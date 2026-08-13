@@ -307,7 +307,10 @@
           "staleError": "This proposal has been replaced. Reload to see the new one.",
           "loadError": "Could not load this proposal. Reload the page — what your client reads has not changed.",
           "openPointLabel": "Not settled yet",
-          "openPointHint": "Your client will read this passage as it is, marked as undecided. To settle it, answer the matching point in your reference document, then write the rubrique again."
+          "openPointHint": "Your client will read this passage as it is, marked as undecided. To settle it, answer the matching point in your reference document, then write the rubrique again.",
+          "liveLabel": "What your client reads",
+          "pendingLabel": "Waiting for your review",
+          "pendingOverLive": "Waiting for your review — your client still reads the published version"
         },
         "Toasts": {
           "created": "Topic created. Writing it now…",
