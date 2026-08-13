@@ -1,13 +1,13 @@
-import type { InformationItemKind, InformationItemState } from '@prisma/client';
 import { REFERENCE_DOCUMENT_PROMPT_VERSION } from '../reference-output.schema';
 
-export interface ReferenceStatement {
-  // A short reference the model can copy back without slipping. It never sees
-  // an identifier — see reference-token.ts for what that cost the first time.
+export interface PromptDocument {
   ref: string;
-  kind: InformationItemKind;
-  state: InformationItemState;
+  title: string;
+}
+
+export interface PromptNote {
   content: string;
+  context: string | null;
 }
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -15,59 +15,88 @@ const LANGUAGE_NAMES: Record<string, string> = {
   en: 'English',
 };
 
-// This writes the developer's reference document. It is the only place in the
-// product that turns the canonical source into something read end to end — the
-// sections written for a client are a different job, on a slice, in a chosen
-// register.
-//
-// The statements arrive in English, as the canonical source has been since
-// 2026-08-12. The document is written in the developer's own language: it is
-// written for them, and leaving it in English would reproduce the complaint
-// that put the language requirement in the spec (FR-022a).
+// One call does the whole job: structure what the documents say, clean it, and
+// say plainly what it could not settle. It replaced a four-stage pipeline that
+// extracted facts, merged them, and wrote from the merge — machinery bought for
+// a scale this product does not have.
 export function buildReferenceDocumentPrompt(input: {
   locale: string;
-  sourceRevisionId: string;
-  statements: readonly ReferenceStatement[];
+  documents: readonly PromptDocument[];
+  notes: readonly PromptNote[];
 }): string {
   const language = LANGUAGE_NAMES[input.locale] ?? 'English';
-  return [
+  const lines = [
     `Prompt version: ${REFERENCE_DOCUMENT_PROMPT_VERSION}`,
-    `Source revision: ${input.sourceRevisionId}`,
     '',
     'You are writing the reference document for the developer who runs this',
-    'project. It is what they read to know where the project stands. It is not',
-    'read by their client.',
+    'project. It is what they read to know where the project stands. Their',
+    'client does not read it.',
     '',
-    `Write it in ${language}. The statements below are in English; the document`,
-    'is not.',
+    `Write it in ${language}, whatever language the documents are in.`,
     '',
-    'Rules:',
-    '- Organise it into named parts, and write continuous prose under each. It',
-    '  is read from top to bottom, not scanned as a list.',
-    '- A passage draws several statements together into one paragraph. Do not',
-    '  write one passage per statement: that is the list this document exists to',
-    '  replace, and it is what makes the document too long to be read or even',
-    '  finished.',
-    '- Group what belongs together. Order the parts so the document builds:',
+    'The documents follow this prompt, each introduced by its reference and',
+    'title. They are uneven: some are precise, some are drafts, some contradict',
+    'each other.',
+    '',
+    'Documents:',
+    ...input.documents.map(
+      (document) => `- ${document.ref}: ${document.title}`,
+    ),
+  ];
+
+  if (input.notes.length > 0) {
+    lines.push(
+      '',
+      "The developer's own notes are below. Each is something they told us that",
+      'their documents do not say — an answer to a question we asked, or a',
+      'correction. **A note outranks the documents.** Where a note contradicts a',
+      'document, follow the note, and raise the discrepancy as a point so they',
+      'know their documents are out of date.',
+      '',
+      'Notes:',
+      ...input.notes.map((note, index) =>
+        note.context
+          ? `- n${index}: ${note.content}\n  (in reply to: ${note.context})`
+          : `- n${index}: ${note.content}`,
+      ),
+    );
+  }
+
+  lines.push(
+    '',
+    'Write the document:',
+    '- Named parts, continuous prose under each, read top to bottom.',
+    '- Group what belongs together, and order the parts so the document builds:',
     '  what the project is before how it works, and so on.',
-    '- Every passage names the statements it rests on, using the refs given',
-    '  below ("i0", "i7") and no others. A passage that rests on nothing, or on',
-    '  a ref that was not given, will be refused.',
-    '- Say nothing the statements do not support. Do not infer, do not fill a',
-    '  gap with what is usually true of projects like this one, and do not',
-    '  smooth two statements that disagree into one that sounds settled.',
-    '- A statement carrying an unresolved point stays an unresolved point: write',
-    '  it as an open_point passage, in place, where it applies. A document that',
-    '  reads as if everything were settled is the one failure this product',
-    '  exists to prevent.',
-    '- You may leave a statement out if it carries nothing a reader needs. You',
-    '  may not add one.',
+    '- A paragraph draws several things together. Do not write one paragraph per',
+    '  sentence of a document — that is the raw material, not a reference.',
+    '- Each part names the documents it drew on, by their refs.',
+    '- Say nothing the documents and notes do not support. Do not infer, do not',
+    '  fill a gap with what is usually true of projects like this, and do not',
+    '  smooth two sources that disagree into one that sounds settled.',
     '',
-    'When the statements hold nothing a developer could use as a reference, set',
+    'Raise a point for anything you could not settle:',
+    '- Two documents that contradict each other.',
+    '- Something implied but never stated, that a reader would need.',
+    '- A note that contradicts a document.',
+    'Each point says what it is, and why it matters to what the developer will',
+    'rely on. Do not raise wording, style or completeness questions.',
+    '',
+    'Where a point leaves a hole in the text, write a "gap" passage in its place',
+    'naming that point. A document that reads as if everything were settled is',
+    'the one failure this product exists to prevent — the hole must be visible',
+    'exactly where it applies.',
+    '',
+    'If one of the documents has nothing to do with this project — a file added',
+    'by mistake — name it in unrelatedDocumentRefs and leave it out of the',
+    'document entirely. Covering a subject the others do not is not the same as',
+    'being unrelated: a new subject is expected. Do not name anything here when',
+    'there is only one document, since there is nothing to compare it against.',
+    '',
+    'If the documents hold nothing a developer could use as a reference, set',
     'outcome to "nothing_usable" and return no parts. Saying so is useful;',
     'padding a document to look complete is not.',
-    '',
-    'Statements:',
-    JSON.stringify(input.statements),
-  ].join('\n');
+  );
+
+  return lines.join('\n');
 }

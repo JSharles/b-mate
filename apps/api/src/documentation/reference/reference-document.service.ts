@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import type { ReferenceDocument } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -11,10 +12,7 @@ import {
   REFERENCE_DOCUMENT_OUTPUT_CONTRACT,
   REFERENCE_DOCUMENT_PROMPT_VERSION,
 } from './reference-output.schema';
-import {
-  referenceFingerprint,
-  selectReferenceStatements,
-} from './reference-document.handler';
+import { referenceFingerprint } from './reference-document.handler';
 
 const FALLBACK_LOCALE = 'en';
 
@@ -29,17 +27,12 @@ export class ReferenceDocumentService {
   async write(userId: string, projectId: string, locale: string | null) {
     await this.access.requireContributor(userId, projectId);
 
-    const source = await this.prisma.projectSource.findUnique({
+    const source = await this.prisma.projectSource.upsert({
       where: { projectId },
-      select: {
-        id: true,
-        currentRevisionId: true,
-        activeReferenceDocumentId: true,
-      },
+      update: {},
+      create: { projectId },
+      select: { id: true, activeReferenceDocumentId: true },
     });
-    if (!source?.currentRevisionId) {
-      throw new BadRequestException({ code: 'NO_CANONICAL_CONTENT' });
-    }
 
     // One at a time. Checked here for a usable error, and refused again by the
     // unique constraint below if two callers get this far at once.
@@ -51,18 +44,28 @@ export class ReferenceDocumentService {
       if (held) throw new ConflictException({ code: 'REFERENCE_WRITING' });
     }
 
-    const items = await this.prisma.sourceRevisionItem.findMany({
-      where: { sourceRevisionId: source.currentRevisionId },
-      orderBy: { sortOrder: 'asc' },
-    });
-    if (items.length === 0) {
-      throw new BadRequestException({ code: 'NO_CANONICAL_CONTENT' });
+    // Written from the documents themselves and the developer's notes. No
+    // canonical source between them any more.
+    const [documents, notes] = await Promise.all([
+      this.prisma.sourceDocument.findMany({
+        where: { projectId, status: 'incorporated' },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      }),
+      this.prisma.note.findMany({
+        where: { projectId, archivedAt: null },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      }),
+    ]);
+    if (documents.length === 0) {
+      throw new BadRequestException({ code: 'NO_DOCUMENTS' });
     }
 
     const input = {
       locale: locale ?? FALLBACK_LOCALE,
-      sourceRevisionId: source.currentRevisionId,
-      statements: selectReferenceStatements(items),
+      documentIds: documents.map((document) => document.id),
+      noteIds: notes.map((note) => note.id),
     };
     const attempts = await this.prisma.referenceDocument.count({
       where: { projectId },
@@ -72,16 +75,14 @@ export class ReferenceDocumentService {
       const operation = await this.generation.createInTransaction(tx, {
         projectId,
         type: 'reference_document',
-        deduplicationKey: `reference:${projectId}:${source.currentRevisionId}:${input.locale}:${attempts}`,
+        deduplicationKey: `reference:${projectId}:${input.locale}:${attempts}`,
         inputFingerprint: referenceFingerprint(input),
         promptVersion: REFERENCE_DOCUMENT_PROMPT_VERSION,
         outputContractVersion: REFERENCE_DOCUMENT_OUTPUT_CONTRACT,
-        sourceRevisionId: source.currentRevisionId!,
       });
       const document = await tx.referenceDocument.create({
         data: {
           projectId,
-          sourceRevisionId: source.currentRevisionId!,
           generationOperationId: operation.id,
           locale: input.locale,
           status: 'writing',
@@ -108,89 +109,106 @@ export class ReferenceDocumentService {
     });
     if (!document) return null;
 
-    // The document holds prose; correcting a statement needs the statement's
-    // own wording, and the passage that cites it does not carry it.
-    const cited = new Set(
-      (document.status === 'ready'
-        ? ((document.structuredContent ?? []) as {
-            blocks?: { informationItemIds?: string[] }[];
-          }[])
-        : []
-      ).flatMap((part) =>
-        (part.blocks ?? []).flatMap((block) => block.informationItemIds ?? []),
-      ),
-    );
-    const statements = cited.size
-      ? await this.prisma.sourceRevisionItem.findMany({
-          where: {
-            sourceRevisionId: document.sourceRevisionId,
-            informationItemId: { in: [...cited] },
-          },
-          select: { informationItemId: true, content: true },
-        })
-      : [];
-
-    return this.toView(
-      document,
-      statements.map(({ informationItemId, content }) => ({
-        id: informationItemId,
-        content,
-      })),
-    );
+    return this.toView(document);
   }
 
-  // What the working page shows instead of a hundred rows.
+  // What the working page shows: a count and a way in, never a second list of
+  // the points themselves (FR-016c).
   async summary(userId: string, projectId: string) {
     await this.access.requireContributor(userId, projectId);
 
-    const source = await this.prisma.projectSource.findUnique({
-      where: { projectId },
-      select: {
-        currentRevisionId: true,
-        referenceNeedsRewrite: true,
-        currentRevision: { select: { createdAt: true } },
-      },
-    });
-
-    const [statementCount, openPointCount, documentCount, document] =
-      await Promise.all([
-        source?.currentRevisionId
-          ? this.prisma.sourceRevisionItem.count({
-              where: { sourceRevisionId: source.currentRevisionId },
-            })
-          : 0,
-        source?.currentRevisionId
-          ? this.prisma.sourceRevisionItem.count({
-              where: {
-                sourceRevisionId: source.currentRevisionId,
-                state: 'point_to_clarify',
-              },
-            })
-          : 0,
-        this.prisma.sourceDocument.count({
-          where: { projectId, status: 'incorporated' },
-        }),
-        this.current(userId, projectId),
-      ]);
+    const [documentCount, noteCount, source, document] = await Promise.all([
+      this.prisma.sourceDocument.count({
+        where: { projectId, status: 'incorporated' },
+      }),
+      this.prisma.note.count({ where: { projectId, archivedAt: null } }),
+      this.prisma.projectSource.findUnique({
+        where: { projectId },
+        select: { referenceNeedsRewrite: true },
+      }),
+      this.current(userId, projectId),
+    ]);
 
     return {
-      statementCount,
       documentCount,
-      openPointCount,
-      sourceRevisionId: source?.currentRevisionId ?? null,
-      lastChangedAt: source?.currentRevision?.createdAt?.toISOString() ?? null,
+      noteCount,
+      openPointCount: document?.points.length ?? 0,
       needsRewrite: source?.referenceNeedsRewrite ?? true,
       document,
     };
   }
 
-  private toView(
-    document: ReferenceDocument,
-    citedStatements: { id: string; content: string }[] = [],
+  // A note is what the developer told us that their documents do not say.
+  // Answering a point and correcting a paragraph both land here (FR-012).
+  async addNote(
+    userId: string,
+    projectId: string,
+    input: { content: string; context?: string | null },
   ) {
+    await this.access.requireContributor(userId, projectId);
+    const note = await this.prisma.note.create({
+      data: {
+        projectId,
+        content: input.content.trim(),
+        context: input.context?.trim() || null,
+        authorId: userId,
+      },
+      include: { author: { select: { firstName: true, lastName: true } } },
+    });
+    // The document is written from the documents and the notes, so a new note
+    // owes a rewrite — it never triggers one (FR-006).
+    await this.prisma.projectSource.updateMany({
+      where: { projectId },
+      data: { referenceNeedsRewrite: true },
+    });
+    return this.toNoteView(note);
+  }
+
+  async listNotes(userId: string, projectId: string) {
+    await this.access.requireContributor(userId, projectId);
+    const notes = await this.prisma.note.findMany({
+      where: { projectId, archivedAt: null },
+      orderBy: { createdAt: 'desc' },
+      include: { author: { select: { firstName: true, lastName: true } } },
+    });
+    return { notes: notes.map((note) => this.toNoteView(note)) };
+  }
+
+  async removeNote(userId: string, projectId: string, noteId: string) {
+    await this.access.requireContributor(userId, projectId);
+    const { count } = await this.prisma.note.updateMany({
+      where: { id: noteId, projectId, archivedAt: null },
+      data: { archivedAt: new Date() },
+    });
+    // Hidden rather than deleted: a note is attributable, and the document it
+    // shaped stays explicable.
+    if (count === 0) throw new NotFoundException({ code: 'NOT_FOUND' });
+    await this.prisma.projectSource.updateMany({
+      where: { projectId },
+      data: { referenceNeedsRewrite: true },
+    });
+    return { removed: true as const };
+  }
+
+  private toNoteView(note: {
+    id: string;
+    content: string;
+    context: string | null;
+    createdAt: Date;
+    author: { firstName: string; lastName: string };
+  }) {
+    return {
+      id: note.id,
+      content: note.content,
+      context: note.context,
+      authorName: `${note.author.firstName} ${note.author.lastName}`.trim(),
+      createdAt: note.createdAt.toISOString(),
+    };
+  }
+
+  private toView(document: ReferenceDocument) {
     return {
       id: document.id,
-      sourceRevisionId: document.sourceRevisionId,
       status: document.status,
       outcome: document.outcome,
       locale: document.locale,
@@ -200,7 +218,14 @@ export class ReferenceDocumentService {
         document.status === 'ready'
           ? ((document.structuredContent ?? []) as unknown[])
           : [],
-      citedStatements,
+      points:
+        document.status === 'ready'
+          ? ((document.points ?? []) as { id: string }[])
+          : [],
+      unrelatedDocuments:
+        document.status === 'ready'
+          ? ((document.unrelatedDocuments ?? []) as string[])
+          : [],
       failureCode: document.failureCode,
       createdAt: document.createdAt.toISOString(),
       version: document.version,

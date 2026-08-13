@@ -1,70 +1,246 @@
 "use client";
 
 import { useState } from "react";
-import { LoaderCircle, PencilLine, RefreshCw, SearchX, ShieldCheck, TriangleAlert } from "lucide-react";
-import { useTranslations } from "next-intl";
-import type { ReferenceBlock, ReferencePart } from "schemas";
+import {
+  FileWarning,
+  LoaderCircle,
+  MessageSquarePlus,
+  Printer,
+  RefreshCw,
+  SearchX,
+  TriangleAlert,
+  X,
+} from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
+import type { Note, ReferenceBlock, ReferencePart, ReferencePoint } from "schemas";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { useReferenceDocument, useWriteReferenceDocument } from "../hooks";
-import { GuidedCorrectionDialog } from "./guided-correction-dialog";
-import { ProvenanceSheet } from "./provenance-sheet";
+import {
+  useAddNote,
+  useNotes,
+  useReferenceDocument,
+  useRemoveNote,
+  useWriteReferenceDocument,
+} from "../hooks";
 
-// A passage, set as continuous text. Its provenance and its correction take no
-// layout at rest — the whole reason the old list was unreadable was that every
-// sentence carried a label, two buttons and a rule (specs/018).
-function Passage({
-  block,
-  onProvenance,
-  onCorrect,
+// The one way to tell Diaphane something. Answering an open point and
+// correcting a paragraph are the same act, so they are the same component:
+// what was on screen travels with the note as its context (specs/018, FR-012).
+function NoteComposer({
+  projectId,
+  context,
+  label,
+  quiet,
 }: {
-  block: ReferenceBlock;
-  onProvenance: (itemId: string) => void;
-  onCorrect: (itemId: string) => void;
+  projectId: string;
+  context: string;
+  label: string;
+  quiet?: boolean;
 }) {
   const t = useTranslations("Projects.Documentation.Reference");
-  const itemId = block.informationItemIds[0];
+  const [open, setOpen] = useState(false);
+  const [content, setContent] = useState("");
+  const add = useAddNote(projectId);
+
+  if (!open) {
+    return (
+      <div
+        className={
+          quiet
+            ? "opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 print:hidden"
+            : "print:hidden"
+        }
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          onClick={() => setOpen(true)}
+        >
+          <MessageSquarePlus />
+          {label}
+        </Button>
+      </div>
+    );
+  }
+
+  const submit = () => {
+    add.mutate(
+      { content: content.trim(), context },
+      {
+        onSuccess: () => {
+          setContent("");
+          setOpen(false);
+        },
+      },
+    );
+  };
+
+  return (
+    <div className="space-y-2 print:hidden">
+      <textarea
+        aria-label={label}
+        autoFocus
+        rows={3}
+        value={content}
+        onChange={(event) => setContent(event.target.value)}
+        className="w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={!content.trim() || add.isPending}
+          onClick={submit}
+        >
+          {add.isPending && (
+            <LoaderCircle className="animate-spin motion-reduce:animate-none" />
+          )}
+          {t("saveNote")}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => setOpen(false)}
+        >
+          {t("cancel")}
+        </Button>
+      </div>
+      {add.isError && (
+        <p role="alert" className="text-sm text-destructive">
+          {t("noteError")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// A passage, set as continuous text. Its correction takes no layout at rest —
+// the whole reason the old list was unreadable was that every sentence carried
+// a label, two buttons and a rule.
+function Passage({
+  projectId,
+  block,
+  point,
+}: {
+  projectId: string;
+  block: ReferenceBlock;
+  point?: ReferencePoint;
+}) {
+  const t = useTranslations("Projects.Documentation.Reference");
+
+  // FR-016: what the documents never settled is marked where it applies, and
+  // answered there. There is no second list of the same questions elsewhere.
+  if (block.kind === "gap") {
+    return (
+      <div className="space-y-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          {t("openPoint")}
+        </p>
+        <p className="text-sm leading-7">{block.text}</p>
+        {point && (
+          <div className="space-y-1">
+            <p className="text-sm font-medium leading-relaxed">
+              {point.question}
+            </p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {point.why}
+            </p>
+          </div>
+        )}
+        <NoteComposer
+          projectId={projectId}
+          context={point?.question ?? block.text}
+          label={t("answer")}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="group relative">
-      <p
-        className={
-          block.kind === "open_point"
-            ? "rounded-lg border border-border bg-muted px-4 py-3 text-sm leading-7"
-            : "max-w-3xl text-sm leading-7"
-        }
-      >
-        {block.kind === "open_point" && (
-          <span className="mr-2 text-xs uppercase tracking-wide text-muted-foreground">
-            {t("openPoint")}
-          </span>
-        )}
-        {block.text}
-      </p>
-      <div className="mt-1 flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-        <Button type="button" variant="ghost" size="xs" onClick={() => onProvenance(itemId)}>
-          <ShieldCheck />
-          {t("showSource")}
-        </Button>
-        <Button type="button" variant="ghost" size="xs" onClick={() => onCorrect(itemId)}>
-          <PencilLine />
-          {t("correct")}
-        </Button>
+      <p className="max-w-3xl text-sm leading-7">{block.text}</p>
+      <div className="mt-1">
+        <NoteComposer
+          projectId={projectId}
+          context={block.text}
+          label={t("correct")}
+          quiet
+        />
       </div>
     </div>
   );
 }
 
+// Everything the developer has told Diaphane, kept in one place because every
+// write starts from the original documents again: a note that stopped being
+// replayed would silently un-answer a question they already answered.
+function NoteList({ projectId }: { projectId: string }) {
+  const t = useTranslations("Projects.Documentation.Reference");
+  const format = useFormatter();
+  const notes = useNotes(projectId);
+  const remove = useRemoveNote(projectId);
+
+  const items: Note[] = notes.data?.notes ?? [];
+  if (notes.isPending || notes.isError || items.length === 0) return null;
+
+  return (
+    <section
+      aria-labelledby="notes-title"
+      className="border-t border-border pt-7 print:hidden"
+    >
+      <h2 id="notes-title" className="font-semibold">
+        {t("notesTitle")}
+      </h2>
+      <p className="mt-1 text-sm text-muted-foreground">{t("notesHint")}</p>
+      <ul className="mt-4 space-y-3">
+        {items.map((note) => (
+          <li
+            key={note.id}
+            className="flex items-start gap-3 rounded-lg border border-border bg-card p-4"
+          >
+            <div className="min-w-0 flex-1">
+              {note.context && (
+                <p className="truncate text-xs text-muted-foreground">
+                  {note.context}
+                </p>
+              )}
+              <p className="mt-1 text-sm leading-relaxed">{note.content}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {t("notedBy", {
+                  name: note.authorName,
+                  date: format.dateTime(new Date(note.createdAt), {
+                    dateStyle: "medium",
+                  }),
+                })}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t("removeNote")}
+              disabled={remove.isPending}
+              onClick={() => remove.mutate(note.id)}
+            >
+              <X />
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function ReferenceDocumentView({ projectId }: { projectId: string }) {
   const t = useTranslations("Projects.Documentation.Reference");
-  const document = useReferenceDocument(projectId);
+  const documentQuery = useReferenceDocument(projectId);
   const write = useWriteReferenceDocument(projectId);
-  const [provenanceFor, setProvenanceFor] = useState<string | null>(null);
-  const [correcting, setCorrecting] = useState<string | null>(null);
 
-  const current = document.data;
+  const current = documentQuery.data;
 
-  if (document.isPending) {
+  if (documentQuery.isPending) {
     return (
       <div className="space-y-4" aria-busy="true" aria-label={t("loading")}>
         <Skeleton className="h-8 w-64" />
@@ -74,7 +250,7 @@ export function ReferenceDocumentView({ projectId }: { projectId: string }) {
   }
 
   // A failed request is not a project without a document.
-  if (document.isError) {
+  if (documentQuery.isError) {
     return (
       <p role="alert" className="text-sm text-destructive">
         {t("loadError")}
@@ -124,17 +300,18 @@ export function ReferenceDocumentView({ projectId }: { projectId: string }) {
 
   if (current.outcome === "nothing_usable") {
     return (
-      <div className="flex items-start gap-2 rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-        <SearchX className="mt-0.5 size-4 shrink-0" />
-        <p>{t("nothingUsable")}</p>
+      <div className="space-y-4">
+        <div className="flex items-start gap-2 rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+          <SearchX className="mt-0.5 size-4 shrink-0" />
+          <p>{t("nothingUsable")}</p>
+        </div>
+        <div className="print:hidden">{writeAction}</div>
       </div>
     );
   }
 
   const parts = current.parts as ReferencePart[];
-  const statementText = new Map(
-    current.citedStatements.map(({ id, content }) => [id, content]),
-  );
+  const pointsById = new Map(current.points.map((point) => [point.id, point]));
 
   return (
     <div className="space-y-10">
@@ -142,20 +319,63 @@ export function ReferenceDocumentView({ projectId }: { projectId: string }) {
         <p className="text-sm text-muted-foreground">
           {t("writtenFrom", { count: parts.length })}
         </p>
-        {writeAction}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The browser's own print dialog is the download: it saves to PDF on
+              every platform, and the page already prints as the document alone
+              rather than as the screen around it. */}
+          <Button type="button" variant="outline" onClick={() => window.print()}>
+            <Printer />
+            {t("download")}
+          </Button>
+          {writeAction}
+        </div>
       </div>
+
+      {/* FR-017: an upload mistake is named. Silently ignoring the document
+          would leave the developer waiting for it to show up. */}
+      {current.unrelatedDocuments.length > 0 && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4 print:hidden"
+        >
+          <FileWarning className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <div>
+            <p className="text-sm">
+              {t("unrelated", { count: current.unrelatedDocuments.length })}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {current.unrelatedDocuments.join(", ")}
+            </p>
+          </div>
+        </div>
+      )}
 
       <article className="space-y-10" aria-live="polite">
         {parts.map((part, index) => (
           <section key={index} className="space-y-4">
-            <h2 className="text-lg font-semibold tracking-tight">{part.title}</h2>
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                {part.title}
+              </h2>
+              {/* FR-004: which documents this part drew on. Coarser than the
+                  per-sentence provenance it replaces, and honest about it. */}
+              {part.documentTitles.length > 0 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("drawnFrom", { documents: part.documentTitles.join(", ") })}
+                </p>
+              )}
+            </div>
             <div className="space-y-4">
               {part.blocks.map((block, blockIndex) => (
                 <Passage
                   key={blockIndex}
+                  projectId={projectId}
                   block={block}
-                  onProvenance={setProvenanceFor}
-                  onCorrect={setCorrecting}
+                  point={
+                    block.pointId
+                      ? pointsById.get(block.pointId)
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -163,25 +383,7 @@ export function ReferenceDocumentView({ projectId }: { projectId: string }) {
         ))}
       </article>
 
-      {provenanceFor && (
-        <ProvenanceSheet
-          projectId={projectId}
-          itemId={provenanceFor}
-          revisionId={current.sourceRevisionId}
-          open
-          onOpenChange={(open) => !open && setProvenanceFor(null)}
-        />
-      )}
-      {correcting && (
-        <GuidedCorrectionDialog
-          projectId={projectId}
-          itemId={correcting}
-          currentContent={statementText.get(correcting) ?? ""}
-          revisionId={current.sourceRevisionId}
-          open
-          onOpenChange={(open) => !open && setCorrecting(null)}
-        />
-      )}
+      <NoteList projectId={projectId} />
     </div>
   );
 }

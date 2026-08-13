@@ -9,11 +9,6 @@ vi.mock("@/i18n/navigation", () => ({
     <a href={href}>{children}</a>
   ),
 }));
-vi.mock("./clarifications-panel", () => ({
-  ClarificationsPanel: () => <div>clarifications</div>,
-}));
-
-const revisionId = "00000000-0000-4000-8000-000000000001";
 
 function withSummary(data: unknown, overrides: Record<string, unknown> = {}) {
   vi.mocked(useReferenceSummary).mockReturnValue({
@@ -25,11 +20,9 @@ function withSummary(data: unknown, overrides: Record<string, unknown> = {}) {
 }
 
 const held = {
-  statementCount: 100,
   documentCount: 2,
+  noteCount: 3,
   openPointCount: 2,
-  sourceRevisionId: revisionId,
-  lastChangedAt: new Date().toISOString(),
   needsRewrite: false,
   document: null,
 };
@@ -37,7 +30,7 @@ const held = {
 describe("SourceSummary", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  // The whole point of specs/018: a hundred statements are stated, not listed.
+  // The whole point of specs/018: what the source holds is stated, not listed.
   it("states what the source holds instead of listing it", () => {
     withSummary(held);
 
@@ -46,12 +39,22 @@ describe("SourceSummary", () => {
     expect(screen.getByText("held")).toBeVisible();
   });
 
-  it("keeps what needs an answer on the working page", () => {
+  // FR-016c: a count and a way in. The points are answered where they appear,
+  // in the document — there is no second surface for them here.
+  it("counts what is still open without listing any of it", () => {
     withSummary(held);
 
     render(<SourceSummary projectId="project-1" />);
 
-    expect(screen.getByText("clarifications")).toBeVisible();
+    expect(screen.getByText("openPoints")).toBeVisible();
+  });
+
+  it("says nothing about open points when there are none", () => {
+    withSummary({ ...held, openPointCount: 0 });
+
+    render(<SourceSummary projectId="project-1" />);
+
+    expect(screen.queryByText("openPoints")).not.toBeInTheDocument();
   });
 
   it("offers to write the document when there is none", () => {
@@ -95,12 +98,12 @@ describe("SourceSummary", () => {
   });
 
   it("invites a first document when the source is empty", () => {
-    withSummary({ ...held, statementCount: 0, documentCount: 0 });
+    withSummary({ ...held, documentCount: 0, noteCount: 0, openPointCount: 0 });
 
     render(<SourceSummary projectId="project-1" />);
 
     expect(screen.getByText("emptyTitle")).toBeVisible();
-    expect(screen.queryByText("clarifications")).not.toBeInTheDocument();
+    expect(screen.queryByText("held")).not.toBeInTheDocument();
   });
 
   // A failed request is not an empty source.

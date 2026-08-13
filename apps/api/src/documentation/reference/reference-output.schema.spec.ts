@@ -1,12 +1,13 @@
 import {
-  REFERENCE_DOCUMENT_JSON_SCHEMA,
   REFERENCE_DOCUMENT_PROMPT_VERSION,
   ReferenceDocumentOutputSchema,
-  resolveReferenceCitations,
+  resolveReference,
 } from './reference-output.schema';
 
-const itemA = '123e4567-e89b-42d3-a456-426614174000';
-const refs = new Map([['i0', itemA]]);
+const refs = new Map([
+  ['d0', 'Cahier des charges'],
+  ['d1', 'Pitch marketing'],
+]);
 
 function output(overrides: Record<string, unknown> = {}) {
   return {
@@ -15,15 +16,14 @@ function output(overrides: Record<string, unknown> = {}) {
     parts: [
       {
         title: 'Le projet',
+        documentRefs: ['d0'],
         blocks: [
-          {
-            kind: 'paragraph',
-            text: 'Le lancement est prévu en octobre.',
-            informationItemRefs: ['i0'],
-          },
+          { kind: 'paragraph', text: 'Le produit rend un projet lisible.' },
         ],
       },
     ],
+    points: [],
+    unrelatedDocumentRefs: [],
     ...overrides,
   };
 }
@@ -57,27 +57,52 @@ describe('reference document output', () => {
     ).toBe(false);
   });
 
-  it('refuses a part with no passage — a heading over nothing says nothing', () => {
-    expect(
-      ReferenceDocumentOutputSchema.safeParse(
-        output({ parts: [{ title: 'Le projet', blocks: [] }] }),
-      ).success,
-    ).toBe(false);
-  });
-
-  it('refuses a passage resting on nothing', () => {
+  // FR-004: a part says what it drew on. Coarser than per-sentence provenance,
+  // and the only claim left that can be checked.
+  it('refuses a part that names no document', () => {
     expect(
       ReferenceDocumentOutputSchema.safeParse(
         output({
           parts: [
             {
               title: 'Le projet',
+              documentRefs: [],
+              blocks: [{ kind: 'paragraph', text: 'Sans source.' }],
+            },
+          ],
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  // FR-016: a hole is visible where it applies, and it names the question it
+  // stands for — otherwise it is a blank the reader has to interpret.
+  it('refuses a gap that names no point', () => {
+    expect(
+      ReferenceDocumentOutputSchema.safeParse(
+        output({
+          parts: [
+            {
+              title: 'Planning',
+              documentRefs: ['d0'],
+              blocks: [{ kind: 'gap', text: 'Date non confirmée.' }],
+            },
+          ],
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it('refuses a gap naming a point that was never raised', () => {
+    expect(
+      ReferenceDocumentOutputSchema.safeParse(
+        output({
+          parts: [
+            {
+              title: 'Planning',
+              documentRefs: ['d0'],
               blocks: [
-                {
-                  kind: 'paragraph',
-                  text: 'Sans source.',
-                  informationItemRefs: [],
-                },
+                { kind: 'gap', text: 'Date non confirmée.', pointRef: 'p3' },
               ],
             },
           ],
@@ -86,80 +111,29 @@ describe('reference document output', () => {
     ).toBe(false);
   });
 
-  it('keeps a gap as its own kind of passage', () => {
+  it('accepts a gap tied to a point it raised', () => {
     const parsed = ReferenceDocumentOutputSchema.parse(
       output({
         parts: [
           {
             title: 'Planning',
+            documentRefs: ['d0'],
             blocks: [
-              {
-                kind: 'open_point',
-                text: "La date de lancement n'est pas confirmée.",
-                informationItemRefs: ['i0'],
-              },
+              { kind: 'gap', text: 'Date non confirmée.', pointRef: 'p0' },
             ],
           },
+        ],
+        points: [
+          { ref: 'p0', question: 'Quelle date ?', why: 'Le client la lira.' },
         ],
       }),
     );
 
-    expect(parsed.parts[0].blocks[0].kind).toBe('open_point');
+    expect(parsed.points).toHaveLength(1);
   });
 
-  it('refuses an output from a different prompt version', () => {
-    expect(
-      ReferenceDocumentOutputSchema.safeParse(
-        output({ promptVersion: 'reference-document-v0' }),
-      ).success,
-    ).toBe(false);
-  });
-
-  it('refuses an echoed identifier smuggled in as an extra field', () => {
-    expect(
-      ReferenceDocumentOutputSchema.safeParse(output({ documentId: itemA }))
-        .success,
-    ).toBe(false);
-  });
-});
-
-describe('resolving what the document cited', () => {
-  it('turns the references back into the statements they stand for', () => {
-    const parsed = ReferenceDocumentOutputSchema.parse(output());
-
-    expect(
-      resolveReferenceCitations(parsed, refs)[0].blocks[0].informationItemIds,
-    ).toEqual([itemA]);
-  });
-
-  // Invented provenance is the one thing this product cannot afford, so it is
-  // refused in code rather than discouraged in the prompt.
-  it('refuses a citation naming a statement we never sent', () => {
-    const parsed = ReferenceDocumentOutputSchema.parse(
-      output({
-        parts: [
-          {
-            title: 'Le projet',
-            blocks: [
-              {
-                kind: 'paragraph',
-                text: 'Provenance inventée.',
-                informationItemRefs: ['i9'],
-              },
-            ],
-          },
-        ],
-      }),
-    );
-
-    expect(() => resolveReferenceCitations(parsed, refs)).toThrow(
-      'unknown statement i9',
-    );
-  });
-
-  // The model never sees an identifier, so it cannot mistype one. It was asked
-  // for UUIDs first, returned a hundred passages, mistyped one character of one
-  // of them, and lost the whole document.
+  // The model never sees an identifier, only `d0`. It was handed UUIDs once and
+  // lost a whole document to one mistyped character.
   it('refuses anything that is not a reference we issue', () => {
     expect(
       ReferenceDocumentOutputSchema.safeParse(
@@ -167,13 +141,8 @@ describe('resolving what the document cited', () => {
           parts: [
             {
               title: 'Le projet',
-              blocks: [
-                {
-                  kind: 'paragraph',
-                  text: 'Un identifiant recopié.',
-                  informationItemRefs: [itemA],
-                },
-              ],
+              documentRefs: ['123e4567-e89b-42d3-a456-426614174000'],
+              blocks: [{ kind: 'paragraph', text: 'Un identifiant recopié.' }],
             },
           ],
         }),
@@ -181,17 +150,50 @@ describe('resolving what the document cited', () => {
     ).toBe(false);
   });
 
-  // The provider is handed the JSON schema, not the Zod one. They drifted
-  // apart once — the model was asked for a field the parser then rejected, and
-  // every write failed on output it had produced exactly as instructed.
-  it('asks the provider for the same field the parser accepts', () => {
-    const block = (
-      (REFERENCE_DOCUMENT_JSON_SCHEMA.properties as Record<string, any>).parts
-        .items.properties.blocks as Record<string, any>
-    ).items as Record<string, any>;
+  it('refuses an output from a different prompt version', () => {
+    expect(
+      ReferenceDocumentOutputSchema.safeParse(
+        output({ promptVersion: 'reference-document-v1' }),
+      ).success,
+    ).toBe(false);
+  });
+});
 
-    expect(block.required).toContain('informationItemRefs');
-    expect(Object.keys(block.properties)).toContain('informationItemRefs');
-    expect(Object.keys(block.properties)).not.toContain('informationItemIds');
+describe('resolving what the document drew on', () => {
+  it('names the documents behind each part', () => {
+    const parsed = ReferenceDocumentOutputSchema.parse(output());
+
+    expect(resolveReference(parsed, refs).parts[0].documentTitles).toEqual([
+      'Cahier des charges',
+    ]);
+  });
+
+  it('refuses a document reference we never issued', () => {
+    const parsed = ReferenceDocumentOutputSchema.parse(
+      output({
+        parts: [
+          {
+            title: 'Le projet',
+            documentRefs: ['d9'],
+            blocks: [{ kind: 'paragraph', text: 'Provenance inventée.' }],
+          },
+        ],
+      }),
+    );
+
+    expect(() => resolveReference(parsed, refs)).toThrow(
+      'REFERENCE_DOCUMENT_UNKNOWN_DOCUMENT_d9',
+    );
+  });
+
+  // FR-017: a file added by mistake is named, not woven in.
+  it('names a document that does not belong', () => {
+    const parsed = ReferenceDocumentOutputSchema.parse(
+      output({ unrelatedDocumentRefs: ['d1'] }),
+    );
+
+    expect(resolveReference(parsed, refs).unrelatedDocumentTitles).toEqual([
+      'Pitch marketing',
+    ]);
   });
 });

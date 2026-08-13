@@ -38,6 +38,9 @@ import {
   getReferenceSummary,
   getReferenceDocument,
   writeReferenceDocument,
+  addNote,
+  listNotes,
+  removeNote,
   getDocumentationWorkspace,
   confirmDocumentRemoval,
   previewDocumentRemoval,
@@ -45,7 +48,7 @@ import {
   cancelDocumentProcessing,
   retryDocumentProcessing,
 } from "./api";
-import type { ResolveClarificationsRequest } from "schemas";
+import type { AddNoteRequest, ResolveClarificationsRequest } from "schemas";
 import { useTranslations } from "next-intl";
 
 export const documentationKey = (projectId: string) =>
@@ -545,6 +548,45 @@ export function useWriteReferenceDocument(projectId: string) {
       queryClient.invalidateQueries({
         queryKey: referenceDocumentKey(projectId),
       });
+    },
+  });
+}
+
+export const notesKey = (projectId: string) =>
+  [...documentationKey(projectId), "reference", "notes"] as const;
+
+export function useNotes(projectId: string) {
+  return useQuery({
+    queryKey: notesKey(projectId),
+    queryFn: () => listNotes(projectId),
+  });
+}
+
+// A note owes a rewrite, it never triggers one: the developer answers several
+// points, corrects a paragraph or two, and rewrites once when they are done
+// (FR-006). Only the summary is refreshed, so the badge counts what is owed.
+export function useAddNote(projectId: string) {
+  const t = useTranslations("Projects.Documentation.Reference.Toasts");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AddNoteRequest) => addNote(projectId, data),
+    meta: { skipGlobalErrorToast: true, successMessage: t("noteAdded") },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notesKey(projectId) });
+      queryClient.invalidateQueries({ queryKey: referenceSummaryKey(projectId) });
+    },
+  });
+}
+
+export function useRemoveNote(projectId: string) {
+  const t = useTranslations("Projects.Documentation.Reference.Toasts");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (noteId: string) => removeNote(projectId, noteId),
+    meta: { skipGlobalErrorToast: true, successMessage: t("noteRemoved") },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notesKey(projectId) });
+      queryClient.invalidateQueries({ queryKey: referenceSummaryKey(projectId) });
     },
   });
 }

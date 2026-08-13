@@ -20,6 +20,9 @@ import type {
   UpdateSectionRequest,
   ReferenceDocumentView,
   ReferenceSummary,
+  AddNoteRequest,
+  Note,
+  NoteList,
 } from "schemas";
 import { ApiError, apiFetch } from "@/shared/lib/api-client";
 
@@ -326,5 +329,27 @@ export function writeReferenceDocument(projectId: string) {
   return apiFetch<{ documentId: string; operationId: string }>(
     `/projects/${projectId}/documentation/reference`,
     { method: "POST" },
+  );
+}
+
+// Answering an open point and correcting a paragraph both come here. They are
+// the same act — telling Diaphane something the documents do not say (FR-012).
+export function addNote(projectId: string, data: AddNoteRequest) {
+  return apiFetch<Note>(`/projects/${projectId}/documentation/reference/notes`, {
+    method: "POST",
+    body: data,
+  });
+}
+
+export function listNotes(projectId: string) {
+  return apiFetch<NoteList>(
+    `/projects/${projectId}/documentation/reference/notes`,
+  );
+}
+
+export function removeNote(projectId: string, noteId: string) {
+  return apiFetch<{ removed: true }>(
+    `/projects/${projectId}/documentation/reference/notes/${noteId}`,
+    { method: "DELETE" },
   );
 }

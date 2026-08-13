@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  AddNoteRequestSchema,
+  NoteSchema,
   ReferenceBlockSchema,
   ReferenceDocumentViewSchema,
   ReferencePartSchema,
@@ -11,85 +13,125 @@ const id = "123e4567-e89b-42d3-a456-426614174000";
 const paragraph = {
   kind: "paragraph" as const,
   text: "Le lancement est prévu en octobre.",
-  informationItemIds: [id],
 };
 
+const part = {
+  title: "Le projet",
+  blocks: [paragraph],
+  documentTitles: ["Cahier des charges"],
+};
+
+function view(overrides: Record<string, unknown> = {}) {
+  return {
+    id,
+    status: "ready",
+    outcome: "written",
+    locale: "fr",
+    parts: [part],
+    points: [],
+    unrelatedDocuments: [],
+    failureCode: null,
+    createdAt: new Date().toISOString(),
+    version: 1,
+    ...overrides,
+  };
+}
+
 describe("reference document contracts", () => {
-  it("accepts a paragraph resting on a statement", () => {
+  it("accepts a paragraph", () => {
     expect(ReferenceBlockSchema.parse(paragraph).kind).toBe("paragraph");
   });
 
-  // The guarantee against invention is structural: a passage that rests on
-  // nothing cannot be recorded, whatever the model returns.
-  it("refuses a passage that rests on nothing", () => {
-    expect(
-      ReferenceBlockSchema.safeParse({ ...paragraph, informationItemIds: [] })
-        .success,
-    ).toBe(false);
-  });
+  // FR-016: what the documents never settled is marked where it applies, never
+  // smoothed into a sentence that reads as settled.
+  it("keeps a gap as its own kind of passage, naming the point it stands for", () => {
+    const gap = ReferenceBlockSchema.parse({
+      kind: "gap",
+      text: "La date de lancement n'est pas fixée.",
+      pointId: "p0",
+    });
 
-  it("keeps a gap as its own kind of passage", () => {
-    expect(
-      ReferenceBlockSchema.parse({ ...paragraph, kind: "open_point" }).kind,
-    ).toBe("open_point");
+    expect(gap.kind).toBe("gap");
+    expect(gap.pointId).toBe("p0");
   });
 
   it("refuses a part with no title", () => {
-    expect(
-      ReferencePartSchema.safeParse({ title: "  ", blocks: [paragraph] })
-        .success,
-    ).toBe(false);
+    expect(ReferencePartSchema.safeParse({ ...part, title: "  " }).success).toBe(
+      false,
+    );
   });
 
   it("refuses an empty part — a heading over nothing says nothing", () => {
-    expect(
-      ReferencePartSchema.safeParse({ title: "Le projet", blocks: [] }).success,
-    ).toBe(false);
+    expect(ReferencePartSchema.safeParse({ ...part, blocks: [] }).success).toBe(
+      false,
+    );
   });
 
   it("carries the language it was written in", () => {
-    const view = ReferenceDocumentViewSchema.parse({
-      id,
-      sourceRevisionId: id,
-      status: "ready",
-      outcome: "written",
-      locale: "fr",
-      parts: [{ title: "Le projet", blocks: [paragraph] }],
-      citedStatements: [{ id, content: "The launch is planned for October." }],
-      failureCode: null,
-      createdAt: new Date().toISOString(),
-      version: 1,
-    });
-
-    expect(view.locale).toBe("fr");
+    expect(ReferenceDocumentViewSchema.parse(view()).locale).toBe("fr");
   });
 
+  // FR-007: documents holding nothing usable produce a document that says so,
+  // rather than an empty one the developer has to interpret.
   it("can report that the documents held nothing usable", () => {
-    const view = ReferenceDocumentViewSchema.parse({
-      id,
-      sourceRevisionId: id,
-      status: "ready",
-      outcome: "nothing_usable",
-      locale: "fr",
-      parts: [],
-      citedStatements: [],
-      failureCode: null,
-      createdAt: new Date().toISOString(),
-      version: 1,
+    const parsed = ReferenceDocumentViewSchema.parse(
+      view({ outcome: "nothing_usable", parts: [] }),
+    );
+
+    expect(parsed.outcome).toBe("nothing_usable");
+    expect(parsed.parts).toEqual([]);
+  });
+
+  // FR-017: an upload mistake is named rather than woven in.
+  it("names a document it could make nothing of", () => {
+    const parsed = ReferenceDocumentViewSchema.parse(
+      view({ unrelatedDocuments: ["Facture EDF.pdf"] }),
+    );
+
+    expect(parsed.unrelatedDocuments).toEqual(["Facture EDF.pdf"]);
+  });
+
+  describe("a note", () => {
+    // FR-012: an answer and a correction are the same thing. What was on
+    // screen travels with it, frozen, because the next write remakes the
+    // document and the paragraph will not exist any more.
+    it("carries what prompted it, and stands alone without it", () => {
+      expect(
+        AddNoteRequestSchema.parse({
+          content: "Le lancement est en octobre.",
+          context: "Quelle date de lancement ?",
+        }).context,
+      ).toBe("Quelle date de lancement ?");
+      expect(
+        AddNoteRequestSchema.safeParse({ content: "Octobre." }).success,
+      ).toBe(true);
     });
 
-    expect(view.outcome).toBe("nothing_usable");
-    expect(view.parts).toEqual([]);
+    it("refuses an empty one", () => {
+      expect(AddNoteRequestSchema.safeParse({ content: "   " }).success).toBe(
+        false,
+      );
+    });
+
+    it("says who wrote it", () => {
+      const note = NoteSchema.parse({
+        id,
+        content: "Le lancement est en octobre.",
+        context: null,
+        authorName: "Jean-Charles Barq",
+        createdAt: new Date().toISOString(),
+      });
+
+      expect(note.authorName).toBe("Jean-Charles Barq");
+    });
   });
 
   describe("the summary", () => {
     it("tells a never-written source from a rewritten one", () => {
       const summary = ReferenceSummarySchema.parse({
-        statementCount: 100,
         documentCount: 2,
+        noteCount: 3,
         openPointCount: 2,
-        sourceRevisionId: id,
-        lastChangedAt: new Date().toISOString(),
         needsRewrite: true,
         document: null,
       });
@@ -98,28 +140,24 @@ describe("reference document contracts", () => {
       expect(summary.needsRewrite).toBe(true);
     });
 
-    it("accepts a project with no source at all", () => {
+    it("accepts a project with nothing at all", () => {
       const summary = ReferenceSummarySchema.parse({
-        statementCount: 0,
         documentCount: 0,
+        noteCount: 0,
         openPointCount: 0,
-        sourceRevisionId: null,
-        lastChangedAt: null,
         needsRewrite: true,
         document: null,
       });
 
-      expect(summary.statementCount).toBe(0);
+      expect(summary.documentCount).toBe(0);
     });
 
     it("refuses a leaked internal field", () => {
       expect(
         ReferenceSummarySchema.safeParse({
-          statementCount: 0,
           documentCount: 0,
+          noteCount: 0,
           openPointCount: 0,
-          sourceRevisionId: null,
-          lastChangedAt: null,
           needsRewrite: true,
           document: null,
           activeReferenceDocumentId: id,

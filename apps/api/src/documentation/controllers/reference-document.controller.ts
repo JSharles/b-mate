@@ -1,5 +1,7 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
   Headers,
   HttpCode,
@@ -7,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { AddNoteDto } from '../dto/note.dto';
 import type { User } from '@prisma/client';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import { SessionGuard } from '../../auth/session.guard';
@@ -25,6 +28,29 @@ export class ReferenceDocumentController {
   @Get('summary')
   summary(@CurrentUser() user: User, @Param('projectId') projectId: string) {
     return this.reference.summary(user.id, projectId);
+  }
+
+  @Get('notes')
+  notes(@CurrentUser() user: User, @Param('projectId') projectId: string) {
+    return this.reference.listNotes(user.id, projectId);
+  }
+
+  @Post('notes')
+  addNote(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Body() body: AddNoteDto,
+  ) {
+    return this.reference.addNote(user.id, projectId, body);
+  }
+
+  @Delete('notes/:noteId')
+  removeNote(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Param('noteId') noteId: string,
+  ) {
+    return this.reference.removeNote(user.id, projectId, noteId);
   }
 
   @Post()

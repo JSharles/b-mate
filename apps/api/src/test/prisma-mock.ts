@@ -49,6 +49,7 @@ const DELEGATE_NAMES = [
   'clarificationResolution',
   // Author-defined client sections and their composition.
   'referenceDocument',
+  'note',
   'clientSection',
   'sectionProposal',
   'sectionQuestion',

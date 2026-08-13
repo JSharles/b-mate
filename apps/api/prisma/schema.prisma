@@ -283,6 +283,7 @@ model User {
   clarificationResolutions ClarificationResolution[] @relation("ClarificationResolver")
   authoredClientSections   ClientSection[]           @relation("ClientSectionAuthor")
   approvedSectionProposals SectionProposal[]         @relation("SectionProposalApprover")
+  notes                    Note[]                    @relation("NoteAuthor")
 
   @@map("users")
 }
@@ -338,6 +339,7 @@ model Project {
   clientSections        ClientSection[]
   clientSectionContents ClientSectionContent[]
   referenceDocuments    ReferenceDocument[]
+  notes                 Note[]
 
   @@map("projects")
 }
@@ -797,12 +799,36 @@ enum ReferenceDocumentOutcome {
   nothing_usable
 }
 
+// One sentence the developer added — an answer to a point, or a correction.
+// The two are the same thing: something true that their documents do not say,
+// replayed on every write (specs/018, FR-012).
+model Note {
+  id         String    @id @default(uuid()) @db.Uuid
+  projectId  String    @map("project_id") @db.Uuid
+  // What the developer wrote. It has to stand on its own: the next write remakes
+  // the document, so the paragraph that prompted a correction will not exist.
+  content    String
+  // A frozen copy of what prompted it — the question, or the paragraph being
+  // corrected. Copied, never pointed at, for the same reason.
+  context    String?
+  authorId   String    @map("author_id") @db.Uuid
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User    @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, archivedAt, createdAt])
+  @@map("notes")
+}
+
 model ReferenceDocument {
   id                    String                    @id @default(uuid()) @db.Uuid
   projectId             String                    @map("project_id") @db.Uuid
-  // The canonical head it was written from, so the document can say whether the
-  // source has moved since.
-  sourceRevisionId      String                    @map("source_revision_id") @db.Uuid
+  // Nullable since the write stopped going through a canonical source: a
+  // document is now written from the project's documents and notes directly.
+  // Kept only so the rows written before that change stay readable.
+  sourceRevisionId      String?                   @map("source_revision_id") @db.Uuid
   generationOperationId String                    @unique @map("generation_operation_id") @db.Uuid
   status                ReferenceDocumentStatus   @default(writing)
   outcome               ReferenceDocumentOutcome?
@@ -811,13 +837,22 @@ model ReferenceDocument {
   // rewritten, rather than seeing it half-translated.
   locale                String                    @db.VarChar(8)
   structuredContent     Json?                     @map("structured_content")
+  // The points this write could not settle, shown with the document and
+  // answered where they appear. Display data: an answered point does not come
+  // back because its answer is in the next write's input, not because we
+  // recorded that it was answered.
+  points                Json?
+  // Documents the write could make nothing of — an upload mistake, most
+  // likely. Named rather than woven in, so the developer sees which one and
+  // decides (FR-017).
+  unrelatedDocuments    Json?                     @map("unrelated_documents")
   failureCode           String?                   @map("failure_code") @db.VarChar(128)
   version               Int                       @default(1)
   createdAt             DateTime                  @default(now()) @map("created_at")
   updatedAt             DateTime                  @updatedAt @map("updated_at")
 
   project             Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sourceRevision      SourceRevision      @relation("ReferenceDocumentRevision", fields: [sourceRevisionId], references: [id], onDelete: Restrict)
+  sourceRevision      SourceRevision?     @relation("ReferenceDocumentRevision", fields: [sourceRevisionId], references: [id], onDelete: Restrict)
   generationOperation GenerationOperation @relation("ReferenceDocumentGenerationOperation", fields: [generationOperationId], references: [id], onDelete: Restrict)
   writingForSource    ProjectSource?      @relation("SourceActiveReferenceDocument")
 

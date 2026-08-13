@@ -6,19 +6,8 @@ import { ReferenceDocumentService } from './reference-document.service';
 
 const projectId = '00000000-0000-4000-8000-000000000001';
 const sourceId = '00000000-0000-4000-8000-000000000002';
-const revisionId = '00000000-0000-4000-8000-000000000003';
 const documentId = '00000000-0000-4000-8000-000000000004';
 const operationId = '00000000-0000-4000-8000-000000000005';
-
-const items = [
-  {
-    informationItemId: '00000000-0000-4000-8000-00000000000a',
-    kind: 'fact',
-    state: 'confirmed',
-    content: 'The launch is planned for October.',
-    sortOrder: 0,
-  },
-];
 
 describe('ReferenceDocumentService', () => {
   function setup() {
@@ -45,13 +34,13 @@ describe('ReferenceDocumentService', () => {
     prisma: ReturnType<typeof createPrismaMock>,
     overrides = {},
   ) {
-    prisma.projectSource.findUnique.mockResolvedValue({
+    prisma.projectSource.upsert.mockResolvedValue({
       id: sourceId,
-      currentRevisionId: revisionId,
       activeReferenceDocumentId: null,
       ...overrides,
     });
-    prisma.sourceRevisionItem.findMany.mockResolvedValue(items);
+    prisma.sourceDocument.findMany.mockResolvedValue([{ id: 'doc-1' }]);
+    prisma.note.findMany.mockResolvedValue([{ id: 'note-1' }]);
     prisma.referenceDocument.count.mockResolvedValue(0);
     prisma.referenceDocument.create.mockResolvedValue({ id: documentId });
     prisma.projectSource.updateMany.mockResolvedValue({ count: 1 });
@@ -69,7 +58,7 @@ describe('ReferenceDocumentService', () => {
   });
 
   describe('writing', () => {
-    it('queues the work and claims the slot', async () => {
+    it('queues the work from the documents and the notes', async () => {
       const { prisma, generation, service } = setup();
       readyToWrite(prisma);
 
@@ -81,27 +70,33 @@ describe('ReferenceDocumentService', () => {
         expect.anything(),
         expect.objectContaining({ type: 'reference_document' }),
       );
-      expect(prisma.projectSource.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ activeReferenceDocumentId: null }),
-        }),
-      );
     });
 
-    it('writes it in the language it was asked for', async () => {
+    it('refuses to write from a project with no document', async () => {
       const { prisma, service } = setup();
       readyToWrite(prisma);
+      prisma.sourceDocument.findMany.mockResolvedValue([]);
 
-      await service.write('user', projectId, 'fr');
-
-      expect(prisma.referenceDocument.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ locale: 'fr' }),
-        }),
-      );
+      await expect(
+        service.write('user', projectId, 'fr'),
+      ).rejects.toMatchObject({
+        response: { code: 'NO_DOCUMENTS' },
+      });
     });
 
-    // FR-025: an unknown language falls back rather than blocking the work.
+    // A project with documents but no note is the normal first write.
+    it('writes from documents alone', async () => {
+      const { prisma, service } = setup();
+      readyToWrite(prisma);
+      prisma.note.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.write('user', projectId, 'fr'),
+      ).resolves.toMatchObject({
+        documentId,
+      });
+    });
+
     it('falls back to English when the language is unknown', async () => {
       const { prisma, service } = setup();
       readyToWrite(prisma);
@@ -125,19 +120,6 @@ describe('ReferenceDocumentService', () => {
       ).rejects.toMatchObject({
         response: { code: 'REFERENCE_WRITING' },
       });
-      expect(prisma.referenceDocument.create).not.toHaveBeenCalled();
-    });
-
-    it('lets a project whose last write died try again', async () => {
-      const { prisma, service } = setup();
-      readyToWrite(prisma, { activeReferenceDocumentId: documentId });
-      prisma.referenceDocument.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.write('user', projectId, 'fr'),
-      ).resolves.toMatchObject({
-        documentId,
-      });
     });
 
     it('loses the race rather than writing twice', async () => {
@@ -151,30 +133,88 @@ describe('ReferenceDocumentService', () => {
         response: { code: 'REFERENCE_WRITING' },
       });
     });
+  });
 
-    it('refuses to write from an empty source', async () => {
+  describe('notes', () => {
+    function withAuthor(prisma: ReturnType<typeof createPrismaMock>) {
+      prisma.note.create.mockResolvedValue({
+        id: 'note-1',
+        content: 'Le lancement est en octobre.',
+        context: 'Quelle date de lancement ?',
+        createdAt: new Date('2026-08-13T10:00:00.000Z'),
+        author: { firstName: 'Jean-Charles', lastName: 'Barq' },
+      });
+      prisma.projectSource.updateMany.mockResolvedValue({ count: 1 });
+    }
+
+    // FR-012: an answer and a correction are the same thing.
+    it('keeps what prompted it, frozen beside what was written', async () => {
       const { prisma, service } = setup();
-      readyToWrite(prisma);
-      prisma.sourceRevisionItem.findMany.mockResolvedValue([]);
+      withAuthor(prisma);
 
       await expect(
-        service.write('user', projectId, 'fr'),
-      ).rejects.toMatchObject({
-        response: { code: 'NO_CANONICAL_CONTENT' },
+        service.addNote('user', projectId, {
+          content: 'Le lancement est en octobre.',
+          context: 'Quelle date de lancement ?',
+        }),
+      ).resolves.toMatchObject({
+        content: 'Le lancement est en octobre.',
+        context: 'Quelle date de lancement ?',
+        authorName: 'Jean-Charles Barq',
       });
+    });
+
+    // FR-006: a new note owes a rewrite, it never triggers one.
+    it('marks the document owed rather than rewriting it', async () => {
+      const { prisma, service } = setup();
+      withAuthor(prisma);
+
+      await service.addNote('user', projectId, { content: 'Octobre.' });
+
+      expect(prisma.projectSource.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { referenceNeedsRewrite: true },
+        }),
+      );
+      expect(prisma.referenceDocument.create).not.toHaveBeenCalled();
+    });
+
+    it('hides a removed note rather than deleting it', async () => {
+      const { prisma, service } = setup();
+      prisma.note.updateMany.mockResolvedValue({ count: 1 });
+      prisma.projectSource.updateMany.mockResolvedValue({ count: 1 });
+
+      await expect(
+        service.removeNote('user', projectId, 'note-1'),
+      ).resolves.toEqual({ removed: true });
+      expect(prisma.note.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ archivedAt: expect.any(Date) }),
+        }),
+      );
+      expect(prisma.note.delete).not.toHaveBeenCalled();
+    });
+
+    it('hides a note from another project as missing', async () => {
+      const { prisma, service } = setup();
+      prisma.note.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.removeNote('user', projectId, 'note-1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
   describe('reading', () => {
-    it('withholds the parts while it is still being written', async () => {
+    it('withholds the parts and the points while it is still being written', async () => {
       const { prisma, service } = setup();
       prisma.referenceDocument.findFirst.mockResolvedValue({
         id: documentId,
-        sourceRevisionId: revisionId,
         status: 'writing',
         outcome: null,
         locale: 'fr',
         structuredContent: null,
+        points: null,
         failureCode: null,
         createdAt: new Date('2026-08-13T10:00:00.000Z'),
         version: 1,
@@ -183,7 +223,7 @@ describe('ReferenceDocumentService', () => {
       await expect(service.current('user', projectId)).resolves.toMatchObject({
         status: 'writing',
         parts: [],
-        citedStatements: [],
+        points: [],
       });
     });
 
@@ -193,78 +233,49 @@ describe('ReferenceDocumentService', () => {
 
       await expect(service.current('user', projectId)).resolves.toBeNull();
     });
-
-    // The document holds prose; correcting a statement needs the statement, and
-    // the passage citing it does not carry its wording.
-    it('carries the statements it cites, with their own wording', async () => {
-      const { prisma, service } = setup();
-      prisma.referenceDocument.findFirst.mockResolvedValue({
-        id: documentId,
-        sourceRevisionId: revisionId,
-        status: 'ready',
-        outcome: 'written',
-        locale: 'fr',
-        structuredContent: [
-          {
-            title: 'Le projet',
-            blocks: [
-              {
-                kind: 'paragraph',
-                text: 'Prose.',
-                informationItemIds: ['item-a'],
-              },
-            ],
-          },
-        ],
-        failureCode: null,
-        createdAt: new Date('2026-08-13T10:00:00.000Z'),
-        version: 2,
-      });
-      prisma.sourceRevisionItem.findMany.mockResolvedValue([
-        { informationItemId: 'item-a', content: 'The launch is in October.' },
-      ]);
-
-      await expect(service.current('user', projectId)).resolves.toMatchObject({
-        citedStatements: [
-          { id: 'item-a', content: 'The launch is in October.' },
-        ],
-      });
-    });
   });
 
   describe('the summary', () => {
-    it('counts what the source holds and whether a rewrite is owed', async () => {
+    // FR-016c: a count and a way in, never a second list of the points.
+    it('counts what the write will read, and what is still open', async () => {
       const { prisma, service } = setup();
-      prisma.projectSource.findUnique.mockResolvedValue({
-        currentRevisionId: revisionId,
-        referenceNeedsRewrite: true,
-        currentRevision: { createdAt: new Date('2026-08-13T09:00:00.000Z') },
-      });
-      prisma.sourceRevisionItem.count
-        .mockResolvedValueOnce(100)
-        .mockResolvedValueOnce(2);
       prisma.sourceDocument.count.mockResolvedValue(2);
-      prisma.referenceDocument.findFirst.mockResolvedValue(null);
+      prisma.note.count.mockResolvedValue(3);
+      prisma.projectSource.findUnique.mockResolvedValue({
+        referenceNeedsRewrite: true,
+      });
+      prisma.referenceDocument.findFirst.mockResolvedValue({
+        id: documentId,
+        status: 'ready',
+        outcome: 'written',
+        locale: 'fr',
+        structuredContent: [],
+        points: [{ id: 'p0' }, { id: 'p1' }],
+        failureCode: null,
+        createdAt: new Date(),
+        version: 2,
+      });
 
       await expect(service.summary('user', projectId)).resolves.toMatchObject({
-        statementCount: 100,
-        openPointCount: 2,
         documentCount: 2,
+        noteCount: 3,
+        openPointCount: 2,
         needsRewrite: true,
-        document: null,
       });
     });
 
-    it('answers for a project with no source at all', async () => {
+    it('answers for a project with nothing at all', async () => {
       const { prisma, service } = setup();
-      prisma.projectSource.findUnique.mockResolvedValue(null);
       prisma.sourceDocument.count.mockResolvedValue(0);
+      prisma.note.count.mockResolvedValue(0);
+      prisma.projectSource.findUnique.mockResolvedValue(null);
       prisma.referenceDocument.findFirst.mockResolvedValue(null);
 
       await expect(service.summary('user', projectId)).resolves.toMatchObject({
-        statementCount: 0,
-        sourceRevisionId: null,
-        lastChangedAt: null,
+        documentCount: 0,
+        openPointCount: 0,
+        needsRewrite: true,
+        document: null,
       });
     });
   });

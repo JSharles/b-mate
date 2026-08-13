@@ -1,20 +1,20 @@
 import { z } from "zod";
 import { DocumentationUuidSchema } from "./documentation-common";
 
-// The reference document is written for the developer, from the project's
-// canonical source. Nothing reads it back — composition still draws only on the
-// canonical source (specs/017 FR-009). A reading that becomes an input is how a
-// product ends up holding two accounts of the same project.
+// The reference document is written for the developer, in one call, from the
+// project's documents and the notes they wrote. Every write starts from the
+// originals: there is no accumulated state between two writes, which is why a
+// note has to be kept rather than applied once.
 
 export const ReferenceBlockSchema = z
   .object({
-    // FR-011: a gap the documents never settled is marked where it applies,
+    // FR-016: a gap the documents never settled is marked where it applies,
     // never smoothed into a sentence that reads as settled.
-    kind: z.enum(["paragraph", "open_point"]),
+    kind: z.enum(["paragraph", "gap"]),
     text: z.string().trim().min(1).max(20_000),
-    // What this passage rests on. Checked against what was sent, so a sentence
-    // with no source cannot survive.
-    informationItemIds: z.array(DocumentationUuidSchema).min(1),
+    // Set on a gap: which open point it stands for, so it can be answered
+    // where it appears rather than on a list somewhere else.
+    pointId: z.string().min(1).max(64).nullable().optional(),
   })
   .strict();
 
@@ -22,7 +22,46 @@ export const ReferencePartSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
     blocks: z.array(ReferenceBlockSchema).min(1),
+    // FR-004: which documents this part drew on. Coarser than the per-sentence
+    // provenance it replaces, and honest about it.
+    documentTitles: z.array(z.string().min(1)),
   })
+  .strict();
+
+// What the write could not settle. Display data carried with the document:
+// answering one records a note, and the point does not come back because the
+// answer is in the next write's input.
+export const ReferencePointSchema = z
+  .object({
+    id: z.string().min(1).max(64),
+    question: z.string().trim().min(1).max(2_000),
+    why: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+
+export const NoteSchema = z
+  .object({
+    id: DocumentationUuidSchema,
+    content: z.string().min(1),
+    // A frozen copy of what prompted it. Copied, never pointed at: the next
+    // write remakes the document, so the paragraph will not exist.
+    context: z.string().nullable(),
+    authorName: z.string().min(1),
+    createdAt: z.iso.datetime(),
+  })
+  .strict();
+
+// An answer to an open point and a correction to a paragraph are the same
+// thing: a note. `context` carries whichever one was on screen (FR-012).
+export const AddNoteRequestSchema = z
+  .object({
+    content: z.string().trim().min(1).max(4_000),
+    context: z.string().trim().min(1).max(20_000).nullable().optional(),
+  })
+  .strict();
+
+export const NoteListSchema = z
+  .object({ notes: z.array(NoteSchema) })
   .strict();
 
 export const ReferenceDocumentStatusSchema = z.enum([
@@ -42,22 +81,14 @@ export const ReferenceDocumentOutcomeSchema = z.enum([
 export const ReferenceDocumentViewSchema = z
   .object({
     id: DocumentationUuidSchema,
-    sourceRevisionId: DocumentationUuidSchema,
     status: ReferenceDocumentStatusSchema,
     outcome: ReferenceDocumentOutcomeSchema.nullable(),
     locale: z.string().min(2).max(8),
     parts: z.array(ReferencePartSchema),
-    // The statements the document cites, with their own wording. The document
-    // holds prose; correcting a statement needs the statement, and without this
-    // the correction action would open on an empty field (FR-005).
-    citedStatements: z.array(
-      z
-        .object({
-          id: DocumentationUuidSchema,
-          content: z.string().min(1),
-        })
-        .strict(),
-    ),
+    points: z.array(ReferencePointSchema),
+    // FR-017: titles of documents the write could make nothing of. An upload
+    // mistake is raised by name rather than silently ignored.
+    unrelatedDocuments: z.array(z.string().min(1)),
     failureCode: z.string().trim().min(1).max(128).nullable(),
     createdAt: z.iso.datetime(),
     version: z.number().int().positive(),
@@ -68,11 +99,9 @@ export const ReferenceDocumentViewSchema = z
 // source in a sentence.
 export const ReferenceSummarySchema = z
   .object({
-    statementCount: z.number().int().nonnegative(),
     documentCount: z.number().int().nonnegative(),
+    noteCount: z.number().int().nonnegative(),
     openPointCount: z.number().int().nonnegative(),
-    sourceRevisionId: DocumentationUuidSchema.nullable(),
-    lastChangedAt: z.iso.datetime().nullable(),
     needsRewrite: z.boolean(),
     // Null until one has been written. Distinguishes "never written" from
     // "written and being rewritten", which the developer must be able to tell
@@ -82,6 +111,10 @@ export const ReferenceSummarySchema = z
   .strict();
 
 export type ReferenceBlock = z.infer<typeof ReferenceBlockSchema>;
+export type ReferencePoint = z.infer<typeof ReferencePointSchema>;
+export type Note = z.infer<typeof NoteSchema>;
+export type AddNoteRequest = z.infer<typeof AddNoteRequestSchema>;
+export type NoteList = z.infer<typeof NoteListSchema>;
 export type ReferencePart = z.infer<typeof ReferencePartSchema>;
 export type ReferenceDocumentView = z.infer<typeof ReferenceDocumentViewSchema>;
 export type ReferenceSummary = z.infer<typeof ReferenceSummarySchema>;

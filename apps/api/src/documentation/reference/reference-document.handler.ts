@@ -1,61 +1,44 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import type { GenerationOperation, Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
-import type { GenerationProviderResult } from '../../generation/adapters/generation-provider';
+import type {
+  GenerationProviderResult,
+  GenerationRequestPart,
+} from '../../generation/adapters/generation-provider';
 import type {
   GenerationHandler,
   GenerationRequestInput,
 } from '../../generation/generation-handler.registry';
 import { GenerationHandlerRegistry } from '../../generation/generation-handler.registry';
 import { PrismaService } from '../../prisma/prisma.service';
+import { DocumentStorageClient } from '../source/document-storage.client';
+import {
+  DocumentInputNormalizerService,
+  type UploadDocumentInput,
+} from '../source/document-input-normalizer.service';
 import { buildReferenceDocumentPrompt } from './prompts/reference-document.prompt';
-import type { ReferenceStatement } from './prompts/reference-document.prompt';
-import { itemRef } from '../source/reference-token';
 import {
   REFERENCE_DOCUMENT_JSON_SCHEMA,
   REFERENCE_DOCUMENT_OUTPUT_CONTRACT,
   ReferenceDocumentOutputSchema,
-  resolveReferenceCitations,
+  resolveReference,
 } from './reference-output.schema';
 
-export interface ReferenceInput {
+export interface ReferenceInputShape {
   locale: string;
-  sourceRevisionId: string;
-  statements: ReferenceStatement[];
+  documentIds: string[];
+  noteIds: string[];
 }
 
-// One definition of the input, used both when the work is queued and when its
-// request is built. Two hand-kept copies is how a stage starts refusing its own
-// work for drift it invented itself.
-export function referenceFingerprint(input: ReferenceInput): string {
+// One definition of what the input is, used both when the work is queued and
+// when its request is built. Two hand-kept copies is how a stage starts
+// refusing its own work for drift it invented itself.
+export function referenceFingerprint(input: ReferenceInputShape): string {
   return createHash('sha256').update(JSON.stringify(input)).digest('hex');
 }
 
-export function selectReferenceStatements(
-  items: readonly {
-    informationItemId: string;
-    kind: ReferenceStatement['kind'];
-    state: ReferenceStatement['state'];
-    content: string;
-  }[],
-): ReferenceStatement[] {
-  return items.map((item, index) => ({
-    ref: itemRef(index),
-    kind: item.kind,
-    state: item.state,
-    content: item.content,
-  }));
-}
-
-// The map from what the model answers with back to what it stands for. Built
-// from the same ordered read the fingerprint was taken over, so a ref means the
-// same statement on both sides.
-export function referenceRefMap(
-  items: readonly { informationItemId: string }[],
-): Map<string, string> {
-  return new Map(
-    items.map((item, index) => [itemRef(index), item.informationItemId]),
-  );
+export function documentRef(index: number): string {
+  return `d${index}`;
 }
 
 @Injectable()
@@ -67,10 +50,28 @@ export class ReferenceDocumentHandler
   constructor(
     private readonly prisma: PrismaService,
     private readonly registry: GenerationHandlerRegistry,
+    private readonly storage: DocumentStorageClient,
+    private readonly normalizer: DocumentInputNormalizerService,
   ) {}
 
   onModuleInit(): void {
     this.registry.register(this);
+  }
+
+  // Ordered the same way everywhere, so a ref means the same document on both
+  // sides of the fingerprint.
+  private loadDocuments(projectId: string) {
+    return this.prisma.sourceDocument.findMany({
+      where: { projectId, status: 'incorporated' },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  private loadNotes(projectId: string) {
+    return this.prisma.note.findMany({
+      where: { projectId, archivedAt: null },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 
   async buildRequest(
@@ -78,30 +79,67 @@ export class ReferenceDocumentHandler
   ): Promise<GenerationRequestInput> {
     const document = await this.prisma.referenceDocument.findUnique({
       where: { generationOperationId: operation.id },
-      // Ordered, and ordered the same way the service ordered them when it
-      // queued the work. An unordered read here made the fingerprint differ
-      // from the one recorded, and the stage refused its own input as drift.
-      include: {
-        sourceRevision: {
-          include: { items: { orderBy: { sortOrder: 'asc' } } },
-        },
-      },
     });
     if (!document || document.status !== 'writing') {
       throw new Error('REFERENCE_DOCUMENT_NOT_CURRENT');
     }
 
-    const input: ReferenceInput = {
+    const [documents, notes] = await Promise.all([
+      this.loadDocuments(document.projectId),
+      this.loadNotes(document.projectId),
+    ]);
+
+    const shape: ReferenceInputShape = {
       locale: document.locale,
-      sourceRevisionId: document.sourceRevisionId,
-      statements: selectReferenceStatements(document.sourceRevision.items),
+      documentIds: documents.map((entry) => entry.id),
+      noteIds: notes.map((note) => note.id),
     };
-    if (referenceFingerprint(input) !== operation.inputFingerprint) {
+    if (referenceFingerprint(shape) !== operation.inputFingerprint) {
       throw new Error('REFERENCE_DOCUMENT_INPUT_DRIFT');
     }
 
+    // The documents themselves, read as the model can take them — the same
+    // normalisation the old extraction stage used, kept because turning a PDF
+    // or a Notion page into something readable is real work independent of
+    // what we then ask for.
+    const parts: GenerationRequestPart[] = [
+      {
+        kind: 'text',
+        text: buildReferenceDocumentPrompt({
+          locale: document.locale,
+          documents: documents.map((entry, index) => ({
+            ref: documentRef(index),
+            title: entry.title,
+          })),
+          notes: notes.map((note) => ({
+            content: note.content,
+            context: note.context,
+          })),
+        }),
+      },
+    ];
+
+    for (const [index, entry] of documents.entries()) {
+      if (!entry.storedObjectKey) continue;
+      const bytes = await this.storage.get(entry.storedObjectKey);
+      const normalized =
+        entry.kind === 'notion'
+          ? this.normalizeStoredNotion(bytes)
+          : await this.normalizer.normalizeUpload({
+              bytes,
+              fileName: entry.originalFileName ?? entry.title,
+              mimeType:
+                entry.originalMimeType as UploadDocumentInput['mimeType'],
+            });
+      parts.push({
+        kind: 'text',
+        text: `--- ${documentRef(index)}: ${entry.title} ---`,
+      });
+      parts.push(...normalized.parts);
+    }
+
     return {
-      parts: [{ kind: 'text', text: buildReferenceDocumentPrompt(input) }],
+      parts,
       outputContract: REFERENCE_DOCUMENT_OUTPUT_CONTRACT,
       outputSchema: REFERENCE_DOCUMENT_JSON_SCHEMA,
       maxOutputTokens: 32_000,
@@ -116,19 +154,21 @@ export class ReferenceDocumentHandler
     const output = ReferenceDocumentOutputSchema.parse(result.output);
     const document = await tx.referenceDocument.findUnique({
       where: { generationOperationId: operation.id },
-      include: {
-        sourceRevision: {
-          include: { items: { orderBy: { sortOrder: 'asc' } } },
-        },
-      },
     });
     if (!document || document.status !== 'writing') {
       throw new Error('REFERENCE_DOCUMENT_NOT_CURRENT');
     }
 
-    const parts = resolveReferenceCitations(
+    const documents = await tx.sourceDocument.findMany({
+      where: { projectId: document.projectId, status: 'incorporated' },
+      orderBy: { createdAt: 'asc' },
+      select: { title: true },
+    });
+    const resolved = resolveReference(
       output,
-      referenceRefMap(document.sourceRevision.items),
+      new Map(
+        documents.map((entry, index) => [documentRef(index), entry.title]),
+      ),
     );
 
     // The one before it stops being current the moment this one is ready. Two
@@ -148,14 +188,15 @@ export class ReferenceDocumentHandler
       data: {
         status: 'ready',
         outcome: output.outcome,
-        structuredContent: parts as unknown as Prisma.InputJsonValue,
+        structuredContent: resolved.parts as unknown as Prisma.InputJsonValue,
+        points: resolved.points as unknown as Prisma.InputJsonValue,
+        unrelatedDocuments:
+          resolved.unrelatedDocumentTitles as unknown as Prisma.InputJsonValue,
         failureCode: null,
         version: { increment: 1 },
       },
     });
 
-    // Written against the current head, so nothing is owed until the source
-    // moves again (FR-006).
     await tx.projectSource.updateMany({
       where: { projectId: document.projectId },
       data: { activeReferenceDocumentId: null, referenceNeedsRewrite: false },
@@ -187,6 +228,19 @@ export class ReferenceDocumentHandler
         activeReferenceDocumentId: document.id,
       },
       data: { activeReferenceDocumentId: null, referenceNeedsRewrite: true },
+    });
+  }
+
+  private normalizeStoredNotion(bytes: Buffer) {
+    const snapshot = JSON.parse(bytes.toString('utf8')) as {
+      pageId: string;
+      title: string;
+      content: string;
+    };
+    return this.normalizer.normalizeNotion({
+      pageId: snapshot.pageId,
+      title: snapshot.title,
+      blocks: [{ id: snapshot.pageId, position: 0, text: snapshot.content }],
     });
   }
 }

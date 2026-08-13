@@ -1,46 +1,62 @@
 import { z } from 'zod';
-import {
-  ITEM_REF_JSON_SCHEMA,
-  ItemRefSchema,
-  resolveRef,
-} from '../source/reference-token';
 
-export const REFERENCE_DOCUMENT_PROMPT_VERSION = 'reference-document-v1';
-export const REFERENCE_DOCUMENT_OUTPUT_CONTRACT = 'reference-document-v1';
+export const REFERENCE_DOCUMENT_PROMPT_VERSION = 'reference-document-v2';
+export const REFERENCE_DOCUMENT_OUTPUT_CONTRACT = 'reference-document-v2';
+
+// The model never sees an identifier, only `d0` and `p0`. It was handed UUIDs
+// once, returned a hundred passages and mistyped one character of one of them,
+// losing the whole document — see source/reference-token.ts.
+export const DocumentRefSchema = z.string().regex(/^d\d{1,4}$/u);
+export const PointRefSchema = z.string().regex(/^p\d{1,4}$/u);
+
+const DOCUMENT_REF_JSON_SCHEMA = { type: 'string', pattern: '^d[0-9]{1,4}$' };
+const POINT_REF_JSON_SCHEMA = { type: 'string', pattern: '^p[0-9]{1,4}$' };
 
 export const ReferenceBlockOutputSchema = z
   .object({
-    kind: z.enum(['paragraph', 'open_point']),
+    kind: z.enum(['paragraph', 'gap']),
     text: z.string().trim().min(1).max(20_000),
-    // Short references, never identifiers. Asked for UUIDs, the model returned
-    // a hundred passages and mistyped one character of one of them — and lost
-    // the whole document. The project had already learned this once; see
-    // reference-token.ts.
-    informationItemRefs: z.array(ItemRefSchema).min(1),
+    // Set on a gap: the point it stands for, so it can be answered in place.
+    pointRef: PointRefSchema.nullable().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((block, context) => {
+    if (block.kind === 'gap' && !block.pointRef) {
+      context.addIssue({
+        code: 'custom',
+        path: ['pointRef'],
+        message: 'A gap must name the point it stands for.',
+      });
+    }
+  });
 
 export const ReferencePartOutputSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
     blocks: z.array(ReferenceBlockOutputSchema).min(1),
+    documentRefs: z.array(DocumentRefSchema).min(1),
   })
   .strict();
 
-// Nothing here asks the model to echo an identifier back. A result arrives on
-// the attempt it was submitted for, and `applySuccessfulResult` refuses an
-// attempt that is no longer current — the check that was doing the real work
-// while echoed ids were killing stages over one wrong character.
+export const ReferencePointOutputSchema = z
+  .object({
+    ref: PointRefSchema,
+    question: z.string().trim().min(1).max(2_000),
+    why: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+
 export const ReferenceDocumentOutputSchema = z
   .object({
     promptVersion: z.literal(REFERENCE_DOCUMENT_PROMPT_VERSION),
     outcome: z.enum(['written', 'nothing_usable']),
     parts: z.array(ReferencePartOutputSchema),
+    points: z.array(ReferencePointOutputSchema),
+    // FR-017: a document that does not belong is named rather than woven in.
+    unrelatedDocumentRefs: z.array(DocumentRefSchema),
   })
   .strict()
   .superRefine((output, context) => {
-    // FR-007 has to hold both ways, or "nothing usable" becomes a label the
-    // model can attach to a document it did write.
     if (output.outcome === 'nothing_usable' && output.parts.length > 0) {
       context.addIssue({
         code: 'custom',
@@ -55,12 +71,32 @@ export const ReferenceDocumentOutputSchema = z
         message: 'A document with no parts must report nothing_usable.',
       });
     }
+    // A gap pointing at a point that was not raised would render as a question
+    // with no question in it.
+    const raised = new Set(output.points.map((point) => point.ref));
+    for (const part of output.parts) {
+      for (const block of part.blocks) {
+        if (block.pointRef && !raised.has(block.pointRef)) {
+          context.addIssue({
+            code: 'custom',
+            path: ['parts'],
+            message: `Gap names point ${block.pointRef}, which was not raised.`,
+          });
+        }
+      }
+    }
   });
 
 export const REFERENCE_DOCUMENT_JSON_SCHEMA: Record<string, unknown> = {
   type: 'object',
   additionalProperties: false,
-  required: ['promptVersion', 'outcome', 'parts'],
+  required: [
+    'promptVersion',
+    'outcome',
+    'parts',
+    'points',
+    'unrelatedDocumentRefs',
+  ],
   properties: {
     promptVersion: { const: REFERENCE_DOCUMENT_PROMPT_VERSION },
     outcome: { enum: ['written', 'nothing_usable'] },
@@ -69,58 +105,95 @@ export const REFERENCE_DOCUMENT_JSON_SCHEMA: Record<string, unknown> = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['title', 'blocks'],
+        required: ['title', 'blocks', 'documentRefs'],
         properties: {
           title: { type: 'string' },
+          documentRefs: {
+            type: 'array',
+            minItems: 1,
+            items: DOCUMENT_REF_JSON_SCHEMA,
+          },
           blocks: {
             type: 'array',
             minItems: 1,
             items: {
               type: 'object',
               additionalProperties: false,
-              required: ['kind', 'text', 'informationItemRefs'],
+              required: ['kind', 'text'],
               properties: {
-                kind: { enum: ['paragraph', 'open_point'] },
+                kind: { enum: ['paragraph', 'gap'] },
                 text: { type: 'string' },
-                informationItemRefs: {
-                  type: 'array',
-                  minItems: 1,
-                  items: ITEM_REF_JSON_SCHEMA,
-                },
+                pointRef: POINT_REF_JSON_SCHEMA,
               },
             },
           },
         },
       },
     },
+    points: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['ref', 'question', 'why'],
+        properties: {
+          ref: POINT_REF_JSON_SCHEMA,
+          question: { type: 'string' },
+          why: { type: 'string' },
+        },
+      },
+    },
+    unrelatedDocumentRefs: {
+      type: 'array',
+      items: DOCUMENT_REF_JSON_SCHEMA,
+    },
   },
 };
 
-export interface ResolvedReferencePart {
-  title: string;
-  blocks: {
-    kind: 'paragraph' | 'open_point';
-    text: string;
-    informationItemIds: string[];
+export interface ResolvedReference {
+  parts: {
+    title: string;
+    documentTitles: string[];
+    blocks: {
+      kind: 'paragraph' | 'gap';
+      text: string;
+      pointId: string | null;
+    }[];
   }[];
+  points: { id: string; question: string; why: string }[];
+  unrelatedDocumentTitles: string[];
 }
 
-// The document may leave statements out — a reference is a reading, not a
-// transcript. What must hold is the other direction: every citation names
-// something we actually sent. A reference we never issued is invented
+// Turns the refs the model answered with back into what they stand for,
+// refusing any it was never given. A ref we never issued is invented
 // provenance, and it is refused rather than stored.
-export function resolveReferenceCitations(
+export function resolveReference(
   output: z.infer<typeof ReferenceDocumentOutputSchema>,
-  refToItemId: ReadonlyMap<string, string>,
-): ResolvedReferencePart[] {
-  return output.parts.map((part) => ({
-    title: part.title,
-    blocks: part.blocks.map((block) => ({
-      kind: block.kind,
-      text: block.text,
-      informationItemIds: block.informationItemRefs.map((ref) =>
-        resolveRef(refToItemId, ref, 'statement'),
-      ),
+  refToDocumentTitle: ReadonlyMap<string, string>,
+): ResolvedReference {
+  const title = (ref: string): string => {
+    const resolved = refToDocumentTitle.get(ref);
+    if (!resolved) {
+      throw new Error(`REFERENCE_DOCUMENT_UNKNOWN_DOCUMENT_${ref}`);
+    }
+    return resolved;
+  };
+
+  return {
+    parts: output.parts.map((part) => ({
+      title: part.title,
+      documentTitles: part.documentRefs.map(title),
+      blocks: part.blocks.map((block) => ({
+        kind: block.kind,
+        text: block.text,
+        pointId: block.pointRef ?? null,
+      })),
     })),
-  }));
+    points: output.points.map((point) => ({
+      id: point.ref,
+      question: point.question,
+      why: point.why,
+    })),
+    unrelatedDocumentTitles: output.unrelatedDocumentRefs.map(title),
+  };
 }

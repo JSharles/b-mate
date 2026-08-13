@@ -10,6 +10,9 @@ describe('ReferenceDocumentController', () => {
       current: jest.fn(),
       summary: jest.fn(),
       write: jest.fn(),
+      addNote: jest.fn(),
+      listNotes: jest.fn(),
+      removeNote: jest.fn(),
     };
     return {
       reference,
@@ -31,11 +34,50 @@ describe('ReferenceDocumentController', () => {
 
   it('reads the summary', async () => {
     const { reference, controller } = setup();
-    reference.summary.mockResolvedValue({ statementCount: 0 });
+    reference.summary.mockResolvedValue({ documentCount: 0 });
 
     await controller.summary({ id: 'user-1' } as User, projectId);
 
     expect(reference.summary).toHaveBeenCalledWith('user-1', projectId);
+  });
+
+  // FR-012: answering a point and correcting a paragraph both arrive here, as
+  // the same thing — what was on screen travels as the note's context.
+  it('takes a note with what prompted it', async () => {
+    const { reference, controller } = setup();
+    reference.addNote.mockResolvedValue({ id: 'note-1' });
+
+    await controller.addNote({ id: 'user-1' } as User, projectId, {
+      content: 'Le lancement est en octobre.',
+      context: 'Quelle date de lancement ?',
+    });
+
+    expect(reference.addNote).toHaveBeenCalledWith('user-1', projectId, {
+      content: 'Le lancement est en octobre.',
+      context: 'Quelle date de lancement ?',
+    });
+  });
+
+  it('lists the notes', async () => {
+    const { reference, controller } = setup();
+    reference.listNotes.mockResolvedValue({ notes: [] });
+
+    await controller.notes({ id: 'user-1' } as User, projectId);
+
+    expect(reference.listNotes).toHaveBeenCalledWith('user-1', projectId);
+  });
+
+  it('removes one note by name', async () => {
+    const { reference, controller } = setup();
+    reference.removeNote.mockResolvedValue({ removed: true });
+
+    await controller.removeNote({ id: 'user-1' } as User, projectId, 'note-1');
+
+    expect(reference.removeNote).toHaveBeenCalledWith(
+      'user-1',
+      projectId,
+      'note-1',
+    );
   });
 
   // Reading the header as well as the stored value means a developer's very

@@ -1,25 +1,29 @@
 import type { GenerationOperation } from '@prisma/client';
 import { GenerationHandlerRegistry } from '../../generation/generation-handler.registry';
 import { asPrismaService, createPrismaMock } from '../../test/prisma-mock';
+import { DocumentInputNormalizerService } from '../source/document-input-normalizer.service';
+import { DocumentStorageClient } from '../source/document-storage.client';
 import {
   ReferenceDocumentHandler,
   referenceFingerprint,
-  selectReferenceStatements,
 } from './reference-document.handler';
 import { REFERENCE_DOCUMENT_PROMPT_VERSION } from './reference-output.schema';
 
 const operationId = '00000000-0000-4000-8000-0000000000aa';
 const documentId = '00000000-0000-4000-8000-000000000001';
-const revisionId = '00000000-0000-4000-8000-000000000002';
-const itemA = '00000000-0000-4000-8000-00000000000a';
 
-const items = [
+const sourceDocuments = [
   {
-    informationItemId: itemA,
-    kind: 'fact' as const,
-    state: 'confirmed' as const,
-    content: 'The launch is planned for October.',
+    id: 'doc-1',
+    title: 'Cahier des charges',
+    kind: 'upload',
+    storedObjectKey: 'key-1',
+    originalFileName: 'cdc.pdf',
+    originalMimeType: 'application/pdf',
   },
+];
+const notes = [
+  { id: 'note-1', content: 'Le lancement est en octobre.', context: null },
 ];
 
 function operation(): GenerationOperation {
@@ -27,8 +31,8 @@ function operation(): GenerationOperation {
     id: operationId,
     inputFingerprint: referenceFingerprint({
       locale: 'fr',
-      sourceRevisionId: revisionId,
-      statements: selectReferenceStatements(items),
+      documentIds: ['doc-1'],
+      noteIds: ['note-1'],
     }),
   } as GenerationOperation;
 }
@@ -37,10 +41,8 @@ function writing(overrides: Record<string, unknown> = {}) {
   return {
     id: documentId,
     projectId: 'project-1',
-    sourceRevisionId: revisionId,
     locale: 'fr',
     status: 'writing',
-    sourceRevision: { items },
     ...overrides,
   };
 }
@@ -53,15 +55,14 @@ function output(overrides: Record<string, unknown> = {}) {
       parts: [
         {
           title: 'Le projet',
+          documentRefs: ['d0'],
           blocks: [
-            {
-              kind: 'paragraph',
-              text: 'Le lancement est prévu en octobre.',
-              informationItemRefs: ['i0'],
-            },
+            { kind: 'paragraph', text: 'Le produit rend un projet lisible.' },
           ],
         },
       ],
+      points: [],
+      unrelatedDocumentRefs: [],
       ...overrides,
     },
   } as never;
@@ -71,11 +72,30 @@ describe('ReferenceDocumentHandler', () => {
   function setup() {
     const prisma = createPrismaMock();
     const registry = new GenerationHandlerRegistry();
+    const storage = { get: jest.fn().mockResolvedValue(Buffer.from('pdf')) };
+    const normalizer = {
+      normalizeUpload: jest
+        .fn()
+        .mockResolvedValue({ parts: [{ kind: 'text', text: 'contenu' }] }),
+      normalizeNotion: jest.fn(),
+    };
     return {
       prisma,
       registry,
-      handler: new ReferenceDocumentHandler(asPrismaService(prisma), registry),
+      normalizer,
+      handler: new ReferenceDocumentHandler(
+        asPrismaService(prisma),
+        registry,
+        storage as unknown as DocumentStorageClient,
+        normalizer as unknown as DocumentInputNormalizerService,
+      ),
     };
+  }
+
+  function ready(prisma: ReturnType<typeof createPrismaMock>, doc = writing()) {
+    prisma.referenceDocument.findUnique.mockResolvedValue(doc);
+    prisma.sourceDocument.findMany.mockResolvedValue(sourceDocuments);
+    prisma.note.findMany.mockResolvedValue(notes);
   }
 
   it('registers itself for its stage', () => {
@@ -85,53 +105,61 @@ describe('ReferenceDocumentHandler', () => {
   });
 
   describe('building the request', () => {
-    it('asks for the document in the developer language and carries the statements', async () => {
+    it('sends the documents themselves and the notes, in the developer language', async () => {
       const { prisma, handler } = setup();
-      prisma.referenceDocument.findUnique.mockResolvedValue(writing());
+      ready(prisma);
 
       const request = await handler.buildRequest(operation());
-      const text = (request.parts[0] as { text: string }).text;
+      const prompt = (request.parts[0] as { text: string }).text;
 
-      expect(text).toContain('French');
-      expect(text).toContain('The launch is planned for October.');
+      expect(prompt).toContain('French');
+      expect(prompt).toContain('d0: Cahier des charges');
+      expect(prompt).toContain('Le lancement est en octobre.');
     });
 
-    // The fingerprint is taken over the statements in order. The service reads
-    // them sorted; an unsorted read here produced a different fingerprint and the
-    // stage refused its own input as drift — on the very first real run.
-    it('reads the statements in the order the service recorded them', async () => {
+    // FR-014: a note is replayed on every write, and outranks the documents.
+    it('tells the model a note outranks the documents', async () => {
       const { prisma, handler } = setup();
-      prisma.referenceDocument.findUnique.mockResolvedValue(writing());
+      ready(prisma);
 
-      await handler.buildRequest(operation());
+      const prompt = (
+        (await handler.buildRequest(operation())).parts[0] as { text: string }
+      ).text;
 
-      expect(prisma.referenceDocument.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({
-          include: expect.objectContaining({
-            sourceRevision: {
-              include: { items: { orderBy: { sortOrder: 'asc' } } },
-            },
-          }),
-        }),
-      );
+      expect(prompt).toContain('A note outranks the documents');
+    });
+
+    it('carries each document body after its heading', async () => {
+      const { prisma, normalizer, handler } = setup();
+      ready(prisma);
+
+      const request = await handler.buildRequest(operation());
+
+      expect(normalizer.normalizeUpload).toHaveBeenCalled();
+      expect(
+        request.parts.some(
+          (part) =>
+            part.kind === 'text' &&
+            part.text.includes('d0: Cahier des charges'),
+        ),
+      ).toBe(true);
     });
 
     it('refuses a document that is no longer being written', async () => {
       const { prisma, handler } = setup();
-      prisma.referenceDocument.findUnique.mockResolvedValue(
-        writing({ status: 'superseded' }),
-      );
+      ready(prisma, writing({ status: 'superseded' }));
 
       await expect(handler.buildRequest(operation())).rejects.toThrow(
         'REFERENCE_DOCUMENT_NOT_CURRENT',
       );
     });
 
-    it('refuses when the source moved under a queued write', async () => {
+    // A note added after the work was queued changes the answer, so the write
+    // is refused rather than made from an input nobody asked for.
+    it('refuses when the notes moved under a queued write', async () => {
       const { prisma, handler } = setup();
-      prisma.referenceDocument.findUnique.mockResolvedValue(
-        writing({ sourceRevision: { items: [] } }),
-      );
+      ready(prisma);
+      prisma.note.findMany.mockResolvedValue([]);
 
       await expect(handler.buildRequest(operation())).rejects.toThrow(
         'REFERENCE_DOCUMENT_INPUT_DRIFT',
@@ -140,9 +168,14 @@ describe('ReferenceDocumentHandler', () => {
   });
 
   describe('applying a result', () => {
+    function applied(prisma: ReturnType<typeof createPrismaMock>) {
+      prisma.referenceDocument.findUnique.mockResolvedValue(writing());
+      prisma.sourceDocument.findMany.mockResolvedValue(sourceDocuments);
+    }
+
     it('makes the document current and clears what the project owed', async () => {
       const { prisma, handler } = setup();
-      prisma.referenceDocument.findUnique.mockResolvedValue(writing());
+      applied(prisma);
 
       await handler.apply(prisma as never, operation(), output());
 
@@ -156,19 +189,14 @@ describe('ReferenceDocumentHandler', () => {
       );
       expect(prisma.projectSource.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            activeReferenceDocumentId: null,
-            referenceNeedsRewrite: false,
-          }),
+          data: expect.objectContaining({ referenceNeedsRewrite: false }),
         }),
       );
     });
 
-    // Two documents both reading as current is the same defect as two published
-    // releases, one level up.
     it('retires the document it replaces', async () => {
       const { prisma, handler } = setup();
-      prisma.referenceDocument.findUnique.mockResolvedValue(writing());
+      applied(prisma);
 
       await handler.apply(prisma as never, operation(), output());
 
@@ -180,36 +208,85 @@ describe('ReferenceDocumentHandler', () => {
       );
     });
 
-    it('records a document that found nothing usable', async () => {
+    it('stores the points beside the document', async () => {
       const { prisma, handler } = setup();
-      prisma.referenceDocument.findUnique.mockResolvedValue(writing());
+      applied(prisma);
 
       await handler.apply(
         prisma as never,
         operation(),
-        output({ outcome: 'nothing_usable', parts: [] }),
+        output({
+          parts: [
+            {
+              title: 'Planning',
+              documentRefs: ['d0'],
+              blocks: [
+                { kind: 'gap', text: 'Date non confirmée.', pointRef: 'p0' },
+              ],
+            },
+          ],
+          points: [
+            { ref: 'p0', question: 'Quelle date ?', why: 'Le client la lira.' },
+          ],
+        }),
       );
 
       expect(prisma.referenceDocument.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            outcome: 'nothing_usable',
-            structuredContent: [],
+            points: [
+              {
+                id: 'p0',
+                question: 'Quelle date ?',
+                why: 'Le client la lira.',
+              },
+            ],
           }),
         }),
       );
     });
 
-    it('refuses a document citing a statement it was never given, and writes nothing', async () => {
+    // FR-017: an upload mistake is named, not woven in. Dropping this on the
+    // floor would leave the developer wondering why their document changed
+    // nothing.
+    it('names a document that has nothing to do with the project', async () => {
       const { prisma, handler } = setup();
-      // A reference the model was never issued: refused rather than stored.
-      prisma.referenceDocument.findUnique.mockResolvedValue(
-        writing({ sourceRevision: { items: [] } }),
+      applied(prisma);
+
+      await handler.apply(
+        prisma as never,
+        operation(),
+        output({ unrelatedDocumentRefs: ['d0'] }),
       );
 
+      expect(prisma.referenceDocument.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            unrelatedDocuments: ['Cahier des charges'],
+          }),
+        }),
+      );
+    });
+
+    it('refuses a part drawing on a document it was never given', async () => {
+      const { prisma, handler } = setup();
+      applied(prisma);
+
       await expect(
-        handler.apply(prisma as never, operation(), output()),
-      ).rejects.toThrow('unknown statement');
+        handler.apply(
+          prisma as never,
+          operation(),
+          output({
+            parts: [
+              {
+                title: 'Le projet',
+                documentRefs: ['d9'],
+                blocks: [{ kind: 'paragraph', text: 'Inventé.' }],
+              },
+            ],
+          }),
+        ),
+      ).rejects.toThrow('REFERENCE_DOCUMENT_UNKNOWN_DOCUMENT_d9');
       expect(prisma.referenceDocument.update).not.toHaveBeenCalled();
     });
   });
@@ -222,26 +299,19 @@ describe('ReferenceDocumentHandler', () => {
         projectId: 'project-1',
       });
 
-      await handler.onTerminalFailure(
-        prisma as never,
-        operation(),
-        'PROVIDER_TIMEOUT',
-      );
+      await handler.onTerminalFailure(prisma as never, operation(), 'TIMEOUT');
 
       expect(prisma.referenceDocument.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             status: 'failed',
-            failureCode: 'PROVIDER_TIMEOUT',
+            failureCode: 'TIMEOUT',
           }),
         }),
       );
       expect(prisma.projectSource.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            activeReferenceDocumentId: null,
-            referenceNeedsRewrite: true,
-          }),
+          data: expect.objectContaining({ referenceNeedsRewrite: true }),
         }),
       );
     });
