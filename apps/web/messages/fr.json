@@ -357,7 +357,13 @@
           "phase_acceptance": "Recette",
           "phase_launch": "Mise en ligne",
           "phase_aftercare": "Suivi",
-          "addBlankStep": "Étape vierge"
+          "addBlankStep": "Étape vierge",
+          "addSubstep": "Ajouter une sous-étape",
+          "substepTitleLabel": "Sous-étape",
+          "substepTitlePlaceholder": "Feature 1 — le panier",
+          "substepWhenLabel": "Quand, pour cette sous-étape",
+          "substepWhenPlaceholder": "Sans date",
+          "nothingYet": "Votre client ne voit encore aucune étape : la frise est vide."
         }
       },
       "Reference": {

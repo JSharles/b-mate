@@ -19,6 +19,24 @@ import {
 } from './roadmap-output.schema';
 import { compositionFingerprint } from './section-composition.handler';
 
+// Every id a roadmap holds, at both levels. Where the project stands may name
+// a milestone or one of its sub-steps, so anything checking "does this id still
+// exist" has to walk the whole tree.
+export function milestoneIds(structuredContent: unknown): Set<string> {
+  const milestones = (structuredContent ?? []) as {
+    id?: string;
+    substeps?: { id?: string }[];
+  }[];
+  return new Set(
+    milestones
+      .flatMap((milestone) => [
+        milestone.id,
+        ...(milestone.substeps ?? []).map((substep) => substep.id),
+      ])
+      .filter((id): id is string => typeof id === 'string'),
+  );
+}
+
 // The states a proposal can still move out of. A section holding one of these
 // is busy; anything else has released it.
 const LIVE_PROPOSAL_STATUSES = ['composing', 'pending_review'] as const;
@@ -248,6 +266,12 @@ export class SectionProposalService {
         when: string;
         title: string;
         description?: string | null;
+        substeps?: {
+          id?: string | null;
+          when?: string | null;
+          title: string;
+          description?: string | null;
+        }[];
       }[];
       expectedProposalVersion: number;
     },
@@ -275,11 +299,25 @@ export class SectionProposalService {
       throw new ConflictException({ code: 'PROPOSAL_STALE' });
     }
 
+    // Both levels are reconciled against what was held, so a correction to a
+    // sub-step keeps its id and its origin exactly as a correction to the
+    // milestone above it does.
+    const previous = (held.structuredContent ?? []) as {
+      id: string;
+      origin: string;
+      substeps?: { id: string; origin: string }[];
+    }[];
     const existing = new Map(
-      ((held.structuredContent ?? []) as { id: string; origin: string }[]).map(
-        (milestone) => [milestone.id, milestone],
+      previous.map((milestone) => [milestone.id, milestone]),
+    );
+    const existingSubsteps = new Map(
+      previous.flatMap((milestone) =>
+        (milestone.substeps ?? []).map(
+          (substep) => [substep.id, substep] as const,
+        ),
       ),
     );
+
     const milestones = input.milestones.map((milestone) => {
       const kept = milestone.id ? existing.get(milestone.id) : undefined;
       return {
@@ -289,6 +327,22 @@ export class SectionProposalService {
         description: milestone.description?.trim()
           ? milestone.description.trim()
           : null,
+        substeps: (milestone.substeps ?? []).map((substep) => {
+          const keptSubstep = substep.id
+            ? existingSubsteps.get(substep.id)
+            : undefined;
+          return {
+            id: keptSubstep?.id ?? randomUUID(),
+            // A step inside a phase often has no date of its own, and an empty
+            // field is that answer rather than a blank string.
+            when: substep.when?.trim() ? substep.when.trim() : null,
+            title: substep.title.trim(),
+            description: substep.description?.trim()
+              ? substep.description.trim()
+              : null,
+            origin: keptSubstep ? keptSubstep.origin : ('developer' as const),
+          };
+        }),
         // A milestone read from the documents stays one even after its wording
         // is corrected: the developer is fixing what was read, not authoring a
         // step of their own. Anything with no id behind it is theirs.
@@ -324,10 +378,24 @@ export class SectionProposalService {
     await this.access.requireContributor(userId, projectId);
     const section = await this.prisma.clientSection.findFirst({
       where: { id: sectionId, projectId, archivedAt: null },
-      select: { id: true, activeProposalId: true },
+      select: { id: true, kind: true, activeProposalId: true },
     });
     if (!section?.activeProposalId) {
       throw new NotFoundException({ code: 'NOT_FOUND' });
+    }
+
+    // Publishing an empty roadmap gives the client a tab with nothing in it and
+    // no way to know why. A roadmap that found nothing is a starting point, not
+    // something to approve — the developer fills it in first.
+    if (section.kind === 'roadmap') {
+      const held = await this.prisma.sectionProposal.findUnique({
+        where: { id: section.activeProposalId },
+        select: { structuredContent: true },
+      });
+      const milestones = (held?.structuredContent ?? []) as unknown[];
+      if (milestones.length === 0) {
+        throw new BadRequestException({ code: 'ROADMAP_EMPTY' });
+      }
     }
 
     // FR-012: only a proposal the contributor has actually read can be
@@ -382,11 +450,10 @@ export class SectionProposalService {
     sectionId: string,
     structuredContent: unknown,
   ) {
-    const ids = new Set(
-      ((structuredContent ?? []) as { id?: string }[])
-        .map((milestone) => milestone.id)
-        .filter((id): id is string => typeof id === 'string'),
-    );
+    // Walked at both levels: the position may name a sub-step, and a sub-step
+    // that disappears leaves the section pointing at nothing just as a
+    // milestone does.
+    const ids = milestoneIds(structuredContent);
     const section = await this.prisma.clientSection.findUnique({
       where: { id: sectionId },
       select: { currentMilestoneId: true },

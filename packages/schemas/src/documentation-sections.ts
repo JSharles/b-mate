@@ -48,7 +48,34 @@ export const SectionEditorialSchema = z
 // the client receives, which is why it cannot change under a published section.
 export const SectionKindSchema = z.enum(["prose", "roadmap"]);
 
-// A milestone carries when, what, and optionally why it matters.
+// Whether it was read from the reference document or added by hand. The
+// developer sees the difference — trusting a roadmap means knowing what came
+// from where — and the client does not, because by then both are the
+// developer's word.
+export const MilestoneOriginSchema = z.enum(["document", "developer"]);
+
+// What sits inside a long milestone. "Développement" is one word for three
+// months; naming Feature 1, Feature 2, Feature 3 is the difference between a
+// roadmap that informs and one that reassures.
+//
+// Its "when" may be absent, because a feature inside a phase often has no date
+// of its own and inventing one would be inventing. Its title may not: a step
+// with no name is a marker over nothing.
+//
+// **It carries no sub-steps.** The roadmap is two levels deep, and the ceiling
+// is the type rather than a rule someone has to remember.
+export const SubstepSchema = z
+  .object({
+    id: DocumentationUuidSchema,
+    when: z.string().trim().min(1).max(120).nullable(),
+    title: z.string().trim().min(1).max(200),
+    description: z.string().trim().min(1).max(2_000).nullable(),
+    origin: MilestoneOriginSchema,
+  })
+  .strict();
+
+// A milestone carries when, what, optionally why it matters, and optionally
+// what sits inside it.
 //
 // "When" is text, never a date. Documents say "Q3 2026", "après la phase
 // pilote", "mi-octobre". A date type would either lose those or invent a
@@ -59,20 +86,27 @@ export const MilestoneSchema = z
     when: z.string().trim().min(1).max(120),
     title: z.string().trim().min(1).max(200),
     description: z.string().trim().min(1).max(2_000).nullable(),
-    // Whether it was read from the reference document or added by hand. The
-    // developer sees the difference — trusting a roadmap means knowing what
-    // came from where — and the client does not, because by then both are the
-    // developer's word.
-    origin: z.enum(["document", "developer"]),
+    substeps: z.array(SubstepSchema),
+    origin: MilestoneOriginSchema,
   })
   .strict();
 
-// What the developer sends back after editing: ids only for milestones they
-// kept, so a new one is unambiguous and cannot collide with an existing id.
-export const MilestoneDraftSchema = MilestoneSchema.omit({
+// What the developer sends back after editing: ids only for the ones they kept,
+// so a new step is unambiguous and cannot collide with an existing id. The
+// whole tree travels, both levels of it.
+export const SubstepDraftSchema = SubstepSchema.omit({
   id: true,
   origin: true,
 }).extend({ id: DocumentationUuidSchema.nullable() });
+
+export const MilestoneDraftSchema = MilestoneSchema.omit({
+  id: true,
+  origin: true,
+  substeps: true,
+}).extend({
+  id: DocumentationUuidSchema.nullable(),
+  substeps: z.array(SubstepDraftSchema),
+});
 
 // The whole ordered set travels, so the result is never a function of what the
 // server already held — the same reason reordering carries every id.
@@ -215,9 +249,16 @@ export const PublicSectionSchema = z
   })
   .strict();
 
+// Where a step came from is the developer's business, not the client's: by the
+// time it is published, both are the developer's word.
+export const PublicSubstepSchema = SubstepSchema.omit({ origin: true }).strict();
+
 export const PublicMilestoneSchema = MilestoneSchema.omit({
   origin: true,
-}).strict();
+  substeps: true,
+})
+  .extend({ substeps: z.array(PublicSubstepSchema) })
+  .strict();
 
 export const PublicSectionsViewSchema = z
   .object({ sections: z.array(PublicSectionSchema) })
@@ -227,7 +268,10 @@ export type SectionEditorial = z.infer<typeof SectionEditorialSchema>;
 export type SectionKind = z.infer<typeof SectionKindSchema>;
 export type Milestone = z.infer<typeof MilestoneSchema>;
 export type MilestoneDraft = z.infer<typeof MilestoneDraftSchema>;
+export type Substep = z.infer<typeof SubstepSchema>;
+export type SubstepDraft = z.infer<typeof SubstepDraftSchema>;
 export type PublicMilestone = z.infer<typeof PublicMilestoneSchema>;
+export type PublicSubstep = z.infer<typeof PublicSubstepSchema>;
 export type ReplaceMilestonesRequest = z.infer<
   typeof ReplaceMilestonesRequestSchema
 >;

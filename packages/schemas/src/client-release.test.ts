@@ -30,6 +30,7 @@ describe("client release contracts", () => {
           when: "Q3 2026",
           title: "Recette",
           description: null,
+          substeps: [],
         },
       ],
       currentMilestoneId: milestoneId,
@@ -55,11 +56,43 @@ describe("client release contracts", () => {
             when: "Q3 2026",
             title: "Recette",
             description: null,
+            substeps: [],
             origin: "developer",
           },
         ],
         currentMilestoneId: null,
       }).success,
+    ).toBe(false);
+  });
+
+  it("never tells the client where a sub-step came from either", () => {
+    const body = (substep: Record<string, unknown>) => ({
+      kind: "roadmap",
+      id,
+      name: "Roadmap",
+      milestones: [
+        {
+          id: milestoneId,
+          when: "Q3 2026",
+          title: "Développement",
+          description: null,
+          substeps: [substep],
+        },
+      ],
+      currentMilestoneId: null,
+    });
+    const substep = {
+      id: "123e4567-e89b-42d3-a456-426614174002",
+      when: null,
+      title: "Feature 1",
+      description: null,
+    };
+
+    expect(PublicClientSectionSchema.safeParse(body(substep)).success).toBe(true);
+    expect(
+      PublicClientSectionSchema.safeParse(
+        body({ ...substep, origin: "document" }),
+      ).success,
     ).toBe(false);
   });
 

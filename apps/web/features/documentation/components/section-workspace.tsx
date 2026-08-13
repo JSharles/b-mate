@@ -22,6 +22,10 @@ export function stateOf(section: SectionView) {
   if (section.activeProposal?.status === "pending_review") return "awaiting";
   if (section.refreshNeeded && section.hasPublishedContent) return "stale";
   if (section.refreshNeeded) return "never";
+  // Composed, approved, and still nothing the client can read: an approved
+  // roadmap holding no milestone publishes nothing, and "Publiée" over an empty
+  // tab is a badge that lies.
+  if (!section.hasPublishedContent) return "never";
   return "published";
 }
 

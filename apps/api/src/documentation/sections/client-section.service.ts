@@ -7,7 +7,10 @@ import {
 import type { ClientSection, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
-import { SectionProposalService } from '../composition/section-proposal.service';
+import {
+  milestoneIds,
+  SectionProposalService,
+} from '../composition/section-proposal.service';
 import {
   CreateClientSectionDto,
   ReorderClientSectionsDto,
@@ -24,19 +27,32 @@ type SectionRow = ClientSection & {
     changeSummary: string | null;
     createdAt: Date;
   } | null;
-  proposals: { id: string }[];
+  proposals: { id: string; structuredContent?: unknown }[];
 };
 
 const SECTION_INCLUDE = {
   activeProposal: true,
   // One approved proposal is enough to know the client has something to read;
-  // taking more would be paid for on every list call.
+  // taking more would be paid for on every list call. Its content comes along
+  // because an approved roadmap holding no milestone publishes nothing, and a
+  // section whose badge says "published" over an empty tab is lying.
   proposals: {
     where: { status: 'approved' as const },
-    select: { id: true },
+    select: { id: true, structuredContent: true },
+    orderBy: { createdAt: 'desc' as const },
     take: 1,
   },
 } satisfies Prisma.ClientSectionInclude;
+
+// What the client can actually read. For prose, an approved proposal is enough.
+// For a roadmap it has to hold at least one milestone: an empty frise is a
+// section with no published content, and the client's tabs leave it out.
+function hasReadableContent(row: SectionRow) {
+  const approved = row.proposals[0];
+  if (!approved) return false;
+  if (row.kind !== 'roadmap') return true;
+  return ((approved.structuredContent ?? []) as unknown[]).length > 0;
+}
 
 @Injectable()
 export class ClientSectionService {
@@ -298,8 +314,9 @@ export class ClientSectionService {
 
     const milestoneId = input.milestoneId ?? null;
     if (milestoneId !== null) {
-      // The id has to name a milestone the client can actually see, or the
-      // timeline would claim a position that renders nowhere.
+      // The id has to name something the client can actually see, or the
+      // timeline would claim a position that renders nowhere. Both levels
+      // count: "Feature 2 of five" is the answer "Développement" cannot give.
       const published = await this.prisma.clientSectionContent.findFirst({
         where: { sectionId, projectId },
         orderBy: { createdAt: 'desc' },
@@ -312,10 +329,7 @@ export class ClientSectionService {
       });
       const known = new Set(
         [published?.structuredContent, pending?.structuredContent].flatMap(
-          (content) =>
-            ((content ?? []) as { id?: string }[])
-              .map((milestone) => milestone.id)
-              .filter((id): id is string => typeof id === 'string'),
+          (content) => [...milestoneIds(content)],
         ),
       );
       if (!known.has(milestoneId)) {
@@ -419,7 +433,7 @@ export class ClientSectionService {
             createdAt: row.activeProposal.createdAt.toISOString(),
           }
         : null,
-      hasPublishedContent: row.proposals.length > 0,
+      hasPublishedContent: hasReadableContent(row),
       version: row.version,
     };
   }

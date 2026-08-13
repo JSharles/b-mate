@@ -198,9 +198,10 @@ export class SectionCompositionHandler
     };
   }
 
-  // Ids are minted here rather than asked of the model. They have to survive
-  // the developer's edits and the derivation that follows, and a model copying
-  // a uuid back is exactly the failure 45a13ac removed everywhere else.
+  // Ids are minted here rather than asked of the model, at both levels. They
+  // have to survive the developer's edits and the derivation that follows, and
+  // a model copying a uuid back is exactly the failure 45a13ac removed
+  // everywhere else.
   private applyRoadmap(result: GenerationProviderResult) {
     const output = RoadmapCompositionOutputSchema.parse(result.output);
     const milestones = output.milestones.map((milestone) => ({
@@ -208,6 +209,13 @@ export class SectionCompositionHandler
       when: milestone.when,
       title: milestone.title,
       description: milestone.description?.trim() ? milestone.description : null,
+      substeps: milestone.substeps.map((substep) => ({
+        id: randomUUID(),
+        when: substep.when?.trim() ? substep.when : null,
+        title: substep.title,
+        description: substep.description?.trim() ? substep.description : null,
+        origin: 'document' as const,
+      })),
       origin: 'document' as const,
     }));
     return {

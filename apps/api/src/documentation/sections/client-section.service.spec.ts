@@ -660,6 +660,46 @@ describe('ClientSectionService', () => {
       expect(proposals.compose).not.toHaveBeenCalled();
     });
 
+    // "Feature 2 of five" is the answer "Développement" cannot give, so the
+    // known-id check walks both levels.
+    it('accepts a position that names a step inside a milestone', async () => {
+      const { prisma, service } = setup();
+      const substepId = '00000000-0000-4000-8000-00000000000c';
+      prisma.clientSection.findFirst.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+      });
+      prisma.sectionProposal.findFirst.mockResolvedValue({
+        structuredContent: [{ id: milestoneId, substeps: [{ id: substepId }] }],
+      });
+      prisma.clientSection.updateMany.mockResolvedValue({ count: 1 });
+      prisma.clientSection.findUnique.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+        name: 'Roadmap',
+        instructions: null,
+        length: null,
+        pedagogy: null,
+        technicalFamiliarity: null,
+        tone: null,
+        currentMilestoneId: substepId,
+        sortOrder: 0,
+        refreshNeeded: false,
+        version: 2,
+        activeProposal: null,
+        proposals: [],
+      });
+
+      const view = await service.setCurrentMilestone(
+        userId,
+        projectId,
+        sectionId,
+        { milestoneId: substepId, expectedVersion: 1 },
+      );
+
+      expect(view.currentMilestoneId).toBe(substepId);
+    });
+
     // A position the timeline cannot render is not a position.
     it('refuses a milestone the client could never see', async () => {
       const { prisma, service } = setup();
@@ -775,5 +815,50 @@ describe('ClientSectionService', () => {
         kind: 'roadmap',
       } as never),
     ).rejects.toMatchObject({ response: { code: 'SECTION_ROADMAP_EXISTS' } });
+  });
+
+  // An approved roadmap holding no milestone publishes nothing, and a section
+  // whose badge says "published" over an empty tab is lying.
+  it('does not call an empty roadmap published', async () => {
+    const { prisma, service } = setup();
+    prisma.clientSection.findMany.mockResolvedValue([
+      {
+        id: sectionId,
+        kind: 'roadmap',
+        name: 'Roadmap',
+        instructions: null,
+        length: null,
+        pedagogy: null,
+        technicalFamiliarity: null,
+        tone: null,
+        currentMilestoneId: null,
+        sortOrder: 0,
+        refreshNeeded: false,
+        version: 3,
+        activeProposal: null,
+        proposals: [{ id: 'approved', structuredContent: [] }],
+      },
+      {
+        id: 'other-section',
+        kind: 'roadmap',
+        name: 'Étapes',
+        instructions: null,
+        length: null,
+        pedagogy: null,
+        technicalFamiliarity: null,
+        tone: null,
+        currentMilestoneId: null,
+        sortOrder: 1,
+        refreshNeeded: false,
+        version: 3,
+        activeProposal: null,
+        proposals: [{ id: 'approved-2', structuredContent: [{ id: 'm' }] }],
+      },
+    ]);
+
+    const { sections } = await service.list(userId, projectId);
+
+    expect(sections[0].hasPublishedContent).toBe(false);
+    expect(sections[1].hasPublishedContent).toBe(true);
   });
 });

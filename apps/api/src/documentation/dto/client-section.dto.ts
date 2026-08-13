@@ -58,6 +58,32 @@ export class CreateClientSectionDto {
   editorial!: SectionEditorialDto;
 }
 
+// What sits inside a milestone, as the developer sends it back. Its "when" may
+// be absent: a feature inside a phase often has no date of its own.
+//
+// It carries no `substeps` of its own — the roadmap is two levels deep, and the
+// validator is what makes a third impossible rather than merely discouraged.
+export class SubstepDraftDto {
+  @IsOptional()
+  @IsUUID('4')
+  id?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  when?: string | null;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  title!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description?: string | null;
+}
+
 // One milestone as the developer sends it back. An id only for one they kept,
 // so a new milestone is unambiguous and can never collide with an existing id.
 export class MilestoneDraftDto {
@@ -79,6 +105,15 @@ export class MilestoneDraftDto {
   @IsString()
   @MaxLength(2000)
   description?: string | null;
+
+  // The whole tree travels, both levels of it. Declared here because the
+  // validation pipe strips what it does not know about: a `substeps` missing
+  // from this class is a `substeps` the service never sees.
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SubstepDraftDto)
+  substeps?: SubstepDraftDto[];
 }
 
 // The whole ordered set travels, so the result is never a function of what the

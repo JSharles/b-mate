@@ -6,6 +6,7 @@ import {
   ReorderSectionsRequestSchema,
   MilestoneSchema,
   ReplaceMilestonesRequestSchema,
+  SubstepSchema,
   SectionContentBlockSchema,
   SectionProposalDetailSchema,
   SectionViewSchema,
@@ -243,11 +244,20 @@ describe("a section's state", () => {
 });
 
 describe("a roadmap's milestones", () => {
+  const substep = {
+    id: otherId,
+    when: null,
+    title: "Feature 1 — le panier",
+    description: null,
+    origin: "document",
+  };
+
   const milestone = {
     id,
     when: "Q3 2026",
     title: "Recette",
     description: null,
+    substeps: [],
     origin: "document",
   };
 
@@ -266,12 +276,70 @@ describe("a roadmap's milestones", () => {
     ).toBe(false);
   });
 
+  // "Développement" is one word for three months. Naming what sits inside it is
+  // the difference between a roadmap that informs and one that reassures.
+  describe("what sits inside one", () => {
+    // A feature inside a phase often has no date of its own, and inventing one
+    // would be inventing.
+    it("accepts a step with no date, and refuses one with no name", () => {
+      expect(SubstepSchema.parse(substep).when).toBeNull();
+      expect(
+        SubstepSchema.safeParse({ ...substep, title: "   " }).success,
+      ).toBe(false);
+    });
+
+    // The roadmap is two levels deep, and the ceiling is the type rather than a
+    // rule someone has to remember.
+    it("refuses a step carrying steps of its own", () => {
+      expect(
+        SubstepSchema.safeParse({ ...substep, substeps: [] }).success,
+      ).toBe(false);
+    });
+
+    it("hangs them off the milestone that contains them", () => {
+      const parsed = MilestoneSchema.parse({
+        ...milestone,
+        substeps: [substep],
+      });
+
+      expect(parsed.substeps).toHaveLength(1);
+      expect(parsed.substeps[0].title).toBe("Feature 1 — le panier");
+    });
+
+    // The whole tree travels, both levels of it: an id names one being kept,
+    // its absence mints a new one.
+    it("lets the developer send back a step that has no id yet", () => {
+      const parsed = ReplaceMilestonesRequestSchema.parse({
+        milestones: [
+          {
+            id,
+            when: "Q3 2026",
+            title: "Développement",
+            description: null,
+            substeps: [
+              { id: null, when: null, title: "Feature 2", description: null },
+            ],
+          },
+        ],
+        expectedProposalVersion: 4,
+      });
+
+      expect(parsed.milestones[0].substeps[0].id).toBeNull();
+    });
+  });
+
   // An id names a milestone being kept; its absence means a new one, which is
   // why a new milestone can never collide with an existing id.
   it("lets the developer send back a milestone that has no id yet", () => {
     const parsed = ReplaceMilestonesRequestSchema.parse({
       milestones: [
-        { id: null, when: "novembre", title: "Mise en ligne", description: null },
+        {
+          id: null,
+          when: "novembre",
+          title: "Mise en ligne",
+          description: null,
+          substeps: [],
+        },
       ],
       expectedProposalVersion: 2,
     });

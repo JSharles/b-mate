@@ -24,6 +24,21 @@ const DROPPED_ACCEPTANCE_AFTER_MS = 120_000;
 // `currentMilestoneId` is read live off the section rather than baked into the
 // release, because the developer moves it without composing, approving or
 // publishing anything (specs/020 FR-007).
+// FR-023 applied to a roadmap: a frise with no milestones is a section with no
+// published content, and one of those is absent from the client's tabs rather
+// than present and empty. Approving an empty roadmap is refused upstream; this
+// is what keeps one already published from showing as a blank tab.
+function readable(entry: {
+  section: { kind: 'prose' | 'roadmap' };
+  clientSectionContent: { structuredContent: unknown };
+}) {
+  if (entry.section.kind !== 'roadmap') return true;
+  return (
+    ((entry.clientSectionContent.structuredContent ?? []) as unknown[]).length >
+    0
+  );
+}
+
 function publicSection(entry: {
   sectionId: string;
   section: {
@@ -207,7 +222,7 @@ export class ClientPublicationService {
       // and the contributor's order is what the client reads.
       sections:
         release?.entries
-          .filter((entry) => !entry.section.archivedAt)
+          .filter((entry) => !entry.section.archivedAt && readable(entry))
           .sort((a, b) => a.section.sortOrder - b.section.sortOrder)
           .map((entry) => publicSection(entry)) ?? [],
       publishedAt: release?.publishedAt?.toISOString() ?? null,
@@ -241,7 +256,9 @@ export class ClientPublicationService {
             visibleToClient: false,
             readySectionCount: pending.entries.length,
             expectedSectionCount: pending.expectedSectionCount,
-            sections: pending.entries.map((entry) => publicSection(entry)),
+            sections: pending.entries
+              .filter((entry) => readable(entry))
+              .map((entry) => publicSection(entry)),
             publishedAt: null,
           }
         : null,

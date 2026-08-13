@@ -4,11 +4,12 @@ const milestone = {
   when: 'Q3 2026',
   title: 'Recette',
   description: 'Validation par le client.',
+  substeps: [],
 };
 
 function output(overrides: Record<string, unknown> = {}) {
   return {
-    promptVersion: 'roadmap-composition-v1',
+    promptVersion: 'roadmap-composition-v2',
     outcome: 'composed',
     milestones: [milestone],
     changeSummary: 'First roadmap.',
@@ -58,5 +59,52 @@ describe('the roadmap composition contract', () => {
         output({ milestones: [{ ...milestone, id: 'm0' }] }),
       ).success,
     ).toBe(false);
+  });
+
+  // What sits inside a long phase, named only where the document names it.
+  describe('what a milestone contains', () => {
+    const substep = { when: null, title: 'Feature 1', description: null };
+
+    it('accepts a step inside a milestone, dated or not', () => {
+      const parsed = RoadmapCompositionOutputSchema.parse(
+        output({
+          milestones: [
+            {
+              ...milestone,
+              substeps: [substep, { ...substep, when: 'juillet' }],
+            },
+          ],
+        }),
+      );
+
+      expect(parsed.milestones[0].substeps).toHaveLength(2);
+      expect(parsed.milestones[0].substeps[0].when).toBeNull();
+    });
+
+    // A contract that cannot express a third level is worth more than a rule
+    // saying not to produce one.
+    it('cannot express a step inside a step', () => {
+      expect(
+        RoadmapCompositionOutputSchema.safeParse(
+          output({
+            milestones: [
+              { ...milestone, substeps: [{ ...substep, substeps: [] }] },
+            ],
+          }),
+        ).success,
+      ).toBe(false);
+    });
+
+    it('refuses a step with no name', () => {
+      expect(
+        RoadmapCompositionOutputSchema.safeParse(
+          output({
+            milestones: [
+              { ...milestone, substeps: [{ ...substep, title: ' ' }] },
+            ],
+          }),
+        ).success,
+      ).toBe(false);
+    });
   });
 });

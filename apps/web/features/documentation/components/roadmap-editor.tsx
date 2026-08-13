@@ -3,7 +3,7 @@
 import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import type { MilestoneDraft, SectionView } from "schemas";
+import type { MilestoneDraft, SectionView, SubstepDraft } from "schemas";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -23,19 +23,35 @@ import { cn } from "@/shared/lib/utils";
 import { useReplaceMilestones, useSetCurrentMilestone } from "../hooks";
 import { ROADMAP_PHASE_IDS } from "./roadmap-phases";
 
-// A draft milestone as the screen holds it. `id` is null for one the developer
-// added, which is what tells the API to mint an id rather than look for one.
-type Draft = MilestoneDraft & { key: string };
+// A draft as the screen holds it. `id` is null for one the developer added,
+// which is what tells the API to mint an id rather than look for one. `key` is
+// the screen's own handle, because a new step has no id to be keyed by.
+type SubstepDraftRow = SubstepDraft & { key: string };
+type Draft = Omit<MilestoneDraft, "substeps"> & {
+  key: string;
+  substeps: SubstepDraftRow[];
+};
 
 // Structural rather than the `Milestone` type: the published roadmap carries
-// the same four fields without `origin`, which is the developer's business and
-// never the client's.
+// the same fields without `origin`, which is the developer's business and never
+// the client's.
+type ReadSubstep = {
+  id: string;
+  when: string | null;
+  title: string;
+  description: string | null;
+};
 type ReadMilestone = {
   id: string;
   when: string;
   title: string;
   description: string | null;
+  substeps: ReadSubstep[];
 };
+
+function newKey() {
+  return `new-${Math.random().toString(36).slice(2)}`;
+}
 
 function toDraft(milestone: ReadMilestone): Draft {
   return {
@@ -44,17 +60,22 @@ function toDraft(milestone: ReadMilestone): Draft {
     when: milestone.when,
     title: milestone.title,
     description: milestone.description,
+    substeps: milestone.substeps.map((substep) => ({
+      key: substep.id,
+      id: substep.id,
+      when: substep.when,
+      title: substep.title,
+      description: substep.description,
+    })),
   };
 }
 
 function blank(title = "", when = ""): Draft {
-  return {
-    key: `new-${Math.random().toString(36).slice(2)}`,
-    id: null,
-    when,
-    title,
-    description: null,
-  };
+  return { key: newKey(), id: null, when, title, description: null, substeps: [] };
+}
+
+function blankSubstep(): SubstepDraftRow {
+  return { key: newKey(), id: null, when: null, title: "", description: null };
 }
 
 // No edit mode, no pencil, no dialog: the roadmap is the form. Typing in a
@@ -96,6 +117,11 @@ export function RoadmapEditor({
   // The marker stays a control, because where the project stands moves without
   // composing, approving or publishing anything.
   if (!editable) {
+    // A published roadmap with nothing in it is absent from the client's tabs,
+    // so saying "here is what they read" over a blank would be a lie.
+    if (milestones.length === 0) {
+      return <p className="text-sm text-muted-foreground">{t("nothingYet")}</p>;
+    }
     return (
       <ClientTimeline
         milestones={milestones}
@@ -124,13 +150,59 @@ export function RoadmapEditor({
         original.id !== row.id ||
         original.when !== row.when ||
         original.title !== row.title ||
-        (original.description ?? "") !== (row.description ?? "")
+        (original.description ?? "") !== (row.description ?? "") ||
+        original.substeps.length !== row.substeps.length ||
+        row.substeps.some((substep, substepIndex) => {
+          const originalSubstep = original.substeps[substepIndex];
+          return (
+            !originalSubstep ||
+            originalSubstep.id !== substep.id ||
+            (originalSubstep.when ?? "") !== (substep.when ?? "") ||
+            originalSubstep.title !== substep.title
+          );
+        })
       );
     });
 
-  function patch(key: string, changes: Partial<MilestoneDraft>) {
+  // Never `substeps`: those go through `setSubsteps`, which keeps the screen's
+  // own key on each row so a step with no id yet still has a stable handle.
+  function patch(key: string, changes: Partial<Omit<MilestoneDraft, "substeps">>) {
     setDraft((current) =>
       current.map((row) => (row.key === key ? { ...row, ...changes } : row)),
+    );
+  }
+
+  function patchSubstep(
+    milestoneKey: string,
+    substepKey: string,
+    changes: Partial<Omit<SubstepDraft, "id">>,
+  ) {
+    setDraft((current) =>
+      current.map((row) =>
+        row.key === milestoneKey
+          ? {
+              ...row,
+              substeps: row.substeps.map((substep) =>
+                substep.key === substepKey
+                  ? { ...substep, ...changes }
+                  : substep,
+              ),
+            }
+          : row,
+      ),
+    );
+  }
+
+  function setSubsteps(
+    milestoneKey: string,
+    update: (substeps: SubstepDraftRow[]) => SubstepDraftRow[],
+  ) {
+    setDraft((current) =>
+      current.map((row) =>
+        row.key === milestoneKey
+          ? { ...row, substeps: update(row.substeps) }
+          : row,
+      ),
     );
   }
 
@@ -242,6 +314,164 @@ export function RoadmapEditor({
                           "-ml-2 resize-y text-sm leading-relaxed text-muted-foreground",
                         )}
                       />
+
+                  {/* What sits inside this step. A list under it rather than a
+                      rail of its own: two rails would read as two roadmaps, and
+                      the depth stops here. */}
+                  <ul className="mt-1 space-y-1">
+                    {row.substeps.map((substep, substepIndex) => (
+                      <li
+                        key={substep.key}
+                        className="group/substep flex items-center gap-1"
+                      >
+                        {/* The dot is where the project stands, here too: "we
+                            are on Feature 2" is the answer "Développement"
+                            cannot give. Only a saved step can be named — one
+                            that exists nowhere yet has no id to point at. */}
+                        {substep.id ? (
+                          <button
+                            type="button"
+                            aria-pressed={substep.id === section.currentMilestoneId}
+                            disabled={move.isPending}
+                            onClick={() =>
+                              move.mutate({
+                                milestoneId:
+                                  substep.id === section.currentMilestoneId
+                                    ? null
+                                    : substep.id,
+                                expectedVersion: section.version,
+                              })
+                            }
+                            className="shrink-0 rounded-full p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <span
+                              className={cn(
+                                "block size-1.5 rounded-full transition-colors",
+                                substep.id === section.currentMilestoneId
+                                  ? "bg-primary ring-2 ring-primary/20"
+                                  : "bg-muted-foreground/60 hover:bg-primary",
+                              )}
+                            />
+                            <span className="sr-only">
+                              {substep.id === section.currentMilestoneId
+                                ? t("clearPosition")
+                                : t("markPosition")}
+                            </span>
+                          </button>
+                        ) : (
+                          <span
+                            aria-hidden="true"
+                            className="size-1.5 shrink-0 rounded-full bg-muted-foreground/60"
+                          />
+                        )}
+                        <input
+                          value={substep.title}
+                          onChange={(event) =>
+                            patchSubstep(row.key, substep.key, {
+                              title: event.target.value,
+                            })
+                          }
+                          maxLength={200}
+                          placeholder={t("substepTitlePlaceholder")}
+                          aria-label={t("substepTitleLabel")}
+                          className={cn(fieldClass, "text-sm")}
+                        />
+                        {/* A step inside a phase often has no date of its own,
+                            so the field is narrow and empty is an answer. */}
+                        <input
+                          value={substep.when ?? ""}
+                          onChange={(event) =>
+                            patchSubstep(row.key, substep.key, {
+                              when: event.target.value || null,
+                            })
+                          }
+                          maxLength={120}
+                          placeholder={t("substepWhenPlaceholder")}
+                          aria-label={t("substepWhenLabel")}
+                          className={cn(
+                            fieldClass,
+                            "w-28 shrink-0 text-xs uppercase tracking-wide text-muted-foreground",
+                          )}
+                        />
+                        <div className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/substep:opacity-100">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            disabled={substepIndex === 0}
+                            onClick={() =>
+                              setSubsteps(row.key, (current) => {
+                                const next = [...current];
+                                [next[substepIndex - 1], next[substepIndex]] = [
+                                  next[substepIndex],
+                                  next[substepIndex - 1],
+                                ];
+                                return next;
+                              })
+                            }
+                          >
+                            <ChevronUp />
+                            <span className="sr-only">{t("moveUp")}</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            disabled={substepIndex === row.substeps.length - 1}
+                            onClick={() =>
+                              setSubsteps(row.key, (current) => {
+                                const next = [...current];
+                                [next[substepIndex], next[substepIndex + 1]] = [
+                                  next[substepIndex + 1],
+                                  next[substepIndex],
+                                ];
+                                return next;
+                              })
+                            }
+                          >
+                            <ChevronDown />
+                            <span className="sr-only">{t("moveDown")}</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() =>
+                              setSubsteps(row.key, (current) =>
+                                current.filter(
+                                  (entry) => entry.key !== substep.key,
+                                ),
+                              )
+                            }
+                          >
+                            <X />
+                            <span className="sr-only">{t("remove")}</span>
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                    <li>
+                      {/* No menu here: a step inside a phase is whatever the
+                          developer calls it, and there is nothing standard to
+                          offer. */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-muted-foreground"
+                        onClick={() =>
+                          setSubsteps(row.key, (current) => [
+                            ...current,
+                            blankSubstep(),
+                          ])
+                        }
+                      >
+                        <Plus />
+                        {t("addSubstep")}
+                      </Button>
+                    </li>
+                  </ul>
                 </div>
 
                 <div className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
@@ -328,7 +558,12 @@ export function RoadmapEditor({
               size="sm"
               disabled={
                 save.isPending ||
-                draft.some((row) => !row.title.trim() || !row.when.trim())
+                draft.some(
+                  (row) =>
+                    !row.title.trim() ||
+                    !row.when.trim() ||
+                    row.substeps.some((substep) => !substep.title.trim()),
+                )
               }
               onClick={() =>
                 save.mutate({
@@ -337,6 +572,12 @@ export function RoadmapEditor({
                     when: row.when.trim(),
                     title: row.title.trim(),
                     description: row.description?.trim() || null,
+                    substeps: row.substeps.map((substep) => ({
+                      id: substep.id,
+                      when: substep.when?.trim() || null,
+                      title: substep.title.trim(),
+                      description: substep.description?.trim() || null,
+                    })),
                   })),
                   expectedProposalVersion: proposalVersion!,
                 })

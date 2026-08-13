@@ -32,11 +32,19 @@ const framing = {
   when: "Q2 2026",
   title: "Cadrage",
   description: null,
+  substeps: [],
 };
 const launch = {
   id: "00000000-0000-4000-8000-00000000000b",
   when: "mi-octobre",
   title: "Mise en ligne",
+  description: null,
+  substeps: [],
+};
+const featureOne = {
+  id: "00000000-0000-4000-8000-00000000000c",
+  when: null,
+  title: "Feature 1",
   description: null,
 };
 
@@ -104,7 +112,13 @@ describe("RoadmapEditor", () => {
     expect(save.mutate).toHaveBeenCalledWith(
       expect.objectContaining({
         milestones: expect.arrayContaining([
-          { id: null, when: "novembre", title: "Atelier", description: null },
+          {
+            id: null,
+            when: "novembre",
+            title: "Atelier",
+            description: null,
+            substeps: [],
+          },
         ]),
       }),
     );
@@ -298,6 +312,110 @@ describe("RoadmapEditor", () => {
     await user.click(screen.getByRole("menuitem", { name: "addBlankStep" }));
 
     expect(container.querySelectorAll("ol .bg-primary")).toHaveLength(0);
+  });
+
+  // "Développement" is one word for three months. Naming what sits inside it is
+  // the whole point of this level.
+  describe("what sits inside a step", () => {
+    it("adds one with no date, and sends it with no id of its own", async () => {
+      const user = userEvent.setup();
+      renderEditor({ milestones: [framing] });
+
+      await user.click(screen.getByText("addSubstep"));
+      await user.type(screen.getByLabelText("substepTitleLabel"), "Feature 1");
+      await user.click(screen.getByText("save"));
+
+      expect(save.mutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          milestones: [
+            expect.objectContaining({
+              id: framing.id,
+              substeps: [
+                { id: null, when: null, title: "Feature 1", description: null },
+              ],
+            }),
+          ],
+        }),
+      );
+    });
+
+    it("keeps the id of one it kept when its wording is corrected", async () => {
+      const user = userEvent.setup();
+      renderEditor({ milestones: [{ ...framing, substeps: [featureOne] }] });
+
+      const title = screen.getByLabelText("substepTitleLabel");
+      await user.clear(title);
+      await user.type(title, "Feature 1 le panier");
+      await user.click(screen.getByText("save"));
+
+      expect(save.mutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          milestones: [
+            expect.objectContaining({
+              substeps: [
+                expect.objectContaining({
+                  id: featureOne.id,
+                  title: "Feature 1 le panier",
+                }),
+              ],
+            }),
+          ],
+        }),
+      );
+    });
+
+    it("refuses to save one with no name", async () => {
+      const user = userEvent.setup();
+      renderEditor({ milestones: [framing] });
+
+      await user.click(screen.getByText("addSubstep"));
+
+      expect(screen.getByText("save")).toBeDisabled();
+    });
+
+    it("removes one", async () => {
+      const user = userEvent.setup();
+      renderEditor({ milestones: [{ ...framing, substeps: [featureOne] }] });
+
+      // The sub-step's control sits inside the milestone's body, so it comes
+      // first; the milestone's own remove follows it.
+      await user.click(screen.getAllByText("remove")[0]);
+      await user.click(screen.getByText("save"));
+
+      expect(save.mutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          milestones: [
+            expect.objectContaining({ id: framing.id, substeps: [] }),
+          ],
+        }),
+      );
+    });
+
+    // "We are on Feature 2" is the answer "Développement" cannot give.
+    it("moves the position onto one, without composing anything", async () => {
+      const user = userEvent.setup();
+      renderEditor({ milestones: [{ ...framing, substeps: [featureOne] }] });
+
+      const markers = screen.getAllByRole("button", { name: "markPosition" });
+      await user.click(markers[markers.length - 1]);
+
+      expect(move.mutate).toHaveBeenCalledWith({
+        milestoneId: featureOne.id,
+        expectedVersion: 4,
+      });
+      expect(save.mutate).not.toHaveBeenCalled();
+    });
+
+    // The roadmap is two levels deep, and there is nothing here that could add
+    // a third: the control belongs to the milestone, never to a sub-step.
+    it("offers no way to nest one inside another", async () => {
+      const user = userEvent.setup();
+      renderEditor({ milestones: [{ ...framing, substeps: [featureOne] }] });
+
+      await user.click(screen.getByText("addSubstep"));
+
+      expect(screen.getAllByText("addSubstep")).toHaveLength(1);
+    });
   });
 });
 

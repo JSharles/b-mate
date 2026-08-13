@@ -9,13 +9,32 @@ const milestones = [
     when: "Q2 2026",
     title: "Cadrage",
     description: "Ce que le projet doit couvrir.",
+    substeps: [],
   },
   {
     id: "00000000-0000-4000-8000-000000000002",
     when: "après la phase pilote",
     title: "Mise en ligne",
     description: null,
+    substeps: [],
   },
+];
+
+const featureOne = {
+  id: "00000000-0000-4000-8000-00000000000a",
+  when: null,
+  title: "Feature 1 — le panier",
+  description: null,
+};
+const featureTwo = {
+  id: "00000000-0000-4000-8000-00000000000b",
+  when: "juillet",
+  title: "Feature 2 — le paiement",
+  description: null,
+};
+const withSubsteps = [
+  milestones[0],
+  { ...milestones[1], title: "Développement", substeps: [featureOne, featureTwo] },
 ];
 
 describe("ClientTimeline", () => {
@@ -122,5 +141,75 @@ describe("ClientTimeline", () => {
     await userEvent.setup().click(screen.getAllByRole("button")[0]);
 
     expect(onSelect).toHaveBeenCalledWith(null);
+  });
+});
+
+// "Développement" is one word for three months. Naming what sits inside it is
+// the difference between a roadmap that informs and one that reassures.
+describe("what sits inside a milestone", () => {
+  it("lists the steps under the phase that contains them", () => {
+    render(
+      <ClientTimeline milestones={withSubsteps} currentMilestoneId={null} />,
+    );
+
+    expect(screen.getByText("Feature 1 — le panier")).toBeInTheDocument();
+    expect(screen.getByText("juillet")).toBeInTheDocument();
+  });
+
+  // "Feature 2 of five" says something "Développement" cannot.
+  it("reads the phase as under way when the position names a step inside it", () => {
+    const { container } = render(
+      <ClientTimeline
+        milestones={withSubsteps}
+        currentMilestoneId={featureTwo.id}
+      />,
+    );
+
+    // One accent on the phase, one on the step: the phase in progress and the
+    // step in progress can never disagree, because they are resolved together.
+    expect(container.querySelectorAll(".bg-primary")).toHaveLength(2);
+    // Cadrage is behind it, and so is Feature 1.
+    expect(container.querySelectorAll(".bg-muted-foreground")).toHaveLength(2);
+  });
+
+  // Every step of a finished phase is finished.
+  it("carries a finished phase's state down to its steps", () => {
+    const { container } = render(
+      <ClientTimeline
+        milestones={[withSubsteps[1], withSubsteps[0]]}
+        currentMilestoneId={milestones[0].id}
+      />,
+    );
+
+    // Développement is done, and both of its features with it.
+    expect(container.querySelectorAll(".bg-muted-foreground")).toHaveLength(3);
+  });
+
+  it("claims no position inside a phase that has none", () => {
+    const { container } = render(
+      <ClientTimeline
+        milestones={withSubsteps}
+        currentMilestoneId={withSubsteps[1].id}
+      />,
+    );
+
+    // The phase itself, and neither of its steps.
+    expect(container.querySelectorAll(".bg-primary")).toHaveLength(1);
+  });
+
+  it("lets the developer move the position onto a step", async () => {
+    const onSelect = vi.fn();
+    render(
+      <ClientTimeline
+        milestones={withSubsteps}
+        currentMilestoneId={null}
+        onSelect={onSelect}
+      />,
+    );
+
+    const markers = screen.getAllByRole("button");
+    await userEvent.setup().click(markers[markers.length - 1]);
+
+    expect(onSelect).toHaveBeenCalledWith(featureTwo.id);
   });
 });

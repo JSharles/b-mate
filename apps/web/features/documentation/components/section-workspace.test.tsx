@@ -179,6 +179,10 @@ describe("SectionWorkspace", () => {
     [{ refreshNeeded: true, hasPublishedContent: true }, "refresh"],
     [{ activeProposal: { status: "pending_review" } }, "recompose"],
     [{ refreshNeeded: false, hasPublishedContent: true }, "recompose"],
+    // Composed, approved, and still nothing the client can read — an approved
+    // roadmap holding no milestone. Not "published", and the button offers the
+    // first write rather than a rewrite.
+    [{ refreshNeeded: false, hasPublishedContent: false }, "compose"],
   ])("names the job it is about to do (%#)", (overrides, label) => {
     withSections([section(overrides)]);
 

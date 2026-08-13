@@ -86,7 +86,7 @@ description: "Task list for The Roadmap Section"
 
 ---
 
-## Slice 4 — Sub-steps ⬜ *awaiting go-ahead*
+## Slice 4 — Sub-steps ✅
 
 **Goal**: "Développement" stops being one word for three months. The developer
 names what sits inside a milestone, and where the project stands can point at
@@ -99,48 +99,50 @@ anything.
 
 ### The contract
 
-- [ ] T032 [P] [US4] Add `SubstepSchema` (id, nullable `when`, required title, nullable description, origin) and `substeps` on `MilestoneSchema` in `packages/schemas/src/documentation-sections.ts`; a substep carries no `substeps` of its own — the ceiling is the type, not a rule
-- [ ] T033 [P] [US4] Extend `MilestoneDraftSchema` with `substeps` drafts (nullable id) so the whole tree travels on `ReplaceMilestonesRequestSchema`
-- [ ] T034 [P] [US4] Add `substeps` to `PublicMilestoneSchema` in `packages/schemas/src/client-release.ts`, still without `origin`
-- [ ] T035 [P] [US4] Cover all three in `documentation-sections.test.ts` and `client-release.test.ts`: a substep with no date accepted, one with no title refused, a substep carrying substeps refused, and a public substep carrying its origin refused
+- [x] T032 [P] [US4] Add `SubstepSchema` (id, nullable `when`, required title, nullable description, origin) and `substeps` on `MilestoneSchema` in `packages/schemas/src/documentation-sections.ts`; a substep carries no `substeps` of its own — the ceiling is the type, not a rule
+- [x] T033 [P] [US4] Extend `MilestoneDraftSchema` with `substeps` drafts (nullable id) so the whole tree travels on `ReplaceMilestonesRequestSchema`
+- [x] T034 [P] [US4] Add `substeps` to `PublicMilestoneSchema` in `packages/schemas/src/client-release.ts`, still without `origin`
+- [x] T035 [P] [US4] Cover all three in `documentation-sections.test.ts` and `client-release.test.ts`: a substep with no date accepted, one with no title refused, a substep carrying substeps refused, and a public substep carrying its origin refused
 
 ### Composing them
 
-- [ ] T036 [US4] Add `substeps` to `RoadmapMilestoneOutputSchema` and to `ROADMAP_COMPOSITION_JSON_SCHEMA` in `apps/api/src/documentation/composition/roadmap-output.schema.ts`; bump the contract to `roadmap-composition-v2`
-- [ ] T037 [US4] Tell the model in `roadmap-composition.prompt.ts` to name what a phase contains only where the documents do, and never to invent an order; bump `ROADMAP_COMPOSITION_PROMPT_VERSION`
-- [ ] T038 [US4] Mint an id per substep in `SectionCompositionHandler.applyRoadmap`, alongside the milestone's — never asked of the model (45a13ac)
-- [ ] T039 [P] [US4] Cover both in `roadmap-output.schema.spec.ts` and `section-composition.handler.spec.ts`
+- [x] T036 [US4] Add `substeps` to `RoadmapMilestoneOutputSchema` and to `ROADMAP_COMPOSITION_JSON_SCHEMA` in `apps/api/src/documentation/composition/roadmap-output.schema.ts`; bump the contract to `roadmap-composition-v2`
+- [x] T037 [US4] Tell the model in `roadmap-composition.prompt.ts` to name what a phase contains only where the documents do, and never to invent an order; bump `ROADMAP_COMPOSITION_PROMPT_VERSION`
+- [x] T038 [US4] Mint an id per substep in `SectionCompositionHandler.applyRoadmap`, alongside the milestone's — never asked of the model (45a13ac)
+- [x] T039 [P] [US4] Cover both in `roadmap-output.schema.spec.ts` and `section-composition.handler.spec.ts`
 
 ### Correcting them
 
-- [ ] T040 [US4] Extend `SectionProposalService.replaceMilestones` to reconcile substeps: an id names one being kept, its absence mints a new one, and a substep read from the documents stays `document` when its wording is corrected
-- [ ] T041 [US4] Let `ClientSectionService.setCurrentMilestone` accept an id that names a substep — the known-id check walks both levels
-- [ ] T042 [US4] `dropCurrentMilestoneIfGone` must walk both levels too, or a deleted substep leaves the section pointing at nothing
-- [ ] T043 [P] [US4] Cover the three in `section-proposal.service.spec.ts` and `client-section.service.spec.ts`
+- [x] T040 [US4] Extend `SectionProposalService.replaceMilestones` to reconcile substeps: an id names one being kept, its absence mints a new one, and a substep read from the documents stays `document` when its wording is corrected
+- [x] T041 [US4] Let `ClientSectionService.setCurrentMilestone` accept an id that names a substep — the known-id check walks both levels
+- [x] T042 [US4] `dropCurrentMilestoneIfGone` must walk both levels too, or a deleted substep leaves the section pointing at nothing
+- [x] T043 [P] [US4] Cover the three in `section-proposal.service.spec.ts` and `client-section.service.spec.ts`
 
 ### Publishing them
 
-- [ ] T044 [US4] Add `substeps` to `RoadmapDerivationOutputSchema` in `client-derivation.handler.ts`, bump to `roadmap-derivation-v2`, and extend the zip: same milestone count **and** the same substep count under each, or the operation fails
-- [ ] T045 [P] [US4] Cover the refusal in `client-derivation.handler.spec.ts`
+- [x] T044 [US4] Add `substeps` to `RoadmapDerivationOutputSchema` in `client-derivation.handler.ts`, bump to `roadmap-derivation-v2`, and extend the zip: same milestone count **and** the same substep count under each, or the operation fails
+- [x] T045 [P] [US4] Cover the refusal in `client-derivation.handler.spec.ts`
 
 ### Reading them
 
-- [ ] T046 [US4] Render substeps under their milestone in `apps/web/shared/components/client-timeline.tsx`, quieter than the milestone and marked done/current/ahead from the position
-- [ ] T047 [US4] Derive "current by containment" in one place: the milestone holding the current substep reads as in progress
-- [ ] T048 [P] [US4] Cover both in `client-timeline.test.tsx`, including a position naming a substep
+- [x] T046 [US4] Render substeps under their milestone in `apps/web/shared/components/client-timeline.tsx`, quieter than the milestone and marked done/current/ahead from the position
+- [x] T047 [US4] Derive "current by containment" in one place: the milestone holding the current substep reads as in progress
+- [x] T048 [P] [US4] Cover both in `client-timeline.test.tsx`, including a position naming a substep
 
 ### Writing them
 
-- [ ] T049 [US4] Add substep editing to `roadmap-editor.tsx`: add, edit, remove and reorder under a milestone, with no way to nest further
-- [ ] T050 [US4] Make the substep marker a control too, so the position can be moved to one
-- [ ] T051 [P] [US4] Messages in both locales — "sous-étape", so the word never collides with the "étape" a milestone already is
-- [ ] T052 [P] [US4] Cover the editing in `roadmap-editor.test.tsx`
+- [x] T049 [US4] Add substep editing to `roadmap-editor.tsx`: add, edit, remove and reorder under a milestone, with no way to nest further
+- [x] T050 [US4] Make the substep marker a control too, so the position can be moved to one
+- [x] T051 [P] [US4] Messages in both locales — "sous-étape", so the word never collides with the "étape" a milestone already is
+- [x] T052 [P] [US4] Cover the editing in `roadmap-editor.test.tsx`
 
 ### Before it ships
 
-- [ ] T053 Verify a milestone with three substeps end to end on the real project: composed, corrected, published, read as the client
-- [ ] T054 Verify at 390px — substeps must not push the rail sideways
-- [ ] T055 Run the gate: `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test:cov`, `pnpm knip`, `pnpm i18n:orphans`
+- [x] T053 Verified end to end on the real project: a milestone with a sub-step, composed, corrected, published, ids kept at both levels
+- [x] T056 Found doing it: `ReplaceMilestonesDto` had no `substeps`, and the validation pipe strips what it does not declare — the sub-steps never reached the service
+- [x] T057 Found doing it: an empty roadmap could be approved, publishing a tab with nothing in it and no way to know why. Refused now, left out of the client's tabs, and no longer badged "Publiée"
+- [x] T054 Verify at 390px — substeps must not push the rail sideways
+- [x] T055 Run the gate: `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test:cov`, `pnpm knip`, `pnpm i18n:orphans`
 
 ### Dependencies
 

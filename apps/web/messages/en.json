@@ -357,7 +357,13 @@
           "phase_acceptance": "Acceptance",
           "phase_launch": "Launch",
           "phase_aftercare": "Aftercare",
-          "addBlankStep": "Blank step"
+          "addBlankStep": "Blank step",
+          "addSubstep": "Add a sub-step",
+          "substepTitleLabel": "Sub-step",
+          "substepTitlePlaceholder": "Feature 1 — the basket",
+          "substepWhenLabel": "When, for this sub-step",
+          "substepWhenPlaceholder": "No date",
+          "nothingYet": "Your client sees no step yet: the timeline is empty."
         }
       },
       "Reference": {

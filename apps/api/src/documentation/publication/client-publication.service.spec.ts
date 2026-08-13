@@ -352,4 +352,34 @@ describe('ClientPublicationService', () => {
       },
     ]);
   });
+
+  // FR-023 applied to a roadmap: a frise with no milestones is a section with
+  // no published content, and one of those is absent rather than a blank tab.
+  it('leaves an empty roadmap out of the client tabs entirely', async () => {
+    const { prisma, service } = setup();
+    prisma.projectClientPublication.findUnique.mockResolvedValue({
+      currentRelease: {
+        id: 'release',
+        sequence: 1,
+        status: 'published',
+        expectedSectionCount: 1,
+        publishedAt: new Date('2026-01-01'),
+        entries: [
+          {
+            sectionId: 'section-roadmap',
+            section: {
+              name: 'Roadmap',
+              kind: 'roadmap',
+              currentMilestoneId: null,
+              sortOrder: 0,
+              archivedAt: null,
+            },
+            clientSectionContent: { structuredContent: [] },
+          },
+        ],
+      },
+    });
+
+    await expect(service.readPublicSections('project')).resolves.toEqual([]);
+  });
 });

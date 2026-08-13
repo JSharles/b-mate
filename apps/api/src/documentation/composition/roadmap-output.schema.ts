@@ -1,17 +1,33 @@
 import { z } from 'zod';
 
-export const ROADMAP_COMPOSITION_PROMPT_VERSION = 'roadmap-composition-v1';
-export const ROADMAP_COMPOSITION_OUTPUT_CONTRACT = 'roadmap-composition-v1';
+export const ROADMAP_COMPOSITION_PROMPT_VERSION = 'roadmap-composition-v2';
+export const ROADMAP_COMPOSITION_OUTPUT_CONTRACT = 'roadmap-composition-v2';
 
-// A milestone as the model returns it: when, what, and optionally why it
-// matters. No id — ids are minted server-side and never asked of the model,
-// which is the rule 45a13ac established after echoed identifiers killed three
-// stages by getting a character wrong.
+// What sits inside a long milestone, as the model returns it. Its "when" may be
+// null: a feature inside a phase often has no date of its own, and a model
+// asked for one would supply one.
+//
+// It carries no `substeps` of its own — the roadmap is two levels deep, and a
+// contract that cannot express a third level is worth more than a rule saying
+// not to produce one.
+export const RoadmapSubstepOutputSchema = z
+  .object({
+    when: z.string().trim().min(1).max(120).nullable(),
+    title: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(2_000).nullable(),
+  })
+  .strict();
+
+// A milestone as the model returns it: when, what, optionally why it matters,
+// and optionally what sits inside it. No id — ids are minted server-side and
+// never asked of the model, which is the rule 45a13ac established after echoed
+// identifiers killed three stages by getting a character wrong.
 export const RoadmapMilestoneOutputSchema = z
   .object({
     when: z.string().trim().min(1).max(120),
     title: z.string().trim().min(1).max(200),
     description: z.string().trim().max(2_000).nullable(),
+    substeps: z.array(RoadmapSubstepOutputSchema),
   })
   .strict();
 
@@ -56,11 +72,24 @@ export const ROADMAP_COMPOSITION_JSON_SCHEMA: Record<string, unknown> = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['when', 'title', 'description'],
+        required: ['when', 'title', 'description', 'substeps'],
         properties: {
           when: { type: 'string' },
           title: { type: 'string' },
           description: { type: ['string', 'null'] },
+          substeps: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['when', 'title', 'description'],
+              properties: {
+                when: { type: ['string', 'null'] },
+                title: { type: 'string' },
+                description: { type: ['string', 'null'] },
+              },
+            },
+          },
         },
       },
     },

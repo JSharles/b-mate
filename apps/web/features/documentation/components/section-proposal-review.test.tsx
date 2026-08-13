@@ -263,6 +263,7 @@ describe("SectionProposalReview, on a roadmap", () => {
     when: "Q3 2026",
     title: "Recette",
     description: null,
+    substeps: [],
     origin: "document" as const,
   };
 
@@ -280,6 +281,24 @@ describe("SectionProposalReview, on a roadmap", () => {
 
     expect(screen.getByDisplayValue("Recette")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "approve" })).toBeVisible();
+  });
+
+  // Publishing an empty roadmap gives the client a tab with nothing in it and
+  // no way to know why. The empty rail above says it; the button does not need
+  // a sentence.
+  it("will not publish a roadmap with nothing in it", () => {
+    withPublished(undefined);
+    withProposal({
+      status: "pending_review",
+      outcome: "nothing_matched",
+      version: 2,
+      blocks: [],
+      milestones: [],
+    });
+
+    render(<SectionProposalReview projectId="project-1" section={roadmap} />);
+
+    expect(screen.getByRole("button", { name: "approve" })).toBeDisabled();
   });
 
   // FR-009: a roadmap the documents said nothing about is a starting point, not

@@ -327,8 +327,11 @@ describe('SectionCompositionHandler', () => {
       const request = await handler.buildRequest(roadmapOperation());
       const text = (request.parts[0] as { text: string }).text;
 
-      expect(request.outputContract).toBe('roadmap-composition-v1');
+      expect(request.outputContract).toBe('roadmap-composition-v2');
       expect(text).toContain('timeline');
+      // Only what the document names, never a phase broken down because
+      // breaking phases down is usual.
+      expect(text).toContain('substeps');
       expect(text).toContain('The launch is planned for October.');
       // The standard phases are offered to the developer, never handed to the
       // model as an arc to fill.
@@ -345,14 +348,23 @@ describe('SectionCompositionHandler', () => {
 
       await handler.apply(asPrismaService(prisma), operation(), {
         output: {
-          promptVersion: 'roadmap-composition-v1',
+          promptVersion: 'roadmap-composition-v2',
           outcome: 'composed',
           milestones: [
-            { when: 'Q3 2026', title: 'Recette', description: null },
+            {
+              when: 'Q3 2026',
+              title: 'Développement',
+              description: null,
+              substeps: [
+                { when: null, title: 'Feature 1', description: null },
+                { when: 'juillet', title: 'Feature 2', description: null },
+              ],
+            },
             {
               when: 'après la recette',
               title: 'Mise en ligne',
               description: 'Go live.',
+              substeps: [],
             },
           ],
           changeSummary: 'First roadmap.',
@@ -361,13 +373,25 @@ describe('SectionCompositionHandler', () => {
 
       const written = prisma.sectionProposal.update.mock.calls[0][0] as {
         data: {
-          structuredContent: { id: string; origin: string; when: string }[];
+          structuredContent: {
+            id: string;
+            origin: string;
+            when: string;
+            substeps: { id: string; origin: string; when: string | null }[];
+          }[];
         };
       };
       expect(written.data.structuredContent).toHaveLength(2);
       expect(written.data.structuredContent[0].id).toMatch(/^[0-9a-f-]{36}$/);
       expect(written.data.structuredContent[0].origin).toBe('document');
       expect(written.data.structuredContent[1].when).toBe('après la recette');
+      // Both levels get an id, and neither was asked of the model.
+      const substeps = written.data.structuredContent[0].substeps;
+      expect(substeps).toHaveLength(2);
+      expect(substeps[0].id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(substeps[0].id).not.toBe(written.data.structuredContent[0].id);
+      expect(substeps[0].when).toBeNull();
+      expect(substeps[0].origin).toBe('document');
     });
   });
 });

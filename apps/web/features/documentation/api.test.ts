@@ -144,7 +144,13 @@ describe("documentation api", () => {
     await approveSectionProposal("project-1", "section-1", 3);
     await replaceMilestones("project-1", "section-1", {
       milestones: [
-        { id: null, when: "Q3 2026", title: "Recette", description: null },
+        {
+          id: null,
+          when: "Q3 2026",
+          title: "Recette",
+          description: null,
+          substeps: [],
+        },
       ],
       expectedProposalVersion: 2,
     });

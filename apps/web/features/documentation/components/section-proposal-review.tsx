@@ -129,10 +129,12 @@ export function SectionProposalReview({
         />
         {pending && (
           <div className="flex flex-wrap items-center gap-3">
+            {/* Nothing to publish is nothing to publish: the empty rail above
+                says why, so the button does not need a sentence. */}
             <Button
               type="button"
               onClick={() => approve.mutate(current.version)}
-              disabled={approve.isPending}
+              disabled={approve.isPending || current.milestones.length === 0}
             >
               {approve.isPending ? t("approving") : t("approve")}
             </Button>

@@ -56,6 +56,14 @@ const CLIENT_DERIVATION_JSON_SCHEMA: Record<string, unknown> = {
   },
 };
 
+const DerivedSubstepSchema = z
+  .object({
+    when: z.string().trim().min(1).max(120).nullable(),
+    title: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(2_000).nullable(),
+  })
+  .strict();
+
 export const RoadmapDerivationOutputSchema = z
   .object({
     promptVersion: z.literal(ROADMAP_DERIVATION_PROMPT_VERSION),
@@ -66,6 +74,7 @@ export const RoadmapDerivationOutputSchema = z
           when: z.string().trim().min(1).max(120),
           title: z.string().trim().min(1).max(200),
           description: z.string().trim().max(2_000).nullable(),
+          substeps: z.array(DerivedSubstepSchema),
         })
         .strict(),
     ),
@@ -84,22 +93,43 @@ const ROADMAP_DERIVATION_JSON_SCHEMA: Record<string, unknown> = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['when', 'title', 'description'],
+        required: ['when', 'title', 'description', 'substeps'],
         properties: {
           when: { type: 'string' },
           title: { type: 'string' },
           description: { type: ['string', 'null'] },
+          substeps: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['when', 'title', 'description'],
+              properties: {
+                when: { type: ['string', 'null'] },
+                title: { type: 'string' },
+                description: { type: ['string', 'null'] },
+              },
+            },
+          },
         },
       },
     },
   },
 };
 
+interface SourceSubstep {
+  id: string;
+  when: string | null;
+  title: string;
+  description: string | null;
+}
+
 interface SourceMilestone {
   id: string;
   when: string;
   title: string;
   description: string | null;
+  substeps?: SourceSubstep[];
 }
 
 @Injectable()
@@ -198,9 +228,10 @@ export class ClientDerivationHandler
     };
   }
 
-  // The ids stay on this side. The model is sent an ordered array and must
-  // return one of the same length; anything else is a roadmap that lost or
-  // gained a step, which fails the operation rather than reaching the client.
+  // The ids stay on this side, at both levels. The model is sent an ordered
+  // tree and must return one of the same shape; anything else is a roadmap that
+  // lost or gained a step, which fails the operation rather than reaching the
+  // client short.
   private deriveRoadmap(
     result: GenerationProviderResult,
     structuredContent: Prisma.JsonValue,
@@ -211,11 +242,27 @@ export class ClientDerivationHandler
       throw new Error('CLIENT_DERIVATION_MILESTONE_COUNT');
     const milestones = source.map((milestone, index) => {
       const written = output.milestones[index];
+      const sourceSubsteps = milestone.substeps ?? [];
+      if (written.substeps.length !== sourceSubsteps.length)
+        throw new Error('CLIENT_DERIVATION_MILESTONE_COUNT');
       return {
         id: milestone.id,
         when: written.when,
         title: written.title,
         description: written.description?.trim() ? written.description : null,
+        substeps: sourceSubsteps.map((substep, substepIndex) => {
+          const writtenSubstep = written.substeps[substepIndex];
+          return {
+            id: substep.id,
+            // A substep with no date keeps none: giving it one here would be
+            // the model inventing precision on the way to the client.
+            when: writtenSubstep.when?.trim() ? writtenSubstep.when : null,
+            title: writtenSubstep.title,
+            description: writtenSubstep.description?.trim()
+              ? writtenSubstep.description
+              : null,
+          };
+        }),
       };
     });
     return {
