@@ -8,6 +8,7 @@ export * from "./documentation-common";
 export * from "./documentation-source";
 export * from "./documentation-clarification";
 export * from "./documentation-sections";
+export * from "./reference-document";
 export * from "./client-release";
 export * from "./documentation-workspace";
 export * from "./document-removal";

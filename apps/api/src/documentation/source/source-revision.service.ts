@@ -738,6 +738,10 @@ export class SourceRevisionService {
       },
       data: { refreshNeeded: true, version: { increment: 1 } },
     });
+    await tx.projectSource.updateMany({
+      where: { projectId: operation.projectId, referenceNeedsRewrite: false },
+      data: { referenceNeedsRewrite: true },
+    });
     const advanced = await tx.projectSource.updateMany({
       where: {
         id: lockedSource.id,
@@ -854,6 +858,12 @@ export class SourceRevisionService {
     await tx.clientSection.updateMany({
       where: { projectId, archivedAt: null, refreshNeeded: false },
       data: { refreshNeeded: true, version: { increment: 1 } },
+    });
+    // Same rule for the reference document: it says it is owed a rewrite and
+    // waits for the developer, it never rewrites itself (018, FR-006).
+    await tx.projectSource.updateMany({
+      where: { projectId, referenceNeedsRewrite: false },
+      data: { referenceNeedsRewrite: true },
     });
   }
 

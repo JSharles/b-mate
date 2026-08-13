@@ -25,11 +25,19 @@ type ApiFetchOptions = Omit<RequestInit, "body"> & { body?: unknown };
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const { body, headers, ...rest } = options;
 
+  // The API writes to the contributor in the background — when it raises a
+  // point to clarify, when it writes the reference document — with no browser
+  // to ask. Carrying the interface language on every call is what lets it
+  // address them in their own, without a setting they have to fill.
+  const locale =
+    typeof document !== "undefined" ? document.documentElement.lang : undefined;
+
   const res = await fetch(`${API_URL}${path}`, {
     ...rest,
     credentials: "include",
     headers: {
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(locale ? { "X-Interface-Locale": locale } : {}),
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,

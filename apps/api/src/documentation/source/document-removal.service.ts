@@ -407,6 +407,10 @@ export class DocumentRemovalService {
           where: { projectId, archivedAt: null, refreshNeeded: false },
           data: { refreshNeeded: true, version: { increment: 1 } },
         });
+        await tx.projectSource.updateMany({
+          where: { projectId, referenceNeedsRewrite: false },
+          data: { referenceNeedsRewrite: true },
+        });
         await tx.projectSource.update({
           where: { id: source.id },
           data: {

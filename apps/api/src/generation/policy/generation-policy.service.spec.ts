@@ -7,11 +7,9 @@ import {
 const stageModels = {
   document_extraction: 'extract-v1',
   source_consolidation: 'consolidate-v1',
-  factual_drafting: 'draft-v1',
-  editorial_preview: 'preview-v1',
   client_derivation: 'derive-v1',
-  output_validation: 'validate-v1',
   section_composition: 'compose-v1',
+  reference_document: 'reference-v1',
 } as const;
 
 function route(
@@ -76,14 +74,14 @@ describe('GenerationPolicyService', () => {
 
   it('supports a one-provider policy and ordered same-provider fallback', () => {
     const value = policy();
-    value.stages.factual_drafting.routes = [
+    value.stages.section_composition.routes = [
       route('anthropic', 'primary'),
       route('anthropic', 'secondary'),
     ];
 
     expect(
       service(value)
-        .availableRoutesFor('factual_drafting')
+        .availableRoutesFor('section_composition')
         .map(({ model }) => model),
     ).toEqual(['primary', 'secondary']);
   });
@@ -116,17 +114,17 @@ describe('GenerationPolicyService', () => {
     value.stages.document_extraction.routes = [
       route('anthropic', 'batch-model', 'batch'),
     ];
-    value.stages.editorial_preview.routes = [
+    value.stages.reference_document.routes = [
       route('anthropic', 'sync-model', 'sync'),
     ];
     expect(
       service(value).snapshotFor('document_extraction').routes[0],
     ).toMatchObject({ transport: 'batch', maxAttempts: 2 });
     expect(
-      service(value).snapshotFor('editorial_preview').routes[0],
+      service(value).snapshotFor('reference_document').routes[0],
     ).toMatchObject({ transport: 'sync', maxAttempts: 2 });
 
-    value.stages.editorial_preview.routes[0] = {
+    value.stages.reference_document.routes[0] = {
       ...route('anthropic', 'invalid'),
       maxAttempts: 0,
     };
@@ -141,20 +139,20 @@ describe('GenerationPolicyService', () => {
     expect(snapshotText).not.toContain('sk-ant-test');
     expect(snapshotText).not.toContain('sk-test');
     expect(snapshotText).not.toMatch(/apiKey|secret|credential/i);
-    expect(configured.snapshotFor('editorial_preview').routes[0]?.model).toBe(
-      'preview-v1',
+    expect(configured.snapshotFor('reference_document').routes[0]?.model).toBe(
+      'reference-v1',
     );
 
     const changed = policy();
-    changed.stages.editorial_preview.routes = [
-      route('anthropic', 'preview-v2'),
+    changed.stages.reference_document.routes = [
+      route('anthropic', 'reference-v2'),
     ];
     expect(service(changed).snapshotFor('document_extraction')).toEqual(
       extractionBefore,
     );
     expect(
-      service(changed).snapshotFor('editorial_preview').routes[0]?.model,
-    ).toBe('preview-v2');
+      service(changed).snapshotFor('reference_document').routes[0]?.model,
+    ).toBe('reference-v2');
   });
 
   it('fails startup for invalid JSON, missing stages, or missing primary credentials', () => {
@@ -169,7 +167,7 @@ describe('GenerationPolicyService', () => {
     ).toThrow('GENERATION_POLICY_JSON');
 
     const incomplete = policy();
-    delete (incomplete.stages as Record<string, unknown>).output_validation;
+    delete (incomplete.stages as Record<string, unknown>).client_derivation;
     expect(() => service(incomplete)).toThrow('GENERATION_POLICY_JSON');
     expect(() => service(policy(), { ANTHROPIC_API_KEY: undefined })).toThrow(
       'ANTHROPIC_API_KEY',

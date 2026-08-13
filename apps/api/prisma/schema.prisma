@@ -188,6 +188,7 @@ enum ClientReleaseStatus {
 enum GenerationOperationType {
   document_extraction
   source_consolidation
+  reference_document
   section_composition
   client_derivation
 }
@@ -263,6 +264,11 @@ model User {
   website      String?
   roleTitle    String?     @map("role_title")
   status       String?
+  // Which language this person reads the product in. Not a setting they fill:
+  // the interface already knows it on every request and writes it here, so
+  // background work — which has no browser — can still address them in it
+  // (specs/018, FR-023).
+  locale       String?     @db.VarChar(8)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -331,6 +337,7 @@ model Project {
   generationOperations  GenerationOperation[]
   clientSections        ClientSection[]
   clientSectionContents ClientSectionContent[]
+  referenceDocuments    ReferenceDocument[]
 
   @@map("projects")
 }
@@ -472,20 +479,28 @@ model BoardConnection {
 // specs/016. It intentionally has no relation to Project: the reset is one
 // feature-wide boundary and must not cascade with business data.
 model ProjectSource {
-  id                String   @id @default(uuid()) @db.Uuid
-  projectId         String   @unique @map("project_id") @db.Uuid
-  currentRevisionId String?  @unique @map("current_revision_id") @db.Uuid
-  nextSequence      Int      @default(1) @map("next_sequence")
-  lockVersion       Int      @default(1) @map("lock_version")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id                        String   @id @default(uuid()) @db.Uuid
+  projectId                 String   @unique @map("project_id") @db.Uuid
+  currentRevisionId         String?  @unique @map("current_revision_id") @db.Uuid
+  nextSequence              Int      @default(1) @map("next_sequence")
+  lockVersion               Int      @default(1) @map("lock_version")
+  // One reference document may be written at a time, guaranteed by the unique
+  // constraint rather than by a check the next caller might forget — the same
+  // procedure ClientSection.activeProposalId uses.
+  activeReferenceDocumentId String?  @unique @map("active_reference_document_id") @db.Uuid
+  // FR-006: the source moved, so the document is out of date. It says so and
+  // waits; it never rewrites itself.
+  referenceNeedsRewrite     Boolean  @default(true) @map("reference_needs_rewrite")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
 
-  project          Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  currentRevision  SourceRevision?        @relation("CurrentSourceRevision", fields: [currentRevisionId], references: [id], onDelete: SetNull)
-  revisions        SourceRevision[]       @relation("SourceRevisions")
-  informationItems InformationItem[]
-  assertions       ContributorAssertion[]
-  clarifications   Clarification[]
+  project                 Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  currentRevision         SourceRevision?        @relation("CurrentSourceRevision", fields: [currentRevisionId], references: [id], onDelete: SetNull)
+  revisions               SourceRevision[]       @relation("SourceRevisions")
+  informationItems        InformationItem[]
+  assertions              ContributorAssertion[]
+  clarifications          Clarification[]
+  activeReferenceDocument ReferenceDocument?     @relation("SourceActiveReferenceDocument", fields: [activeReferenceDocumentId], references: [id], onDelete: SetNull)
 
   @@map("project_sources")
 }
@@ -522,6 +537,7 @@ model SourceRevision {
   generationBaseOperations   GenerationOperation[]  @relation("GenerationBaseRevision")
   generationSourceOperations GenerationOperation[]  @relation("GenerationSourceRevision")
   sectionProposals           SectionProposal[]      @relation("SectionProposalRevision")
+  referenceDocuments         ReferenceDocument[]    @relation("ReferenceDocumentRevision")
 
   @@unique([projectSourceId, sequence])
   @@index([projectSourceId, createdAt])
@@ -758,6 +774,55 @@ model ClarificationResolution {
 
   @@index([clarificationId, createdAt])
   @@map("clarification_resolutions")
+}
+
+// ─── The reference document (specs/018-canonical-source-reading) ──────────────
+//
+// One written document per project, produced from the canonical source for the
+// developer to read. Nothing reads it back: composition still draws only on the
+// canonical source. A reading that becomes an input is how a product ends up
+// holding two accounts of the same project.
+
+enum ReferenceDocumentStatus {
+  writing
+  ready
+  superseded
+  failed
+}
+
+// FR-007: documents that hold nothing usable produce a document that says so,
+// not an empty one the developer has to interpret.
+enum ReferenceDocumentOutcome {
+  written
+  nothing_usable
+}
+
+model ReferenceDocument {
+  id                    String                    @id @default(uuid()) @db.Uuid
+  projectId             String                    @map("project_id") @db.Uuid
+  // The canonical head it was written from, so the document can say whether the
+  // source has moved since.
+  sourceRevisionId      String                    @map("source_revision_id") @db.Uuid
+  generationOperationId String                    @unique @map("generation_operation_id") @db.Uuid
+  status                ReferenceDocumentStatus   @default(writing)
+  outcome               ReferenceDocumentOutcome?
+  // The language it was written in, kept with the document: a developer who
+  // switches interface language keeps reading the one they had until it is
+  // rewritten, rather than seeing it half-translated.
+  locale                String                    @db.VarChar(8)
+  structuredContent     Json?                     @map("structured_content")
+  failureCode           String?                   @map("failure_code") @db.VarChar(128)
+  version               Int                       @default(1)
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+
+  project             Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceRevision      SourceRevision      @relation("ReferenceDocumentRevision", fields: [sourceRevisionId], references: [id], onDelete: Restrict)
+  generationOperation GenerationOperation @relation("ReferenceDocumentGenerationOperation", fields: [generationOperationId], references: [id], onDelete: Restrict)
+  writingForSource    ProjectSource?      @relation("SourceActiveReferenceDocument")
+
+  @@index([projectId, status, createdAt])
+  @@map("reference_documents")
 }
 
 // ─── Author-defined client sections (specs/017-documentation-review-journey) ───
@@ -1009,6 +1074,7 @@ model GenerationOperation {
   replacesOperation     GenerationOperation?  @relation("GenerationReplacement", fields: [replacesOperationId], references: [id], onDelete: Restrict)
   replacementOperations GenerationOperation[] @relation("GenerationReplacement")
   sectionProposal       SectionProposal?      @relation("SectionProposalGenerationOperation")
+  referenceDocument     ReferenceDocument?    @relation("ReferenceDocumentGenerationOperation")
 
   @@index([status, runAfter, leaseExpiresAt])
   @@index([projectId, type, createdAt])

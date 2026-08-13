@@ -16,6 +16,9 @@ import { SourceCorrectionService } from './source/source-correction.service';
 import { ClarificationService } from './source/clarification.service';
 import { ClarificationsController } from './controllers/clarifications.controller';
 import { SectionsController } from './controllers/sections.controller';
+import { ReferenceDocumentController } from './controllers/reference-document.controller';
+import { ReferenceDocumentHandler } from './reference/reference-document.handler';
+import { ReferenceDocumentService } from './reference/reference-document.service';
 import { ClientSectionService } from './sections/client-section.service';
 import { SectionCompositionHandler } from './composition/section-composition.handler';
 import { SectionProposalService } from './composition/section-proposal.service';
@@ -42,6 +45,7 @@ import { DocumentationOperationsController } from './controllers/documentation-o
     DocumentationWorkspaceController,
     DocumentationOperationsController,
     SectionsController,
+    ReferenceDocumentController,
   ],
   providers: [
     ImageNormalizer,
@@ -60,6 +64,8 @@ import { DocumentationOperationsController } from './controllers/documentation-o
     ClientSectionService,
     SectionCompositionHandler,
     SectionProposalService,
+    ReferenceDocumentHandler,
+    ReferenceDocumentService,
   ],
   exports: [SourceDocumentService, SourceRevisionService],
 })

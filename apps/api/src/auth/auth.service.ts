@@ -124,6 +124,13 @@ export class AuthService {
     return session.user;
   }
 
+  // The language a person reads the product in, learned from the interface
+  // rather than asked for. Background work — writing the reference document,
+  // raising a point to clarify — has no browser to ask (specs/018, FR-024).
+  async rememberLocale(userId: string, locale: string): Promise<void> {
+    await this.prisma.user.update({ where: { id: userId }, data: { locale } });
+  }
+
   // Public: reused by InvitationsService when an invitation is accepted,
   // which also needs to sign the user in.
   createSession(userId: string) {

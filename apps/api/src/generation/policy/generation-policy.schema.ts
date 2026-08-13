@@ -3,10 +3,10 @@ import { z } from 'zod';
 export const GENERATION_POLICY_STAGE_KEYS = [
   'document_extraction',
   'source_consolidation',
-  'factual_drafting',
-  'editorial_preview',
+  // Writes the project's reference document from its canonical source
+  // (specs/018-canonical-source-reading).
+  'reference_document',
   'client_derivation',
-  'output_validation',
   // Composes one author-defined section from the canonical source
   // (specs/017-documentation-review-journey). `stages` is strict and every key
   // is required, so adding this here obliges every deployment's
