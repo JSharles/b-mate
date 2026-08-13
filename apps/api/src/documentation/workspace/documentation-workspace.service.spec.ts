@@ -1,19 +1,6 @@
 import { asPrismaService, createPrismaMock } from '../../test/prisma-mock';
 import { ProjectAccessService } from '../../projects/project-access.service';
 import { DocumentationWorkspaceService } from './documentation-workspace.service';
-interface Case {
-  failed: number;
-  reviews: number;
-  active: number;
-  release: string | null;
-  pending: {
-    id: string;
-    expectedSectionCount: number;
-    entries: object[];
-  } | null;
-  documents?: number;
-}
-
 describe('DocumentationWorkspaceService', () => {
   it.each([
     [
@@ -75,7 +62,7 @@ describe('DocumentationWorkspaceService', () => {
     prisma.projectSource.findUnique.mockResolvedValue({
       currentRevisionId: 'revision-1',
     });
-    const documents = input.documents ?? 3;
+    const documents = (input as { documents?: number }).documents ?? 3;
     prisma.sourceDocument.count.mockResolvedValue(documents);
     prisma.generationOperation.count
       .mockResolvedValueOnce(input.active)
