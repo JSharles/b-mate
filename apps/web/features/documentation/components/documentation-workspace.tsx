@@ -9,7 +9,7 @@ import {
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useDocumentationWorkspace } from "../hooks";
-import { CanonicalSourceView } from "./canonical-source-view";
+import { SourceSummary } from "./source-summary";
 import { ClientContentPreview } from "./client-content-preview";
 import { SectionList } from "./section-list";
 
@@ -108,7 +108,7 @@ export function DocumentationWorkspace({ projectId }: { projectId: string }) {
           landing on <body>, so the next Tab restarts from the top of the
           document and the nav is worse than useless to a keyboard user. */}
       <div id="documentation-source" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <CanonicalSourceView projectId={projectId} />
+        <SourceSummary projectId={projectId} />
       </div>
       <div id="documentation-sections" tabIndex={-1} className="scroll-mt-6 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <SectionList projectId={projectId} />

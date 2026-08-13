@@ -47,6 +47,17 @@ export const ReferenceDocumentViewSchema = z
     outcome: ReferenceDocumentOutcomeSchema.nullable(),
     locale: z.string().min(2).max(8),
     parts: z.array(ReferencePartSchema),
+    // The statements the document cites, with their own wording. The document
+    // holds prose; correcting a statement needs the statement, and without this
+    // the correction action would open on an empty field (FR-005).
+    citedStatements: z.array(
+      z
+        .object({
+          id: DocumentationUuidSchema,
+          content: z.string().min(1),
+        })
+        .strict(),
+    ),
     failureCode: z.string().trim().min(1).max(128).nullable(),
     createdAt: z.iso.datetime(),
     version: z.number().int().positive(),

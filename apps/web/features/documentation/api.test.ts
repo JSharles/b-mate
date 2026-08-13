@@ -17,6 +17,9 @@ import {
   getSectionProposal,
   approveSectionProposal,
   archiveSection,
+  getReferenceSummary,
+  getReferenceDocument,
+  writeReferenceDocument,
   getItemProvenance,
   listClarifications,
   listDocuments,
@@ -141,6 +144,9 @@ describe("documentation api", () => {
     await getSectionProposal("project-1", "section-1");
     await approveSectionProposal("project-1", "section-1", 3);
     await archiveSection("project-1", "section-1");
+    await getReferenceSummary("project-1");
+    await getReferenceDocument("project-1");
+    await writeReferenceDocument("project-1");
     await previewDocumentRemoval("project-1", "document-1");
     await confirmDocumentRemoval("project-1", "document-1", {
       expectedDocumentVersion: 2,
@@ -165,6 +171,10 @@ describe("documentation api", () => {
     expect(mockedApiFetch).toHaveBeenCalledWith(
       "/projects/project-1/documentation/sections/section-1",
       { method: "DELETE" },
+    );
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      "/projects/project-1/documentation/reference",
+      { method: "POST" },
     );
     expect(mockedApiFetch).toHaveBeenCalledWith(
       "/projects/project-1/documentation/documents/document-1/removal/retry",
@@ -202,5 +212,14 @@ describe("documentation api", () => {
       message: "Service Unavailable",
       status: 503,
     });
+  });
+
+  // A project that has never had a reference document answers with an empty
+  // body. apiFetch reads that as `undefined`, which TanStack Query rejects as a
+  // result — so "none yet" would reach the screen as a failed request.
+  it("turns an absent reference document into null, not undefined", async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+
+    await expect(getReferenceDocument("project-1")).resolves.toBeNull();
   });
 });

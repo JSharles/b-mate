@@ -19,6 +19,9 @@ import {
   composeSection,
   getSectionProposal,
   approveSectionProposal,
+  getReferenceSummary,
+  getReferenceDocument,
+  writeReferenceDocument,
 } from "./api";
 import {
   canonicalSourceKey,
@@ -43,6 +46,11 @@ import {
   useArchiveSection,
   useComposeSection,
   useApproveSectionProposal,
+  referenceSummaryKey,
+  referenceDocumentKey,
+  useReferenceSummary,
+  useReferenceDocument,
+  useWriteReferenceDocument,
 } from "./hooks";
 
 vi.mock("./api", () => ({
@@ -64,6 +72,9 @@ vi.mock("./api", () => ({
   composeSection: vi.fn(),
   getSectionProposal: vi.fn(),
   approveSectionProposal: vi.fn(),
+  getReferenceSummary: vi.fn(),
+  getReferenceDocument: vi.fn(),
+  writeReferenceDocument: vi.fn(),
 }));
 
 function wrapper() {
@@ -423,6 +434,51 @@ describe("documentation hooks", () => {
         queryKey: sectionProposalKey("project-1", "section-1"),
       });
       expect(invalidate.mock.calls.length).toBeGreaterThan(2);
+    });
+  });
+
+  describe("the reference document", () => {
+    it("keys the summary and the document separately", async () => {
+      vi.mocked(getReferenceSummary).mockResolvedValue({} as never);
+      vi.mocked(getReferenceDocument).mockResolvedValue(null);
+      const { queryClient, Wrapper } = wrapper();
+
+      renderHook(() => useReferenceSummary("project-1"), { wrapper: Wrapper });
+      renderHook(() => useReferenceDocument("project-1"), { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(
+          queryClient.getQueryData(referenceDocumentKey("project-1")),
+        ).toBeNull();
+      });
+      expect(referenceSummaryKey("project-1")).not.toEqual(
+        referenceDocumentKey("project-1"),
+      );
+    });
+
+    // Writing changes both what the working page states and what the document
+    // screen shows, so both have to be told to look again.
+    it("refreshes the summary and the document after a write", async () => {
+      vi.mocked(writeReferenceDocument).mockResolvedValue({
+        documentId: "d",
+        operationId: "o",
+      });
+      const { queryClient, Wrapper } = wrapper();
+      const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+      const write = renderHook(() => useWriteReferenceDocument("project-1"), {
+        wrapper: Wrapper,
+      });
+      await act(async () => {
+        await write.result.current.mutateAsync();
+      });
+
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: referenceSummaryKey("project-1"),
+      });
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: referenceDocumentKey("project-1"),
+      });
     });
   });
 });

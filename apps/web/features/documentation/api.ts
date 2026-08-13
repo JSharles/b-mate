@@ -18,6 +18,8 @@ import type {
   SectionProposalDetail,
   SectionView,
   UpdateSectionRequest,
+  ReferenceDocumentView,
+  ReferenceSummary,
 } from "schemas";
 import { ApiError, apiFetch } from "@/shared/lib/api-client";
 
@@ -300,5 +302,29 @@ export function approveSectionProposal(
   return apiFetch<{ proposalId: string; releaseId: string; approved: true }>(
     `/projects/${projectId}/documentation/sections/${sectionId}/proposal/approve`,
     { method: "POST", body: { expectedVersion } },
+  );
+}
+
+// ─── The reference document (specs/018) ───────────────────────────────────────
+
+export function getReferenceSummary(projectId: string) {
+  return apiFetch<ReferenceSummary>(
+    `/projects/${projectId}/documentation/reference/summary`,
+  );
+}
+
+// A project that has never had one answers with an empty body, which apiFetch
+// reads as `undefined` — and TanStack Query rejects that as a result. Coerced
+// here so "none yet" does not reach the screen as a failed request.
+export function getReferenceDocument(projectId: string) {
+  return apiFetch<ReferenceDocumentView | null>(
+    `/projects/${projectId}/documentation/reference`,
+  ).then((document) => document ?? null);
+}
+
+export function writeReferenceDocument(projectId: string) {
+  return apiFetch<{ documentId: string; operationId: string }>(
+    `/projects/${projectId}/documentation/reference`,
+    { method: "POST" },
   );
 }

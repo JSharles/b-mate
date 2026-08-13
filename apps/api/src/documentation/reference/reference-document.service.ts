@@ -106,7 +106,37 @@ export class ReferenceDocumentService {
       where: { projectId, status: { in: ['ready', 'writing', 'failed'] } },
       orderBy: { createdAt: 'desc' },
     });
-    return document ? this.toView(document) : null;
+    if (!document) return null;
+
+    // The document holds prose; correcting a statement needs the statement's
+    // own wording, and the passage that cites it does not carry it.
+    const cited = new Set(
+      (document.status === 'ready'
+        ? ((document.structuredContent ?? []) as {
+            blocks?: { informationItemIds?: string[] }[];
+          }[])
+        : []
+      ).flatMap((part) =>
+        (part.blocks ?? []).flatMap((block) => block.informationItemIds ?? []),
+      ),
+    );
+    const statements = cited.size
+      ? await this.prisma.sourceRevisionItem.findMany({
+          where: {
+            sourceRevisionId: document.sourceRevisionId,
+            informationItemId: { in: [...cited] },
+          },
+          select: { informationItemId: true, content: true },
+        })
+      : [];
+
+    return this.toView(
+      document,
+      statements.map(({ informationItemId, content }) => ({
+        id: informationItemId,
+        content,
+      })),
+    );
   }
 
   // What the working page shows instead of a hundred rows.
@@ -154,7 +184,10 @@ export class ReferenceDocumentService {
     };
   }
 
-  private toView(document: ReferenceDocument) {
+  private toView(
+    document: ReferenceDocument,
+    citedStatements: { id: string; content: string }[] = [],
+  ) {
     return {
       id: document.id,
       sourceRevisionId: document.sourceRevisionId,
@@ -167,6 +200,7 @@ export class ReferenceDocumentService {
         document.status === 'ready'
           ? ((document.structuredContent ?? []) as unknown[])
           : [],
+      citedStatements,
       failureCode: document.failureCode,
       createdAt: document.createdAt.toISOString(),
       version: document.version,

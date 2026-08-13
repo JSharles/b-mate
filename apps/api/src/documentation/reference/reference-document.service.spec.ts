@@ -183,6 +183,7 @@ describe('ReferenceDocumentService', () => {
       await expect(service.current('user', projectId)).resolves.toMatchObject({
         status: 'writing',
         parts: [],
+        citedStatements: [],
       });
     });
 
@@ -191,6 +192,43 @@ describe('ReferenceDocumentService', () => {
       prisma.referenceDocument.findFirst.mockResolvedValue(null);
 
       await expect(service.current('user', projectId)).resolves.toBeNull();
+    });
+
+    // The document holds prose; correcting a statement needs the statement, and
+    // the passage citing it does not carry its wording.
+    it('carries the statements it cites, with their own wording', async () => {
+      const { prisma, service } = setup();
+      prisma.referenceDocument.findFirst.mockResolvedValue({
+        id: documentId,
+        sourceRevisionId: revisionId,
+        status: 'ready',
+        outcome: 'written',
+        locale: 'fr',
+        structuredContent: [
+          {
+            title: 'Le projet',
+            blocks: [
+              {
+                kind: 'paragraph',
+                text: 'Prose.',
+                informationItemIds: ['item-a'],
+              },
+            ],
+          },
+        ],
+        failureCode: null,
+        createdAt: new Date('2026-08-13T10:00:00.000Z'),
+        version: 2,
+      });
+      prisma.sourceRevisionItem.findMany.mockResolvedValue([
+        { informationItemId: 'item-a', content: 'The launch is in October.' },
+      ]);
+
+      await expect(service.current('user', projectId)).resolves.toMatchObject({
+        citedStatements: [
+          { id: 'item-a', content: 'The launch is in October.' },
+        ],
+      });
     });
   });
 

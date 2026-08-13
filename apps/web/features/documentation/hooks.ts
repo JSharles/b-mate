@@ -35,6 +35,9 @@ import {
   getSectionProposal,
   listSections,
   updateSection,
+  getReferenceSummary,
+  getReferenceDocument,
+  writeReferenceDocument,
   getDocumentationWorkspace,
   confirmDocumentRemoval,
   previewDocumentRemoval,
@@ -497,6 +500,51 @@ export function useApproveSectionProposal(
       });
       queryClient.invalidateQueries({ queryKey: clientPreviewKey(projectId) });
       queryClient.invalidateQueries({ queryKey: workspaceKey(projectId) });
+    },
+  });
+}
+
+// ─── The reference document (specs/018) ───────────────────────────────────────
+
+export const referenceSummaryKey = (projectId: string) =>
+  [...documentationKey(projectId), "reference", "summary"] as const;
+export const referenceDocumentKey = (projectId: string) =>
+  [...documentationKey(projectId), "reference", "document"] as const;
+
+// Writing has no completion event, so both queries poll while it runs and stop
+// as soon as it does not — and neither polls a tab nobody is looking at.
+const whileWriting = (writing: boolean) =>
+  document.visibilityState !== "hidden" && writing ? 3_000 : false;
+
+export function useReferenceSummary(projectId: string) {
+  return useQuery({
+    queryKey: referenceSummaryKey(projectId),
+    queryFn: () => getReferenceSummary(projectId),
+    refetchInterval: (query) =>
+      whileWriting(query.state.data?.document?.status === "writing"),
+  });
+}
+
+export function useReferenceDocument(projectId: string) {
+  return useQuery({
+    queryKey: referenceDocumentKey(projectId),
+    queryFn: () => getReferenceDocument(projectId),
+    refetchInterval: (query) =>
+      whileWriting(query.state.data?.status === "writing"),
+  });
+}
+
+export function useWriteReferenceDocument(projectId: string) {
+  const t = useTranslations("Projects.Documentation.Reference.Toasts");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => writeReferenceDocument(projectId),
+    meta: { skipGlobalErrorToast: true, successMessage: t("writing") },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: referenceSummaryKey(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: referenceDocumentKey(projectId),
+      });
     },
   });
 }

@@ -9,8 +9,8 @@ vi.mock("@/i18n/navigation", () => ({
     <a href={href}>{children}</a>
   ),
 }));
-vi.mock("./canonical-source-view", () => ({
-  CanonicalSourceView: () => <div>canonical-source</div>,
+vi.mock("./source-summary", () => ({
+  SourceSummary: () => <div>source-summary</div>,
 }));
 vi.mock("./section-list", () => ({
   SectionList: () => <div>section-list</div>,
@@ -48,7 +48,7 @@ describe("DocumentationWorkspace", () => {
     // why nothing has moved for their client yet.
     expect(screen.getByText("releaseProgress")).toBeVisible();
     expect(screen.getByText("releaseAtomic")).toBeVisible();
-    expect(screen.getByText("canonical-source")).toBeVisible();
+    expect(screen.getByText("source-summary")).toBeVisible();
   });
 
   it("keeps the workspace usable when a refresh is delayed", () => {
@@ -76,7 +76,7 @@ describe("DocumentationWorkspace", () => {
 
     render(<DocumentationWorkspace projectId="project-1" />);
 
-    const sections = ["canonical-source", "section-list", "client-preview"];
+    const sections = ["source-summary", "section-list", "client-preview"];
     const rendered = sections.map((name) => screen.getByText(name));
     for (let index = 0; index < rendered.length - 1; index++) {
       expect(

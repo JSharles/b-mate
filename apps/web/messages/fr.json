@@ -245,15 +245,9 @@
         "configureNotion": "Configurer Notion"
       },
       "Source": {
-        "revision": "Révision {sequence}",
-        "noRevision": "Aucune révision pour le moment",
-        "emptyTitle": "La source attend son premier document",
-        "emptyDescription": "Ajoutez un document existant pour construire une vue cohérente du projet. Les doublons seront rapprochés et chaque information gardera son origine.",
-        "noItems": "Cette révision ne contient aucune information exploitable.",
-        "loadError": "Impossible de charger la source documentaire.",
-        "showProvenance": "Voir les sources ({count})",
-        "correctItem": "Corriger ce point",
-        "pointToClarify": "Point à clarifier",
+        "emptyTitle": "Aucun document pour l’instant.",
+        "emptyDescription": "Ajoutez un premier document : Diaphane en tirera ce qui compte pour écrire votre document de référence.",
+        "loadError": "Impossible de charger l’état de vos documents. Rechargez la page.",
         "kind_fact": "Fait",
         "kind_decision": "Décision",
         "kind_date": "Date",
@@ -267,7 +261,12 @@
         "trigger_document_removed": "Document retiré",
         "trigger_clarification_answered": "Réponse à un point à clarifier",
         "trigger_guided_correction": "Correction apportée par vous",
-        "trigger_document_added_unknown": "Document ajouté"
+        "trigger_document_added_unknown": "Document ajouté",
+        "loading": "Chargement…",
+        "held": "{statements, plural, one {# information retenue} other {# informations retenues}}, issues de {documents, plural, one {# document} other {# documents}}.",
+        "needsRewrite": "Vos documents ont changé depuis. Votre document de référence est à réécrire.",
+        "readDocument": "Lire le document de référence",
+        "writeDocument": "Écrire le document de référence"
       },
       "Documents": {
         "title": "Documents ajoutés",
@@ -469,6 +468,26 @@
           "confirm": "Supprimer la section",
           "deleting": "Suppression…",
           "error": "La suppression a échoué. Réessayez."
+        }
+      },
+      "Reference": {
+        "title": "Document de référence",
+        "description": "Ce que disent vos documents, écrit en un seul texte. C’est votre référence de travail — votre client ne le lit pas.",
+        "backToDocumentation": "Retour à la documentation",
+        "loading": "Chargement du document…",
+        "loadError": "Impossible de charger le document. Rechargez la page — rien n’a été perdu.",
+        "neverWritten": "Ce document n’a pas encore été écrit. Lancez la rédaction pour le lire.",
+        "writing": "Rédaction en cours. Cela prend généralement moins d’une minute.",
+        "failed": "La rédaction a échoué. Ce que vous aviez n’a pas bougé — relancez quand vous voulez.",
+        "nothingUsable": "Vos documents ne contiennent rien qui puisse servir de référence. Ajoutez un document plus complet.",
+        "write": "Écrire le document",
+        "rewrite": "Réécrire",
+        "writtenFrom": "{count, plural, one {# partie} other {# parties}}.",
+        "openPoint": "À clarifier",
+        "showSource": "D’où ça vient",
+        "correct": "Corriger",
+        "Toasts": {
+          "writing": "Rédaction lancée."
         }
       }
     },

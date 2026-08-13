@@ -245,15 +245,9 @@
         "configureNotion": "Configure Notion"
       },
       "Source": {
-        "revision": "Revision {sequence}",
-        "noRevision": "No revision yet",
-        "emptyTitle": "The source is waiting for its first document",
-        "emptyDescription": "Add an existing document to build a coherent view of the project. Duplicates will be reconciled and every piece of information will retain its origin.",
-        "noItems": "This revision contains no usable information.",
-        "loadError": "The documentary source couldn't be loaded.",
-        "showProvenance": "View sources ({count})",
-        "correctItem": "Correct this point",
-        "pointToClarify": "Point to clarify",
+        "emptyTitle": "No documents yet.",
+        "emptyDescription": "Add a first document: Diaphane will pull out what matters and write your reference document from it.",
+        "loadError": "Could not load the state of your documents. Reload the page.",
         "kind_fact": "Fact",
         "kind_decision": "Decision",
         "kind_date": "Date",
@@ -267,7 +261,12 @@
         "trigger_document_removed": "Document removed",
         "trigger_clarification_answered": "A point to clarify was answered",
         "trigger_guided_correction": "Correction you made",
-        "trigger_document_added_unknown": "Document added"
+        "trigger_document_added_unknown": "Document added",
+        "loading": "Loading…",
+        "held": "{statements, plural, one {# statement kept} other {# statements kept}}, from {documents, plural, one {# document} other {# documents}}.",
+        "needsRewrite": "Your documents have changed since. Your reference document needs rewriting.",
+        "readDocument": "Read the reference document",
+        "writeDocument": "Write the reference document"
       },
       "Documents": {
         "title": "Added documents",
@@ -469,6 +468,26 @@
           "confirm": "Delete section",
           "deleting": "Deleting…",
           "error": "Deleting failed. Try again."
+        }
+      },
+      "Reference": {
+        "title": "Reference document",
+        "description": "What your documents say, written as one text. This is your working reference — your client does not read it.",
+        "backToDocumentation": "Back to documentation",
+        "loading": "Loading the document…",
+        "loadError": "Could not load the document. Reload the page — nothing has been lost.",
+        "neverWritten": "This document has not been written yet. Start it to read it.",
+        "writing": "Being written. This usually takes under a minute.",
+        "failed": "Writing failed. What you had has not changed — start it again whenever you like.",
+        "nothingUsable": "Your documents hold nothing that can serve as a reference. Add a fuller document.",
+        "write": "Write the document",
+        "rewrite": "Rewrite",
+        "writtenFrom": "{count, plural, one {# part} other {# parts}}.",
+        "openPoint": "To clarify",
+        "showSource": "Where this comes from",
+        "correct": "Correct",
+        "Toasts": {
+          "writing": "Writing started."
         }
       }
     },
