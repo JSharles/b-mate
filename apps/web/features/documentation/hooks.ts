@@ -391,22 +391,38 @@ export const sectionsKey = (projectId: string) =>
 export const sectionProposalKey = (projectId: string, sectionId: string) =>
   [...sectionsKey(projectId), sectionId, "proposal"] as const;
 
+// A composition has no completion event to listen for, so the list polls while
+// any section is busy and stops as soon as none is. Without this the page
+// contradicted itself: the proposal panel polled and showed finished content
+// while the row beside it still read "being written", because nothing told the
+// list to look again.
 export function useSections(projectId: string) {
   return useQuery({
     queryKey: sectionsKey(projectId),
     queryFn: () => listSections(projectId),
+    refetchInterval: (query) =>
+      document.visibilityState === "hidden"
+        ? false
+        : query.state.data?.sections.some(
+              (section) => section.activeProposal?.status === "composing",
+            )
+          ? 3_000
+          : false,
   });
 }
 
-// A section being composed has no completion event to listen for, so the list
-// polls while any section is busy and stops as soon as none is — the same
-// treatment documents already get, for the same reason.
 export function useSectionProposal(projectId: string, sectionId: string) {
   return useQuery({
     queryKey: sectionProposalKey(projectId, sectionId),
     queryFn: () => getSectionProposal(projectId, sectionId),
+    // A hidden tab is nobody watching. Left unguarded this kept one request
+    // every three seconds per composing section, for a screen no one was on —
+    // the guard the two other polling queries in this file already carry.
     refetchInterval: (query) =>
-      query.state.data?.status === "composing" ? 3_000 : false,
+      document.visibilityState !== "hidden" &&
+      query.state.data?.status === "composing"
+        ? 3_000
+        : false,
   });
 }
 

@@ -2,13 +2,12 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { SectionView } from "schemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useArchiveSection, useComposeSection, useSections } from "../hooks";
+import { useComposeSection, useSections } from "../hooks";
 import { SectionList } from "./section-list";
 
 vi.mock("../hooks", () => ({
   useSections: vi.fn(),
   useComposeSection: vi.fn(),
-  useArchiveSection: vi.fn(),
 }));
 vi.mock("./section-proposal-review", () => ({
   SectionProposalReview: () => <div>proposal-review</div>,
@@ -17,9 +16,12 @@ vi.mock("./section-editor-dialog", () => ({
   SectionEditorDialog: ({ open }: { open: boolean }) =>
     open ? <div>editor-dialog</div> : null,
 }));
+vi.mock("./delete-section-dialog", () => ({
+  DeleteSectionDialog: ({ open }: { open: boolean }) =>
+    open ? <div>delete-dialog</div> : null,
+}));
 
 const compose = { mutate: vi.fn(), isPending: false };
-const archive = { mutate: vi.fn(), isPending: false };
 
 function section(overrides: Partial<SectionView> = {}): SectionView {
   return {
@@ -46,6 +48,7 @@ function withSections(sections: SectionView[], isPending = false) {
   vi.mocked(useSections).mockReturnValue({
     data: { sections },
     isPending,
+    isError: false,
   } as never);
 }
 
@@ -53,7 +56,6 @@ describe("SectionList", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useComposeSection).mockReturnValue(compose as never);
-    vi.mocked(useArchiveSection).mockReturnValue(archive as never);
   });
 
   // FR-005: a project starts with no sections, and the area says so plainly
@@ -137,14 +139,16 @@ describe("SectionList", () => {
     expect(compose.mutate).toHaveBeenCalledWith("section-9");
   });
 
-  it("archives the section it belongs to", async () => {
+  // Deleting takes a heading away from someone who is reading it. Removing a
+  // document already asks first; this asks for the same reason.
+  it("asks before deleting rather than deleting on the click", async () => {
     withSections([section({ id: "section-9" })]);
     const user = userEvent.setup();
 
     render(<SectionList projectId="project-1" />);
     await user.click(screen.getByRole("button", { name: /delete/ }));
 
-    expect(archive.mutate).toHaveBeenCalledWith("section-9");
+    expect(screen.getByText("delete-dialog")).toBeVisible();
   });
 
   it("gives every section its own proposal review", () => {
@@ -163,11 +167,42 @@ describe("SectionList", () => {
 
     render(<SectionList projectId="project-1" />);
 
-    expect(screen.getByText("loading")).toBeVisible();
-    expect(
-      within(screen.getByRole("heading", { name: /title2/ }).closest("section")!)
-        .getByText("loading"),
-    ).toBeVisible();
+    expect(screen.getByRole("heading", { name: /title2/ })).toBeVisible();
+    expect(screen.getByLabelText("loading")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+  });
+
+  // A failed fetch is not an empty project: the empty state told a contributor
+  // with eight published sections that they had none.
+  it("says the list failed to load rather than claiming there are none", () => {
+    vi.mocked(useSections).mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+    } as never);
+
+    render(<SectionList projectId="project-1" />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("loadError");
+    expect(screen.queryByText("emptyTitle")).not.toBeInTheDocument();
+  });
+
+  // One state asks for a decision; the other four report. Down a long list the
+  // difference has to be visible without reading every pill.
+  it("marks only the section awaiting review with the interactive colour", () => {
+    withSections([
+      section({ id: "a", activeProposal: { status: "pending_review" } as never }),
+      section({ id: "b", refreshNeeded: false }),
+    ]);
+
+    render(<SectionList projectId="project-1" />);
+
+    expect(screen.getByText("state_awaiting").className).toContain("text-primary");
+    expect(screen.getByText("state_published").className).toContain(
+      "text-muted-foreground",
+    );
   });
 
   // One mutation object serves every row: keyed only on `isPending`, starting a

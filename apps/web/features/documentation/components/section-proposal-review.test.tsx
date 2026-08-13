@@ -36,7 +36,11 @@ const section: SectionView = {
 };
 
 function withProposal(data: unknown, isPending = false) {
-  vi.mocked(useSectionProposal).mockReturnValue({ data, isPending } as never);
+  vi.mocked(useSectionProposal).mockReturnValue({
+    data,
+    isPending,
+    isError: false,
+  } as never);
 }
 
 const readyProposal = {
@@ -167,5 +171,33 @@ describe("SectionProposalReview", () => {
 
     expect(screen.getByText("Le lancement est prévu en octobre.")).toBeVisible();
     expect(screen.queryByRole("button", { name: "approve" })).not.toBeInTheDocument();
+  });
+
+  // A failed fetch is not a section that was never written: it announced "not
+  // written yet" for a section holding published content, and offered a
+  // rewrite as the fix for a network error.
+  it("says the proposal failed to load rather than claiming none exists", () => {
+    vi.mocked(useSectionProposal).mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+    } as never);
+
+    render(<SectionProposalReview projectId="project-1" section={section} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("loadError");
+    expect(screen.queryByText("neverComposed")).not.toBeInTheDocument();
+  });
+
+  // Composition finishes by poll, not by user action, so the result appears
+  // with nothing to announce it.
+  it("announces the composed content when it arrives", () => {
+    withProposal(readyProposal);
+
+    render(<SectionProposalReview projectId="project-1" section={section} />);
+
+    expect(
+      screen.getByText("Le lancement est prévu en octobre.").closest("[aria-live]"),
+    ).toHaveAttribute("aria-live", "polite");
   });
 });

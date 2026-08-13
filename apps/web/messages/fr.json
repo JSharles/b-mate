@@ -451,7 +451,8 @@
           "approve": "Approuver et publier",
           "approving": "Publication…",
           "approveHint": "Votre client lira cette section dès qu’elle est publiée.",
-          "staleError": "Cette proposition a été remplacée. Rechargez pour voir la nouvelle."
+          "staleError": "Cette proposition a été remplacée. Rechargez pour voir la nouvelle.",
+          "loadError": "Impossible de charger cette proposition. Rechargez la page — ce que lit votre client n’a pas bougé."
         },
         "Toasts": {
           "created": "Section créée.",
@@ -459,6 +460,16 @@
           "archived": "Section supprimée.",
           "composing": "Rédaction lancée.",
           "approved": "Section publiée."
+        },
+        "loadError": "Impossible de charger vos sections. Rechargez la page — rien n’a été perdu.",
+        "Delete": {
+          "title": "Supprimer « {name} » ?",
+          "publishedConsequence": "Votre client lit cette section aujourd’hui. Elle disparaîtra de sa vue immédiatement. Les autres sections restent publiées.",
+          "unpublishedConsequence": "Cette section n’a rien de publié. La supprimer ne change rien pour votre client.",
+          "cancel": "Annuler",
+          "confirm": "Supprimer la section",
+          "deleting": "Suppression…",
+          "error": "La suppression a échoué. Réessayez."
         }
       }
     },

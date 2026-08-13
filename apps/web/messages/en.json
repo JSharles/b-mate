@@ -451,7 +451,8 @@
           "approve": "Approve and publish",
           "approving": "Publishing…",
           "approveHint": "Your client reads this section as soon as it is published.",
-          "staleError": "This proposal has been replaced. Reload to see the new one."
+          "staleError": "This proposal has been replaced. Reload to see the new one.",
+          "loadError": "Could not load this proposal. Reload the page — what your client reads has not changed."
         },
         "Toasts": {
           "created": "Section created.",
@@ -459,6 +460,16 @@
           "archived": "Section deleted.",
           "composing": "Writing started.",
           "approved": "Section published."
+        },
+        "loadError": "Could not load your sections. Reload the page — nothing has been lost.",
+        "Delete": {
+          "title": "Delete “{name}”?",
+          "publishedConsequence": "Your client reads this section today. It will disappear from their view immediately. The other sections stay published.",
+          "unpublishedConsequence": "This section has nothing published. Deleting it changes nothing for your client.",
+          "cancel": "Cancel",
+          "confirm": "Delete section",
+          "deleting": "Deleting…",
+          "error": "Deleting failed. Try again."
         }
       }
     },

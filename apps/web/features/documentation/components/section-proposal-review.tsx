@@ -20,7 +20,22 @@ export function SectionProposalReview({
   const approve = useApproveSectionProposal(projectId, section.id);
 
   if (proposal.isPending) {
-    return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
+    return (
+      <p className="text-sm text-muted-foreground" aria-busy="true">
+        {t("loading")}
+      </p>
+    );
+  }
+
+  // A failed fetch is not a section that was never written. Falling through to
+  // the line below announced "not written yet" for a section holding published
+  // content, and offered a rewrite as the fix for a network error.
+  if (proposal.isError) {
+    return (
+      <p role="alert" className="text-sm text-destructive">
+        {t("loadError")}
+      </p>
+    );
   }
 
   const current = proposal.data;
@@ -68,7 +83,10 @@ export function SectionProposalReview({
 
   return (
     <div className="space-y-5">
-      <div className="space-y-3">
+      {/* Composition finishes by poll, not by user action, so the result
+          appears with nothing to announce it. A screen reader user would
+          otherwise have to go looking for a change they were not told about. */}
+      <div className="space-y-3" aria-live="polite">
         {current.blocks.map((block, index) => (
           <p
             key={index}

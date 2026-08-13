@@ -5,7 +5,9 @@ import { LoaderCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { SectionView } from "schemas";
 import { Button } from "@/shared/components/ui/button";
-import { useArchiveSection, useComposeSection, useSections } from "../hooks";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import { useComposeSection, useSections } from "../hooks";
+import { DeleteSectionDialog } from "./delete-section-dialog";
 import { SectionEditorDialog } from "./section-editor-dialog";
 import { SectionProposalReview } from "./section-proposal-review";
 import { StepHeading } from "./step-heading";
@@ -20,13 +22,25 @@ function stateOf(section: SectionView) {
   return "published";
 }
 
+// Exactly one of these states asks something of the contributor, and periwinkle
+// is the only colour allowed to say so (DESIGN.md, One Voice Rule). The rest
+// stay on the muted surface: down a list of eight sections, the point is that
+// the one waiting on a decision is the only thing that catches the eye.
+const STATE_TONE: Record<ReturnType<typeof stateOf>, string> = {
+  awaiting: "bg-primary/15 text-primary",
+  composing: "bg-muted text-muted-foreground",
+  stale: "bg-muted text-muted-foreground",
+  never: "bg-muted text-muted-foreground",
+  published: "bg-muted text-muted-foreground",
+};
+
 export function SectionList({ projectId }: { projectId: string }) {
   const t = useTranslations("Projects.Documentation.Sections");
   const sections = useSections(projectId);
   const compose = useComposeSection(projectId);
-  const archive = useArchiveSection(projectId);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<SectionView | undefined>();
+  const [deleting, setDeleting] = useState<SectionView | undefined>();
 
   const rows = sections.data?.sections ?? [];
 
@@ -40,7 +54,17 @@ export function SectionList({ projectId }: { projectId: string }) {
       />
 
       {sections.isPending ? (
-        <p className="text-sm text-muted-foreground">{t("loading")}</p>
+        <div className="space-y-4" aria-busy="true" aria-label={t("loading")}>
+          <Skeleton className="h-32 w-full rounded-xl" />
+          <Skeleton className="h-32 w-full rounded-xl" />
+        </div>
+      ) : sections.isError ? (
+        // A failed fetch is not an empty project. Falling through to the empty
+        // state below told a contributor with eight published sections that
+        // they had none — a different, and wrong, fact.
+        <p role="alert" className="text-sm text-destructive">
+          {t("loadError")}
+        </p>
       ) : rows.length === 0 ? (
         // FR-005: a project starts with no sections, and the area says so
         // plainly rather than showing an empty list.
@@ -49,7 +73,11 @@ export function SectionList({ projectId }: { projectId: string }) {
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
             {t("emptyDescription")}
           </p>
-          <Button type="button" className="mt-4" onClick={() => setCreating(true)}>
+          <Button
+            type="button"
+            className="mt-4"
+            onClick={() => setCreating(true)}
+          >
             <Plus />
             {t("createFirst")}
           </Button>
@@ -62,7 +90,6 @@ export function SectionList({ projectId }: { projectId: string }) {
             // disable all of them the moment any one is clicked. The pending
             // section is the one the mutation was called with.
             const busy = compose.isPending && compose.variables === section.id;
-            const removing = archive.isPending && archive.variables === section.id;
             return (
               <article
                 key={section.id}
@@ -75,7 +102,15 @@ export function SectionList({ projectId }: { projectId: string }) {
                       {section.instructions}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                  <span
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs ${STATE_TONE[state]}`}
+                  >
+                    {state === "composing" && (
+                      <LoaderCircle
+                        aria-hidden
+                        className="size-3 animate-spin motion-reduce:animate-none"
+                      />
+                    )}
                     {t(`state_${state}`)}
                   </span>
                 </div>
@@ -109,8 +144,7 @@ export function SectionList({ projectId }: { projectId: string }) {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => archive.mutate(section.id)}
-                    disabled={removing}
+                    onClick={() => setDeleting(section)}
                   >
                     <Trash2 />
                     {t("delete")}
@@ -118,13 +152,20 @@ export function SectionList({ projectId }: { projectId: string }) {
                 </div>
 
                 <div className="mt-5 border-t border-border pt-5">
-                  <SectionProposalReview projectId={projectId} section={section} />
+                  <SectionProposalReview
+                    projectId={projectId}
+                    section={section}
+                  />
                 </div>
               </article>
             );
           })}
 
-          <Button type="button" variant="outline" onClick={() => setCreating(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setCreating(true)}
+          >
             <Plus />
             {t("createAnother")}
           </Button>
@@ -143,6 +184,15 @@ export function SectionList({ projectId }: { projectId: string }) {
           section={editing}
           open
           onOpenChange={(open) => !open && setEditing(undefined)}
+        />
+      )}
+      {deleting && (
+        <DeleteSectionDialog
+          key={deleting.id}
+          projectId={projectId}
+          section={deleting}
+          open
+          onOpenChange={(open) => !open && setDeleting(undefined)}
         />
       )}
     </section>
