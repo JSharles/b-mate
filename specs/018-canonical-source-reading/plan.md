@@ -4,120 +4,105 @@
 
 ## Summary
 
-Three things get built, and one gets taken away.
+One generation stage replaces four. Twelve tables become three. The reference document becomes the only place the developer reads, answers and corrects.
 
-The system writes **one reference document per project** from its canonical source, on a screen of its own, downloadable. Processing learns to **hold a document that does not concern the project** and ask instead of absorbing it. The questions it asks get written **in the developer's language**. And the hundred-row statement list leaves the working page.
+Documents and notes go to the model in one request; it returns the document and the points it could not settle. Answering a point and correcting a paragraph both record a note, and every note is replayed on every write.
 
-Nothing about the canonical source changes underneath. The same statements, the same provenance, the same merging, the same attributable correction. This feature changes what the developer reads.
+## The shape
 
-## The one rule that keeps this from becoming a second truth
+```
+documents ─┐
+           ├─► one call ─► reference document + open points
+notes ─────┘                        │
+                                    └─► sections written for the client
+```
 
-**Nothing reads the reference document.** It is written from the canonical source and it ends there — composition still draws only on the canonical source (017, FR-009), publication still derives from an approved section proposal.
-
-If the reference document ever became an input, the product would hold two accounts of the same project and would eventually publish from the wrong one. It is a reading, and readings are terminal.
+Every write reads the documents and the notes. Never the previous document.
 
 ## Technical Context
 
-**Stack**: unchanged — NestJS 11 + Prisma 7 on `apps/api`, Next.js 16 + Tailwind v4 + TanStack Query + next-intl on `apps/web`, Zod in `packages/schemas`.
+**Stack**: unchanged.
 
-**New generation stages**: two. `reference_document` writes the document; `document_relevance` judges whether a document belongs.
+**Kept from the old pipeline**: `DocumentInputNormalizerService`. It already turns an upload or a Notion page into parts a model can read — text chunks, images, PDF. That work is real and independent of what we then ask for. What goes is the prompt that split those parts into facts.
 
-**Scale**: the reference document is written from the whole canonical head — measured at 100 statements ≈ 3 500 tokens on the live project, the same order as section composition. No chunking.
+**Size**: measured on the live project, two documents ≈ 20 000 words ≈ 27 000 tokens, plus notes. One call, no chunking, roughly ten times the headroom before it stops being comfortable.
 
 ## Constitution Check
 
 | Principle | Assessment |
 |---|---|
-| **I. Test-first coverage** | No exemption. The invariants are testable: a held document contributes nothing, a gap is marked rather than filled, a question is written in the developer's locale. |
-| **II. Type safety** | Contracts for the document, its parts and the relevance verdict go in `packages/schemas`. No `any` at the boundary. |
-| **III. Feature isolation** | API work stays in the `documentation` module. Web work stays in `features/documentation`; nothing here is client-facing, so nothing moves to `shared/`. |
-| **IV. Never resolve open product decisions** | Five questions were raised and answered by the developer — four in the spec's Clarifications, and whether the reference document needs approval, answered 2026-08-13. None left open. |
-| **V. Security and privacy** | The reference document is contributor-only. It must never be reachable by a client, and the download inherits the same check as the screen — a file URL is not an authorisation. |
-| **VI. Spec before multi-screen** | Followed. Spec signed off 2026-08-13. |
+| **I. Test-first coverage** | No exemption. The invariants are testable: a note is replayed, a point answered once is not asked again, an unrelated document is raised rather than woven in. |
+| **II. Type safety** | The document, its parts and its points go in `packages/schemas`. No `any` at the boundary. |
+| **III. Feature isolation** | API stays in `documentation`. Web stays in `features/documentation`. |
+| **IV. Never resolve open product decisions** | The method, the single surface, and dropping the carousel were all decided by the developer on 2026-08-13. None left open. |
+| **V. Security and privacy** | The reference document is contributor-only, and the download inherits the screen's check — a file URL is not an authorisation. |
+| **VI. Spec before multi-screen** | Followed. |
 
 ## Decisions
 
-### Decision 1 — The reference document is its own generation stage
+### Decision 1 — One stage, and it returns both
 
-A new stage `reference_document` takes the canonical head and writes the document: named parts, continuous text, every block citing the statements it rests on.
+`reference_document` takes the documents' normalized parts and the project's notes. It returns the document **and** the points it could not settle, in one answer.
 
-**Why a stage rather than a view computed in code**: the requirement is a written document, not a rearrangement. Only a model can turn a hundred statements into something that reads top to bottom.
+**Why not a second stage for the points**: they are the same judgement. A model deciding what it cannot state is deciding, in the same breath, what it can. Splitting that in two means paying twice and reconciling two opinions.
 
-**Why not reuse section composition**: a section is a slice for a client under a chosen register. This is the whole project, factual, for the developer. Same machinery, different job — and merging them would mean one of the two compromises.
+**What guards against invention**: the prompt forbids inference and the output carries, per part, which documents it drew on — checked against the documents actually sent. There is no per-sentence citation to verify because there are no per-sentence facts; the honest guarantee is coarser and stated as such in the spec.
 
-**What guards it against invention** (FR-003): every block cites the statement ids it rests on, and the ids are validated against what was sent — the same check `validateCompositionReferences` already performs for sections. A block citing nothing, or citing something we did not send, is refused. The model cannot introduce a sentence with no source and have it survive.
+**No identifier is ever echoed.** Documents are referenced as `d0`, `d1` — the lesson written in `reference-token.ts`, which this feature has already broken once.
 
-### Decision 2 — Relevance is judged by its own stage, not folded into an existing one
+### Decision 2 — A note is one row
 
-A new stage `document_relevance` runs between extraction and consolidation. Input: the document's observations, and the canonical statements already held. Output: `belongs` / `does_not_belong`, and one sentence saying why.
+```
+Note: id, projectId, content, authorUserId, createdAt, archivedAt
+```
 
-**Why not fold it into extraction**: extraction reads one document and knows nothing of the project. It has nothing to judge against.
+That is all. No kind, no target, no revision. An answer and a correction are the same thing (spec, FR-012), and the paragraph that prompted a correction will not exist after the next write, so pointing at it would be pointing at nothing.
 
-**Why not fold it into consolidation**: consolidation already merges, supersedes, conflicts and raises clarifications. Adding a verdict to it is exactly the doubling-up that made extraction fail four ways in one session (017). One obligation per stage.
+**Ordering**: notes are replayed oldest first, and a later note may contradict an earlier one — the spec says that becomes a point rather than being resolved by order (FR-015).
 
-**Skipped for the first document** (FR-016): with nothing to compare against, the stage would be guessing. It is not run, and the document is incorporated.
+### Decision 3 — Relevance is judged in the same call
 
-**Guarding the false positive** (FR-017): the prompt is asked whether the document concerns *this project*, not whether it repeats what is already known. A new subject is expected; an unrelated client is not. This is the failure mode that would make the check worse than useless, so it gets its own test with a document on a genuinely new subject.
+No separate stage. The request already carries every document; asking which of them does not belong costs nothing extra and cannot disagree with the document that was written from them.
 
-### Decision 3 — A held document is a document status, and the question is a clarification
+Skipped when the project has one document (FR-018): there is nothing to compare it against.
 
-`SourceDocumentStatus` gains `awaiting_relevance`. A document in that state has been extracted and is going no further.
+### Decision 4 — Sections read the reference document
 
-The question raised is an ordinary `Clarification` — same table, same ranking, same answering path — carrying a reference to the document it concerns. Answering "it belongs" resumes consolidation; answering "it does not" removes the document through the removal path that already exists.
+`section_composition` currently draws on the canonical source. With the fact base gone, the reference document is the truth, and sections draw on it.
 
-**Why reuse Clarification rather than a new kind of prompt**: the developer already has one place where the system asks them things. A second one would split their attention for a question that behaves identically.
+This reverses the rule the previous draft carried ("nothing reads the reference document"), and correctly: that rule existed to stop two accounts of the truth existing side by side. With one account, reading it is the only sensible thing to do.
 
-### Decision 4 — The developer's language is remembered, not configured
+**A section cannot be composed before a reference document exists.** That is a real ordering constraint and the screen must say so rather than fail.
 
-`User` gains `locale`. The web already knows it on every request; `apiFetch` sends it, and the session guard writes it to the user row when it differs. The developer configures nothing (FR-023).
+### Decision 5 — What gets deleted
 
-The consolidation prompt takes that locale and writes its questions in it.
+| Removed | Why |
+|---|---|
+| `document_extraction`, `source_consolidation` stages | replaced by the one call |
+| `DocumentObservation` | facts, gone |
+| `InformationItem`, `SourceRevision`, `SourceRevisionItem`, `SourceRevisionChange` | the fact base and its history |
+| `ProvenanceLink` | per-sentence provenance, replaced by per-part document names |
+| `Clarification`, `ClarificationItem`, `ClarificationEvidence`, `ClarificationResolution` | points now live on the document |
+| `ContributorAssertion` | replaced by `Note` |
+| `ProjectSource` | it existed to own the revisions |
+| the clarifications panel and its carousel | one surface (FR-016c) |
 
-**Why on the user and not the project**: the project already carries a language, and it means the client's. A developer with an English-speaking client would otherwise be asked in English.
-
-**Existing questions keep their wording** (FR-019 of the spec): they were recorded in English and stay that way. Translating them on the fly would mean a call per display, and rewriting them in place would falsify a record the developer may have already answered against.
-
-### Decision 5 — Downloading is the page, laid out for paper
-
-No new route, no PDF library. The reference document screen carries print rules that drop the navigation and the actions, and a button that opens the browser's print dialog. The developer saves a PDF from there.
-
-**What this costs**: the file is what the browser makes of the page. Good enough to read, send and keep.
-
-**When to revisit**: the day something has to produce the file with no person present — an email attachment, an automated report. That needs a real generator, and it is not worth its weight before then.
+`SourceDocument` keeps its lifecycle — received, extracting, incorporated, removed — because a document still has to be fetched, normalized and stored. What changes is what happens after.
 
 ## Implementation Sequence
 
-**Slice 1 — the document exists.** `ReferenceDocument`, the `reference_document` stage, its screen, and the working page reshaped around a summary. The developer's locale is carried here rather than in slice 2, because the document is written for them and must be in their language (FR-022a). This alone answers the complaint that started the feature.
+**Slice 1 — the new path, beside the old.** `Note`, the reshaped `reference_document` stage reading documents and notes, and the document screen answering and correcting in place. Nothing is deleted yet, so this can be abandoned.
 
-**Slice 2 — the questions.** The clarification carousel, and the same locale reaching the consolidation prompt.
+**Slice 2 — the switch.** Sections read the reference document. The working page keeps a count and a way in.
 
-**Slice 3 — the guard.** `document_relevance`, the `awaiting_relevance` status, and the answering path.
+**Slice 3 — the removal.** Everything in Decision 5, verified by `pnpm knip`, `pnpm i18n:orphans` and a schema pass for models with no reader.
 
-**Slice 4 — the download.** Print rules and the action.
-
-Each slice ends with something usable. Slice 1 is the one that matters; slices 3 and 4 could be dropped without the feature failing.
+Slice 3 is deliberately last here, unlike 017: this time the replacement is not a rearrangement of the same data but a different way of producing it, and it should be seen working on the real project before the old path is gone.
 
 ## Risks
 
-**The document may read no better than the list.** A model asked to turn a hundred disconnected statements into continuous prose can produce something as tedious as what it replaces, just in paragraphs. Nothing in this plan prevents that — it is the same open risk 017 recorded about composition, and the same answer applies: ship slice 1 early and read the real output before building further.
+**One call has to do what four did.** Structure, clean, spot contradictions, judge relevance and write in the developer's language. If quality drops against what the four-stage pipeline produced, the answer is a better prompt, not another stage — but that has to be looked at on the real project before slice 3 deletes the alternative.
 
-**Relevance is a judgement about intent, made on partial evidence.** A design brief for a new module and a contract for another client can look similar from the observations alone. The cost of a false positive is a developer answering a question they should not have been asked; the cost of a false negative is a wrong document absorbed. The second is worse, which is why the check exists — but it is why it holds the document and asks rather than deciding.
+**Notes accumulate.** Fifty notes replayed on every write is fine; five hundred is a second corpus nobody curates. Nothing here addresses that, and it is recorded so it is not discovered as a surprise.
 
-**The statement list is leaving a page some habit has formed around.** It has been the first thing on that page since 016.
-
-## Resolved: the reference document has no approval gate
-
-Answered by the developer on 2026-08-13: "pas nécessairement, si le document ne me plaît pas alors je ne crée pas de contenu client et je le remplace ou le corrige."
-
-That is the better answer, and it is worth writing down why. The chain is:
-
-1. Documents are added.
-2. Statements are extracted into the canonical source.
-3. **The reference document is written from them — for the developer.**
-4. The developer creates sections, naming them and saying what they cover.
-5. A proposal is composed for each section.
-6. **The developer approves it, and their client reads it.**
-
-The approval sits at step 6 because that is the moment something becomes visible to a client. The reference document sits at step 3 and is never client-facing, so a gate on it would guard nothing — and a bad one is self-correcting, because the developer simply does not build sections on it until they have fixed it.
-
-Nothing here is validated by a client, and nothing is validated by the system. The developer approves; the client reads.
+**Losing per-sentence provenance is irreversible in practice.** Once `ProvenanceLink` is gone and the documents have been re-read, the mapping is not coming back. This is the one deletion worth being sure about — and the developer has been.

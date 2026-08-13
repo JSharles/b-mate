@@ -30,6 +30,14 @@ Every write starts from the original documents, never from the previous document
 
 Notes are stored because the document is rewritten from scratch each time, and a note is the only part that is not in the documents. Without them, adding a document next week would bring back every question already answered.
 
+## One surface
+
+Everything happens in the reference document. A gap is marked where it applies and answered there; a wrong sentence is corrected there. Both produce a note.
+
+There is no separate list of questions, no panel and no carousel: answering a point and correcting a statement are one act, and doing it in the text — with what surrounds it visible — beats doing it out of context on another page. The working page keeps a count and a way in, nothing more.
+
+**A correction says what is wrong, it does not edit the text.** The next write remakes the document from scratch, so the paragraph will not exist in the same form. "The launch is in October" survives that; "this is wrong" does not.
+
 ## What replaces what
 
 Extraction, consolidation, per-sentence facts, revisions, provenance links, clarifications and contributor assertions are removed. They bought per-sentence provenance and incremental merging, at the price of four chained model calls and twelve tables, for a scale this product does not have.
@@ -47,6 +55,7 @@ The developer has uploaded two documents of uneven quality. They ask for the ref
 1. **Given** documents have been added, **When** the developer asks for the reference document, **Then** one structured text is produced from them.
 2. **Given** the reference document, **When** they read it, **Then** it has named parts and continuous prose under each.
 3. **Given** a part, **When** they look at it, **Then** they see which documents it draws on.
+6. **Given** the working page, **When** points are open, **Then** it says how many and leads to the document, without listing them.
 4. **Given** the documents hold nothing usable, **When** the document is written, **Then** it says so rather than being written from nothing.
 5. **Given** no document has been added, **When** they open the page, **Then** it says so and offers to add one.
 
@@ -72,7 +81,7 @@ The developer reads a sentence they know to be false. They say so. The next writ
 
 **Acceptance Scenarios**:
 
-1. **Given** a statement the developer knows to be wrong, **When** they record the correction, **Then** it is kept as a note, attributable to them.
+1. **Given** a paragraph the developer knows to be wrong, **When** they correct it, **Then** the paragraph is shown while they write, and what they write is kept as a note.
 2. **Given** a correction, **When** the document is rewritten, **Then** it is honoured without being restated.
 3. **Given** a correction contradicting what a document plainly says, **When** the document is written, **Then** the correction wins and the discrepancy is raised as a point rather than silently dropped.
 4. **Given** a note the developer no longer wants, **When** they remove it, **Then** the next write ignores it.
@@ -132,7 +141,10 @@ The developer downloads the reference document to send or keep.
 - **FR-013**: A note MUST be attributable and removable.
 - **FR-014**: Every note MUST be replayed on every write, without the developer restating it.
 - **FR-015**: A note MUST take precedence over what a document says, and the discrepancy MUST be raised as a point rather than dropped.
-- **FR-016**: A point left unanswered MUST be marked in the document where it applies.
+- **FR-016**: A point left unanswered MUST be marked in the document where it applies, and MUST be answerable there.
+- **FR-016a**: Correcting MUST be possible on any paragraph, from the document, with that paragraph shown while the developer writes.
+- **FR-016b**: A note MUST stand on its own, without the paragraph that prompted it. The next write remakes the text, so a note that only says "this is wrong" would lose its subject.
+- **FR-016c**: There MUST be no second surface for answering or correcting — no separate list, panel or carousel. The working page carries a count and a way in.
 
 ### Documents that do not belong
 
@@ -178,5 +190,6 @@ The developer downloads the reference document to send or keep.
 ## Out of Scope
 
 - Per-sentence provenance.
-- Editing the reference document by hand. The developer adds notes and asks again.
+- Editing the reference document by hand. The developer says what is wrong; the next write fixes it.
+- A separate screen listing open points. They are answered where they appear.
 - Any change to how a client reads their sections, beyond what those sections are written from.
