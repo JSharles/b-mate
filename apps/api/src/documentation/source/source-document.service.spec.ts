@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { SourceDocument } from '@prisma/client';
 import { NotionConnectionService } from '../../notion-connection/notion-connection.service';
 import {
@@ -12,6 +16,7 @@ import {
   PrismaMock,
 } from '../../test/prisma-mock';
 import { DocumentInputNormalizerService } from './document-input-normalizer.service';
+import { ReferenceDocumentService } from '../reference/reference-document.service';
 import { DocumentStorageClient } from './document-storage.client';
 import {
   parseNotionPageId,
@@ -59,6 +64,7 @@ describe('SourceDocumentService', () => {
   let notionConnection: jest.Mocked<
     Pick<NotionConnectionService, 'getDecryptedToken'>
   >;
+  let reference: jest.Mocked<Pick<ReferenceDocumentService, 'write'>>;
   let service: SourceDocumentService;
 
   beforeEach(() => {
@@ -74,6 +80,7 @@ describe('SourceDocumentService', () => {
     access = { requireContributor: jest.fn().mockResolvedValue({}) };
     notionClient = { fetchPage: jest.fn() };
     notionConnection = { getDecryptedToken: jest.fn() };
+    reference = { write: jest.fn().mockResolvedValue({ documentId: 'ref-1' }) };
     service = new SourceDocumentService(
       asPrismaService(prisma),
       storage,
@@ -81,6 +88,7 @@ describe('SourceDocumentService', () => {
       access as unknown as ProjectAccessService,
       notionClient as unknown as NotionClient,
       notionConnection as unknown as NotionConnectionService,
+      reference as unknown as ReferenceDocumentService,
     );
     prisma.sourceDocument.create.mockResolvedValue(sourceDocument());
     prisma.project.update.mockResolvedValue({ id: projectId });
@@ -148,20 +156,43 @@ describe('SourceDocumentService', () => {
     });
   });
 
-  // A document arriving changes what the next write will read, so the reference
-  // document is owed a rewrite. It says so and waits (FR-006).
-  it('leaves the reference document owed a rewrite rather than writing one', async () => {
-    await service.addUpload(userId, projectId, {
-      buffer: Buffer.from('%PDF'),
-      originalname: 'a.pdf',
-      mimetype: 'application/pdf',
-      size: 4,
-    } as Express.Multer.File);
+  // A document is added to be read, so adding one writes the reference
+  // document: the developer does not have to ask for what they just asked for.
+  it('writes the reference document from the document just added', async () => {
+    await service.addUpload(
+      userId,
+      projectId,
+      {
+        buffer: Buffer.from('%PDF'),
+        originalname: 'a.pdf',
+        mimetype: 'application/pdf',
+        size: 4,
+      } as Express.Multer.File,
+      'fr',
+    );
 
     expect(prisma.project.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { referenceNeedsRewrite: true } }),
     );
-    expect(prisma.referenceDocument.create).not.toHaveBeenCalled();
+    expect(reference.write).toHaveBeenCalledWith(userId, projectId, 'fr');
+  });
+
+  // A write already running has this document's arrival behind it, and one
+  // still being read is not a reason to refuse the upload.
+  it('keeps the document when a write is already running', async () => {
+    reference.write.mockRejectedValue(
+      new ConflictException({ code: 'REFERENCE_WRITING' }),
+    );
+
+    await expect(
+      service.addUpload(userId, projectId, {
+        buffer: Buffer.from('%PDF'),
+        originalname: 'a.pdf',
+        mimetype: 'application/pdf',
+        size: 4,
+      } as Express.Multer.File),
+    ).resolves.toMatchObject({ document: { id: documentId } });
+    expect(prisma.sourceDocument.deleteMany).not.toHaveBeenCalled();
   });
 
   // Read once, at the door. An unreadable file that got in would fail the whole

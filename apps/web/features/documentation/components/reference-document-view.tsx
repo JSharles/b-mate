@@ -176,14 +176,12 @@ function Passage({
 // Everything the developer has told Diaphane, kept in one place because every
 // write starts from the original documents again: a note that stopped being
 // replayed would silently un-answer a question they already answered.
-function NoteList({ projectId }: { projectId: string }) {
+function NoteList({ projectId, items }: { projectId: string; items: Note[] }) {
   const t = useTranslations("Projects.Documentation.Reference");
   const format = useFormatter();
-  const notes = useNotes(projectId);
   const remove = useRemoveNote(projectId);
 
-  const items: Note[] = notes.data?.notes ?? [];
-  if (notes.isPending || notes.isError || items.length === 0) return null;
+  if (items.length === 0) return null;
 
   return (
     <section
@@ -236,9 +234,11 @@ function NoteList({ projectId }: { projectId: string }) {
 export function ReferenceDocumentView({ projectId }: { projectId: string }) {
   const t = useTranslations("Projects.Documentation.Reference");
   const documentQuery = useReferenceDocument(projectId);
+  const notes = useNotes(projectId);
   const write = useWriteReferenceDocument(projectId);
 
   const current = documentQuery.data;
+  const pendingNotes: Note[] = notes.data?.notes ?? [];
 
   if (documentQuery.isPending) {
     return (
@@ -258,22 +258,37 @@ export function ReferenceDocumentView({ projectId }: { projectId: string }) {
     );
   }
 
+  // Adding a document writes the document on its own; this button exists for
+  // the other half of the rule — the answers and corrections the developer
+  // accumulates, which wait so that five of them cost one write rather than
+  // five, and so the document does not move while it is being read.
   const writeAction = (
-    <Button type="button" onClick={() => write.mutate()} disabled={write.isPending}>
+    <Button
+      type="button"
+      variant={pendingNotes.length > 0 ? "default" : "outline"}
+      onClick={() => write.mutate()}
+      disabled={write.isPending}
+    >
       {write.isPending ? (
         <LoaderCircle className="animate-spin motion-reduce:animate-none" />
       ) : (
         <RefreshCw />
       )}
-      {current ? t("rewrite") : t("write")}
+      {pendingNotes.length > 0
+        ? t("applyNotes", { count: pendingNotes.length })
+        : current
+          ? t("rewrite")
+          : t("write")}
     </Button>
   );
 
+  // A project with no document has nothing to write from, and one with
+  // documents is already writing — adding a document starts it. Neither case
+  // needs a button asking for what was just asked for.
   if (!current) {
     return (
       <div className="rounded-xl border border-dashed border-border p-6">
         <p className="text-sm text-muted-foreground">{t("neverWritten")}</p>
-        <div className="mt-4">{writeAction}</div>
       </div>
     );
   }
@@ -383,7 +398,7 @@ export function ReferenceDocumentView({ projectId }: { projectId: string }) {
         ))}
       </article>
 
-      <NoteList projectId={projectId} />
+      <NoteList projectId={projectId} items={pendingNotes} />
     </div>
   );
 }

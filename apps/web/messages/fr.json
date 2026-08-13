@@ -245,10 +245,10 @@
         "loadError": "Impossible de charger l’état de vos documents. Rechargez la page.",
         "loading": "Chargement…",
         "held": "{documents, plural, one {# document} other {# documents}} et {notes, plural, =0 {aucune précision de votre part} one {# précision de votre part} other {# précisions de votre part}}.",
-        "needsRewrite": "Vos documents ont changé depuis. Votre document de référence est à réécrire.",
+        "needsRewrite": "{count, plural, one {# précision de votre part n’est pas encore prise en compte.} other {# précisions de votre part ne sont pas encore prises en compte.}}",
         "readDocument": "Lire le document de référence",
-        "writeDocument": "Écrire le document de référence",
-        "openPoints": "{count, plural, one {# point reste à clarifier dans le document} other {# points restent à clarifier dans le document}}."
+        "openPoints": "{count, plural, one {# point reste à clarifier dans le document} other {# points restent à clarifier dans le document}}.",
+        "writingDocument": "Rédaction du document de référence en cours…"
       },
       "Documents": {
         "title": "Documents ajoutés",
@@ -396,7 +396,7 @@
         "backToDocumentation": "Retour à la documentation",
         "loading": "Chargement du document…",
         "loadError": "Impossible de charger le document. Rechargez la page — rien n’a été perdu.",
-        "neverWritten": "Ce document n’a pas encore été écrit. Lancez la rédaction pour le lire.",
+        "neverWritten": "Ajoutez un premier document : Diaphane écrira votre document de référence dès qu’il en aura un.",
         "writing": "Rédaction en cours. Cela prend généralement moins d’une minute.",
         "failed": "La rédaction a échoué. Ce que vous aviez n’a pas bougé — relancez quand vous voulez.",
         "nothingUsable": "Vos documents ne contiennent rien qui puisse servir de référence. Ajoutez un document plus complet.",
@@ -418,9 +418,10 @@
         "download": "Télécharger",
         "unrelated": "{count, plural, one {Ce document ne semble pas concerner ce projet.} other {Ces documents ne semblent pas concerner ce projet.}} Rien n’en a été repris.",
         "notesTitle": "Ce que vous avez précisé",
-        "notesHint": "Diaphane repart de vos documents à chaque réécriture : ces précisions sont rejouées à chaque fois. Réécrivez pour les voir dans le document.",
+        "notesHint": "Diaphane repart de vos documents à chaque réécriture : ces précisions sont rejouées à chaque fois. Elles ne seront dans le document qu’après une réécriture.",
         "notedBy": "{name}, le {date}",
-        "removeNote": "Retirer cette précision"
+        "removeNote": "Retirer cette précision",
+        "applyNotes": "{count, plural, one {Prendre en compte ma précision} other {Prendre en compte mes # précisions}}"
       }
     },
     "TeamSummaryCard": {

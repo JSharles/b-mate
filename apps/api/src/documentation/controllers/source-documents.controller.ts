@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   HttpCode,
   Param,
   Post,
@@ -39,8 +40,17 @@ export class SourceDocumentsController {
     @CurrentUser() user: User,
     @Param('projectId') projectId: string,
     @UploadedFile() file: Express.Multer.File,
+    // Adding a document writes the reference document, so the language the
+    // request arrived in has to travel with it: a first upload should already
+    // produce a document in the developer's language.
+    @Headers('x-interface-locale') headerLocale?: string,
   ) {
-    return this.documents.addUpload(user.id, projectId, file);
+    return this.documents.addUpload(
+      user.id,
+      projectId,
+      file,
+      headerLocale ?? user.locale ?? null,
+    );
   }
 
   @Post('notion')
@@ -48,8 +58,14 @@ export class SourceDocumentsController {
     @CurrentUser() user: User,
     @Param('projectId') projectId: string,
     @Body() body: CreateNotionSourceDocumentDto,
+    @Headers('x-interface-locale') headerLocale?: string,
   ) {
-    return this.documents.addNotion(user.id, projectId, body.pageUrl);
+    return this.documents.addNotion(
+      user.id,
+      projectId,
+      body.pageUrl,
+      headerLocale ?? user.locale ?? null,
+    );
   }
 
   @Get()
@@ -86,7 +102,14 @@ export class SourceDocumentsController {
     @Param('projectId') projectId: string,
     @Param('documentId') documentId: string,
     @Body() body: ConfirmSourceDocumentRemovalDto,
+    @Headers('x-interface-locale') headerLocale?: string,
   ) {
-    return this.removal.confirm(user.id, projectId, documentId, body);
+    return this.removal.confirm(
+      user.id,
+      projectId,
+      documentId,
+      body,
+      headerLocale ?? user.locale ?? null,
+    );
   }
 }

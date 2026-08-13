@@ -128,7 +128,7 @@ The developer downloads the reference document to send or keep.
 - **FR-003**: It MUST contain nothing the documents and notes support. No inference, no filling a gap, no smoothing a contradiction.
 - **FR-004**: Each part MUST say which documents it draws on.
 - **FR-005**: Every write MUST start from the documents and notes, never from a previous reference document.
-- **FR-006**: It MUST say it is owed a rewrite when documents or notes change, and MUST NOT rewrite itself.
+- **FR-006**: Adding or removing a document MUST write the reference document. A note MUST NOT: notes accumulate, the document says how many are waiting, and one action takes them all into account at once. (Decided 2026-08-13. A document is added to be read, so asking for a write afterwards is asking the developer for what they just asked for. A note is different: answering five points in a row would otherwise pay for five writes and move the document while it is being read.)
 - **FR-007**: When the documents hold nothing usable, it MUST say so.
 - **FR-008**: Only one write per project MUST run at a time.
 

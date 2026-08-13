@@ -1,7 +1,13 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
-import { NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
+import { ReferenceDocumentService } from '../reference/reference-document.service';
 import { DocumentStorageClient } from './document-storage.client';
 
 // Removing a document used to mean rebuilding a fact base around the hole it
@@ -18,6 +24,7 @@ export class DocumentRemovalService {
     private readonly prisma: PrismaService,
     private readonly access: ProjectAccessService,
     private readonly storage: DocumentStorageClient,
+    private readonly reference: ReferenceDocumentService,
   ) {}
 
   async preview(userId: string, projectId: string, documentId: string) {
@@ -52,6 +59,7 @@ export class DocumentRemovalService {
     projectId: string,
     documentId: string,
     input: { expectedDocumentVersion: number },
+    locale: string | null = null,
   ) {
     await this.access.requireContributor(userId, projectId);
 
@@ -73,13 +81,27 @@ export class DocumentRemovalService {
     });
     if (count !== 1) throw new ConflictException({ code: 'STALE_REMOVAL' });
 
-    // The reference document already written stays readable — it is what the
-    // client-facing sections were composed against. It is simply owed a
-    // rewrite, which the contributor triggers when they are ready (FR-006).
+    // What the corpus holds changed, so the reference document is rewritten —
+    // the same rule as adding one. The document already written stays readable
+    // until the new one is ready, so the client-facing sections composed
+    // against it never read a gap.
     await this.prisma.project.update({
       where: { id: projectId },
       data: { referenceNeedsRewrite: true },
     });
+    try {
+      await this.reference.write(userId, projectId, locale);
+    } catch (error) {
+      // Removing the last document leaves nothing to write from, and a write
+      // already running has this removal behind it. Neither is a reason to
+      // refuse the removal: the document is gone either way.
+      if (
+        !(error instanceof ConflictException) &&
+        !(error instanceof BadRequestException)
+      ) {
+        throw error;
+      }
+    }
 
     // The row is what makes the document gone; the bytes are cleanup. A failure
     // here leaves an orphaned object, not a document the contributor removed

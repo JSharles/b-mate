@@ -245,10 +245,10 @@
         "loadError": "Could not load the state of your documents. Reload the page.",
         "loading": "Loading…",
         "held": "{documents, plural, one {# document} other {# documents}} and {notes, plural, =0 {nothing you have added} one {# thing you added} other {# things you added}}.",
-        "needsRewrite": "Your documents have changed since. Your reference document needs rewriting.",
+        "needsRewrite": "{count, plural, one {# thing you added is not in the document yet.} other {# things you added are not in the document yet.}}",
         "readDocument": "Read the reference document",
-        "writeDocument": "Write the reference document",
-        "openPoints": "{count, plural, one {# point is still open in the document} other {# points are still open in the document}}."
+        "openPoints": "{count, plural, one {# point is still open in the document} other {# points are still open in the document}}.",
+        "writingDocument": "Writing the reference document…"
       },
       "Documents": {
         "title": "Added documents",
@@ -396,7 +396,7 @@
         "backToDocumentation": "Back to documentation",
         "loading": "Loading the document…",
         "loadError": "Could not load the document. Reload the page — nothing has been lost.",
-        "neverWritten": "This document hasn't been written yet. Start it to read it.",
+        "neverWritten": "Add a first document: Diaphane writes your reference document as soon as it has one.",
         "writing": "Being written. This usually takes under a minute.",
         "failed": "Writing failed. What you had has not changed — start it again whenever you like.",
         "nothingUsable": "Your documents hold nothing that can serve as a reference. Add a fuller document.",
@@ -418,9 +418,10 @@
         "download": "Download",
         "unrelated": "{count, plural, one {This document doesn't look like it belongs to this project.} other {These documents don't look like they belong to this project.}} Nothing was taken from it.",
         "notesTitle": "What you've added",
-        "notesHint": "Diaphane starts from your documents on every rewrite, so these are replayed each time. Rewrite to see them in the document.",
+        "notesHint": "Diaphane starts from your documents on every rewrite, so these are replayed each time. They only reach the document after a rewrite.",
         "notedBy": "{name}, {date}",
-        "removeNote": "Remove this"
+        "removeNote": "Remove this",
+        "applyNotes": "{count, plural, one {Take my note into account} other {Take my # notes into account}}"
       }
     },
     "TeamSummaryCard": {

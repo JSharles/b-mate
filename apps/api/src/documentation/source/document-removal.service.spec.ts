@@ -1,6 +1,7 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ProjectAccessService } from '../../projects/project-access.service';
 import { asPrismaService, createPrismaMock } from '../../test/prisma-mock';
+import { ReferenceDocumentService } from '../reference/reference-document.service';
 import { DocumentStorageClient } from './document-storage.client';
 import { DocumentRemovalService } from './document-removal.service';
 
@@ -15,14 +16,19 @@ describe('DocumentRemovalService', () => {
       requireContributor: jest.fn().mockResolvedValue({ role: 'contributor' }),
     };
     const storage = { delete: jest.fn().mockResolvedValue(undefined) };
+    const reference = {
+      write: jest.fn().mockResolvedValue({ documentId: 'r' }),
+    };
     return {
       prisma,
       access,
       storage,
+      reference,
       service: new DocumentRemovalService(
         asPrismaService(prisma),
         access as unknown as ProjectAccessService,
         storage as unknown as DocumentStorageClient,
+        reference as unknown as ReferenceDocumentService,
       ),
     };
   }
@@ -121,22 +127,40 @@ describe('DocumentRemovalService', () => {
       );
     });
 
-    // FR-006: the reference document already written stays readable — it is
-    // what the client-facing sections were composed against.
-    it('leaves the reference document owed a rewrite rather than rewriting it', async () => {
-      const { prisma, service } = setup();
+    // What the corpus holds changed, so the reference document is rewritten —
+    // the same rule as adding one.
+    it('rewrites the reference document without the document just removed', async () => {
+      const { prisma, reference, service } = setup();
       confirmable(prisma);
 
-      await service.confirm(userId, projectId, documentId, {
-        expectedDocumentVersion: 3,
-      });
+      await service.confirm(
+        userId,
+        projectId,
+        documentId,
+        { expectedDocumentVersion: 3 },
+        'fr',
+      );
 
       expect(prisma.project.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: { referenceNeedsRewrite: true },
-        }),
+        expect.objectContaining({ data: { referenceNeedsRewrite: true } }),
       );
-      expect(prisma.referenceDocument.create).not.toHaveBeenCalled();
+      expect(reference.write).toHaveBeenCalledWith(userId, projectId, 'fr');
+    });
+
+    // Removing the last document leaves nothing to write from. That is not a
+    // reason to refuse the removal: the document is gone either way.
+    it('removes the last document even though nothing can be written from none', async () => {
+      const { prisma, reference, service } = setup();
+      confirmable(prisma);
+      reference.write.mockRejectedValue(
+        new BadRequestException({ code: 'NO_DOCUMENTS' }),
+      );
+
+      await expect(
+        service.confirm(userId, projectId, documentId, {
+          expectedDocumentVersion: 3,
+        }),
+      ).resolves.toEqual({ documentId, removed: true });
     });
 
     // A document that moved under the confirmation is refused: the decision was

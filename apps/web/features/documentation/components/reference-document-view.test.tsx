@@ -221,14 +221,51 @@ describe("ReferenceDocumentView", () => {
     expect(screen.getByText("Facture EDF.pdf")).toBeVisible();
   });
 
-  it("offers a first write on a project that has never had one", async () => {
+  // Adding a document writes the document on its own, so a project without one
+  // is a project without documents: it is told to add one, not asked to press a
+  // button for what it already asked for.
+  it("asks for a first document rather than for a first write", () => {
     withDocument(null);
+
+    render(<ReferenceDocumentView projectId="project-1" />);
+
+    expect(screen.getByText("neverWritten")).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: /write/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  // The other half of the rule: answers and corrections wait, so five of them
+  // cost one write rather than five and the document does not move while it is
+  // being read.
+  it("offers to take the pending notes into account, and names how many", async () => {
+    withDocument(ready());
+    withNotes([
+      {
+        id: "note-1",
+        content: "Le lancement est en octobre.",
+        context: null,
+        authorName: "Jean-Charles Barq",
+        createdAt: new Date().toISOString(),
+      },
+    ]);
     const user = userEvent.setup();
 
     render(<ReferenceDocumentView projectId="project-1" />);
-    await user.click(screen.getByRole("button", { name: /write/ }));
+    await user.click(screen.getByRole("button", { name: "applyNotes" }));
 
     expect(write).toHaveBeenCalled();
+  });
+
+  it("offers a plain rewrite when nothing is pending", () => {
+    withDocument(ready());
+
+    render(<ReferenceDocumentView projectId="project-1" />);
+
+    expect(screen.getByRole("button", { name: "rewrite" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "applyNotes" }),
+    ).not.toBeInTheDocument();
   });
 
   it("says it is being written rather than showing an empty document", () => {

@@ -36,16 +36,24 @@ describe('SourceDocumentsController', () => {
     service.addUpload.mockResolvedValue({} as never);
     service.addNotion.mockResolvedValue({} as never);
 
-    await controller.upload(user, 'project-1', file);
+    await controller.upload(user, 'project-1', file, 'fr');
+    // No header on this one: the language remembered on the account is what a
+    // background write falls back to.
     await controller.addNotion(user, 'project-1', {
       pageUrl: 'https://notion.so/Cadrage-0123456789abcdef0123456789abcdef',
     });
 
-    expect(service.addUpload).toHaveBeenCalledWith('user-1', 'project-1', file);
+    expect(service.addUpload).toHaveBeenCalledWith(
+      'user-1',
+      'project-1',
+      file,
+      'fr',
+    );
     expect(service.addNotion).toHaveBeenCalledWith(
       'user-1',
       'project-1',
       'https://notion.so/Cadrage-0123456789abcdef0123456789abcdef',
+      null,
     );
   });
 
@@ -91,6 +99,7 @@ describe('SourceDocumentsController', () => {
       'project-1',
       'document-1',
       confirmation,
+      'fr',
     );
 
     expect(removal.preview).toHaveBeenCalledWith(
@@ -103,6 +112,7 @@ describe('SourceDocumentsController', () => {
       'project-1',
       'document-1',
       confirmation,
+      'fr',
     );
   });
 });

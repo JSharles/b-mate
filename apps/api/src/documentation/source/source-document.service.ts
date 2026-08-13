@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -12,6 +13,7 @@ import {
 } from '../../notion-connection/notion.client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
+import { ReferenceDocumentService } from '../reference/reference-document.service';
 import { DocumentStorageClient } from './document-storage.client';
 import {
   DocumentInputNormalizerService,
@@ -60,12 +62,14 @@ export class SourceDocumentService {
     private readonly access: ProjectAccessService,
     private readonly notionClient: NotionClient,
     private readonly notionConnection: NotionConnectionService,
+    private readonly reference: ReferenceDocumentService,
   ) {}
 
   async addUpload(
     userId: string,
     projectId: string,
     file: Express.Multer.File,
+    locale: string | null = null,
   ): Promise<SourceDocumentAcknowledgement> {
     await this.access.requireContributor(userId, projectId);
     this.validateUpload(file);
@@ -112,7 +116,7 @@ export class SourceDocumentService {
           addedByUserId: userId,
         },
       });
-      await this.oweRewrite(projectId);
+      await this.writeReference(userId, projectId, locale);
       return { document: this.summary(document) };
     } catch (error) {
       await this.compensateCreate(document?.id, objectKey);
@@ -124,6 +128,7 @@ export class SourceDocumentService {
     userId: string,
     projectId: string,
     pageUrl: string,
+    locale: string | null = null,
   ): Promise<SourceDocumentAcknowledgement> {
     await this.access.requireContributor(userId, projectId);
     const pageId = parseNotionPageId(pageUrl);
@@ -181,7 +186,7 @@ export class SourceDocumentService {
           addedByUserId: userId,
         },
       });
-      await this.oweRewrite(projectId);
+      await this.writeReference(userId, projectId, locale);
       return { document: this.summary(document) };
     } catch (error) {
       await this.compensateCreate(document?.id, objectKey);
@@ -291,13 +296,35 @@ export class SourceDocumentService {
     await Promise.allSettled(operations);
   }
 
-  // A document arriving or leaving changes what the next write will read, so
-  // the reference document is owed a rewrite. It says so and waits (FR-006).
-  private oweRewrite(projectId: string): Promise<unknown> {
-    return this.prisma.project.update({
+  // A document is added to be read, so adding one writes the reference document
+  // — the developer does not have to ask for what they just asked for. Their own
+  // notes are the other half of this rule and behave differently on purpose:
+  // they accumulate behind a button, because answering five points in a row
+  // would otherwise pay for five writes and move the document while it is being
+  // read (specs/018, FR-006).
+  private async writeReference(
+    userId: string,
+    projectId: string,
+    locale: string | null,
+  ): Promise<void> {
+    await this.prisma.project.update({
       where: { id: projectId },
       data: { referenceNeedsRewrite: true },
     });
+    try {
+      await this.reference.write(userId, projectId, locale);
+    } catch (error) {
+      // A write already running has this document's arrival behind it, and one
+      // still being read is not a reason to refuse the upload. The project stays
+      // owed a rewrite and the screen offers it — the document is in either way.
+      if (
+        error instanceof ConflictException ||
+        error instanceof BadRequestException
+      ) {
+        return;
+      }
+      throw error;
+    }
   }
 
   private uploadObjectKey(

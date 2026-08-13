@@ -64,9 +64,19 @@ export async function uploadDocument(
 ): Promise<DocumentAcknowledgement> {
   const formData = new FormData();
   formData.append("file", file);
+  // Adding a document writes the reference document, so this multipart call
+  // carries the interface language the same way `apiFetch` does — a first
+  // upload should already produce a document in the developer's language.
+  const locale =
+    typeof document !== "undefined" ? document.documentElement.lang : undefined;
   const response = await fetch(
     `${API_URL}/projects/${projectId}/documentation/documents`,
-    { method: "POST", credentials: "include", body: formData },
+    {
+      method: "POST",
+      credentials: "include",
+      headers: locale ? { "X-Interface-Locale": locale } : {},
+      body: formData,
+    },
   );
   const text = await response.text();
   if (!response.ok) {

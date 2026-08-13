@@ -57,13 +57,15 @@ describe("SourceSummary", () => {
     expect(screen.queryByText("openPoints")).not.toBeInTheDocument();
   });
 
-  it("offers to write the document when there is none", () => {
+  // Adding a document writes the document on its own, so a project with
+  // documents and no document yet is one that is writing.
+  it("says the document is being written when there is none yet", () => {
     withSummary(held);
 
     render(<SourceSummary projectId="project-1" />);
 
     expect(
-      screen.getByRole("link", { name: /writeDocument/ }),
+      screen.getByRole("link", { name: /writingDocument/ }),
     ).toHaveAttribute("href", "/projects/project-1/documentation/reference");
   });
 
@@ -75,18 +77,27 @@ describe("SourceSummary", () => {
     expect(screen.getByRole("link", { name: /readDocument/ })).toBeVisible();
   });
 
-  // FR-006: the source moved, so the document is owed a rewrite. It says so and
-  // waits rather than rewriting itself.
-  it("says the document is owed a rewrite when the source has moved", () => {
+  // FR-006: what is owed is what the developer added themselves. A document
+  // arriving writes the reference document on its own, so it never shows here.
+  it("says how much of what the developer added is not in the document yet", () => {
+    withSummary({ ...held, needsRewrite: true, document: { status: "ready" } });
+
+    render(<SourceSummary projectId="project-1" />);
+
+    expect(screen.getByText("needsRewrite")).toBeVisible();
+  });
+
+  it("says nothing is owed when the developer has added nothing", () => {
     withSummary({
       ...held,
+      noteCount: 0,
       needsRewrite: true,
       document: { status: "ready" },
     });
 
     render(<SourceSummary projectId="project-1" />);
 
-    expect(screen.getByText("needsRewrite")).toBeVisible();
+    expect(screen.queryByText("needsRewrite")).not.toBeInTheDocument();
   });
 
   it("says nothing about a rewrite before anything has been written", () => {

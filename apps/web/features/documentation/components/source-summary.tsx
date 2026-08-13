@@ -55,11 +55,15 @@ export function SourceSummary({ projectId }: { projectId: string }) {
               {t("openPoints", { count: summary.data.openPointCount })}
             </p>
           )}
-          {summary.data.needsRewrite && summary.data.document && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("needsRewrite")}
-            </p>
-          )}
+          {/* What is owed is what the developer added themselves: a document
+              arriving writes the reference document on its own. */}
+          {summary.data.needsRewrite &&
+            summary.data.document &&
+            summary.data.noteCount > 0 && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("needsRewrite", { count: summary.data.noteCount })}
+              </p>
+            )}
           <Link
             href={`/projects/${projectId}/documentation/reference`}
             className="mt-4 inline-flex items-center gap-2 rounded-md text-sm text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -69,7 +73,7 @@ export function SourceSummary({ projectId }: { projectId: string }) {
             ) : (
               <FileText className="size-4" />
             )}
-            {summary.data.document ? t("readDocument") : t("writeDocument")}
+            {summary.data.document ? t("readDocument") : t("writingDocument")}
             <ArrowRight className="size-4" />
           </Link>
         </div>
