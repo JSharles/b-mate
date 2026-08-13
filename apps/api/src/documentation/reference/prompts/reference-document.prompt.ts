@@ -2,7 +2,9 @@ import type { InformationItemKind, InformationItemState } from '@prisma/client';
 import { REFERENCE_DOCUMENT_PROMPT_VERSION } from '../reference-output.schema';
 
 export interface ReferenceStatement {
-  id: string;
+  // A short reference the model can copy back without slipping. It never sees
+  // an identifier — see reference-token.ts for what that cost the first time.
+  ref: string;
   kind: InformationItemKind;
   state: InformationItemState;
   content: string;
@@ -42,10 +44,15 @@ export function buildReferenceDocumentPrompt(input: {
     'Rules:',
     '- Organise it into named parts, and write continuous prose under each. It',
     '  is read from top to bottom, not scanned as a list.',
+    '- A passage draws several statements together into one paragraph. Do not',
+    '  write one passage per statement: that is the list this document exists to',
+    '  replace, and it is what makes the document too long to be read or even',
+    '  finished.',
     '- Group what belongs together. Order the parts so the document builds:',
     '  what the project is before how it works, and so on.',
-    '- Every passage names the statements it rests on, using the ids given below',
-    '  and no others. A passage that rests on nothing will be refused.',
+    '- Every passage names the statements it rests on, using the refs given',
+    '  below ("i0", "i7") and no others. A passage that rests on nothing, or on',
+    '  a ref that was not given, will be refused.',
     '- Say nothing the statements do not support. Do not infer, do not fill a',
     '  gap with what is usually true of projects like this one, and do not',
     '  smooth two statements that disagree into one that sounds settled.',

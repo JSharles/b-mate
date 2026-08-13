@@ -10,11 +10,12 @@ import { GenerationHandlerRegistry } from '../../generation/generation-handler.r
 import { PrismaService } from '../../prisma/prisma.service';
 import { buildReferenceDocumentPrompt } from './prompts/reference-document.prompt';
 import type { ReferenceStatement } from './prompts/reference-document.prompt';
+import { itemRef } from '../source/reference-token';
 import {
   REFERENCE_DOCUMENT_JSON_SCHEMA,
   REFERENCE_DOCUMENT_OUTPUT_CONTRACT,
   ReferenceDocumentOutputSchema,
-  validateReferenceCitations,
+  resolveReferenceCitations,
 } from './reference-output.schema';
 
 export interface ReferenceInput {
@@ -38,12 +39,23 @@ export function selectReferenceStatements(
     content: string;
   }[],
 ): ReferenceStatement[] {
-  return items.map((item) => ({
-    id: item.informationItemId,
+  return items.map((item, index) => ({
+    ref: itemRef(index),
     kind: item.kind,
     state: item.state,
     content: item.content,
   }));
+}
+
+// The map from what the model answers with back to what it stands for. Built
+// from the same ordered read the fingerprint was taken over, so a ref means the
+// same statement on both sides.
+export function referenceRefMap(
+  items: readonly { informationItemId: string }[],
+): Map<string, string> {
+  return new Map(
+    items.map((item, index) => [itemRef(index), item.informationItemId]),
+  );
 }
 
 @Injectable()
@@ -92,7 +104,7 @@ export class ReferenceDocumentHandler
       parts: [{ kind: 'text', text: buildReferenceDocumentPrompt(input) }],
       outputContract: REFERENCE_DOCUMENT_OUTPUT_CONTRACT,
       outputSchema: REFERENCE_DOCUMENT_JSON_SCHEMA,
-      maxOutputTokens: 16_000,
+      maxOutputTokens: 32_000,
     };
   }
 
@@ -104,15 +116,19 @@ export class ReferenceDocumentHandler
     const output = ReferenceDocumentOutputSchema.parse(result.output);
     const document = await tx.referenceDocument.findUnique({
       where: { generationOperationId: operation.id },
-      include: { sourceRevision: { include: { items: true } } },
+      include: {
+        sourceRevision: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
+        },
+      },
     });
     if (!document || document.status !== 'writing') {
       throw new Error('REFERENCE_DOCUMENT_NOT_CURRENT');
     }
 
-    validateReferenceCitations(
+    const parts = resolveReferenceCitations(
       output,
-      document.sourceRevision.items.map((item) => item.informationItemId),
+      referenceRefMap(document.sourceRevision.items),
     );
 
     // The one before it stops being current the moment this one is ready. Two
@@ -132,7 +148,7 @@ export class ReferenceDocumentHandler
       data: {
         status: 'ready',
         outcome: output.outcome,
-        structuredContent: output.parts,
+        structuredContent: parts as unknown as Prisma.InputJsonValue,
         failureCode: null,
         version: { increment: 1 },
       },

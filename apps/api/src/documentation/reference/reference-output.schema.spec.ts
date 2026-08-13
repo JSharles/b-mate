@@ -1,11 +1,12 @@
 import {
+  REFERENCE_DOCUMENT_JSON_SCHEMA,
   REFERENCE_DOCUMENT_PROMPT_VERSION,
   ReferenceDocumentOutputSchema,
-  validateReferenceCitations,
+  resolveReferenceCitations,
 } from './reference-output.schema';
 
 const itemA = '123e4567-e89b-42d3-a456-426614174000';
-const unknown = '123e4567-e89b-42d3-a456-4266141740ff';
+const refs = new Map([['i0', itemA]]);
 
 function output(overrides: Record<string, unknown> = {}) {
   return {
@@ -18,7 +19,7 @@ function output(overrides: Record<string, unknown> = {}) {
           {
             kind: 'paragraph',
             text: 'Le lancement est prévu en octobre.',
-            informationItemIds: [itemA],
+            informationItemRefs: ['i0'],
           },
         ],
       },
@@ -75,7 +76,7 @@ describe('reference document output', () => {
                 {
                   kind: 'paragraph',
                   text: 'Sans source.',
-                  informationItemIds: [],
+                  informationItemRefs: [],
                 },
               ],
             },
@@ -95,7 +96,7 @@ describe('reference document output', () => {
               {
                 kind: 'open_point',
                 text: "La date de lancement n'est pas confirmée.",
-                informationItemIds: [itemA],
+                informationItemRefs: ['i0'],
               },
             ],
           },
@@ -122,13 +123,13 @@ describe('reference document output', () => {
   });
 });
 
-describe('validating what the document cited', () => {
-  it('accepts a reading that leaves statements out', () => {
+describe('resolving what the document cited', () => {
+  it('turns the references back into the statements they stand for', () => {
     const parsed = ReferenceDocumentOutputSchema.parse(output());
 
-    expect(() =>
-      validateReferenceCitations(parsed, [itemA, unknown]),
-    ).not.toThrow();
+    expect(
+      resolveReferenceCitations(parsed, refs)[0].blocks[0].informationItemIds,
+    ).toEqual([itemA]);
   });
 
   // Invented provenance is the one thing this product cannot afford, so it is
@@ -143,7 +144,7 @@ describe('validating what the document cited', () => {
               {
                 kind: 'paragraph',
                 text: 'Provenance inventée.',
-                informationItemIds: [unknown],
+                informationItemRefs: ['i9'],
               },
             ],
           },
@@ -151,8 +152,48 @@ describe('validating what the document cited', () => {
       }),
     );
 
-    expect(() => validateReferenceCitations(parsed, [itemA])).toThrow(
-      'REFERENCE_DOCUMENT_UNKNOWN_CITATION',
+    expect(() => resolveReferenceCitations(parsed, refs)).toThrow(
+      'unknown statement i9',
     );
+  });
+
+  // The model never sees an identifier, so it cannot mistype one. It was asked
+  // for UUIDs first, returned a hundred passages, mistyped one character of one
+  // of them, and lost the whole document.
+  it('refuses anything that is not a reference we issue', () => {
+    expect(
+      ReferenceDocumentOutputSchema.safeParse(
+        output({
+          parts: [
+            {
+              title: 'Le projet',
+              blocks: [
+                {
+                  kind: 'paragraph',
+                  text: 'Un identifiant recopié.',
+                  informationItemRefs: [itemA],
+                },
+              ],
+            },
+          ],
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  // The provider is handed the JSON schema, not the Zod one. They drifted
+  // apart once — the model was asked for a field the parser then rejected, and
+  // every write failed on output it had produced exactly as instructed.
+  it('asks the provider for the same field the parser accepts', () => {
+    const block = (
+      (
+        (REFERENCE_DOCUMENT_JSON_SCHEMA.properties as Record<string, any>).parts
+          .items.properties.blocks as Record<string, any>
+      ).items as Record<string, any>
+    );
+
+    expect(block.required).toContain('informationItemRefs');
+    expect(Object.keys(block.properties)).toContain('informationItemRefs');
+    expect(Object.keys(block.properties)).not.toContain('informationItemIds');
   });
 });

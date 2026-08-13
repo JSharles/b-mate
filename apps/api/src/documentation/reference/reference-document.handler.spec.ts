@@ -57,7 +57,7 @@ function output(overrides: Record<string, unknown> = {}) {
             {
               kind: 'paragraph',
               text: 'Le lancement est prévu en octobre.',
-              informationItemIds: [itemA],
+              informationItemRefs: ['i0'],
             },
           ],
         },
@@ -202,17 +202,14 @@ describe('ReferenceDocumentHandler', () => {
 
     it('refuses a document citing a statement it was never given, and writes nothing', async () => {
       const { prisma, handler } = setup();
+      // A reference the model was never issued: refused rather than stored.
       prisma.referenceDocument.findUnique.mockResolvedValue(
-        writing({
-          sourceRevision: {
-            items: [{ ...items[0], informationItemId: 'other' }],
-          },
-        }),
+        writing({ sourceRevision: { items: [] } }),
       );
 
       await expect(
         handler.apply(prisma as never, operation(), output()),
-      ).rejects.toThrow('REFERENCE_DOCUMENT_UNKNOWN_CITATION');
+      ).rejects.toThrow('unknown statement');
       expect(prisma.referenceDocument.update).not.toHaveBeenCalled();
     });
   });
