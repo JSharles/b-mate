@@ -93,6 +93,7 @@ The developer works in French. Every question the system asks them is in French.
 ### Edge Cases
 
 - Answering the last point in the set: the set closes and says so, rather than leaving an empty card.
+- A single point to clarify: the same card, without arrows or position.
 
 - One short document: the reference document is short. It does not pad.
 - Documents that say almost nothing usable: the document says so plainly rather than being written out of nothing.
@@ -118,10 +119,10 @@ The developer works in French. Every question the system asks them is in French.
 
 ### Answering the points
 
-- **FR-028**: Points to clarify MUST be presented one at a time when there are three or more, so a developer faces one decision rather than a wall.
+- **FR-028**: Points to clarify MUST be presented one at a time, whatever their number, so a developer faces one decision rather than a wall.
 - **FR-029**: The developer MUST see where they are in the set — which point, out of how many.
 - **FR-030**: The developer MUST be able to move past a point without answering it, and come back to it.
-- **FR-031**: Below three points, they MUST be shown plainly, without the one-at-a-time treatment. A carousel over two questions is ceremony.
+- **FR-031**: The card MUST NOT change shape with the number of points. Only what would be meaningless is dropped: with a single point there are no arrows and no position. An earlier draft put a threshold at three; it was wrong, because the count changes on the same project from week to week and the screen would have changed shape underneath the developer, on a number they do not control.
 
 ### Points to clarify
 
