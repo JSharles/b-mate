@@ -2,182 +2,181 @@
 
 **Feature Branch**: `018-canonical-source-reading`
 
-**Created**: 2026-08-13
+**Created**: 2026-08-13 · **Rewritten**: 2026-08-13, on a simpler method
 
 **Status**: Draft — awaiting sign-off
 
-**Input**: "Pour le développeur, après avoir ajouté des documents, les infos utiles sont extraites, pour créer un nouveau document structuré qui servira de référence documentaire. Les ambiguïtés, contradictions ou manques seront levés en points à clarifier." — plus, on review: "le service de traitement devra reconnaître un document qui n'a rien à voir avec le projet (en cas d'erreur d'upload) et lever le point au développeur. Le nouveau document de référence est consultable et téléchargeable."
+**Input**: "Le développeur fournit des documents plus ou moins précis et structurés, je souhaite les structurer, les nettoyer, combler les trous et incertitudes pour créer un document de référence. Soyons efficaces et faisons simple."
 
-## What This Is
+## The need
 
-A developer adds documents. The system pulls out what matters and writes **one structured document** from it. That document is the developer's reference — the thing they read to know what the project is.
+Uneven documents go in. One clean reference document comes out. What is missing or contradictory becomes a question.
 
-Anything unclear, contradictory or missing does not go into it. It becomes a point to clarify.
+## The method
 
-## Why
+**One call, replayed.**
 
-Today that step shows a list: one row per extracted statement. On the live project, two documents produced a hundred rows, of which two needed an answer. It is thirteen thousand pixels of scrolling and it reads like a database dump, not like documentation.
+1. The developer's **documents and notes** go to the model in one request. It returns the reference document **and** the points it could not settle.
+2. The developer answers a point. The answer becomes a **note**.
+3. They ask again. Same documents, one more note, a better document.
 
-A list of a hundred statements is not a reference. A document is.
+Every write starts from the original documents, never from the previous document. Nothing drifts.
+
+## The one idea worth naming
+
+**An answer and a correction are the same thing: a note.**
+
+"The launch is in October, not September" and "yes, the AI layer is out of the MVP" are both a sentence the developer adds, and both are replayed on every write. One mechanism, not two.
+
+Notes are stored because the document is rewritten from scratch each time, and a note is the only part that is not in the documents. Without them, adding a document next week would bring back every question already answered.
+
+## What replaces what
+
+Extraction, consolidation, per-sentence facts, revisions, provenance links, clarifications and contributor assertions are removed. They bought per-sentence provenance and incremental merging, at the price of four chained model calls and twelve tables, for a scale this product does not have.
+
+Sections written for the client now draw on the **reference document** rather than on the removed fact base. One chain: documents → reference document → sections.
 
 ## User Scenarios *(mandatory)*
 
-### User Story 1 - Read one document instead of a hundred rows (P1)
+### User Story 1 - Get a reference document from what I have (P1)
 
-The developer adds two documents. The system writes a reference document from them: titled sections, continuous text, ordered so it can be read top to bottom. They read it and know where the project stands.
+The developer has uploaded two documents of uneven quality. They ask for the reference document. They get one structured text, and a short list of what could not be settled.
 
 **Acceptance Scenarios**:
 
-1. **Given** documents have been processed, **When** the developer opens the documentation page, **Then** they see a written reference document, not a list of statements.
-2. **Given** the reference document, **When** they read it, **Then** it has named parts and continuous text under each.
-3. **Given** a sentence in it, **When** they act on that sentence, **Then** they see which document it came from.
-4. **Given** a sentence they know to be wrong, **When** they act on it, **Then** they can correct it, and the correction holds everywhere.
+1. **Given** documents have been added, **When** the developer asks for the reference document, **Then** one structured text is produced from them.
+2. **Given** the reference document, **When** they read it, **Then** it has named parts and continuous prose under each.
+3. **Given** a part, **When** they look at it, **Then** they see which documents it draws on.
+4. **Given** the documents hold nothing usable, **When** the document is written, **Then** it says so rather than being written from nothing.
 5. **Given** no document has been added, **When** they open the page, **Then** it says so and offers to add one.
 
 ---
 
-### User Story 2 - Everything uncertain is a question, never a sentence (P1)
+### User Story 2 - Answer what could not be settled (P1)
 
-Two documents disagree on the launch date. The reference document does not pick one and does not average them. The disagreement becomes a point to clarify, and the developer answers it.
+Two documents disagree on the launch date. The document does not pick one. The disagreement comes back as a question. The developer answers it, asks again, and the answer is in the document.
 
 **Acceptance Scenarios**:
 
-1. **Given** two documents contradict each other, **When** the reference document is written, **Then** the contradiction is a point to clarify, not a sentence in the document.
-2. **Given** something is implied but never stated, **When** the reference document is written, **Then** it is a point to clarify, not filled in.
-3. **Given** a point to clarify, **When** the developer answers it, **Then** the answer enters the reference document.
-4. **Given** a point the developer leaves open, **When** the reference document is read, **Then** the gap is marked in place rather than hidden.
-5. **Given** points to clarify exist, **When** the page is opened, **Then** they are shown with the document, most consequential first.
+1. **Given** two documents contradict each other, **When** the document is written, **Then** the contradiction is a question, not a sentence presented as settled.
+2. **Given** something implied but never stated, **When** the document is written, **Then** it is a question, not filled in.
+3. **Given** the developer answers a question, **When** they ask for a rewrite, **Then** the answer is used and the question is not asked again.
+4. **Given** an unanswered question, **When** the document is written, **Then** the gap is marked in place rather than hidden.
+5. **Given** answers given weeks ago, **When** a new document is added and the document rewritten, **Then** those answers still apply without being restated.
 
 ---
 
-### User Story 3 - A document that does not belong is caught, not absorbed (P1)
+### User Story 3 - Correct what is wrong (P1)
 
-The developer uploads the wrong file — a contract for another client. The system notices it has nothing to do with this project, holds it, and asks. The developer removes it. Nothing it said ever reached the reference document.
+The developer reads a sentence they know to be false. They say so. The next write reflects it.
 
 **Acceptance Scenarios**:
 
-1. **Given** a project that already holds documents, **When** a document unrelated to them is added, **Then** the system raises it as a point to clarify instead of incorporating it.
-2. **Given** such a document is waiting, **When** the reference document is read, **Then** it contains nothing from that document.
-3. **Given** the developer confirms it does belong, **When** they answer, **Then** it is incorporated normally and is not asked about again.
-4. **Given** the developer confirms it does not belong, **When** they answer, **Then** it is removed and nothing it said is kept.
-5. **Given** it is the project's first document, **When** it is added, **Then** it is incorporated without this check — there is nothing yet to compare it against, and the system says nothing rather than guessing.
-6. **Given** a document on a genuinely new subject for the project, **When** it is added, **Then** being new is not by itself treated as being unrelated.
+1. **Given** a statement the developer knows to be wrong, **When** they record the correction, **Then** it is kept as a note, attributable to them.
+2. **Given** a correction, **When** the document is rewritten, **Then** it is honoured without being restated.
+3. **Given** a correction contradicting what a document plainly says, **When** the document is written, **Then** the correction wins and the discrepancy is raised as a point rather than silently dropped.
+4. **Given** a note the developer no longer wants, **When** they remove it, **Then** the next write ignores it.
 
 ---
 
-### User Story 4 - Take the document away with you (P2)
+### User Story 4 - A document that does not belong is caught (P2)
 
-The developer wants the reference document outside the app — to send it, to keep it, to read it on paper. They download it.
+The developer uploads the wrong file. The write says so instead of absorbing it.
 
 **Acceptance Scenarios**:
 
-1. **Given** a reference document, **When** the developer downloads it, **Then** they get a file holding its full text and its parts.
-2. **Given** something the documents never settled, **When** the document is downloaded, **Then** the gap is marked where it applies — "launch date: not confirmed" — so the file cannot be read as if everything were settled.
-3. **Given** questions the system is asking the developer, **When** the document is downloaded, **Then** they are absent. They are addressed to the developer; they are not content.
-4. **Given** a document still being written, **When** the developer looks for the download, **Then** it is unavailable rather than producing a half-written file.
+1. **Given** a document unrelated to the others, **When** the document is written, **Then** it is raised as a point rather than woven in.
+2. **Given** the project's only document, **When** it is written from, **Then** nothing is judged unrelated — there is nothing to compare it against.
+3. **Given** a document on a subject new to the project, **When** it is written from, **Then** being new is not treated as being unrelated.
 
 ---
 
-### User Story 5 - Written in the developer's language (P2)
+### User Story 5 - Take it with you (P2)
 
-The developer works in French. Every question the system asks them is in French.
+The developer downloads the reference document to send or keep.
 
 **Acceptance Scenarios**:
 
-1. **Given** a developer using the product in French, **When** the system raises a point to clarify, **Then** the question is in French.
-2. **Given** a developer using it in English, **Then** the question is in English.
-3. **Given** the language is unknown, **Then** it falls back to English rather than blocking the question.
+1. **Given** a reference document, **When** they download it, **Then** they get a file holding its full text and its parts.
+2. **Given** unanswered points, **When** it is downloaded, **Then** the gaps are marked in place; the questions themselves are not in the file.
+3. **Given** a write in progress, **When** they look for the download, **Then** it is unavailable rather than partial.
 
 ---
 
 ### Edge Cases
 
-- Answering the last point in the set: the set closes and says so, rather than leaving an empty card.
-- A single point to clarify: the same card, without arrows or position.
-
-- One short document: the reference document is short. It does not pad.
-- Documents that say almost nothing usable: the document says so plainly rather than being written out of nothing.
-- A document removed later: the reference document is rewritten without it, and says it needs rewriting until the developer triggers it.
-- Nothing but contradictions: the reference document is nearly empty and the points to clarify carry everything. That is the correct outcome, not a failure.
+- One short document: a short reference document. It does not pad.
+- Every point answered and the document still thin: that is the documents' fault, and it says what it has rather than inventing.
+- A note contradicting another note: raised as a point, not silently resolved by order.
+- A document removed: the next write is made without it, and the document says it is owed a rewrite.
 
 ## Requirements *(mandatory)*
 
-### The document
+### Writing
 
-- **FR-001**: The system MUST produce one reference document per project, written from what its documents say.
-- **FR-002**: It MUST have named parts and continuous text, readable top to bottom.
-- **FR-003**: It MUST contain nothing that its documents do not support. No inference, no filling gaps, no smoothing over.
-- **FR-004**: Every sentence MUST be traceable to the document it came from, on demand.
-- **FR-005**: A developer MUST be able to correct any sentence, attributably, and the correction MUST hold for everything built afterwards.
-- **FR-006**: It MUST be rewritten when the documents change, and MUST say it needs rewriting rather than rewriting itself.
-- **FR-007**: When the documents hold nothing usable, it MUST say so rather than be written from nothing.
+- **FR-001**: One reference document per project, written in a single request from the project's documents and notes.
+- **FR-002**: It MUST have named parts and continuous prose, readable top to bottom.
+- **FR-003**: It MUST contain nothing the documents and notes support. No inference, no filling a gap, no smoothing a contradiction.
+- **FR-004**: Each part MUST say which documents it draws on.
+- **FR-005**: Every write MUST start from the documents and notes, never from a previous reference document.
+- **FR-006**: It MUST say it is owed a rewrite when documents or notes change, and MUST NOT rewrite itself.
+- **FR-007**: When the documents hold nothing usable, it MUST say so.
+- **FR-008**: Only one write per project MUST run at a time.
 
-### Where each thing lives
+### Points and notes
 
-- **FR-026**: The reference document MUST have its own screen, reachable at its own address. It is read, not passed through.
-- **FR-027**: The documentation working page MUST NOT render the reference document. It carries what the source holds in a sentence, the points to clarify, a way to the document, and the sections.
-
-### Answering the points
-
-- **FR-028**: Points to clarify MUST be presented one at a time, whatever their number, so a developer faces one decision rather than a wall.
-- **FR-029**: The developer MUST see where they are in the set — which point, out of how many.
-- **FR-030**: The developer MUST be able to move past a point without answering it, and come back to it.
-- **FR-031**: The card MUST NOT change shape with the number of points. Only what would be meaningless is dropped: with a single point there are no arrows and no position. An earlier draft put a threshold at three; it was wrong, because the count changes on the same project from week to week and the screen would have changed shape underneath the developer, on a number they do not control.
-
-### Points to clarify
-
-- **FR-008**: Anything ambiguous, contradictory or missing MUST become a point to clarify instead of a sentence in the document.
-- **FR-009**: Points to clarify MUST be shown with the document, ordered by consequence.
-- **FR-010**: Answering a point MUST feed the answer into the reference document.
-- **FR-011**: A point left open MUST be marked in the document where it applies, never hidden.
+- **FR-009**: Anything ambiguous, contradictory or missing MUST be returned as a point, never written as settled prose.
+- **FR-010**: Points MUST be returned by the same request that writes the document, not by a separate stage.
+- **FR-011**: Answering a point MUST record a note.
+- **FR-012**: Correcting a statement MUST record a note. An answer and a correction are the same kind of thing.
+- **FR-013**: A note MUST be attributable and removable.
+- **FR-014**: Every note MUST be replayed on every write, without the developer restating it.
+- **FR-015**: A note MUST take precedence over what a document says, and the discrepancy MUST be raised as a point rather than dropped.
+- **FR-016**: A point left unanswered MUST be marked in the document where it applies.
 
 ### Documents that do not belong
 
-- **FR-012**: Processing MUST detect a document unrelated to what the project already holds, and MUST raise it as a point to clarify rather than incorporating it.
-- **FR-013**: A document waiting on that answer MUST contribute nothing to the reference document.
-- **FR-014**: The developer MUST be able to answer that it does belong, after which it is incorporated and not raised again.
-- **FR-015**: The developer MUST be able to answer that it does not, after which it is removed.
-- **FR-016**: The first document of a project MUST NOT be subject to this check. There is nothing to compare it against, and a guess here is worse than silence.
-- **FR-017**: Covering a subject the project has not seen before MUST NOT on its own count as unrelated.
-
-### Downloading
-
-- **FR-018**: The reference document MUST be downloadable, carrying its full text and its parts.
-- **FR-019**: A gap the documents never settled MUST appear in the downloaded file, marked where it applies. A file that reads as if everything were settled is the failure this product exists to prevent.
-- **FR-020**: The questions the system asks the developer MUST NOT appear in the downloaded file. They are addressed to a person, not part of what the project is.
-- **FR-021**: The download MUST be unavailable while the document is being written, rather than producing a partial file.
+- **FR-017**: A document unrelated to the others MUST be raised as a point rather than woven in.
+- **FR-018**: A project's only document MUST NOT be judged unrelated.
+- **FR-019**: Covering a new subject MUST NOT on its own count as unrelated.
 
 ### Language
 
-- **FR-022**: Points to clarify MUST be written in the language the developer is using the product in.
-- **FR-022a**: The reference document MUST be written in that same language. It is written for the developer, so leaving it in English would reproduce exactly the complaint that put FR-022 here.
-- **FR-023**: The developer MUST NOT have to set that language.
-- **FR-024**: It MUST be resolvable when the system works in the background.
-- **FR-025**: An unknown language MUST fall back to English.
+- **FR-020**: The reference document and its points MUST be written in the language the developer uses the product in.
+- **FR-021**: The developer MUST NOT have to set that language.
+- **FR-022**: It MUST be resolvable when the system works in the background, and MUST fall back to English when unknown.
+
+### Downloading
+
+- **FR-023**: The reference document MUST be downloadable, with its gaps marked and its questions absent.
+- **FR-024**: The download MUST be unavailable while a write is running.
+
+### Leaving nothing behind
+
+- **FR-025**: Extraction, consolidation, per-sentence facts, revisions, provenance links, clarifications and contributor assertions MUST be removed — their models, stages, routes, screens, strings and tests — and the change MUST verify none survives without a consumer.
+
+### Key Entities
+
+- **Document**: a file or Notion page the developer added. Unchanged.
+- **Note**: one sentence the developer added — an answer or a correction. Attributable, removable, replayed on every write.
+- **Reference document**: the last text written. Carries its parts and the points still open.
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: A developer reads their reference document top to bottom without scrolling past anything that asks nothing of them.
-- **SC-002**: Every sentence in it traces to a document.
+- **SC-001**: A developer turns uneven documents into one readable reference document in a single action.
+- **SC-002**: A question answered once is never asked again.
 - **SC-003**: Nothing uncertain appears as a statement of fact.
-- **SC-004**: A developer reads every question the system asks them in their own language.
-- **SC-005**: Correcting a sentence takes no more steps than today.
-- **SC-006**: A document uploaded by mistake never contributes a sentence to the reference document.
-- **SC-007**: A developer can leave with the reference document as a file, and it says the same thing the screen does.
+- **SC-004**: Adding a document keeps every earlier answer and correction in force.
+- **SC-005**: Writing the document takes one model call, not four.
 
 ## Assumptions
 
-- What the system already extracts and merges stays as it is. This feature changes what the developer reads, not what is stored underneath: provenance, duplicate merging and attributable correction all keep working as built.
-- The reference document is for the developer. What the client reads is still the sections they compose, unchanged by this feature.
-- Writing it is one operation per project, run when the documents change — not one per statement.
-- Whether a document belongs is judged against what the project already holds. That makes the first document unjudgeable, which is why FR-016 exempts it rather than pretending otherwise.
-- One point to clarify carries one decision — answer it, or leave it open — and a written answer needs room. That is what makes presenting them one at a time worth the mechanism here, and what makes it wrong for the extracted statements, which carry no decision at all.
-- Downloading is served first by a page laid out for paper plus a print action, so the browser produces the file. A server-generated PDF is the same requirement met more expensively, and is only worth it once something needs to send the file without a person present.
+- The documents fit in one request. Measured on the live project: two documents ≈ 20 000 words, comfortable in a single call with room for roughly ten times that.
+- Every write reads all documents. At this product's scale — a freelancer's project, a handful of documents — that costs less than the machinery it replaces. Past a few hundred documents it would stop being true, and nothing here pretends otherwise.
+- Provenance becomes coarse: a part says which documents it draws on, not which page. That is the one real loss, and it stays honest.
 
 ## Out of Scope
 
-- Any change to the sections a client reads.
-- Translating the reference document after the fact. It is written in the developer's language from the start (FR-022a); it is never produced in one language and translated into another.
-- Translating the canonical statements themselves. They stay English, as they have been since 2026-08-12 — they are the internal record, not something a person reads end to end.
-- Validating the document sentence by sentence. The developer corrects what is wrong and answers what is open; they do not approve it line by line.
-- Judging a document's quality, or refusing a badly written one. The only judgement here is whether it concerns this project.
+- Per-sentence provenance.
+- Editing the reference document by hand. The developer adds notes and asks again.
+- Any change to how a client reads their sections, beyond what those sections are written from.
