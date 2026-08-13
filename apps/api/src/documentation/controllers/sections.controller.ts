@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import type { User } from '@prisma/client';
@@ -16,6 +17,8 @@ import { SessionGuard } from '../../auth/session.guard';
 import {
   CreateClientSectionDto,
   ReorderClientSectionsDto,
+  ReplaceMilestonesDto,
+  SetCurrentMilestoneDto,
   UpdateClientSectionDto,
 } from '../dto/client-section.dto';
 import { ApproveSectionProposalDto } from '../dto/client-section.dto';
@@ -112,6 +115,40 @@ export class SectionsController {
     @Param('sectionId') sectionId: string,
   ) {
     return this.proposals.current(user.id, projectId, sectionId);
+  }
+
+  // PUT, not PATCH: the whole ordered set travels, so the resulting roadmap is
+  // never a function of what the server already held.
+  @Put(':sectionId/proposal/milestones')
+  replaceMilestones(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Param('sectionId') sectionId: string,
+    @Body() body: ReplaceMilestonesDto,
+  ) {
+    return this.proposals.replaceMilestones(
+      user.id,
+      projectId,
+      sectionId,
+      body,
+    );
+  }
+
+  // Where the project stands is not part of a proposal and not part of a
+  // release: it moves on its own, and the client sees it at once.
+  @Put(':sectionId/current-milestone')
+  setCurrentMilestone(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Param('sectionId') sectionId: string,
+    @Body() body: SetCurrentMilestoneDto,
+  ) {
+    return this.sections.setCurrentMilestone(
+      user.id,
+      projectId,
+      sectionId,
+      body,
+    );
   }
 
   @Post(':sectionId/proposal/approve')

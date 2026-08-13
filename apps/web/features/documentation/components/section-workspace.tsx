@@ -22,6 +22,10 @@ export function stateOf(section: SectionView) {
   if (section.activeProposal?.status === "pending_review") return "awaiting";
   if (section.refreshNeeded && section.hasPublishedContent) return "stale";
   if (section.refreshNeeded) return "never";
+  // Composed, approved, and still nothing the client can read: an approved
+  // roadmap holding no milestone publishes nothing, and "Publiée" over an empty
+  // tab is a badge that lies.
+  if (!section.hasPublishedContent) return "never";
   return "published";
 }
 
@@ -174,9 +178,13 @@ export function SectionWorkspace({ projectId }: { projectId: string }) {
                           {t(`state_${state}`)}
                         </span>
                       </div>
-                      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                        {section.instructions}
-                      </p>
+                      {/* A roadmap has no brief. There is nothing to show in
+                          its place — the timeline below says what it is. */}
+                      {section.instructions && (
+                        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                          {section.instructions}
+                        </p>
+                      )}
                     </div>
                     {/* These two act on what was asked for, so they sit with
                         it — the button that rewrites the text sits with the
@@ -245,6 +253,7 @@ export function SectionWorkspace({ projectId }: { projectId: string }) {
 
       <SectionEditorDialog
         projectId={projectId}
+        hasRoadmap={rows.some((row) => row.kind === "roadmap")}
         open={creating}
         onOpenChange={setCreating}
         onCreated={setSelected}

@@ -31,3 +31,37 @@ export function buildClientDerivationPrompt(input: {
     `Factual reference: ${JSON.stringify(input.blocks)}`,
   ].join('\n');
 }
+
+export const ROADMAP_DERIVATION_PROMPT_VERSION = 'roadmap-derivation-v3';
+export const ROADMAP_DERIVATION_OUTPUT_CONTRACT = 'roadmap-derivation-v3';
+
+// A roadmap has no register to strike, so this call does one thing: put the
+// milestones in the language the client reads. The developer edited these by
+// hand — rewriting them into something more graceful would quietly undo that.
+//
+// Nothing is keyed by id. The milestones go out in order and come back in
+// order, and the server zips them with the ids it already holds; asking the
+// model to carry an identifier is the failure 45a13ac removed.
+export function buildRoadmapDerivationPrompt(input: {
+  sectionName: string;
+  locale: string;
+  milestones: unknown;
+}): string {
+  return [
+    `Prompt version: ${ROADMAP_DERIVATION_PROMPT_VERSION}`,
+    `Section heading: ${input.sectionName}`,
+    `Locale: ${input.locale}`,
+    'Below is a project timeline, in order. Return exactly the same milestones,',
+    'in exactly the same order, written in the locale above.',
+    'Translate where the language differs, and otherwise leave the wording',
+    'alone: it was written or corrected by the person who owns the project.',
+    'Never merge two milestones, never drop one, never add one, and never turn',
+    '"when" into a date it does not already state.',
+    'A milestone whose "when" is null keeps it null, exactly as a substep does.',
+    'A milestone may carry substeps. Return each one with the same substeps, in',
+    'the same order and the same number, under the same rules. A substep whose',
+    '"when" is null keeps it null: it has no date, and giving it one would be',
+    'inventing.',
+    `Milestones: ${JSON.stringify(input.milestones)}`,
+  ].join('\n');
+}

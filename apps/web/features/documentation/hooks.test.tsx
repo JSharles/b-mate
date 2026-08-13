@@ -14,6 +14,8 @@ import {
   composeSection,
   getSectionProposal,
   approveSectionProposal,
+  replaceMilestones,
+  setCurrentMilestone,
   getReferenceSummary,
   getReferenceDocument,
   writeReferenceDocument,
@@ -35,6 +37,9 @@ import {
   useArchiveSection,
   useComposeSection,
   useApproveSectionProposal,
+  useReplaceMilestones,
+  useSetCurrentMilestone,
+  publicClientSectionsKey,
   referenceSummaryKey,
   referenceDocumentKey,
   useReferenceSummary,
@@ -59,6 +64,8 @@ vi.mock("./api", () => ({
   composeSection: vi.fn(),
   getSectionProposal: vi.fn(),
   approveSectionProposal: vi.fn(),
+  replaceMilestones: vi.fn(),
+  setCurrentMilestone: vi.fn(),
   getReferenceSummary: vi.fn(),
   getReferenceDocument: vi.fn(),
   writeReferenceDocument: vi.fn(),
@@ -315,6 +322,7 @@ describe("documentation hooks", () => {
       await act(async () => {
         await create.result.current.mutateAsync({
           name: "Le projet",
+          kind: "prose" as const,
           instructions: "Ce que le client a demandé.",
           editorial: {
             length: "balanced",
@@ -412,5 +420,52 @@ describe("documentation hooks", () => {
       });
     });
   });
-});
 
+  // A roadmap is corrected in place, and where the project stands moves on its
+  // own: neither goes through a composition.
+  describe("a roadmap", () => {
+    it("writes the edited timeline straight into the proposal it came from", async () => {
+      const edited = { id: "proposal-1", milestones: [] };
+      vi.mocked(replaceMilestones).mockResolvedValue(edited as never);
+      const { queryClient, Wrapper } = wrapper();
+      const { result } = renderHook(
+        () => useReplaceMilestones("project-1", "section-1"),
+        { wrapper: Wrapper },
+      );
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          milestones: [],
+          expectedProposalVersion: 2,
+        });
+      });
+
+      expect(
+        queryClient.getQueryData(sectionProposalKey("project-1", "section-1")),
+      ).toEqual(edited);
+    });
+
+    // The client sees this the moment it is saved, with nothing composed and
+    // nothing approved.
+    it("refreshes what the client reads when the position moves", async () => {
+      vi.mocked(setCurrentMilestone).mockResolvedValue({} as never);
+      const { queryClient, Wrapper } = wrapper();
+      const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+      const { result } = renderHook(
+        () => useSetCurrentMilestone("project-1", "section-1"),
+        { wrapper: Wrapper },
+      );
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          milestoneId: null,
+          expectedVersion: 3,
+        });
+      });
+
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: publicClientSectionsKey("project-1"),
+      });
+    });
+  });
+});

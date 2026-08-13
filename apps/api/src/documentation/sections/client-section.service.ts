@@ -7,7 +7,10 @@ import {
 import type { ClientSection, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProjectAccessService } from '../../projects/project-access.service';
-import { SectionProposalService } from '../composition/section-proposal.service';
+import {
+  milestoneIds,
+  SectionProposalService,
+} from '../composition/section-proposal.service';
 import {
   CreateClientSectionDto,
   ReorderClientSectionsDto,
@@ -24,19 +27,32 @@ type SectionRow = ClientSection & {
     changeSummary: string | null;
     createdAt: Date;
   } | null;
-  proposals: { id: string }[];
+  proposals: { id: string; structuredContent?: unknown }[];
 };
 
 const SECTION_INCLUDE = {
   activeProposal: true,
   // One approved proposal is enough to know the client has something to read;
-  // taking more would be paid for on every list call.
+  // taking more would be paid for on every list call. Its content comes along
+  // because an approved roadmap holding no milestone publishes nothing, and a
+  // section whose badge says "published" over an empty tab is lying.
   proposals: {
     where: { status: 'approved' as const },
-    select: { id: true },
+    select: { id: true, structuredContent: true },
+    orderBy: { createdAt: 'desc' as const },
     take: 1,
   },
 } satisfies Prisma.ClientSectionInclude;
+
+// What the client can actually read. For prose, an approved proposal is enough.
+// For a roadmap it has to hold at least one milestone: an empty frise is a
+// section with no published content, and the client's tabs leave it out.
+function hasReadableContent(row: SectionRow) {
+  const approved = row.proposals[0];
+  if (!approved) return false;
+  if (row.kind !== 'roadmap') return true;
+  return ((approved.structuredContent ?? []) as unknown[]).length > 0;
+}
 
 @Injectable()
 export class ClientSectionService {
@@ -73,15 +89,40 @@ export class ClientSectionService {
       select: { sortOrder: true },
     });
 
+    // A roadmap has no brief and no register: its brief is fixed, and a
+    // milestone date has no tone. Refused rather than ignored — a body carrying
+    // both says one of the two sides has the wrong idea of what it is creating.
+    const kind = input.kind ?? 'prose';
+    if (kind === 'roadmap' && (input.instructions || input.editorial)) {
+      throw new BadRequestException({ code: 'SECTION_ROADMAP_HAS_NO_BRIEF' });
+    }
+
+    await this.requireNameFree(projectId, input.name, null);
+    // A project runs one sequence, so it has one frise. Two would put the same
+    // question to the client twice and let the two answers disagree.
+    if (kind === 'roadmap') {
+      const existing = await this.prisma.clientSection.count({
+        where: { projectId, kind: 'roadmap', archivedAt: null },
+      });
+      if (existing > 0) {
+        throw new ConflictException({ code: 'SECTION_ROADMAP_EXISTS' });
+      }
+    }
+
     const created = await this.prisma.clientSection.create({
       data: {
         projectId,
+        kind,
         name: input.name.trim(),
-        instructions: input.instructions.trim(),
-        length: input.editorial.length,
-        pedagogy: input.editorial.pedagogy,
-        technicalFamiliarity: input.editorial.technicalFamiliarity,
-        tone: input.editorial.tone,
+        ...(kind === 'roadmap'
+          ? {}
+          : {
+              instructions: input.instructions.trim(),
+              length: input.editorial.length,
+              pedagogy: input.editorial.pedagogy,
+              technicalFamiliarity: input.editorial.technicalFamiliarity,
+              tone: input.editorial.tone,
+            }),
         // Archived sections keep their slot, so a new section never lands on a
         // number an archived one still holds.
         sortOrder: (last?.sortOrder ?? -1) + 1,
@@ -105,7 +146,7 @@ export class ClientSectionService {
     locale: string | null = null,
   ) {
     await this.access.requireContributor(userId, projectId);
-    await this.requireSection(projectId, sectionId);
+    const existing = await this.requireSection(projectId, sectionId);
 
     const changesDefinition =
       input.name !== undefined ||
@@ -113,6 +154,18 @@ export class ClientSectionService {
       input.editorial !== undefined;
     if (!changesDefinition) {
       throw new BadRequestException({ code: 'SECTION_UPDATE_EMPTY' });
+    }
+    // A roadmap accepts a rename and nothing else. There is no brief to revise
+    // and no register to strike.
+    if (
+      existing.kind === 'roadmap' &&
+      (input.instructions !== undefined || input.editorial !== undefined)
+    ) {
+      throw new BadRequestException({ code: 'SECTION_ROADMAP_HAS_NO_BRIEF' });
+    }
+
+    if (input.name !== undefined) {
+      await this.requireNameFree(projectId, input.name, sectionId);
     }
 
     // Revising what a section covers is the same act as defining it, so it is
@@ -244,10 +297,89 @@ export class ClientSectionService {
     return this.list(userId, projectId);
   }
 
+  // Moving where the project stands is not a revision: nothing is recomposed,
+  // nothing is approved, and the client sees it at once. It is the one thing the
+  // developer changes weekly without a document changing.
+  async setCurrentMilestone(
+    userId: string,
+    projectId: string,
+    sectionId: string,
+    input: { milestoneId?: string | null; expectedVersion: number },
+  ) {
+    await this.access.requireContributor(userId, projectId);
+    const section = await this.requireSection(projectId, sectionId);
+    if (section.kind !== 'roadmap') {
+      throw new BadRequestException({ code: 'SECTION_NOT_ROADMAP' });
+    }
+
+    const milestoneId = input.milestoneId ?? null;
+    if (milestoneId !== null) {
+      // The id has to name something the client can actually see, or the
+      // timeline would claim a position that renders nowhere. Both levels
+      // count: "Feature 2 of five" is the answer "Développement" cannot give.
+      const published = await this.prisma.clientSectionContent.findFirst({
+        where: { sectionId, projectId },
+        orderBy: { createdAt: 'desc' },
+        select: { structuredContent: true },
+      });
+      const pending = await this.prisma.sectionProposal.findFirst({
+        where: { sectionId, status: { in: ['pending_review', 'approved'] } },
+        orderBy: { createdAt: 'desc' },
+        select: { structuredContent: true },
+      });
+      const known = new Set(
+        [published?.structuredContent, pending?.structuredContent].flatMap(
+          (content) => [...milestoneIds(content)],
+        ),
+      );
+      if (!known.has(milestoneId)) {
+        throw new BadRequestException({ code: 'MILESTONE_UNKNOWN' });
+      }
+    }
+
+    const { count } = await this.prisma.clientSection.updateMany({
+      where: {
+        id: sectionId,
+        projectId,
+        archivedAt: null,
+        version: input.expectedVersion,
+      },
+      data: { currentMilestoneId: milestoneId, version: { increment: 1 } },
+    });
+    if (count === 0) throw new ConflictException({ code: 'SECTION_STALE' });
+
+    const row = await this.prisma.clientSection.findUnique({
+      where: { id: sectionId },
+      include: SECTION_INCLUDE,
+    });
+    if (!row) throw new NotFoundException({ code: 'NOT_FOUND' });
+    return this.toView(row);
+  }
+
+  // Two rubriques with the same name are two identical tabs to the client, and
+  // nothing on screen tells them apart. Compared case-insensitively on the
+  // trimmed name, because "Roadmap" and "roadmap " are the same tab.
+  private async requireNameFree(
+    projectId: string,
+    name: string,
+    exceptSectionId: string | null,
+  ) {
+    const taken = await this.prisma.clientSection.findFirst({
+      where: {
+        projectId,
+        archivedAt: null,
+        name: { equals: name.trim(), mode: 'insensitive' },
+        ...(exceptSectionId ? { id: { not: exceptSectionId } } : {}),
+      },
+      select: { id: true },
+    });
+    if (taken) throw new ConflictException({ code: 'SECTION_NAME_TAKEN' });
+  }
+
   private async requireSection(projectId: string, sectionId: string) {
     const row = await this.prisma.clientSection.findFirst({
       where: { id: sectionId, projectId, archivedAt: null },
-      select: { id: true },
+      select: { id: true, kind: true },
     });
     // Principle V: a section in someone else's project is indistinguishable
     // from one that does not exist.
@@ -267,16 +399,25 @@ export class ClientSectionService {
   }
 
   private toView(row: SectionRow) {
+    // Null rather than a filled-in default: a roadmap was never given a brief or
+    // a register, and saying so is what lets the screen not ask for one.
+    const editorial =
+      row.length && row.pedagogy && row.technicalFamiliarity && row.tone
+        ? {
+            length: row.length,
+            pedagogy: row.pedagogy,
+            technicalFamiliarity: row.technicalFamiliarity,
+            tone: row.tone,
+          }
+        : null;
+
     return {
       id: row.id,
+      kind: row.kind,
       name: row.name,
       instructions: row.instructions,
-      editorial: {
-        length: row.length,
-        pedagogy: row.pedagogy,
-        technicalFamiliarity: row.technicalFamiliarity,
-        tone: row.tone,
-      },
+      editorial,
+      currentMilestoneId: row.currentMilestoneId,
       sortOrder: row.sortOrder,
       refreshNeeded: row.refreshNeeded,
       // Relevance corrections arrive in US2; until then no section has any.
@@ -292,7 +433,7 @@ export class ClientSectionService {
             createdAt: row.activeProposal.createdAt.toISOString(),
           }
         : null,
-      hasPublishedContent: row.proposals.length > 0,
+      hasPublishedContent: hasReadableContent(row),
       version: row.version,
     };
   }

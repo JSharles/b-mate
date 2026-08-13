@@ -15,6 +15,7 @@ const userId = 'user-1';
 const section = {
   id: sectionId,
   projectId,
+  kind: 'prose' as const,
   name: 'What the client asked for',
   instructions: 'The request and its constraints.',
   activeProposalId: null,
@@ -203,6 +204,7 @@ describe('SectionProposalService', () => {
         structuredContent: null,
         failureCode: null,
         questions: [],
+        section: { kind: 'prose' },
       });
 
       await expect(
@@ -224,6 +226,7 @@ describe('SectionProposalService', () => {
         createdAt: new Date('2026-08-12T10:00:00.000Z'),
         structuredContent: [{ kind: 'paragraph', text: 'A paragraph.' }],
         failureCode: null,
+        section: { kind: 'prose' },
       });
 
       const proposal = await service.current(userId, projectId, sectionId);
@@ -277,6 +280,25 @@ describe('SectionProposalService', () => {
       );
     });
 
+    // Publishing an empty roadmap gives the client a tab with nothing in it and
+    // no way to know why.
+    it('refuses to publish a roadmap with nothing in it', async () => {
+      const { prisma, service } = setup();
+      prisma.clientSection.findFirst.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+        activeProposalId: proposalId,
+      });
+      prisma.sectionProposal.findUnique.mockResolvedValue({
+        structuredContent: [],
+      });
+
+      await expect(
+        service.approve(userId, projectId, sectionId, 1),
+      ).rejects.toMatchObject({ response: { code: 'ROADMAP_EMPTY' } });
+      expect(prisma.sectionProposal.updateMany).not.toHaveBeenCalled();
+    });
+
     it('refuses to approve a proposal that has since changed', async () => {
       const { prisma, service } = setup();
       prisma.clientSection.findFirst.mockResolvedValue({
@@ -301,6 +323,318 @@ describe('SectionProposalService', () => {
       await expect(
         service.approve(userId, projectId, sectionId, 1),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  // A roadmap is composed by the same machinery as prose — one slot, one lease,
+  // one terminal-failure release — and differs only in what it asks for and
+  // what comes back.
+  describe('a roadmap section', () => {
+    const milestoneId = '00000000-0000-4000-8000-00000000000a';
+
+    function pendingRoadmap(
+      prisma: ReturnType<typeof createPrismaMock>,
+      milestones: unknown[],
+    ) {
+      prisma.clientSection.findFirst.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+        activeProposalId: proposalId,
+      });
+      prisma.sectionProposal.findUnique.mockResolvedValue({
+        id: proposalId,
+        status: 'pending_review',
+        structuredContent: milestones,
+      });
+      prisma.sectionProposal.updateMany.mockResolvedValue({ count: 1 });
+      prisma.sectionProposal.findFirst.mockResolvedValue({
+        id: proposalId,
+        sectionId,
+        referenceDocumentId: referenceId,
+        status: 'pending_review',
+        outcome: 'composed',
+        version: 3,
+        changeSummary: null,
+        createdAt: new Date('2026-08-13T10:00:00.000Z'),
+        structuredContent: milestones,
+        failureCode: null,
+        section: { kind: 'roadmap' },
+      });
+    }
+
+    it('asks for a roadmap rather than prose', async () => {
+      const { prisma, generation, service } = setup();
+      readyToCompose(prisma, { kind: 'roadmap', instructions: null });
+
+      await service.compose(userId, projectId, sectionId);
+
+      expect(generation.createInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          outputContractVersion: 'roadmap-composition-v3',
+        }),
+      );
+    });
+
+    it('reads milestones back rather than blocks', async () => {
+      const { prisma, service } = setup();
+      const milestones = [
+        {
+          id: milestoneId,
+          when: 'Q3 2026',
+          title: 'Recette',
+          description: null,
+          origin: 'document',
+        },
+      ];
+      pendingRoadmap(prisma, milestones);
+
+      const proposal = await service.current(userId, projectId, sectionId);
+
+      expect(proposal?.milestones).toHaveLength(1);
+      expect(proposal?.blocks).toEqual([]);
+    });
+
+    // US2.1 and US2.2: a wrong date is fixed by fixing it, not by writing a
+    // note and asking for the whole roadmap again.
+    it('keeps the ids of milestones the developer kept and mints ids for the rest', async () => {
+      const { prisma, service } = setup();
+      pendingRoadmap(prisma, [
+        {
+          id: milestoneId,
+          when: 'Q3 2026',
+          title: 'Recette',
+          description: null,
+          origin: 'document',
+        },
+      ]);
+
+      await service.replaceMilestones(userId, projectId, sectionId, {
+        milestones: [
+          {
+            id: milestoneId,
+            when: 'mi-octobre',
+            title: 'Recette',
+            description: null,
+          },
+          {
+            id: null,
+            when: 'novembre',
+            title: 'Mise en ligne',
+            description: null,
+          },
+        ],
+        expectedProposalVersion: 3,
+      });
+
+      const written = prisma.sectionProposal.updateMany.mock.calls[0][0] as {
+        data: {
+          structuredContent: { id: string; when: string; origin: string }[];
+        };
+      };
+      expect(written.data.structuredContent[0]).toMatchObject({
+        id: milestoneId,
+        when: 'mi-octobre',
+        // Corrected, not authored: the developer is fixing what was read.
+        origin: 'document',
+      });
+      expect(written.data.structuredContent[1].id).not.toBe(milestoneId);
+      expect(written.data.structuredContent[1].origin).toBe('developer');
+    });
+
+    it('refuses to edit milestones on a section that is not a roadmap', async () => {
+      const { prisma, service } = setup();
+      prisma.clientSection.findFirst.mockResolvedValue({
+        id: sectionId,
+        kind: 'prose',
+        activeProposalId: proposalId,
+      });
+
+      await expect(
+        service.replaceMilestones(userId, projectId, sectionId, {
+          milestones: [],
+          expectedProposalVersion: 1,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'SECTION_NOT_ROADMAP' } });
+    });
+
+    // A composition still running overwrites whatever is written here the
+    // moment it lands, so the edit is refused rather than lost.
+    it('refuses an edit while a composition is still running', async () => {
+      const { prisma, service } = setup();
+      prisma.clientSection.findFirst.mockResolvedValue({
+        id: sectionId,
+        kind: 'roadmap',
+        activeProposalId: proposalId,
+      });
+      prisma.sectionProposal.findUnique.mockResolvedValue({
+        id: proposalId,
+        status: 'composing',
+        structuredContent: null,
+      });
+
+      await expect(
+        service.replaceMilestones(userId, projectId, sectionId, {
+          milestones: [],
+          expectedProposalVersion: 1,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'PROPOSAL_STALE' } });
+    });
+
+    // US4.4: where the project stands survives a regeneration, but not the
+    // disappearance of the milestone it names.
+    it('stops claiming a position when the milestone it named is gone', async () => {
+      const { prisma, service } = setup();
+      prisma.clientSection.findFirst.mockResolvedValue({
+        id: sectionId,
+        activeProposalId: proposalId,
+      });
+      prisma.sectionProposal.updateMany.mockResolvedValue({ count: 1 });
+      prisma.clientSection.updateMany.mockResolvedValue({ count: 1 });
+      prisma.sectionProposal.findUnique.mockResolvedValue({
+        id: proposalId,
+        sectionId,
+        structuredContent: [{ id: 'another-milestone' }],
+      });
+      prisma.clientSection.findUnique.mockResolvedValue({
+        currentMilestoneId: milestoneId,
+      });
+
+      await service.approve(userId, projectId, sectionId, 1);
+
+      expect(prisma.clientSection.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ currentMilestoneId: null }),
+        }),
+      );
+    });
+
+    // Both levels are reconciled: a correction to a sub-step keeps its id and
+    // its origin exactly as a correction to the milestone above it does.
+    describe('what sits inside a milestone', () => {
+      const substepId = '00000000-0000-4000-8000-00000000000b';
+
+      it('keeps the ids of the steps kept and mints ids for the rest', async () => {
+        const { prisma, service } = setup();
+        pendingRoadmap(prisma, [
+          {
+            id: milestoneId,
+            when: 'Q3 2026',
+            title: 'Développement',
+            description: null,
+            substeps: [
+              {
+                id: substepId,
+                when: null,
+                title: 'Feature 1',
+                description: null,
+                origin: 'document',
+              },
+            ],
+            origin: 'document',
+          },
+        ]);
+
+        await service.replaceMilestones(userId, projectId, sectionId, {
+          milestones: [
+            {
+              id: milestoneId,
+              when: 'Q3 2026',
+              title: 'Développement',
+              description: null,
+              substeps: [
+                {
+                  id: substepId,
+                  when: 'juin',
+                  title: 'Feature 1 — le panier',
+                  description: null,
+                },
+                { id: null, when: null, title: 'Feature 2', description: null },
+              ],
+            },
+          ],
+          expectedProposalVersion: 3,
+        });
+
+        const written = prisma.sectionProposal.updateMany.mock.calls[0][0] as {
+          data: {
+            structuredContent: {
+              substeps: {
+                id: string;
+                when: string | null;
+                title: string;
+                origin: string;
+              }[];
+            }[];
+          };
+        };
+        const substeps = written.data.structuredContent[0].substeps;
+        expect(substeps[0]).toMatchObject({
+          id: substepId,
+          when: 'juin',
+          title: 'Feature 1 — le panier',
+          // Corrected, not authored.
+          origin: 'document',
+        });
+        expect(substeps[1].id).not.toBe(substepId);
+        expect(substeps[1].origin).toBe('developer');
+        // A step inside a phase often has no date of its own.
+        expect(substeps[1].when).toBeNull();
+      });
+
+      // The position may name a sub-step, so a sub-step that disappears leaves
+      // the section pointing at nothing just as a milestone does.
+      it('stops claiming a position when the sub-step it named is gone', async () => {
+        const { prisma, service } = setup();
+        prisma.clientSection.findFirst.mockResolvedValue({
+          id: sectionId,
+          activeProposalId: proposalId,
+        });
+        prisma.sectionProposal.updateMany.mockResolvedValue({ count: 1 });
+        prisma.clientSection.updateMany.mockResolvedValue({ count: 1 });
+        prisma.sectionProposal.findUnique.mockResolvedValue({
+          id: proposalId,
+          sectionId,
+          structuredContent: [
+            { id: milestoneId, substeps: [{ id: 'another' }] },
+          ],
+        });
+        prisma.clientSection.findUnique.mockResolvedValue({
+          currentMilestoneId: substepId,
+        });
+
+        await service.approve(userId, projectId, sectionId, 1);
+
+        expect(prisma.clientSection.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ currentMilestoneId: null }),
+          }),
+        );
+      });
+
+      it('keeps a position that names a sub-step still there', async () => {
+        const { prisma, service } = setup();
+        prisma.clientSection.findFirst.mockResolvedValue({
+          id: sectionId,
+          activeProposalId: proposalId,
+        });
+        prisma.sectionProposal.updateMany.mockResolvedValue({ count: 1 });
+        prisma.clientSection.updateMany.mockResolvedValue({ count: 1 });
+        prisma.sectionProposal.findUnique.mockResolvedValue({
+          id: proposalId,
+          sectionId,
+          structuredContent: [
+            { id: milestoneId, substeps: [{ id: substepId }] },
+          ],
+        });
+        prisma.clientSection.findUnique.mockResolvedValue({
+          currentMilestoneId: substepId,
+        });
+
+        await service.approve(userId, projectId, sectionId, 1);
+
+        expect(prisma.clientSection.update).not.toHaveBeenCalled();
+      });
     });
   });
 });

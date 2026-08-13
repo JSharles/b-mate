@@ -16,7 +16,9 @@ const update = { mutate: vi.fn(), reset: vi.fn(), isPending: false, isError: fal
 const section: SectionView = {
   id: "00000000-0000-4000-8000-000000000001",
   name: "Ce que le client a demandé",
+  kind: "prose" as const,
   instructions: "La demande initiale et ses contraintes.",
+  currentMilestoneId: null,
   editorial: {
     length: "concise",
     pedagogy: "direct",
@@ -52,13 +54,13 @@ describe("SectionEditorDialog", () => {
     const user = userEvent.setup();
     render(<SectionEditorDialog projectId="project-1" open onOpenChange={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: /suggestion_planning_name/ }));
+    await user.click(screen.getByRole("button", { name: /suggestion_howItWorks_name/ }));
 
     expect(screen.getByLabelText("nameLabel")).toHaveValue(
-      "suggestion_planning_name",
+      "suggestion_howItWorks_name",
     );
     expect(screen.getByLabelText("instructionsLabel")).toHaveValue(
-      "suggestion_planning_instructions",
+      "suggestion_howItWorks_instructions",
     );
   });
 
@@ -89,10 +91,10 @@ describe("SectionEditorDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /suggestion_overview_name/ }));
     await user.click(screen.getByRole("button", { name: "backToSuggestions" }));
-    await user.click(screen.getByRole("button", { name: /suggestion_planning_name/ }));
+    await user.click(screen.getByRole("button", { name: /suggestion_howItWorks_name/ }));
 
     expect(screen.getByLabelText("nameLabel")).toHaveValue(
-      "suggestion_planning_name",
+      "suggestion_howItWorks_name",
     );
   });
 
@@ -200,6 +202,100 @@ describe("SectionEditorDialog", () => {
         expect.objectContaining({ expectedVersion: 3 }),
         expect.anything(),
       );
+    });
+  });
+
+  // Choosing a roadmap removes controls rather than adding them: its brief is
+  // fixed and a milestone date has no tone, so nothing is left to ask for.
+  // The developer looking for a timeline chose the obvious card and got
+  // paragraphs, because a prose suggestion called "Planning et jalons" sat in
+  // the list while the frise sat below the line. There is now one answer.
+  describe("a roadmap", () => {
+    it("is offered among the starting points, not below them", () => {
+      render(
+        <SectionEditorDialog projectId="project-1" open onOpenChange={vi.fn()} />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: /suggestion_roadmap_name/ }),
+      ).toBeVisible();
+      expect(screen.queryByText(/Planning/)).toBeNull();
+    });
+
+    it("collapses the form to a name", async () => {
+      const user = userEvent.setup();
+      render(
+        <SectionEditorDialog projectId="project-1" open onOpenChange={vi.fn()} />,
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: /suggestion_roadmap_name/ }),
+      );
+
+      expect(screen.getByLabelText("nameLabel")).toHaveValue(
+        "suggestion_roadmap_name",
+      );
+      expect(screen.queryByLabelText("instructionsLabel")).toBeNull();
+      expect(screen.queryByLabelText("toneLabel")).toBeNull();
+    });
+
+    it("creates one carrying nothing but its name", async () => {
+      const user = userEvent.setup();
+      render(
+        <SectionEditorDialog projectId="project-1" open onOpenChange={vi.fn()} />,
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: /suggestion_roadmap_name/ }),
+      );
+      await user.click(screen.getByRole("button", { name: "create" }));
+
+      expect(create.mutate).toHaveBeenCalledWith(
+        { kind: "roadmap", name: "suggestion_roadmap_name" },
+        expect.anything(),
+      );
+    });
+
+    it("accepts a rename and sends nothing else", async () => {
+      const user = userEvent.setup();
+      render(
+        <SectionEditorDialog
+          projectId="project-1"
+          section={{
+            ...section,
+            kind: "roadmap",
+            instructions: null,
+            editorial: null,
+          }}
+          open
+          onOpenChange={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByLabelText("instructionsLabel")).toBeNull();
+      await user.clear(screen.getByLabelText("nameLabel"));
+      await user.type(screen.getByLabelText("nameLabel"), "Étapes");
+      await user.click(screen.getByRole("button", { name: "save" }));
+
+      expect(update.mutate).toHaveBeenCalledWith(
+        { name: "Étapes", expectedVersion: 3 },
+        expect.anything(),
+      );
+    });
+
+    it("goes back to prose when the developer changes their mind", async () => {
+      const user = userEvent.setup();
+      render(
+        <SectionEditorDialog projectId="project-1" open onOpenChange={vi.fn()} />,
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: /suggestion_roadmap_name/ }),
+      );
+      await user.click(screen.getByRole("button", { name: /backToSuggestions/ }));
+      await user.click(screen.getByRole("button", { name: /startBlank/ }));
+
+      expect(screen.getByLabelText("instructionsLabel")).toBeVisible();
     });
   });
 });

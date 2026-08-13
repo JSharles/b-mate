@@ -7,6 +7,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import {
   CLIENT_DERIVATION_OUTPUT_CONTRACT,
   CLIENT_DERIVATION_PROMPT_VERSION,
+  ROADMAP_DERIVATION_OUTPUT_CONTRACT,
+  ROADMAP_DERIVATION_PROMPT_VERSION,
 } from './prompts/client-derivation.prompt';
 
 // How often to look for a section a contributor approved that never reached
@@ -14,6 +16,53 @@ import {
 // forgotten rather than as a swap still being resolved.
 const DROPPED_ACCEPTANCE_SWEEP_MS = 30_000;
 const DROPPED_ACCEPTANCE_AFTER_MS = 120_000;
+
+// What the client receives, discriminated by kind rather than inferred from
+// which key is present: the renderer should not have to consult the section
+// list to know what it is holding.
+//
+// `currentMilestoneId` is read live off the section rather than baked into the
+// release, because the developer moves it without composing, approving or
+// publishing anything (specs/020 FR-007).
+// FR-023 applied to a roadmap: a frise with no milestones is a section with no
+// published content, and one of those is absent from the client's tabs rather
+// than present and empty. Approving an empty roadmap is refused upstream; this
+// is what keeps one already published from showing as a blank tab.
+function readable(entry: {
+  section: { kind: 'prose' | 'roadmap' };
+  clientSectionContent: { structuredContent: unknown };
+}) {
+  if (entry.section.kind !== 'roadmap') return true;
+  return (
+    ((entry.clientSectionContent.structuredContent ?? []) as unknown[]).length >
+    0
+  );
+}
+
+function publicSection(entry: {
+  sectionId: string;
+  section: {
+    name: string;
+    kind: 'prose' | 'roadmap';
+    currentMilestoneId: string | null;
+  };
+  clientSectionContent: { structuredContent: unknown };
+}) {
+  const identity = { id: entry.sectionId, name: entry.section.name };
+  if (entry.section.kind === 'roadmap') {
+    return {
+      ...identity,
+      kind: 'roadmap' as const,
+      milestones: entry.clientSectionContent.structuredContent,
+      currentMilestoneId: entry.section.currentMilestoneId,
+    };
+  }
+  return {
+    ...identity,
+    kind: 'prose' as const,
+    blocks: entry.clientSectionContent.structuredContent,
+  };
+}
 
 @Injectable()
 export class ClientPublicationService {
@@ -80,7 +129,7 @@ export class ClientPublicationService {
       async (tx) => {
         const section = await tx.clientSection.findUnique({
           where: { id: proposal.sectionId },
-          select: { projectId: true },
+          select: { projectId: true, kind: true },
         });
         if (!section) throw new Error('CLIENT_PUBLICATION_SECTION_MISSING');
         const projectId = section.projectId;
@@ -131,8 +180,14 @@ export class ClientPublicationService {
           type: 'client_derivation',
           deduplicationKey: `client:${release.id}:${proposal.sectionId}:fr`,
           inputFingerprint,
-          promptVersion: CLIENT_DERIVATION_PROMPT_VERSION,
-          outputContractVersion: CLIENT_DERIVATION_OUTPUT_CONTRACT,
+          promptVersion:
+            section.kind === 'roadmap'
+              ? ROADMAP_DERIVATION_PROMPT_VERSION
+              : CLIENT_DERIVATION_PROMPT_VERSION,
+          outputContractVersion:
+            section.kind === 'roadmap'
+              ? ROADMAP_DERIVATION_OUTPUT_CONTRACT
+              : CLIENT_DERIVATION_OUTPUT_CONTRACT,
           sectionProposalId: proposal.id,
           clientReleaseId: release.id,
         });
@@ -167,21 +222,15 @@ export class ClientPublicationService {
       // and the contributor's order is what the client reads.
       sections:
         release?.entries
-          .filter((entry) => !entry.section.archivedAt)
+          .filter((entry) => !entry.section.archivedAt && readable(entry))
           .sort((a, b) => a.section.sortOrder - b.section.sortOrder)
-          .map((entry) => ({
-            id: entry.sectionId,
-            name: entry.section.name,
-            blocks: entry.clientSectionContent.structuredContent,
-          })) ?? [],
+          .map((entry) => publicSection(entry)) ?? [],
       publishedAt: release?.publishedAt?.toISOString() ?? null,
     };
   }
 
   async readPublicSections(projectId: string): Promise<unknown[]> {
-    const view = (await this.readCurrent(projectId)) as {
-      sections: Array<{ id: string; name: string; blocks: unknown }>;
-    };
+    const view = (await this.readCurrent(projectId)) as { sections: unknown[] };
     return view.sections;
   }
 
@@ -207,11 +256,9 @@ export class ClientPublicationService {
             visibleToClient: false,
             readySectionCount: pending.entries.length,
             expectedSectionCount: pending.expectedSectionCount,
-            sections: pending.entries.map((entry) => ({
-              id: entry.sectionId,
-              name: entry.section.name,
-              blocks: entry.clientSectionContent.structuredContent,
-            })),
+            sections: pending.entries
+              .filter((entry) => readable(entry))
+              .map((entry) => publicSection(entry)),
             publishedAt: null,
           }
         : null,

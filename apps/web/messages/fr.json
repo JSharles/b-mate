@@ -288,12 +288,14 @@
           "suggestion_overview_instructions": "Ce que le client a demandé, pourquoi, et ce que le projet doit produire. Les objectifs, le périmètre, et les contraintes qui l’encadrent.",
           "suggestion_howItWorks_name": "Comment ça marche",
           "suggestion_howItWorks_instructions": "Les choix techniques et leurs raisons, expliqués sans jargon. Ce que le produit fait, comment les pièces s’assemblent, et ce que cela change pour l’utilisateur.",
-          "suggestion_planning_name": "Planning et jalons",
-          "suggestion_planning_instructions": "Les dates, les échéances, les livraisons prévues et l’ordre dans lequel elles arrivent. Ce qui est confirmé, et ce qui reste à confirmer.",
           "suggestion_audit_name": "Audit et cadrage",
           "suggestion_audit_instructions": "Ce que l’existant révèle : ce qui fonctionne, ce qui pose problème, les risques identifiés, et les recommandations qui en découlent.",
           "startBlank": "Écrire mon propre titre",
-          "backToSuggestions": "Revenir aux propositions"
+          "backToSuggestions": "Revenir aux propositions",
+          "suggestion_roadmap_name": "Roadmap",
+          "suggestion_roadmap_summary": "Les étapes du projet et leur ordre, lues comme une frise plutôt qu’en paragraphes. Vous placez ensuite où le projet en est.",
+          "nameTaken": "Une rubrique porte déjà ce titre. Votre client verrait deux onglets identiques.",
+          "roadmapExists": "Ce projet a déjà sa frise."
         },
         "Review": {
           "loading": "Chargement…",
@@ -317,7 +319,9 @@
           "updated": "Rubrique mise à jour. Réécriture en cours…",
           "archived": "Rubrique supprimée.",
           "composing": "Rédaction lancée.",
-          "approved": "Rubrique publiée."
+          "approved": "Rubrique publiée.",
+          "milestonesSaved": "Frise enregistrée.",
+          "positionMoved": "Position mise à jour. Votre client la voit déjà."
         },
         "loadError": "Impossible de charger vos rubriques. Rechargez la page — rien n’a été perdu.",
         "Delete": {
@@ -331,7 +335,36 @@
         },
         "listTitle": "Vos rubriques",
         "listDescription": "Une rubrique est une partie que votre client lira. Vous lui donnez un titre, vous dites ce qu’elle doit couvrir et pour quel niveau de client ; Diaphane la rédige.",
-        "recompose": "Rédiger à nouveau"
+        "recompose": "Rédiger à nouveau",
+        "Roadmap": {
+          "whenLabel": "Quand",
+          "whenPlaceholder": "Q3 2026, mi-octobre, après la phase pilote…",
+          "titleLabel": "Étape",
+          "titlePlaceholder": "Ce qui se passe",
+          "descriptionLabel": "Détail",
+          "descriptionPlaceholder": "Ce que cette étape couvre, en une phrase ou deux.",
+          "addStep": "Ajouter une étape",
+          "moveUp": "Remonter cette étape",
+          "moveDown": "Descendre cette étape",
+          "remove": "Retirer cette étape",
+          "markPosition": "Le projet en est là",
+          "clearPosition": "Ne plus indiquer de position",
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "phase_framing": "Cadrage",
+          "phase_design": "Conception",
+          "phase_build": "Développement",
+          "phase_acceptance": "Recette",
+          "phase_launch": "Mise en ligne",
+          "phase_aftercare": "Suivi",
+          "addBlankStep": "Étape vierge",
+          "addSubstep": "Ajouter une sous-étape",
+          "substepTitleLabel": "Sous-étape",
+          "substepTitlePlaceholder": "Feature 1 — le panier",
+          "substepWhenLabel": "Quand, pour cette sous-étape",
+          "substepWhenPlaceholder": "Sans date",
+          "nothingYet": "Votre client ne voit encore aucune étape : la frise est vide."
+        }
       },
       "Reference": {
         "title": "Document de référence",

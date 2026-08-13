@@ -134,14 +134,26 @@ describe('ClientPublicationService', () => {
           entries: [
             {
               sectionId: 'section-planning',
-              section: { name: 'Planning', sortOrder: 1, archivedAt: null },
+              section: {
+                name: 'Planning',
+                kind: 'prose',
+                currentMilestoneId: null,
+                sortOrder: 1,
+                archivedAt: null,
+              },
               clientSectionContent: {
                 structuredContent: [{ text: 'Later' }],
               },
             },
             {
               sectionId: 'section-overview',
-              section: { name: 'The project', sortOrder: 0, archivedAt: null },
+              section: {
+                name: 'The project',
+                kind: 'prose',
+                currentMilestoneId: null,
+                sortOrder: 0,
+                archivedAt: null,
+              },
               clientSectionContent: {
                 structuredContent: [{ text: 'Hello' }],
               },
@@ -154,11 +166,13 @@ describe('ClientPublicationService', () => {
         {
           id: 'section-overview',
           name: 'The project',
+          kind: 'prose',
           blocks: [{ text: 'Hello' }],
         },
         {
           id: 'section-planning',
           name: 'Planning',
+          kind: 'prose',
           blocks: [{ text: 'Later' }],
         },
       ]);
@@ -296,5 +310,76 @@ describe('ClientPublicationService', () => {
 
       expect(queue).not.toHaveBeenCalled();
     });
+  });
+
+  // The renderer should not have to consult the section list to know what it is
+  // holding, and where the project stands is read live off the section rather
+  // than baked into a release nobody republished.
+  it('serves a roadmap as milestones, with the position the developer set', async () => {
+    const { prisma, service } = setup();
+    prisma.projectClientPublication.findUnique.mockResolvedValue({
+      currentRelease: {
+        id: 'release',
+        sequence: 1,
+        status: 'published',
+        expectedSectionCount: 1,
+        publishedAt: new Date('2026-01-01'),
+        entries: [
+          {
+            sectionId: 'section-roadmap',
+            section: {
+              name: 'Roadmap',
+              kind: 'roadmap',
+              currentMilestoneId: 'milestone-2',
+              sortOrder: 0,
+              archivedAt: null,
+            },
+            clientSectionContent: {
+              structuredContent: [{ id: 'milestone-2', title: 'Recette' }],
+            },
+          },
+        ],
+      },
+    });
+
+    await expect(service.readPublicSections('project')).resolves.toEqual([
+      {
+        id: 'section-roadmap',
+        name: 'Roadmap',
+        kind: 'roadmap',
+        milestones: [{ id: 'milestone-2', title: 'Recette' }],
+        currentMilestoneId: 'milestone-2',
+      },
+    ]);
+  });
+
+  // FR-023 applied to a roadmap: a frise with no milestones is a section with
+  // no published content, and one of those is absent rather than a blank tab.
+  it('leaves an empty roadmap out of the client tabs entirely', async () => {
+    const { prisma, service } = setup();
+    prisma.projectClientPublication.findUnique.mockResolvedValue({
+      currentRelease: {
+        id: 'release',
+        sequence: 1,
+        status: 'published',
+        expectedSectionCount: 1,
+        publishedAt: new Date('2026-01-01'),
+        entries: [
+          {
+            sectionId: 'section-roadmap',
+            section: {
+              name: 'Roadmap',
+              kind: 'roadmap',
+              currentMilestoneId: null,
+              sortOrder: 0,
+              archivedAt: null,
+            },
+            clientSectionContent: { structuredContent: [] },
+          },
+        ],
+      },
+    });
+
+    await expect(service.readPublicSections('project')).resolves.toEqual([]);
   });
 });

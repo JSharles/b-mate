@@ -107,6 +107,13 @@ enum EditorialTone {
   formal
 }
 
+// What the section is, not how it reads: the kind decides what the model is
+// asked for and what shape the client receives.
+enum ClientSectionKind {
+  prose
+  roadmap
+}
+
 enum ClientReleaseReason {
   section_approval
   section_removal
@@ -517,13 +524,23 @@ model ClientSection {
   // key, because the system cannot translate what it did not write
   // (research Decision 7).
   name                 String                     @db.VarChar(120)
+  // Prose or a roadmap, decided at creation. A roadmap has no brief and no
+  // register — its brief is fixed and a milestone date has no tone — so the
+  // five columns below are null on one, rather than holding a default nobody
+  // chose that the derivation prompt would then read (specs/020).
+  kind                 ClientSectionKind          @default(prose)
   // What composition should look for in the canonical source. The field the
   // whole feature's output quality rests on.
-  instructions         String
-  length               EditorialLength
-  pedagogy             EditorialPedagogy
-  technicalFamiliarity ClientTechnicalFamiliarity @map("technical_familiarity")
-  tone                 EditorialTone
+  instructions         String?
+  length               EditorialLength?
+  pedagogy             EditorialPedagogy?
+  technicalFamiliarity ClientTechnicalFamiliarity? @map("technical_familiarity")
+  tone                 EditorialTone?
+  // Which milestone the project is on. A plain column, not a relation:
+  // milestones live in the proposal's JSON, so no foreign key can hold it. It
+  // survives a regeneration, because where the project stands has nothing to do
+  // with what the documents say, and it is cleared when it names nothing.
+  currentMilestoneId   String?                    @map("current_milestone_id") @db.Uuid
   sortOrder            Int                        @map("sort_order")
   // True from creation: a section that has never composed needs to.
   refreshNeeded        Boolean                    @default(true) @map("refresh_needed")

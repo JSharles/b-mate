@@ -25,11 +25,13 @@ function withContent(content: PublicClientSection[]) {
 }
 
 const overview = {
+  kind: "prose" as const,
   id: "00000000-0000-4000-8000-000000000001",
   name: "Le projet",
   blocks: [{ type: "paragraph" as const, text: "What this project is for." }],
 };
 const planning = {
+  kind: "prose" as const,
   id: "00000000-0000-4000-8000-000000000002",
   name: "Planning",
   blocks: [{ type: "paragraph" as const, text: "Delivery is planned for March." }],
@@ -114,8 +116,8 @@ describe("ClientMainTabs", () => {
   it("lets the row of rubriques wrap rather than overflow", () => {
     vi.mocked(usePublicClientSections).mockReturnValue({
       data: [
-        { id: "s1", name: "Le projet", blocks: [] },
-        { id: "s2", name: "Planning et jalons", blocks: [] },
+        { kind: "prose" as const, id: "s1", name: "Le projet", blocks: [] },
+        { kind: "prose" as const, id: "s2", name: "Planning et jalons", blocks: [] },
       ],
     } as never);
 

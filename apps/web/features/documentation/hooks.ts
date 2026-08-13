@@ -9,6 +9,8 @@ import {
 import type { InfiniteData } from "@tanstack/react-query";
 import type {
   CreateSectionRequest,
+  ReplaceMilestonesRequest,
+  SetCurrentMilestoneRequest,
   SourceDocument,
   UpdateSectionRequest,
 } from "schemas";
@@ -25,6 +27,8 @@ import {
   createSection,
   getSectionProposal,
   listSections,
+  replaceMilestones,
+  setCurrentMilestone,
   updateSection,
   getReferenceSummary,
   getReferenceDocument,
@@ -38,6 +42,13 @@ import {
 } from "./api";
 import type { AddNoteRequest } from "schemas";
 import { useTranslations } from "next-intl";
+
+// A tab nobody is looking at is not worth a request every three seconds. Guarded
+// on `document` existing at all: `refetchInterval` is evaluated during the
+// server render too, where reading `document.visibilityState` threw outright.
+function watching() {
+  return typeof document !== "undefined" && document.visibilityState !== "hidden";
+}
 
 export const documentationKey = (projectId: string) =>
   ["projects", projectId, "documentation"] as const;
@@ -62,7 +73,7 @@ export function useDocumentationDocuments(projectId: string) {
       total: data.pages[0]?.total ?? 0,
     }),
     refetchInterval: (query) => {
-      if (document.visibilityState === "hidden") return false;
+      if (!watching()) return false;
       const hasActiveDocument = query.state.data?.pages.some((page) =>
         page.items.some(({ status }) =>
         [
@@ -167,9 +178,7 @@ export function useDocumentationWorkspace(projectId: string) {
     queryKey: workspaceKey(projectId),
     queryFn: () => getDocumentationWorkspace(projectId),
     refetchInterval: (query) =>
-      document.visibilityState === "hidden"
-        ? false
-        : (query.state.data?.refreshAfterMs ?? 5_000),
+      watching() ? (query.state.data?.refreshAfterMs ?? 5_000) : false,
     refetchOnWindowFocus: true,
   });
 }
@@ -229,13 +238,12 @@ export function useSections(projectId: string) {
     queryKey: sectionsKey(projectId),
     queryFn: () => listSections(projectId),
     refetchInterval: (query) =>
-      document.visibilityState === "hidden"
-        ? false
-        : query.state.data?.sections.some(
-              (section) => section.activeProposal?.status === "composing",
-            )
-          ? 3_000
-          : false,
+      watching() &&
+      query.state.data?.sections.some(
+        (section) => section.activeProposal?.status === "composing",
+      )
+        ? 3_000
+        : false,
   });
 }
 
@@ -247,10 +255,7 @@ export function useSectionProposal(projectId: string, sectionId: string) {
     // every three seconds per composing section, for a screen no one was on —
     // the guard the two other polling queries in this file already carry.
     refetchInterval: (query) =>
-      document.visibilityState !== "hidden" &&
-      query.state.data?.status === "composing"
-        ? 3_000
-        : false,
+      watching() && query.state.data?.status === "composing" ? 3_000 : false,
   });
 }
 
@@ -325,6 +330,43 @@ export function useComposeSection(projectId: string) {
   });
 }
 
+// A roadmap is corrected in place rather than by writing a note and asking for
+// the whole thing again: a wrong date is fixed by fixing it.
+export function useReplaceMilestones(projectId: string, sectionId: string) {
+  const t = useTranslations("Projects.Documentation.Sections.Toasts");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ReplaceMilestonesRequest) =>
+      replaceMilestones(projectId, sectionId, body),
+    meta: { skipGlobalErrorToast: true, successMessage: t("milestonesSaved") },
+    onSuccess: (proposal) => {
+      queryClient.setQueryData(
+        sectionProposalKey(projectId, sectionId),
+        proposal,
+      );
+      queryClient.invalidateQueries({ queryKey: sectionsKey(projectId) });
+    },
+  });
+}
+
+// Not a revision and not a publication: the client sees this the moment it is
+// saved, which is why the published view is invalidated with the section list.
+export function useSetCurrentMilestone(projectId: string, sectionId: string) {
+  const t = useTranslations("Projects.Documentation.Sections.Toasts");
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SetCurrentMilestoneRequest) =>
+      setCurrentMilestone(projectId, sectionId, body),
+    meta: { skipGlobalErrorToast: true, successMessage: t("positionMoved") },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sectionsKey(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: publicClientSectionsKey(projectId),
+      });
+    },
+  });
+}
+
 export function useApproveSectionProposal(
   projectId: string,
   sectionId: string,
@@ -357,8 +399,7 @@ export const referenceDocumentKey = (projectId: string) =>
 
 // Writing has no completion event, so both queries poll while it runs and stop
 // as soon as it does not — and neither polls a tab nobody is looking at.
-const whileWriting = (writing: boolean) =>
-  document.visibilityState !== "hidden" && writing ? 3_000 : false;
+const whileWriting = (writing: boolean) => (writing && watching() ? 3_000 : false);
 
 export function useReferenceSummary(projectId: string) {
   return useQuery({

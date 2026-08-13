@@ -7,16 +7,23 @@
 // preset, the product has a fixed taxonomy again — recorded, queryable, and
 // eventually reasoned about — which is exactly what specs/017 removes.
 //
-// The real payload of a suggestion is its description, not its title. A
+// The real payload of a prose suggestion is its description, not its title. A
 // contributor's instructions are the only expression of what a section should
 // hold, and a vague instruction produces a vague section that the system can
 // neither detect nor fix. A worked example shown at the moment of writing
 // teaches that far better than help text (research Decision 10).
-export const SECTION_SUGGESTION_IDS = [
-  "overview",
-  "howItWorks",
-  "planning",
-  "audit",
+//
+// The roadmap sits among them rather than below the line. It used to be offered
+// apart, next to "write my own title", while the list still carried a prose
+// suggestion called "Planning et jalons" — so the developer looking for a
+// timeline chose the obvious card and got paragraphs. Two entries meant the
+// same thing and the more visible one was the wrong one. There is now one
+// answer to "the dates and the order", and it is the frise.
+export const SECTION_STARTING_POINTS = [
+  { id: "overview", kind: "prose" },
+  { id: "howItWorks", kind: "prose" },
+  { id: "roadmap", kind: "roadmap" },
+  { id: "audit", kind: "prose" },
 ] as const;
 
 // "Other" is deliberately absent. It earned its place as the fourth of a closed
