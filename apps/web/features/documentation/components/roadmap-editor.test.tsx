@@ -218,18 +218,41 @@ describe("RoadmapEditor", () => {
     });
   });
 
-  // The published roadmap is read only — except where the project stands, which
-  // is the one thing the developer changes weekly without a document changing.
-  it("keeps the position movable on a published roadmap it cannot otherwise edit", async () => {
+  // What is published is shown by the client's own component, so the preview
+  // cannot drift from the thing — and it reads horizontally, as the client
+  // reads it. The marker stays a control: the position moves without composing,
+  // approving or publishing anything.
+  it("shows a published roadmap as the client's own timeline, position still movable", async () => {
     const user = userEvent.setup();
-    renderEditor({ editable: false, proposalVersion: undefined });
+    const { container } = renderEditor({
+      editable: false,
+      proposalVersion: undefined,
+    });
 
     expect(screen.queryByLabelText("whenLabel")).toBeNull();
     expect(screen.queryByText("addStep")).toBeNull();
+    expect(container.querySelector("ol")).toHaveAttribute(
+      "data-orientation",
+      "horizontal",
+    );
 
     await user.click(screen.getAllByRole("button")[0]);
 
-    expect(move.mutate).toHaveBeenCalled();
+    expect(move.mutate).toHaveBeenCalledWith({
+      milestoneId: framing.id,
+      expectedVersion: 4,
+    });
+  });
+
+  // Writing one is a different act: a milestone being edited is three fields and
+  // three controls, and those need a full column.
+  it("writes it in a column", () => {
+    const { container } = renderEditor();
+
+    expect(container.querySelector("ol")).toHaveAttribute(
+      "data-orientation",
+      "vertical",
+    );
   });
 
   // A fresh composition replaces the draft rather than being masked by edits

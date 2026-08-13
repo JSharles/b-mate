@@ -35,6 +35,22 @@ Not a Gantt chart, not dependencies, not a planning tool, and not a second place
 
 Everything else is unchanged: one section per tab, a proposal to review, an approval, an atomic publication, and `refreshNeeded` when the reference document is rewritten.
 
+## Which way it runs
+
+**Horizontal is how a roadmap is read.** Left to right is how time moves, and
+where the project stands becomes a position along a track rather than a row in a
+list. That is what the client gets, and what the developer is shown under "what
+your client reads" — the same component, so the preview cannot drift from the
+thing.
+
+**Vertical is how it is written.** A milestone being edited is three fields and
+three controls; those need a full column, and editing sideways would be a form
+laid out in columns nobody asked for.
+
+Below `sm` a horizontal rail falls back to a column — four steps side by side on
+a phone is four words per column — and past a handful of steps it scrolls inside
+its own container rather than squeezing them.
+
 ## The milestone
 
 A milestone carries **when**, **what**, and optionally **why it matters**.

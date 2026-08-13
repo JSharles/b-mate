@@ -18,6 +18,7 @@ import {
   TimelineMarker,
   type MilestoneState,
 } from "@/shared/components/ui/timeline";
+import { ClientTimeline } from "@/shared/components/client-timeline";
 import { cn } from "@/shared/lib/utils";
 import { useReplaceMilestones, useSetCurrentMilestone } from "../hooks";
 import { ROADMAP_PHASE_IDS } from "./roadmap-phases";
@@ -90,7 +91,23 @@ export function RoadmapEditor({
     setDraft(milestones.map(toDraft));
   }
 
-  const rows = editable ? draft : milestones.map(toDraft);
+  // Nothing to edit means nothing to edit: what is shown is what the client
+  // reads, rendered by the client's own component so the two cannot drift.
+  // The marker stays a control, because where the project stands moves without
+  // composing, approving or publishing anything.
+  if (!editable) {
+    return (
+      <ClientTimeline
+        milestones={milestones}
+        currentMilestoneId={section.currentMilestoneId}
+        onSelect={(milestoneId) =>
+          move.mutate({ milestoneId, expectedVersion: section.version })
+        }
+      />
+    );
+  }
+
+  const rows = draft;
   // Guarded on the section actually naming one: a milestone the developer has
   // just added carries no id either, and `null === null` had every new step
   // marking itself as where the project stands.
@@ -99,18 +116,17 @@ export function RoadmapEditor({
     : -1;
 
   const dirty =
-    editable &&
-    (draft.length !== milestones.length ||
-      draft.some((row, index) => {
-        const original = milestones[index];
-        return (
-          !original ||
-          original.id !== row.id ||
-          original.when !== row.when ||
-          original.title !== row.title ||
-          (original.description ?? "") !== (row.description ?? "")
-        );
-      }));
+    draft.length !== milestones.length ||
+    draft.some((row, index) => {
+      const original = milestones[index];
+      return (
+        !original ||
+        original.id !== row.id ||
+        original.when !== row.when ||
+        original.title !== row.title ||
+        (original.description ?? "") !== (row.description ?? "")
+      );
+    });
 
   function patch(key: string, changes: Partial<MilestoneDraft>) {
     setDraft((current) =>
@@ -187,8 +203,6 @@ export function RoadmapEditor({
             >
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  {editable ? (
-                    <>
                       <input
                         value={row.when}
                         onChange={(event) =>
@@ -228,24 +242,9 @@ export function RoadmapEditor({
                           "-ml-2 resize-y text-sm leading-relaxed text-muted-foreground",
                         )}
                       />
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                        {row.when}
-                      </p>
-                      <p className="font-medium">{row.title}</p>
-                      {row.description && (
-                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                          {row.description}
-                        </p>
-                      )}
-                    </>
-                  )}
                 </div>
 
-                {editable && (
-                  <div className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                <div className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
                     <Button
                       type="button"
                       variant="ghost"
@@ -280,17 +279,14 @@ export function RoadmapEditor({
                       <X />
                       <span className="sr-only">{t("remove")}</span>
                     </Button>
-                  </div>
-                )}
+                </div>
               </div>
             </TimelineItem>
           );
         })}
-
       </Timeline>
 
-      {editable && (
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
           {/* One control, and the arc every project runs through lives inside
               it. Laid out on the rail the phases looked like steps the roadmap
               already had; here they are what they are — ways of adding one. */}
@@ -349,8 +345,7 @@ export function RoadmapEditor({
               {save.isPending ? t("saving") : t("save")}
             </Button>
           )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
